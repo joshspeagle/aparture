@@ -1,9 +1,226 @@
 import { AlertCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, Unlock, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Complete arXiv category taxonomy
+const ARXIV_CATEGORIES = {
+    "Computer Science": {
+        prefix: "cs",
+        subcategories: {
+            "AI": { code: "cs.AI", name: "Artificial Intelligence" },
+            "AR": { code: "cs.AR", name: "Hardware Architecture" },
+            "CC": { code: "cs.CC", name: "Computational Complexity" },
+            "CE": { code: "cs.CE", name: "Computational Engineering, Finance, and Science" },
+            "CG": { code: "cs.CG", name: "Computational Geometry" },
+            "CL": { code: "cs.CL", name: "Computation and Language" },
+            "CR": { code: "cs.CR", name: "Cryptography and Security" },
+            "CV": { code: "cs.CV", name: "Computer Vision and Pattern Recognition" },
+            "CY": { code: "cs.CY", name: "Computers and Society" },
+            "DB": { code: "cs.DB", name: "Databases" },
+            "DC": { code: "cs.DC", name: "Distributed, Parallel, and Cluster Computing" },
+            "DL": { code: "cs.DL", name: "Digital Libraries" },
+            "DM": { code: "cs.DM", name: "Discrete Mathematics" },
+            "DS": { code: "cs.DS", name: "Data Structures and Algorithms" },
+            "ET": { code: "cs.ET", name: "Emerging Technologies" },
+            "FL": { code: "cs.FL", name: "Formal Languages and Automata Theory" },
+            "GL": { code: "cs.GL", name: "General Literature" },
+            "GR": { code: "cs.GR", name: "Graphics" },
+            "GT": { code: "cs.GT", name: "Computer Science and Game Theory" },
+            "HC": { code: "cs.HC", name: "Human-Computer Interaction" },
+            "IR": { code: "cs.IR", name: "Information Retrieval" },
+            "IT": { code: "cs.IT", name: "Information Theory" },
+            "LG": { code: "cs.LG", name: "Machine Learning" },
+            "LO": { code: "cs.LO", name: "Logic in Computer Science" },
+            "MA": { code: "cs.MA", name: "Multiagent Systems" },
+            "MM": { code: "cs.MM", name: "Multimedia" },
+            "MS": { code: "cs.MS", name: "Mathematical Software" },
+            "NA": { code: "cs.NA", name: "Numerical Analysis" },
+            "NE": { code: "cs.NE", name: "Neural and Evolutionary Computing" },
+            "NI": { code: "cs.NI", name: "Networking and Internet Architecture" },
+            "OH": { code: "cs.OH", name: "Other Computer Science" },
+            "OS": { code: "cs.OS", name: "Operating Systems" },
+            "PF": { code: "cs.PF", name: "Performance" },
+            "PL": { code: "cs.PL", name: "Programming Languages" },
+            "RO": { code: "cs.RO", name: "Robotics" },
+            "SC": { code: "cs.SC", name: "Symbolic Computation" },
+            "SD": { code: "cs.SD", name: "Sound" },
+            "SE": { code: "cs.SE", name: "Software Engineering" },
+            "SI": { code: "cs.SI", name: "Social and Information Networks" },
+            "SY": { code: "cs.SY", name: "Systems and Control" }
+        }
+    },
+    "Mathematics": {
+        prefix: "math",
+        subcategories: {
+            "AC": { code: "math.AC", name: "Commutative Algebra" },
+            "AG": { code: "math.AG", name: "Algebraic Geometry" },
+            "AP": { code: "math.AP", name: "Analysis of PDEs" },
+            "AT": { code: "math.AT", name: "Algebraic Topology" },
+            "CA": { code: "math.CA", name: "Classical Analysis and ODEs" },
+            "CO": { code: "math.CO", name: "Combinatorics" },
+            "CT": { code: "math.CT", name: "Category Theory" },
+            "CV": { code: "math.CV", name: "Complex Variables" },
+            "DG": { code: "math.DG", name: "Differential Geometry" },
+            "DS": { code: "math.DS", name: "Dynamical Systems" },
+            "FA": { code: "math.FA", name: "Functional Analysis" },
+            "GM": { code: "math.GM", name: "General Mathematics" },
+            "GN": { code: "math.GN", name: "General Topology" },
+            "GR": { code: "math.GR", name: "Group Theory" },
+            "GT": { code: "math.GT", name: "Geometric Topology" },
+            "HO": { code: "math.HO", name: "History and Overview" },
+            "IT": { code: "math.IT", name: "Information Theory" },
+            "KT": { code: "math.KT", name: "K-Theory and Homology" },
+            "LO": { code: "math.LO", name: "Logic" },
+            "MG": { code: "math.MG", name: "Metric Geometry" },
+            "MP": { code: "math.MP", name: "Mathematical Physics" },
+            "NA": { code: "math.NA", name: "Numerical Analysis" },
+            "NT": { code: "math.NT", name: "Number Theory" },
+            "OA": { code: "math.OA", name: "Operator Algebras" },
+            "OC": { code: "math.OC", name: "Optimization and Control" },
+            "PR": { code: "math.PR", name: "Probability" },
+            "QA": { code: "math.QA", name: "Quantum Algebra" },
+            "RA": { code: "math.RA", name: "Rings and Algebras" },
+            "RT": { code: "math.RT", name: "Representation Theory" },
+            "SG": { code: "math.SG", name: "Symplectic Geometry" },
+            "SP": { code: "math.SP", name: "Spectral Theory" },
+            "ST": { code: "math.ST", name: "Statistics Theory" }
+        }
+    },
+    "Physics": {
+        prefix: "physics",
+        subcategories: {
+            "acc-ph": { code: "physics.acc-ph", name: "Accelerator Physics" },
+            "app-ph": { code: "physics.app-ph", name: "Applied Physics" },
+            "ao-ph": { code: "physics.ao-ph", name: "Atmospheric and Oceanic Physics" },
+            "atom-ph": { code: "physics.atom-ph", name: "Atomic Physics" },
+            "atm-clus": { code: "physics.atm-clus", name: "Atomic and Molecular Clusters" },
+            "bio-ph": { code: "physics.bio-ph", name: "Biological Physics" },
+            "chem-ph": { code: "physics.chem-ph", name: "Chemical Physics" },
+            "class-ph": { code: "physics.class-ph", name: "Classical Physics" },
+            "comp-ph": { code: "physics.comp-ph", name: "Computational Physics" },
+            "data-an": { code: "physics.data-an", name: "Data Analysis, Statistics and Probability" },
+            "ed-ph": { code: "physics.ed-ph", name: "Physics Education" },
+            "flu-dyn": { code: "physics.flu-dyn", name: "Fluid Dynamics" },
+            "gen-ph": { code: "physics.gen-ph", name: "General Physics" },
+            "geo-ph": { code: "physics.geo-ph", name: "Geophysics" },
+            "hist-ph": { code: "physics.hist-ph", name: "History and Philosophy of Physics" },
+            "ins-det": { code: "physics.ins-det", name: "Instrumentation and Detectors" },
+            "med-ph": { code: "physics.med-ph", name: "Medical Physics" },
+            "optics": { code: "physics.optics", name: "Optics" },
+            "plasm-ph": { code: "physics.plasm-ph", name: "Plasma Physics" },
+            "pop-ph": { code: "physics.pop-ph", name: "Popular Physics" },
+            "soc-ph": { code: "physics.soc-ph", name: "Physics and Society" },
+            "space-ph": { code: "physics.space-ph", name: "Space Physics" }
+        }
+    },
+    "Astrophysics": {
+        prefix: "astro-ph",
+        subcategories: {
+            "CO": { code: "astro-ph.CO", name: "Cosmology and Nongalactic Astrophysics" },
+            "EP": { code: "astro-ph.EP", name: "Earth and Planetary Astrophysics" },
+            "GA": { code: "astro-ph.GA", name: "Astrophysics of Galaxies" },
+            "HE": { code: "astro-ph.HE", name: "High Energy Astrophysical Phenomena" },
+            "IM": { code: "astro-ph.IM", name: "Instrumentation and Methods for Astrophysics" },
+            "SR": { code: "astro-ph.SR", name: "Solar and Stellar Astrophysics" }
+        }
+    },
+    "Condensed Matter": {
+        prefix: "cond-mat",
+        subcategories: {
+            "dis-nn": { code: "cond-mat.dis-nn", name: "Disordered Systems and Neural Networks" },
+            "mtrl-sci": { code: "cond-mat.mtrl-sci", name: "Materials Science" },
+            "mes-hall": { code: "cond-mat.mes-hall", name: "Mesoscale and Nanoscale Physics" },
+            "other": { code: "cond-mat.other", name: "Other Condensed Matter" },
+            "quant-gas": { code: "cond-mat.quant-gas", name: "Quantum Gases" },
+            "soft": { code: "cond-mat.soft", name: "Soft Condensed Matter" },
+            "stat-mech": { code: "cond-mat.stat-mech", name: "Statistical Mechanics" },
+            "str-el": { code: "cond-mat.str-el", name: "Strongly Correlated Electrons" },
+            "supr-con": { code: "cond-mat.supr-con", name: "Superconductivity" }
+        }
+    },
+    "High Energy Physics": {
+        prefix: "hep",
+        subcategories: {
+            "ex": { code: "hep-ex", name: "High Energy Physics - Experiment" },
+            "lat": { code: "hep-lat", name: "High Energy Physics - Lattice" },
+            "ph": { code: "hep-ph", name: "High Energy Physics - Phenomenology" },
+            "th": { code: "hep-th", name: "High Energy Physics - Theory" }
+        }
+    },
+    "Nonlinear Sciences": {
+        prefix: "nlin",
+        subcategories: {
+            "AO": { code: "nlin.AO", name: "Adaptation and Self-Organizing Systems" },
+            "CG": { code: "nlin.CG", name: "Cellular Automata and Lattice Gases" },
+            "CD": { code: "nlin.CD", name: "Chaotic Dynamics" },
+            "SI": { code: "nlin.SI", name: "Exactly Solvable and Integrable Systems" },
+            "PS": { code: "nlin.PS", name: "Pattern Formation and Solitons" }
+        }
+    },
+    "Quantitative Biology": {
+        prefix: "q-bio",
+        subcategories: {
+            "BM": { code: "q-bio.BM", name: "Biomolecules" },
+            "CB": { code: "q-bio.CB", name: "Cell Behavior" },
+            "GN": { code: "q-bio.GN", name: "Genomics" },
+            "MN": { code: "q-bio.MN", name: "Molecular Networks" },
+            "NC": { code: "q-bio.NC", name: "Neurons and Cognition" },
+            "OT": { code: "q-bio.OT", name: "Other Quantitative Biology" },
+            "PE": { code: "q-bio.PE", name: "Populations and Evolution" },
+            "QM": { code: "q-bio.QM", name: "Quantitative Methods" },
+            "SC": { code: "q-bio.SC", name: "Subcellular Processes" },
+            "TO": { code: "q-bio.TO", name: "Tissues and Organs" }
+        }
+    },
+    "Quantitative Finance": {
+        prefix: "q-fin",
+        subcategories: {
+            "CP": { code: "q-fin.CP", name: "Computational Finance" },
+            "EC": { code: "q-fin.EC", name: "Economics" },
+            "GN": { code: "q-fin.GN", name: "General Finance" },
+            "MF": { code: "q-fin.MF", name: "Mathematical Finance" },
+            "PM": { code: "q-fin.PM", name: "Portfolio Management" },
+            "PR": { code: "q-fin.PR", name: "Pricing of Securities" },
+            "RM": { code: "q-fin.RM", name: "Risk Management" },
+            "ST": { code: "q-fin.ST", name: "Statistical Finance" },
+            "TR": { code: "q-fin.TR", name: "Trading and Market Microstructure" }
+        }
+    },
+    "Statistics": {
+        prefix: "stat",
+        subcategories: {
+            "AP": { code: "stat.AP", name: "Applications" },
+            "CO": { code: "stat.CO", name: "Computation" },
+            "ME": { code: "stat.ME", name: "Methodology" },
+            "ML": { code: "stat.ML", name: "Machine Learning" },
+            "OT": { code: "stat.OT", name: "Other Statistics" },
+            "TH": { code: "stat.TH", name: "Statistics Theory" }
+        }
+    },
+    "Electrical Engineering and Systems Science": {
+        prefix: "eess",
+        subcategories: {
+            "AS": { code: "eess.AS", name: "Audio and Speech Processing" },
+            "IV": { code: "eess.IV", name: "Image and Video Processing" },
+            "SP": { code: "eess.SP", name: "Signal Processing" },
+            "SY": { code: "eess.SY", name: "Systems and Control" }
+        }
+    },
+    "Single Categories": {
+        prefix: "",
+        subcategories: {
+            "gr-qc": { code: "gr-qc", name: "General Relativity and Quantum Cosmology" },
+            "math-ph": { code: "math-ph", name: "Mathematical Physics" },
+            "nucl-ex": { code: "nucl-ex", name: "Nuclear Experiment" },
+            "nucl-th": { code: "nucl-th", name: "Nuclear Theory" },
+            "quant-ph": { code: "quant-ph", name: "Quantum Physics" },
+            "econ": { code: "econ", name: "Economics" }
+        }
+    }
+};
+
 // Default configuration
 const DEFAULT_CONFIG = {
-    categories: "cs.LG, cs.AI, cs.CV, cs.CL, cs.NE, cs.IR, stat.AP, stat.CO, stat.ME, stat.ML, stat.TH, astro-ph.GA, astro-ph.SR, astro-ph.IM, astro-ph.CO, astro-ph.EP, astro-ph.HE",
+    selectedCategories: ["cs.AI", "cs.CL", "cs.CV", "cs.IR", "cs.LG", "cs.MA", "cs.NE", "stat.AP", "stat.CO", "stat.ME", "stat.ML", "stat.OT", "stat.TH", "astro-ph.CO", "astro-ph.EP", "astro-ph.GA", "astro-ph.HE", "astro-ph.IM", "astro-ph.SR"],
     scoringCriteria: `
     **AI/ML (Broad Interest):** Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery.  
 
@@ -91,9 +308,27 @@ function ArxivAnalyzer() {
     });
     const [showErrors, setShowErrors] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [expandedCategory, setExpandedCategory] = useState(null);
 
     const abortControllerRef = useRef(null);
     const pauseRef = useRef(false);
+    const dropdownRef = useRef(null);
+
+    // Handle clicks outside dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowCategoryDropdown(false);
+                setExpandedCategory(null);
+            }
+        };
+
+        if (showCategoryDropdown) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showCategoryDropdown]);
 
     // Load saved state from localStorage
     useEffect(() => {
@@ -101,7 +336,15 @@ function ArxivAnalyzer() {
         if (savedState) {
             try {
                 const parsed = JSON.parse(savedState);
-                if (parsed.config) setConfig(parsed.config);
+                if (parsed.config) {
+                    // Handle backward compatibility: convert old categories string to selectedCategories array
+                    if (parsed.config.categories && !parsed.config.selectedCategories) {
+                        const categoriesArray = parsed.config.categories.split(',').map(c => c.trim()).filter(c => c);
+                        parsed.config.selectedCategories = categoriesArray;
+                        delete parsed.config.categories;
+                    }
+                    setConfig(parsed.config);
+                }
                 if (parsed.results) setResults(parsed.results);
                 if (parsed.password) {
                     setPassword(parsed.password);
@@ -130,6 +373,59 @@ function ArxivAnalyzer() {
             ...prev,
             errors: [...prev.errors, `[${new Date().toLocaleTimeString()}] ${error}`]
         }));
+    }, []);
+
+    // Category management functions
+    const addCategory = useCallback((categoryCode) => {
+        setConfig(prev => ({
+            ...prev,
+            selectedCategories: [...new Set([...prev.selectedCategories, categoryCode])]
+        }));
+    }, []);
+
+    const removeCategory = useCallback((categoryCode) => {
+        setConfig(prev => ({
+            ...prev,
+            selectedCategories: prev.selectedCategories.filter(cat => cat !== categoryCode)
+        }));
+    }, []);
+
+    const addMainCategory = useCallback((mainCategoryName) => {
+        const categoryData = ARXIV_CATEGORIES[mainCategoryName];
+        if (!categoryData) return;
+
+        const newCategories = [];
+
+        if (categoryData.prefix === "") {
+            // Single categories
+            Object.values(categoryData.subcategories).forEach(subcat => {
+                newCategories.push(subcat.code);
+            });
+        } else {
+            // Categories with subcategories
+            Object.values(categoryData.subcategories).forEach(subcat => {
+                newCategories.push(subcat.code);
+            });
+        }
+
+        setConfig(prev => ({
+            ...prev,
+            selectedCategories: [...new Set([...prev.selectedCategories, ...newCategories])]
+        }));
+    }, []);
+
+    const getCategoryDisplayName = useCallback((categoryCode) => {
+        for (const [mainName, mainData] of Object.entries(ARXIV_CATEGORIES)) {
+            for (const [subKey, subData] of Object.entries(mainData.subcategories)) {
+                if (subData.code === categoryCode) {
+                    if (mainName === "Single Categories") {
+                        return subData.name;
+                    }
+                    return `${mainName}: ${subData.name}`;
+                }
+            }
+        }
+        return categoryCode;
     }, []);
 
     // Handle authentication
@@ -175,7 +471,11 @@ function ArxivAnalyzer() {
         setProcessing(prev => ({ ...prev, stage: 'fetching', progress: { current: 0, total: 1 } }));
 
         try {
-            const categories = config.categories.split(',').map(c => c.trim()).filter(c => c);
+            const categories = config.selectedCategories.filter(cat => cat.trim());
+            if (categories.length === 0) {
+                throw new Error('No categories selected');
+            }
+
             const categoriesQuery = categories.map(cat => `cat:${cat}`).join(' OR ');
 
             // Calculate date range
@@ -593,16 +893,105 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                ArXiv Categories (comma-separated)
+                                ArXiv Categories
                             </label>
-                            <input
-                                type="text"
-                                value={config.categories}
-                                onChange={(e) => setConfig(prev => ({ ...prev, categories: e.target.value }))}
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                placeholder="cs.LG, cs.AI, stat.ML..."
-                                disabled={processing.isRunning}
-                            />
+
+                            {/* Selected Categories Display */}
+                            <div className="min-h-[2.5rem] p-3 bg-slate-800 border border-slate-700 rounded-lg mb-2">
+                                {config.selectedCategories.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {config.selectedCategories.map(category => (
+                                            <span
+                                                key={category}
+                                                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-xs border border-blue-500/30"
+                                            >
+                                                {category}
+                                                <button
+                                                    onClick={() => removeCategory(category)}
+                                                    className="hover:text-red-300 transition-colors"
+                                                    disabled={processing.isRunning}
+                                                    title={getCategoryDisplayName(category)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <span className="text-gray-500 text-sm">No categories selected</span>
+                                )}
+                            </div>
+
+                            {/* Category Dropdown */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                                    className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-left text-white hover:bg-slate-600 transition-colors flex items-center justify-between"
+                                    disabled={processing.isRunning}
+                                >
+                                    <span>Add Categories</span>
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {showCategoryDropdown && (
+                                    <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-96 overflow-y-auto">
+                                        {Object.entries(ARXIV_CATEGORIES).map(([mainCategory, data]) => (
+                                            <div key={mainCategory} className="border-b border-slate-700 last:border-b-0">
+                                                <div className="flex items-center justify-between">
+                                                    <button
+                                                        onClick={() => setExpandedCategory(expandedCategory === mainCategory ? null : mainCategory)}
+                                                        className="flex-1 px-4 py-3 text-left hover:bg-slate-700 transition-colors flex items-center gap-2"
+                                                    >
+                                                        {expandedCategory === mainCategory ?
+                                                            <ChevronDown className="w-4 h-4" /> :
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        }
+                                                        <span className="font-medium text-gray-200">{mainCategory}</span>
+                                                        <span className="text-xs text-gray-400">
+                                                            ({Object.keys(data.subcategories).length} categories)
+                                                        </span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => addMainCategory(mainCategory)}
+                                                        className="px-3 py-1 mr-2 text-xs bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30 transition-colors"
+                                                        title={`Add all ${mainCategory} categories`}
+                                                    >
+                                                        Add All
+                                                    </button>
+                                                </div>
+
+                                                {expandedCategory === mainCategory && (
+                                                    <div className="bg-slate-900/50">
+                                                        {Object.entries(data.subcategories).map(([subKey, subData]) => (
+                                                            <button
+                                                                key={subData.code}
+                                                                onClick={() => {
+                                                                    addCategory(subData.code);
+                                                                    setShowCategoryDropdown(false);
+                                                                }}
+                                                                className="w-full px-8 py-2 text-left hover:bg-slate-700/50 transition-colors text-sm flex items-center justify-between group"
+                                                                disabled={config.selectedCategories.includes(subData.code)}
+                                                            >
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-gray-200">{subData.code}</span>
+                                                                    <span className="text-xs text-gray-400">{subData.name}</span>
+                                                                </div>
+                                                                {config.selectedCategories.includes(subData.code) && (
+                                                                    <span className="text-green-400 text-xs">✓ Selected</span>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <p className="text-xs text-gray-400 mt-1">
+                                Click categories to select them. Use "Add All" to select entire sections.
+                            </p>
                         </div>
 
                         <div>
