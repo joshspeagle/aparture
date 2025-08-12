@@ -10,7 +10,7 @@ async function callAIModel(model, prompt) {
             return await callClaude('claude-sonnet-4-20250514', prompt);
 
         case 'claude-opus-4.1':
-            return await callClaude('claude-opus-4-20241223', prompt);
+            return await callClaude('claude-opus-4-1-20250805', prompt);
 
         case 'gpt-5':
             return await callOpenAI('gpt-5', prompt);
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { papers, scoringCriteria, password, model = 'claude-sonnet-4' } = req.body;
+    const { papers, scoringCriteria, password, model = 'claude-sonnet-4', correctionPrompt } = req.body;
 
     // Check password
     if (!checkPassword(password)) {
@@ -116,7 +116,13 @@ export default async function handler(req, res) {
     }
 
     try {
-        const prompt = `You are a research assistant scoring academic paper abstracts for relevance.
+        let prompt;
+
+        // Use correction prompt if provided, otherwise generate normal scoring prompt
+        if (correctionPrompt) {
+            prompt = correctionPrompt;
+        } else {
+            prompt = `You are a research assistant scoring academic paper abstracts for relevance.
 
 Scoring Criteria:
 ${scoringCriteria}
@@ -136,17 +142,39 @@ Respond ONLY with a valid JSON array in this exact format:
 ]
 
 Your entire response MUST ONLY be a single, valid JSON array. DO NOT respond with anything other than a single, valid JSON array.`;
+        }
 
         const responseText = await callAIModel(model, prompt);
 
         // Clean up response text (remove markdown formatting if present)
         const cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
-        const scores = JSON.parse(cleanedText);
-        res.status(200).json({ scores });
+        let scores;
+        try {
+            scores = JSON.parse(cleanedText);
+        } catch (parseError) {
+            // If this is a correction attempt that still failed, return the raw response for debugging
+            if (correctionPrompt) {
+                return res.status(200).json({
+                    scores: [],
+                    rawResponse: responseText,
+                    error: `Correction parsing failed: ${parseError.message}`
+                });
+            }
+            throw parseError;
+        }
+
+        // Return both the parsed scores and the raw response
+        res.status(200).json({
+            scores,
+            rawResponse: responseText
+        });
 
     } catch (error) {
         console.error('Error scoring abstracts:', error);
-        res.status(500).json({ error: 'Failed to score abstracts', details: error.message });
+        res.status(500).json({
+            error: 'Failed to score abstracts',
+            details: error.message
+        });
     }
 }

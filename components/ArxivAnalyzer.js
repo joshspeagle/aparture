@@ -234,6 +234,8 @@ const DEFAULT_CONFIG = {
     finalOutputCount: 15,
     daysBack: 2, // Number of days to look back for papers
     batchSize: 5, // Number of papers to process at once for abstract scoring
+    maxCorrections: 1, // Number of correction attempts for malformed output
+    maxRetries: 1, // Number of full retry attempts for failed queries
     selectedModel: 'claude-sonnet-4' // Default model
 };
 
@@ -429,6 +431,74 @@ function ArxivAnalyzer() {
         return categoryCode;
     }, []);
 
+    // Robust API call with retry and correction logic
+    const makeRobustAPICall = useCallback(async (apiCallFunction, parseFunction, context = "", originalPromptInfo = "") => {
+        let lastError = null;
+
+        for (let retryCount = 0; retryCount <= config.maxRetries; retryCount++) {
+            try {
+                let responseText = await apiCallFunction();
+
+                // Try to parse the initial response
+                try {
+                    const result = parseFunction(responseText);
+                    return result; // Success!
+                } catch (parseError) {
+                    lastError = parseError;
+                    addError(`${context} - Initial parse failed: ${parseError.message}`);
+                }
+
+                // If initial parse failed, try corrections
+                for (let correctionCount = 1; correctionCount <= config.maxCorrections; correctionCount++) {
+                    try {
+                        addError(`${context} - Attempting correction ${correctionCount}/${config.maxCorrections}`);
+
+                        const correctionPrompt = `The previous response was not in the correct format. Here is the malformed output:
+
+${responseText}
+
+Please fix the formatting and return ONLY valid JSON. The error was: ${lastError.message}
+
+${originalPromptInfo ? `Original task: ${originalPromptInfo}` : ''}
+
+Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT respond with anything other than valid JSON.`;
+
+                        // Make correction API call
+                        responseText = await apiCallFunction(correctionPrompt, true); // true indicates this is a correction
+
+                        // Try to parse the corrected response
+                        const result = parseFunction(responseText);
+                        addError(`${context} - Correction ${correctionCount} succeeded`);
+                        return result; // Success!
+
+                    } catch (correctionError) {
+                        lastError = correctionError;
+                        addError(`${context} - Correction ${correctionCount} failed: ${correctionError.message}`);
+                    }
+                }
+
+                // If we get here, all corrections failed
+                if (retryCount < config.maxRetries) {
+                    addError(`${context} - All corrections failed, attempting full retry ${retryCount + 1}/${config.maxRetries}`);
+                } else {
+                    throw new Error(`All retries and corrections exhausted. Last error: ${lastError?.message || 'Unknown error'}`);
+                }
+
+            } catch (apiError) {
+                lastError = apiError;
+                if (retryCount < config.maxRetries) {
+                    addError(`${context} - API call failed, retrying ${retryCount + 1}/${config.maxRetries}: ${apiError.message}`);
+                    // Add a delay before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw apiError;
+                }
+            }
+        }
+
+        throw lastError;
+    }, [config.maxRetries, config.maxCorrections, addError]);
+
     // Handle authentication
     const handleAuth = async () => {
         if (!password.trim()) {
@@ -549,26 +619,69 @@ function ArxivAnalyzer() {
             const batch = papers.slice(i, Math.min(i + batchSize, papers.length));
 
             try {
-                const response = await fetch('/api/score-abstracts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+                // Create API call function for this batch
+                const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                    const requestBody = {
                         papers: batch,
                         scoringCriteria: config.scoringCriteria,
                         password: password,
                         model: config.selectedModel
-                    })
-                });
+                    };
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `API error: ${response.status}`);
-                }
+                    // If this is a correction call, add the correction prompt
+                    if (isCorrection && correctionPrompt) {
+                        requestBody.correctionPrompt = correctionPrompt;
+                    }
 
-                const data = await response.json();
-                const scores = data.scores;
+                    const response = await fetch('/api/score-abstracts', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    // Return the raw response text for parsing
+                    return data.rawResponse || JSON.stringify(data.scores || data);
+                };
+
+                // Parse function with robust validation
+                const parseResponse = (responseText) => {
+                    // Try basic cleaning first
+                    let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+                    const scores = JSON.parse(cleanedText);
+
+                    if (!Array.isArray(scores)) {
+                        throw new Error("Response is not an array");
+                    }
+
+                    // Validate that each score has required fields
+                    scores.forEach((score, idx) => {
+                        if (!score.hasOwnProperty('paperIndex') || !score.hasOwnProperty('score') || !score.hasOwnProperty('justification')) {
+                            throw new Error(`Score object ${idx} missing required fields`);
+                        }
+                        if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
+                            throw new Error(`Score object ${idx} has invalid field types`);
+                        }
+                    });
+
+                    return scores;
+                };
+
+                // Use robust API call with proper correction support
+                const scores = await makeRobustAPICall(
+                    makeAPICall,
+                    parseResponse,
+                    `Scoring batch ${Math.floor(i / batchSize) + 1}`,
+                    `Score ${batch.length} paper abstracts for relevance using the provided criteria`
+                );
 
                 scores.forEach((scoreData) => {
                     const paperIdx = scoreData.paperIndex - 1;
@@ -590,10 +703,10 @@ function ArxivAnalyzer() {
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
             } catch (error) {
-                addError(`Failed to score batch starting at paper ${i + 1}: ${error.message}`);
+                addError(`Failed to score batch starting at paper ${i + 1} after all retries: ${error.message}`);
                 // Add unscored papers with default score
                 batch.forEach(p => {
-                    scoredPapers.push({ ...p, relevanceScore: 0, scoreJustification: 'Failed to score' });
+                    scoredPapers.push({ ...p, relevanceScore: 0, scoreJustification: 'Failed to score after retries' });
                 });
             }
         }
@@ -623,28 +736,70 @@ function ArxivAnalyzer() {
             const paper = papers[i];
 
             try {
-                const response = await fetch('/api/analyze-pdf', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+                // Create API call function for this paper
+                const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                    const requestBody = {
                         pdfUrl: paper.pdfUrl,
                         scoringCriteria: config.scoringCriteria,
                         originalScore: paper.relevanceScore,
                         originalJustification: paper.scoreJustification,
                         password: password,
                         model: config.selectedModel
-                    })
-                });
+                    };
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `API error: ${response.status}`);
-                }
+                    // If this is a correction call, add the correction prompt
+                    if (isCorrection && correctionPrompt) {
+                        requestBody.correctionPrompt = correctionPrompt;
+                    }
 
-                const data = await response.json();
-                const analysis = data.analysis;
+                    const response = await fetch('/api/analyze-pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    // Return the raw response text for parsing
+                    return data.rawResponse || JSON.stringify(data.analysis || data);
+                };
+
+                // Parse function with robust validation
+                const parseResponse = (responseText) => {
+                    // Try basic cleaning first
+                    let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+                    const analysis = JSON.parse(cleanedText);
+
+                    // Validate required fields
+                    if (!analysis.summary || typeof analysis.updatedScore === 'undefined') {
+                        throw new Error("Missing required fields (summary or updatedScore) in analysis response");
+                    }
+
+                    // Validate field types
+                    if (typeof analysis.summary !== 'string') {
+                        throw new Error("Summary field must be a string");
+                    }
+                    if (typeof analysis.updatedScore !== 'number') {
+                        throw new Error("UpdatedScore field must be a number");
+                    }
+
+                    return analysis;
+                };
+
+                // Use robust API call with proper correction support
+                const analysis = await makeRobustAPICall(
+                    makeAPICall,
+                    parseResponse,
+                    `Analyzing paper "${paper.title}"`,
+                    `Analyze PDF content and provide updated relevance score with detailed summary`
+                );
 
                 analyzedPapers.push({
                     ...paper,
@@ -661,7 +816,7 @@ function ArxivAnalyzer() {
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
             } catch (error) {
-                addError(`Failed to analyze paper "${paper.title}": ${error.message}`);
+                addError(`Failed to analyze paper "${paper.title}" after all retries: ${error.message}`);
                 analyzedPapers.push({
                     ...paper,
                     deepAnalysis: null,
@@ -1105,6 +1260,38 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                                 max="50"
                                                 disabled={processing.isRunning}
                                             />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                Max Corrections
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={config.maxCorrections}
+                                                onChange={(e) => setConfig(prev => ({ ...prev, maxCorrections: parseInt(e.target.value) || 1 }))}
+                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                min="0"
+                                                max="5"
+                                                disabled={processing.isRunning}
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1">AI calls to fix malformed output</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                Max Retries
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={config.maxRetries}
+                                                onChange={(e) => setConfig(prev => ({ ...prev, maxRetries: parseInt(e.target.value) || 1 }))}
+                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                min="0"
+                                                max="5"
+                                                disabled={processing.isRunning}
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1">Full API call re-attempts</p>
                                         </div>
                                     </div>
                                 </div>
