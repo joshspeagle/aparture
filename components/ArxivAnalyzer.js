@@ -346,7 +346,12 @@ function ArxivAnalyzer() {
                         parsed.config.selectedCategories = categoriesArray;
                         delete parsed.config.categories;
                     }
-                    setConfig(parsed.config);
+
+                    // Merge saved config with defaults to ensure new fields are present
+                    setConfig(prev => ({
+                        ...DEFAULT_CONFIG,
+                        ...parsed.config
+                    }));
                 }
                 if (parsed.results) setResults(parsed.results);
                 if (parsed.password) {
