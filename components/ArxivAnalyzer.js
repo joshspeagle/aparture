@@ -233,6 +233,7 @@ const DEFAULT_CONFIG = {
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
     daysBack: 2, // Number of days to look back for papers
+    batchSize: 5, // Number of papers to process at once for abstract scoring
     selectedModel: 'claude-sonnet-4' // Default model
 };
 
@@ -538,7 +539,7 @@ function ArxivAnalyzer() {
         setProcessing(prev => ({ ...prev, stage: 'initial-scoring', progress: { current: 0, total: papers.length } }));
 
         const scoredPapers = [];
-        const batchSize = 5; // Process 5 papers at a time
+        const batchSize = config.batchSize; // Use configurable batch size
 
         for (let i = 0; i < papers.length; i += batchSize) {
             if (pauseRef.current) {
@@ -1060,6 +1061,23 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                                 disabled={processing.isRunning}
                                             />
                                         </div>
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                Abstract Batch Size
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={config.batchSize}
+                                                onChange={(e) => setConfig(prev => ({ ...prev, batchSize: parseInt(e.target.value) || 5 }))}
+                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                min="1"
+                                                max="20"
+                                                disabled={processing.isRunning}
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1">Papers per API call</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
                                         <div className="flex-1">
                                             <label className="block text-sm font-medium text-gray-300 mb-1">
                                                 Max Papers for Deep Analysis
