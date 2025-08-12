@@ -4,7 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // Default configuration
 const DEFAULT_CONFIG = {
     categories: "cs.LG, cs.AI, cs.CV, cs.CL, cs.NE, cs.IR, stat.AP, stat.CO, stat.ME, stat.ML, stat.TH, astro-ph.GA, astro-ph.SR, astro-ph.IM, astro-ph.CO, astro-ph.EP, astro-ph.HE",
-    scoringCriteria: `AI/ML (Broad Interest): Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery. Statistics, Computation, and Inference: Sampling and approximate inference methods, uncertainty quantification, time series analysis, state space models, hierarchical modeling, scalable inference. Astrophysics Applications: Galactic structure and dynamics, stellar astrophysics and populations, galaxy formation and evolution, large astronomical surveys. Research Context: Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.`,
+    scoringCriteria: `
+    **AI/ML (Broad Interest):** Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery.  
+
+    **Statistics, Computation, and Inference:** Sampling and approximate inference methods, uncertainty quantification, time series analysis, state space models, hierarchical modeling, scalable inference.
+
+    **Astrophysics Applications:** Galactic structure and dynamics, stellar astrophysics and populations, galaxy formation and evolution, large astronomical surveys.
+
+    **Research Context:** Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.
+    `,
     outputFormat: "arXiv ID, title, short author tag, brief relevance note explaining why this paper is relevant to my research interests, 2-3 paragraph technical summary of paper contents",
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
@@ -323,6 +331,8 @@ function ArxivAnalyzer() {
                     body: JSON.stringify({
                         pdfUrl: paper.pdfUrl,
                         scoringCriteria: config.scoringCriteria,
+                        originalScore: paper.relevanceScore,
+                        originalJustification: paper.scoreJustification,
                         password: password,
                         model: config.selectedModel
                     })

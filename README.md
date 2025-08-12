@@ -59,7 +59,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 4. Deploy to Vercel
+### OR: Deploy to Vercel
 
 Install Vercel CLI:
 
@@ -88,9 +88,7 @@ Redeploy:
 vercel --prod
 ```
 
-### 5. Custom Domain (Optional)
-
-In your Vercel dashboard:
+If you want to apply a custom domain, in your Vercel dashboard:
 
 1. Go to Settings → Domains
 2. Add your custom domain
@@ -99,23 +97,6 @@ In your Vercel dashboard:
 ## Security
 
 This app includes password protection to prevent unauthorized use of your Claude API key. The password is checked on every API call to ensure security.
-
-## Project Structure
-
-```text
-arxiv-analyzer/
-├── pages/
-│   ├── api/                 # Secure API endpoints
-│   │   ├── score-abstracts.js
-│   │   └── analyze-pdf.js
-│   ├── _app.js
-│   └── index.js
-├── components/
-│   └── ArxivAnalyzer.js     # Main React component
-├── styles/
-│   └── globals.css          # Global styles
-└── .env.local               # Environment variables (create this)
-```
 
 ## Usage
 
@@ -128,8 +109,8 @@ arxiv-analyzer/
 
 ## API Usage Notes
 
-- The app processes abstracts in batches to respect API rate limits
-- PDF analysis can take 2-3 seconds per paper
+- The app processes abstracts in batches to respect API rate limits (default: 5)
+- PDF analysis is done directly over individual PDFs (no text extraction)
 - Error handling includes automatic retries and graceful degradation
 - All API calls are routed through secure backend endpoints
 

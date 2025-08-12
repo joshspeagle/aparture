@@ -151,7 +151,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { pdfUrl, scoringCriteria, password, model = 'claude-sonnet-4' } = req.body;
+    const { pdfUrl, scoringCriteria, originalScore, originalJustification, password, model = 'claude-sonnet-4' } = req.body;
 
     // Check password
     if (!checkPassword(password)) {
@@ -166,22 +166,31 @@ export default async function handler(req, res) {
         const pdfBuffer = await pdfResponse.arrayBuffer();
         const base64Data = Buffer.from(pdfBuffer).toString('base64');
 
-        const prompt = `Please analyze this research paper and provide:
+        const prompt = `Please analyze this research paper and provide an updated assessment.
+
+CONTEXT FROM ABSTRACT ANALYSIS:
+- Original Score (based on abstract only): ${originalScore}/10
+- Original Justification: ${originalJustification}
+
+SCORING CRITERIA:
+${scoringCriteria}
+
+Now that you have access to the full paper, please provide:
 
 1. A comprehensive 3-5 paragraph technical summary of the paper's contents, methodology, and contributions
 2. Key findings and results
 3. Methodological innovations or notable techniques used
 4. Potential limitations or areas for future work
-5. A relevance assessment based on these criteria: ${scoringCriteria}
-6. An updated relevance score (1-10) based on the full paper analysis
+5. A detailed relevance assessment that compares your full-paper analysis to the original abstract-based assessment
+6. An updated relevance score (1-10) - explain whether you're raising, lowering, or maintaining the original score of ${originalScore}/10 and why
 
 Format your response as a JSON object with these fields:
 {
   "summary": "string",
   "keyFindings": "string",
-  "methodology": "string",
+  "methodology": "string", 
   "limitations": "string",
-  "relevanceAssessment": "string",
+  "relevanceAssessment": "string - include comparison to original ${originalScore}/10 score and justification for any changes",
   "updatedScore": number
 }
 
