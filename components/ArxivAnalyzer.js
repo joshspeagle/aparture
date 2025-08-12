@@ -13,7 +13,6 @@ const DEFAULT_CONFIG = {
 
     **Research Context:** Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.
     `,
-    outputFormat: "arXiv ID, title, short author tag, brief relevance note explaining why this paper is relevant to my research interests, 2-3 paragraph technical summary of paper contents",
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
     daysBack: 2, // Number of days to look back for papers
@@ -473,7 +472,7 @@ function ArxivAnalyzer() {
         localStorage.removeItem('arxivAnalyzerState');
     };
 
-    // Export results
+    // Export results in a standardized format
     const exportResults = () => {
         const output = results.finalRanking.map(paper => {
             const authorTag = paper.authors.length > 0 ?
@@ -641,19 +640,6 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                 onChange={(e) => setConfig(prev => ({ ...prev, scoringCriteria: e.target.value }))}
                                 className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white h-32 resize-none"
                                 placeholder="Describe your research interests..."
-                                disabled={processing.isRunning}
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                Output Format Preferences
-                            </label>
-                            <input
-                                type="text"
-                                value={config.outputFormat}
-                                onChange={(e) => setConfig(prev => ({ ...prev, outputFormat: e.target.value }))}
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                                 disabled={processing.isRunning}
                             />
                         </div>

@@ -13,7 +13,7 @@ The package is straightforward and current supports the following workflow:
 - Fetches recent papers from ArXiv based on configurable categories
 - Scores abstracts for relevance based on a customized user prompt
 - Performs deep PDF analysis on the top-scoring papers (including producing a summary and a revised score)
-- Exports the top results in a configurable report
+- Exports summaries of the top papers in a report
 
 ## Supported Models
 
@@ -117,3 +117,7 @@ This app includes password protection to prevent unauthorized use of your Claude
 ## License
 
 MIT
+
+## Acknowledgements
+
+Created in collaboration with Claude Sonnet 4 and Claude Opus 4.1
