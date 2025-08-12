@@ -295,6 +295,11 @@ const AVAILABLE_MODELS = [
 // Main Application Component
 function ArxivAnalyzer() {
     const [config, setConfig] = useState(DEFAULT_CONFIG);
+    const [processingTiming, setProcessingTiming] = useState({
+        startTime: null,
+        endTime: null,
+        duration: null
+    });
     const [password, setPassword] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [processing, setProcessing] = useState({
@@ -347,11 +352,14 @@ function ArxivAnalyzer() {
                         delete parsed.config.categories;
                     }
 
-                    // Merge saved config with defaults to ensure new fields are present
-                    setConfig(prev => ({
-                        ...DEFAULT_CONFIG,
-                        ...parsed.config
-                    }));
+                    // Merge saved config with new defaults to pick up any new default values
+                    const mergedConfig = {
+                        ...DEFAULT_CONFIG,  // Start with current defaults
+                        ...parsed.config,   // Override with saved user preferences
+                        // Always use current defaults for any missing fields
+                    };
+
+                    setConfig(mergedConfig);
                 }
                 if (parsed.results) setResults(parsed.results);
                 if (parsed.password) {
@@ -847,6 +855,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
     // Main processing pipeline
     const startProcessing = async () => {
+        const startTime = new Date();
+        setProcessingTiming({ startTime, endTime: null, duration: null });
         setProcessing(prev => ({ ...prev, isRunning: true, isPaused: false, errors: [] }));
         pauseRef.current = false;
         abortControllerRef.current = new AbortController();
@@ -883,6 +893,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 addError(`Processing failed: ${error.message}`);
             }
         } finally {
+            const endTime = new Date();
+            const duration = processingTiming.startTime ? endTime - processingTiming.startTime : 0;
+            setProcessingTiming(prev => ({ ...prev, endTime, duration }));
+
             setProcessing(prev => ({
                 ...prev,
                 isRunning: false,
@@ -958,7 +972,17 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `arxiv_analysis_${new Date().toISOString().split('T')[0]}.txt`;
+
+        // Generate filename with timing info
+        const timestamp = processingTiming.startTime ?
+            processingTiming.startTime.toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
+            processingTiming.startTime.toTimeString().split(' ')[0].replace(/:/g, '-') :
+            new Date().toISOString().split('T')[0];
+
+        const durationStr = processingTiming.duration ?
+            `_${Math.round(processingTiming.duration / 60000)}min` : '';
+
+        a.download = `arxiv_analysis_${timestamp}${durationStr}.txt`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -1357,16 +1381,6 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                 Reset
                             </button>
                         </div>
-
-                        {results.finalRanking.length > 0 && (
-                            <button
-                                onClick={exportResults}
-                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium hover:from-green-600 hover:to-emerald-600 transition-all flex items-center gap-2"
-                            >
-                                <Download className="w-4 h-4" />
-                                Export Results
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -1424,6 +1438,52 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                 )}
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* Download Report Section */}
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <div className="flex items-center mb-2">
+                                <Download className="w-5 h-5 mr-2 text-green-400" />
+                                <h2 className="text-xl font-semibold">Download Report</h2>
+                            </div>
+
+                            {processingTiming.startTime && (
+                                <div className="text-sm text-gray-400 mb-3">
+                                    {processingTiming.endTime ? (
+                                        <>
+                                            Completed: {processingTiming.endTime.toLocaleString()}
+                                            <span className="mx-2">•</span>
+                                            Duration: {Math.round(processingTiming.duration / 60000)} minutes
+                                            <span className="mx-2">•</span>
+                                            {results.finalRanking.length} papers analyzed
+                                        </>
+                                    ) : processing.isRunning ? (
+                                        <>
+                                            Started: {processingTiming.startTime.toLocaleString()}
+                                            <span className="mx-2">•</span>
+                                            Analysis in progress...
+                                        </>
+                                    ) : (
+                                        `Last started: ${processingTiming.startTime.toLocaleString()}`
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            onClick={exportResults}
+                            disabled={results.finalRanking.length === 0}
+                            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${results.finalRanking.length > 0
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                }`}
+                        >
+                            <Download className="w-4 h-4" />
+                            {results.finalRanking.length > 0 ? 'Download Report' : 'No Report Available'}
+                        </button>
                     </div>
                 </div>
 
