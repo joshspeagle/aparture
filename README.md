@@ -21,7 +21,7 @@ The package currently supports the following APIs:
 
 - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4
 - **OpenAI**: GPT-5, GPT-5 Mini, GPT-5 Nano
-- **Google**: Gemini 2.5 Pro, Gemini 2.5 Flash
+- **Google**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite
 
 ## Setup Instructions
 
@@ -101,15 +101,18 @@ This app includes password protection to prevent unauthorized use of your Claude
 ## Usage
 
 1. Enter your password to access the app
-2. Select your preferred AI model from the dropdown
-3. Configure your research interests and ArXiv categories
-4. Click "Start Analysis" to begin the pipeline
-5. Wait for the multi-stage process to complete
-6. Export your results as a formatted text file
+2. Select the ArXiv categories you would like to search
+3. Select your preferred AI model from the dropdown
+4. Specify your research interests (used to score papers by relevance)
+5. (Optional:) Configure any additional settings for your search
+6. (Optional:) Conduct a "Dry Run" Test and a "Minimal API" Test to confirm functionality
+7. Click "Start Analysis" to begin the analysis pipeline
+8. Wait for the multi-stage process to complete
+9. Download your results
 
 ## API Usage Notes
 
-- The app processes abstracts in batches to respect API rate limits (default: 5)
+- The app processes abstracts in batches to respect API rate limits (default: 10)
 - PDF analysis is done directly over individual PDFs (no text extraction)
 - Error handling includes automatic retries and graceful degradation
 - All API calls are routed through secure backend endpoints
