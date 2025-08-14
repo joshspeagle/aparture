@@ -6,11 +6,11 @@ function checkPassword(password) {
 // Function to call different AI models
 async function callAIModel(model, prompt) {
     switch (model) {
-        case 'claude-sonnet-4':
-            return await callClaude('claude-sonnet-4-20250514', prompt);
-
         case 'claude-opus-4.1':
             return await callClaude('claude-opus-4-1-20250805', prompt);
+
+        case 'claude-sonnet-4':
+            return await callClaude('claude-sonnet-4-20250514', prompt);
 
         case 'gpt-5':
             return await callOpenAI('gpt-5', prompt);
@@ -21,11 +21,14 @@ async function callAIModel(model, prompt) {
         case 'gpt-5-nano':
             return await callOpenAI('gpt-5-nano', prompt);
 
+        case 'gemini-2.5-pro':
+            return await callGemini('gemini-2.5-pro', prompt);
+
         case 'gemini-2.5-flash':
             return await callGemini('gemini-2.5-flash', prompt);
 
-        case 'gemini-2.5-pro':
-            return await callGemini('gemini-2.5-pro', prompt);
+        case 'gemini-2.5-flash-lite':
+            return await callGemini('gemini-2.5-flash-lite', prompt);
 
         default:
             throw new Error(`Unsupported model: ${model}`);
@@ -34,72 +37,130 @@ async function callAIModel(model, prompt) {
 
 // Claude API call
 async function callClaude(modelName, prompt) {
+    if (!process.env.CLAUDE_API_KEY) {
+        throw new Error('CLAUDE_API_KEY environment variable is not set');
+    }
+
+    const requestBody = {
+        model: modelName,
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+    };
+
+    console.log('Sending request to Claude:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01"
         },
-        body: JSON.stringify({
-            model: modelName,
-            max_tokens: 1000,
-            messages: [{ role: "user", content: prompt }]
-        })
+        body: JSON.stringify(requestBody)
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        console.error('Claude API Error:', response.status, responseText);
+        throw new Error(`Claude API error: ${response.status} - ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
     return data.content[0].text;
 }
 
 // OpenAI API call
 async function callOpenAI(modelName, prompt) {
+    if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+
+    // Add debugging
+    console.log('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+    console.log('OpenAI API Key format:', process.env.OPENAI_API_KEY?.slice(0, 10) + '...');
+    console.log('Model name:', modelName);
+
+    const requestBody = {
+        model: modelName,
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+    };
+
+    console.log('Sending request to OpenAI:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
         },
-        body: JSON.stringify({
-            model: modelName,
-            max_tokens: 1000,
-            messages: [{ role: "user", content: prompt }]
-        })
+        body: JSON.stringify(requestBody)
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        console.error('OpenAI API Error:', response.status, responseText);
+        throw new Error(`OpenAI API error: ${response.status} - ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('Unexpected OpenAI response format:', data);
+        throw new Error('Unexpected response format from OpenAI API');
+    }
+
     return data.choices[0].message.content;
 }
 
 // Google Gemini API call
 async function callGemini(modelName, prompt) {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`, {
+    if (!process.env.GOOGLE_AI_API_KEY) {
+        throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
+    }
+
+    // Add debugging
+    console.log('Google AI API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
+    console.log('Google AI API Key format:', process.env.GOOGLE_AI_API_KEY?.slice(0, 10) + '...');
+    console.log('Model name:', modelName);
+
+    const requestBody = {
+        contents: [{
+            parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+            maxOutputTokens: 1000,
+        }
+    };
+
+    console.log('Sending request to Gemini:', { model: modelName, promptLength: prompt.length });
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
+
+    const response = await fetch(url, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-            contents: [{
-                parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-                maxOutputTokens: 1000,
-            }
-        })
+        body: JSON.stringify(requestBody)
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        console.error('Gemini API Error:', response.status, responseText);
+        throw new Error(`Gemini API error: ${response.status} - ${responseText}`);
     }
 
-    const data = await response.json();
+    const data = JSON.parse(responseText);
+
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
+        console.error('Unexpected Gemini response format:', data);
+        throw new Error('Unexpected response format from Gemini API');
+    }
+
     return data.candidates[0].content.parts[0].text;
 }
 

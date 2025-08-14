@@ -6,11 +6,11 @@ function checkPassword(password) {
 // Function to call different AI models for PDF analysis
 async function callAIModelWithPDF(model, prompt, base64Data) {
     switch (model) {
-        case 'claude-sonnet-4':
-            return await callClaudeWithPDF('claude-sonnet-4-20250514', prompt, base64Data);
-
         case 'claude-opus-4.1':
             return await callClaudeWithPDF('claude-opus-4-1-20250805', prompt, base64Data);
+
+        case 'claude-sonnet-4':
+            return await callClaudeWithPDF('claude-sonnet-4-20250514', prompt, base64Data);
 
         case 'gpt-5':
             return await callOpenAIWithPDF('gpt-5', prompt, base64Data);
@@ -21,11 +21,14 @@ async function callAIModelWithPDF(model, prompt, base64Data) {
         case 'gpt-5-nano':
             return await callOpenAIWithPDF('gpt-5-nano', prompt, base64Data);
 
+        case 'gemini-2.5-pro':
+            return await callGeminiWithPDF('gemini-2.5-pro', prompt, base64Data);
+
         case 'gemini-2.5-flash':
             return await callGeminiWithPDF('gemini-2.5-flash', prompt, base64Data);
 
-        case 'gemini-2.5-pro':
-            return await callGeminiWithPDF('gemini-2.5-pro', prompt, base64Data);
+        case 'gemini-2.5-flash-lite':
+            return await callGeminiWithPDF('gemini-2.5-flash-lite', prompt, base64Data);
 
         default:
             throw new Error(`Unsupported model: ${model}`);
@@ -35,11 +38,11 @@ async function callAIModelWithPDF(model, prompt, base64Data) {
 // Function to call AI models without PDF (for corrections)
 async function callAIModel(model, prompt) {
     switch (model) {
-        case 'claude-sonnet-4':
-            return await callClaude('claude-sonnet-4-20250514', prompt);
-
         case 'claude-opus-4.1':
             return await callClaude('claude-opus-4-1-20250805', prompt);
+
+        case 'claude-sonnet-4':
+            return await callClaude('claude-sonnet-4-20250514', prompt);
 
         case 'gpt-5':
             return await callOpenAI('gpt-5', prompt);
@@ -50,11 +53,14 @@ async function callAIModel(model, prompt) {
         case 'gpt-5-nano':
             return await callOpenAI('gpt-5-nano', prompt);
 
+        case 'gemini-2.5-pro':
+            return await callGemini('gemini-2.5-pro', prompt);
+
         case 'gemini-2.5-flash':
             return await callGemini('gemini-2.5-flash', prompt);
 
-        case 'gemini-2.5-pro':
-            return await callGemini('gemini-2.5-pro', prompt);
+        case 'gemini-2.5-flash-lite':
+            return await callGemini('gemini-2.5-flash-lite', prompt);
 
         default:
             throw new Error(`Unsupported model: ${model}`);

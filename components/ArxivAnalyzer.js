@@ -243,18 +243,18 @@ const DEFAULT_CONFIG = {
 // Available AI models
 const AVAILABLE_MODELS = [
     {
-        id: 'claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        provider: 'Anthropic',
-        supportsPDF: true,
-        description: 'Fast and efficient for most tasks'
-    },
-    {
         id: 'claude-opus-4.1',
         name: 'Claude Opus 4.1',
         provider: 'Anthropic',
         supportsPDF: true,
         description: 'Most capable Claude model'
+    },
+    {
+        id: 'claude-sonnet-4',
+        name: 'Claude Sonnet 4',
+        provider: 'Anthropic',
+        supportsPDF: true,
+        description: 'Fast and efficient for most tasks'
     },
     {
         id: 'gpt-5',
@@ -278,6 +278,13 @@ const AVAILABLE_MODELS = [
         description: 'Fastest and most cost-effective'
     },
     {
+        id: 'gemini-2.5-pro',
+        name: 'Gemini 2.5 Pro',
+        provider: 'Google',
+        supportsPDF: true,
+        description: 'Most capable Gemini model'
+    },
+    {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
         provider: 'Google',
@@ -285,11 +292,11 @@ const AVAILABLE_MODELS = [
         description: 'Fast Google model'
     },
     {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
+        id: 'gemini-2.5-flash-lite',
+        name: 'Gemini 2.5 Flash-Lite',
         provider: 'Google',
         supportsPDF: true,
-        description: 'Most capable Gemini model'
+        description: 'Most cost-effective Google model'
     }
 ];
 
