@@ -43,11 +43,11 @@ async function callClaude(modelName, prompt) {
 
     const requestBody = {
         model: modelName,
-        max_tokens: 1000,
+        max_tokens: 5000,
         messages: [{ role: "user", content: prompt }]
     };
 
-    console.log('Sending request to Claude:', { model: modelName, promptLength: prompt.length });
+    console.log('Sending request to Anthropic:', { model: modelName, promptLength: prompt.length });
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -62,8 +62,8 @@ async function callClaude(modelName, prompt) {
     const responseText = await response.text();
 
     if (!response.ok) {
-        console.error('Claude API Error:', response.status, responseText);
-        throw new Error(`Claude API error: ${response.status} - ${responseText}`);
+        console.error('Anthropic API Error:', response.status, responseText);
+        throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
     }
 
     const data = JSON.parse(responseText);
@@ -83,7 +83,7 @@ async function callOpenAI(modelName, prompt) {
 
     const requestBody = {
         model: modelName,
-        max_tokens: 1000,
+        max_tokens: 5000,
         messages: [{ role: "user", content: prompt }]
     };
 
@@ -131,11 +131,11 @@ async function callGemini(modelName, prompt) {
             parts: [{ text: prompt }]
         }],
         generationConfig: {
-            maxOutputTokens: 1000,
+            maxOutputTokens: 5000,
         }
     };
 
-    console.log('Sending request to Gemini:', { model: modelName, promptLength: prompt.length });
+    console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
 
@@ -150,15 +150,15 @@ async function callGemini(modelName, prompt) {
     const responseText = await response.text();
 
     if (!response.ok) {
-        console.error('Gemini API Error:', response.status, responseText);
-        throw new Error(`Gemini API error: ${response.status} - ${responseText}`);
+        console.error('Google AI API Error:', response.status, responseText);
+        throw new Error(`Google AI API error: ${response.status} - ${responseText}`);
     }
 
     const data = JSON.parse(responseText);
 
     if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
-        console.error('Unexpected Gemini response format:', data);
-        throw new Error('Unexpected response format from Gemini API');
+        console.error('Unexpected Google AI response format:', data);
+        throw new Error('Unexpected response format from Google AI API');
     }
 
     return data.candidates[0].content.parts[0].text;
@@ -169,7 +169,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { papers, scoringCriteria, password, model = 'claude-sonnet-4', correctionPrompt } = req.body;
+    const { papers, scoringCriteria, password, model, correctionPrompt } = req.body;
 
     // Check password
     if (!checkPassword(password)) {

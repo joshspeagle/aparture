@@ -69,6 +69,8 @@ async function callAIModel(model, prompt) {
 
 // Claude API call with PDF
 async function callClaudeWithPDF(modelName, prompt, base64Data) {
+    console.log('Sending request to Anthropic:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -77,7 +79,7 @@ async function callClaudeWithPDF(modelName, prompt, base64Data) {
         },
         body: JSON.stringify({
             model: modelName,
-            max_tokens: 2000,
+            max_tokens: 5000,
             messages: [
                 {
                     role: "user",
@@ -110,6 +112,8 @@ async function callClaudeWithPDF(modelName, prompt, base64Data) {
 
 // Claude API call without PDF (for corrections)
 async function callClaude(modelName, prompt) {
+    console.log('Sending request to Anthropic:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -118,7 +122,7 @@ async function callClaude(modelName, prompt) {
         },
         body: JSON.stringify({
             model: modelName,
-            max_tokens: 2000,
+            max_tokens: 5000,
             messages: [{ role: "user", content: prompt }]
         })
     });
@@ -133,7 +137,8 @@ async function callClaude(modelName, prompt) {
 
 // OpenAI API call with PDF
 async function callOpenAIWithPDF(modelName, prompt, base64Data) {
-    // OpenAI supports direct PDF uploads using the responses API
+    console.log('Sending request to OpenAI:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
@@ -171,6 +176,8 @@ async function callOpenAIWithPDF(modelName, prompt, base64Data) {
 
 // OpenAI API call without PDF (for corrections)
 async function callOpenAI(modelName, prompt) {
+    console.log('Sending request to OpenAI:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -179,7 +186,7 @@ async function callOpenAI(modelName, prompt) {
         },
         body: JSON.stringify({
             model: modelName,
-            max_tokens: 2000,
+            max_tokens: 5000,
             messages: [{ role: "user", content: prompt }]
         })
     });
@@ -194,6 +201,8 @@ async function callOpenAI(modelName, prompt) {
 
 // Google Gemini API call with PDF  
 async function callGeminiWithPDF(modelName, prompt, base64Data) {
+    console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`, {
         method: "POST",
         headers: {
@@ -214,13 +223,13 @@ async function callGeminiWithPDF(modelName, prompt, base64Data) {
                 ]
             }],
             generationConfig: {
-                maxOutputTokens: 2000,
+                maxOutputTokens: 5000,
             }
         })
     });
 
     if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        throw new Error(`Google AI API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -229,6 +238,8 @@ async function callGeminiWithPDF(modelName, prompt, base64Data) {
 
 // Google Gemini API call without PDF (for corrections)
 async function callGemini(modelName, prompt) {
+    console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`, {
         method: "POST",
         headers: {
@@ -239,13 +250,13 @@ async function callGemini(modelName, prompt) {
                 parts: [{ text: prompt }]
             }],
             generationConfig: {
-                maxOutputTokens: 2000,
+                maxOutputTokens: 5000,
             }
         })
     });
 
     if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        throw new Error(`Google AI API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -257,7 +268,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { pdfUrl, scoringCriteria, originalScore, originalJustification, password, model = 'claude-sonnet-4', correctionPrompt } = req.body;
+    const { pdfUrl, scoringCriteria, originalScore, originalJustification, password, model, correctionPrompt } = req.body;
 
     // Check password
     if (!checkPassword(password)) {
@@ -289,20 +300,20 @@ ${scoringCriteria}
 
 Now that you have access to the full paper, please provide:
 
-1. A comprehensive 3-5 paragraph technical summary of the paper's contents, methodology, and contributions
-2. Key findings and results
-3. Methodological innovations or notable techniques used
-4. Potential limitations or areas for future work
-5. A detailed relevance assessment that compares your full-paper analysis to the original abstract-based assessment
-6. An updated relevance score (1-10) - explain whether you're raising, lowering, or maintaining the original score of ${originalScore}/10 and why
+1. A comprehensive 3-5 paragraph technical summary of the paper's contents, methodology, and contributions (use \\n\\n to separate paragraphs within the JSON string)
+2. A concise 1 paragraph summary of key findings and results
+3. A concise 1 paragraph on methodological innovations or notable techniques used
+4. A concise 1 paragraph on limitations or areas for future work
+5. A concise 1 paragraph relevance assessment that ends with 1 sentence that compares your full-paper analysis to the original abstract-based assessment of ${originalScore}/10
+6. An updated relevance score (1-10)
 
 Format your response as a JSON object with these fields:
 {
-  "summary": "string",
+  "summary": "First paragraph.\\n\\nSecond paragraph.\\n\\nThird paragraph.\\n\\nFourth paragraph (if needed).\\n\\nFifth paragraph (if needed).",
   "keyFindings": "string",
   "methodology": "string", 
   "limitations": "string",
-  "relevanceAssessment": "string - include comparison to original ${originalScore}/10 score and justification for any changes",
+  "relevanceAssessment": "string",
   "updatedScore": number
 }
 
