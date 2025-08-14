@@ -233,11 +233,11 @@ const DEFAULT_CONFIG = {
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
     daysBack: 2,
-    batchSize: 5,
+    batchSize: 10,
     maxCorrections: 1,
     maxRetries: 1,
-    screeningModel: 'claude-sonnet-4',
-    deepAnalysisModel: 'claude-sonnet-4'
+    screeningModel: 'gemini-2.5-flash',
+    deepAnalysisModel: 'gemini-2.5-pro'
 };
 
 // Available AI models
@@ -390,7 +390,13 @@ function ArxivAnalyzer() {
                     }
                 }
                 if (parsed.results) setResults(parsed.results);
-                if (parsed.processingTiming) setProcessingTiming(parsed.processingTiming);
+                if (parsed.processingTiming) {
+                    const timing = { ...parsed.processingTiming };
+                    // Convert date strings back to Date objects
+                    if (timing.startTime) timing.startTime = new Date(timing.startTime);
+                    if (timing.endTime) timing.endTime = new Date(timing.endTime);
+                    setProcessingTiming(timing);
+                }
                 if (parsed.testState) setTestState(parsed.testState);
                 if (parsed.password) {
                     setPassword(parsed.password);
@@ -764,7 +770,11 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         }
 
                         const data = await response.json();
-                        return data.rawResponse || JSON.stringify(data.scores || data);
+                        // If scores are already parsed, return them directly; otherwise return rawResponse for parsing
+                        if (data.scores && Array.isArray(data.scores)) {
+                            return JSON.stringify(data.scores);
+                        }
+                        return data.rawResponse;
                     };
 
                     const parseResponse = (responseText) => {
@@ -806,10 +816,15 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     }
                 });
 
+                // Update progress AND results after each batch
                 setProcessing(prev => ({
                     ...prev,
                     progress: { current: Math.min(i + batchSize, papers.length), total: papers.length }
                 }));
+
+                // Update results with current scored papers (sorted by score)
+                const currentSorted = [...scoredPapers].sort((a, b) => b.relevanceScore - a.relevanceScore);
+                setResults(prev => ({ ...prev, scoredPapers: currentSorted }));
 
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -820,9 +835,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 });
             }
         }
-
-        scoredPapers.sort((a, b) => b.relevanceScore - a.relevanceScore);
-        setResults(prev => ({ ...prev, scoredPapers }));
 
         return scoredPapers;
     };
@@ -906,7 +918,11 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         }
 
                         const data = await response.json();
-                        return data.rawResponse || JSON.stringify(data.analysis || data);
+                        // If analysis is already parsed, return it directly; otherwise return rawResponse for parsing
+                        if (data.analysis && typeof data.analysis === 'object') {
+                            return JSON.stringify(data.analysis);
+                        }
+                        return data.rawResponse;
                     };
 
                     const parseResponse = (responseText) => {
@@ -945,6 +961,27 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     ...prev,
                     progress: { current: i + 1, total: papers.length }
                 }));
+
+                // Update finalRanking by replacing the analyzed paper in the existing list
+                setResults(prev => {
+                    const updatedRanking = [...prev.finalRanking];
+                    const paperIndex = updatedRanking.findIndex(p => p.id === paper.id);
+                    if (paperIndex !== -1) {
+                        updatedRanking[paperIndex] = {
+                            ...paper,
+                            deepAnalysis: analysis,
+                            finalScore: analysis.updatedScore
+                        };
+                    }
+                    // Always re-sort the entire array by the highest available score
+                    updatedRanking.sort((a, b) => {
+                        const scoreA = a.finalScore ?? a.relevanceScore ?? 0;
+                        const scoreB = b.finalScore ?? b.relevanceScore ?? 0;
+                        return scoreB - scoreA;
+                    });
+
+                    return { ...prev, finalRanking: updatedRanking };
+                });
 
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -1005,6 +1042,9 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
             const topPapers = scoredPapers.slice(0, config.maxDeepAnalysis);
 
+            // Pre-populate finalRanking to prevent empty state during PDF analysis
+            setResults(prev => ({ ...prev, finalRanking: topPapers }));
+
             // Stage 4: Deep analysis
             const analyzedPapers = await analyzePDFs(topPapers, isDryRun);
 
@@ -1022,8 +1062,13 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             }
         } finally {
             const endTime = new Date();
-            const duration = processingTiming.startTime ? endTime - processingTiming.startTime : 0;
-            setProcessingTiming(prev => ({ ...prev, endTime, duration }));
+            const duration = startTime ? endTime - startTime : 0;
+            setProcessingTiming(prev => ({
+                ...prev,
+                startTime: prev.startTime || startTime, // Ensure startTime is preserved
+                endTime,
+                duration
+            }));
 
             setProcessing(prev => ({
                 ...prev,
@@ -1146,24 +1191,51 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
     // Export results in a standardized format
     const exportResults = () => {
-        const output = results.finalRanking.map(paper => {
+        const timestamp = new Date().toLocaleString();
+        const duration = processingTiming.duration ? Math.round(processingTiming.duration / 60000) : 0;
+
+        const header = `# Aparture Analysis Report
+
+**Generated:** ${timestamp}  
+**Duration:** ${duration} minutes  
+**Papers Analyzed:** ${results.finalRanking.length}  
+**Categories:** ${config.selectedCategories.join(', ')}  
+**Models Used:** ${config.screeningModel} (screening), ${config.deepAnalysisModel} (analysis)
+
+---
+
+`;
+
+        const papers = results.finalRanking.map((paper, idx) => {
             const authorTag = paper.authors.length > 0 ?
                 (paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(' & ')) :
                 'Unknown';
 
-            return `arXiv ID: ${paper.id}
-Title: ${paper.title}
-Authors: ${authorTag}
-Relevance: ${paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
+            return `## ${idx + 1}. ${paper.title}
 
-Technical Summary:
-${paper.deepAnalysis?.summary || 'No deep analysis available'}
+**Score:** ${paper.finalScore || paper.relevanceScore}/10  
+**arXiv ID:** [${paper.id}](https://arxiv.org/abs/${paper.id})  
+**Authors:** ${authorTag}  
 
-Key Findings:
+### Relevance Assessment
+${paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
+
+### Key Findings
 ${paper.deepAnalysis?.keyFindings || 'N/A'}
 
-—`;
+### Methodology
+${paper.deepAnalysis?.methodology || 'N/A'}
+
+### Limitations
+${paper.deepAnalysis?.limitations || 'N/A'}
+
+### Detailed Technical Summary
+${paper.deepAnalysis?.summary || 'No deep analysis available'}
+
+---`;
         }).join('\n\n');
+
+        const output = header + papers;
 
         const blob = new Blob([output], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -1171,7 +1243,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
         a.href = url;
 
         // Generate filename with timing info
-        const timestamp = processingTiming.startTime ?
+        const fileTimestamp = processingTiming.startTime ?
             processingTiming.startTime.toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
             processingTiming.startTime.toTimeString().split(' ')[0].replace(/:/g, '-') :
             new Date().toISOString().split('T')[0];
@@ -1179,7 +1251,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
         const durationStr = processingTiming.duration ?
             `_${Math.round(processingTiming.duration / 60000)}min` : '';
 
-        a.download = `arxiv_analysis_${timestamp}${durationStr}.txt`;
+        a.download = `arxiv_analysis_${fileTimestamp}${durationStr}.md`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -1801,7 +1873,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                         <>
                                             Completed: {processingTiming.endTime.toLocaleString()}
                                             <span className="mx-2">•</span>
-                                            Duration: {Math.round(processingTiming.duration / 60000)} minutes
+                                            Duration: {processingTiming.duration ? Math.round(processingTiming.duration / 60000) : 0} minutes
                                             <span className="mx-2">•</span>
                                             {results.finalRanking.length} papers analyzed
                                         </>
@@ -1843,7 +1915,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                         </div>
 
                         <div className="space-y-4">
-                            {(results.finalRanking.length > 0 ? results.finalRanking : results.scoredPapers.slice(0, 15)).map((paper, idx) => (
+                            {((results.finalRanking.length > 0 && (processing.stage === 'deep-analysis' || processing.stage === 'complete')) ? results.finalRanking : results.scoredPapers.slice(0, 15)).map((paper, idx) => (
                                 <div key={paper.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex-1">
@@ -1872,9 +1944,9 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                             </p>
                                             {paper.deepAnalysis && (
                                                 <div className="mt-3 pt-3 border-t border-slate-700">
-                                                    <p className="text-sm text-gray-300 leading-relaxed">
+                                                    <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
                                                         {paper.deepAnalysis.summary}
-                                                    </p>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
