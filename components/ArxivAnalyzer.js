@@ -238,7 +238,8 @@ const DEFAULT_CONFIG = {
     batchSize: 5,
     maxCorrections: 1,
     maxRetries: 1,
-    selectedModel: 'claude-sonnet-4'
+    screeningModel: 'claude-sonnet-4',
+    deepAnalysisModel: 'claude-sonnet-4'
 };
 
 // Available AI models
@@ -368,6 +369,13 @@ function ArxivAnalyzer() {
                         // Use fresh defaults for outdated configs
                         setConfig(DEFAULT_CONFIG);
                     } else {
+                        // Handle migration from single model to dual model setup
+                        if (parsed.config.selectedModel && !parsed.config.screeningModel) {
+                            parsed.config.screeningModel = 'claude-sonnet-4';
+                            parsed.config.deepAnalysisModel = parsed.config.selectedModel;
+                            delete parsed.config.selectedModel;
+                        }
+
                         // Merge saved config with new defaults to pick up any new default values
                         const mergedConfig = {
                             ...DEFAULT_CONFIG,
@@ -730,7 +738,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             papers: batch,
                             scoringCriteria: config.scoringCriteria,
                             password: password,
-                            model: config.selectedModel
+                            model: config.screeningModel
                         };
 
                         if (isCorrection && correctionPrompt) {
@@ -872,7 +880,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             originalScore: paper.relevanceScore,
                             originalJustification: paper.scoreJustification,
                             password: password,
-                            model: config.selectedModel
+                            model: config.deepAnalysisModel
                         };
 
                         if (isCorrection && correctionPrompt) {
@@ -1365,26 +1373,66 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                AI Model
+                                AI Models
                             </label>
-                            <select
-                                value={config.selectedModel}
-                                onChange={(e) => setConfig(prev => ({ ...prev, selectedModel: e.target.value }))}
-                                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                disabled={processing.isRunning}
-                            >
-                                {AVAILABLE_MODELS.map(model => (
-                                    <option key={model.id} value={model.id}>
-                                        {model.name} ({model.provider})
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="mt-2 p-3 bg-slate-800/50 rounded-lg">
-                                <p className="text-xs text-gray-400 mb-2">
-                                    <strong>Selected:</strong> {AVAILABLE_MODELS.find(m => m.id === config.selectedModel)?.name}
-                                </p>
-                                <p className="text-xs text-gray-300">
-                                    {AVAILABLE_MODELS.find(m => m.id === config.selectedModel)?.description}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Screening Model */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                                        Abstract Screening Model
+                                    </label>
+                                    <select
+                                        value={config.screeningModel}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, screeningModel: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
+                                        disabled={processing.isRunning}
+                                    >
+                                        {AVAILABLE_MODELS.map(model => (
+                                            <option key={model.id} value={model.id}>
+                                                {model.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+                                        <p className="text-xs text-gray-400 mb-1">
+                                            <strong>Selected:</strong> {AVAILABLE_MODELS.find(m => m.id === config.screeningModel)?.name}
+                                        </p>
+                                        <p className="text-xs text-gray-300">
+                                            {AVAILABLE_MODELS.find(m => m.id === config.screeningModel)?.description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Deep Analysis Model */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                                        Deep PDF Analysis Model
+                                    </label>
+                                    <select
+                                        value={config.deepAnalysisModel}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, deepAnalysisModel: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
+                                        disabled={processing.isRunning}
+                                    >
+                                        {AVAILABLE_MODELS.map(model => (
+                                            <option key={model.id} value={model.id}>
+                                                {model.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+                                        <p className="text-xs text-gray-400 mb-1">
+                                            <strong>Selected:</strong> {AVAILABLE_MODELS.find(m => m.id === config.deepAnalysisModel)?.name}
+                                        </p>
+                                        <p className="text-xs text-gray-300">
+                                            {AVAILABLE_MODELS.find(m => m.id === config.deepAnalysisModel)?.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
+                                <p className="text-xs text-blue-300">
+                                    <strong>Strategy:</strong> Use a cost-effective model for screening abstracts, then a more powerful model for detailed PDF analysis of top papers.
                                 </p>
                             </div>
                         </div>
