@@ -1,5 +1,6 @@
-import { AlertCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, Unlock, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, TestTube, Unlock, XCircle, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { MockAPITester, TEST_PAPERS, generateTestReport } from '../utils/testUtils';
 
 // Complete arXiv category taxonomy
 const ARXIV_CATEGORIES = {
@@ -220,6 +221,7 @@ const ARXIV_CATEGORIES = {
 
 // Default configuration
 const DEFAULT_CONFIG = {
+    version: 2,
     selectedCategories: ["cs.AI", "cs.CL", "cs.CV", "cs.IR", "cs.LG", "cs.MA", "cs.NE", "stat.AP", "stat.CO", "stat.ME", "stat.ML", "stat.OT", "stat.TH", "astro-ph.CO", "astro-ph.EP", "astro-ph.GA", "astro-ph.HE", "astro-ph.IM", "astro-ph.SR"],
     scoringCriteria: `
     **AI/ML (Broad Interest):** Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery.  
@@ -232,11 +234,11 @@ const DEFAULT_CONFIG = {
     `,
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
-    daysBack: 2, // Number of days to look back for papers
-    batchSize: 5, // Number of papers to process at once for abstract scoring
-    maxCorrections: 1, // Number of correction attempts for malformed output
-    maxRetries: 1, // Number of full retry attempts for failed queries
-    selectedModel: 'claude-sonnet-4' // Default model
+    daysBack: 2,
+    batchSize: 5,
+    maxCorrections: 1,
+    maxRetries: 1,
+    selectedModel: 'claude-sonnet-4'
 };
 
 // Available AI models
@@ -295,11 +297,6 @@ const AVAILABLE_MODELS = [
 // Main Application Component
 function ArxivAnalyzer() {
     const [config, setConfig] = useState(DEFAULT_CONFIG);
-    const [processingTiming, setProcessingTiming] = useState({
-        startTime: null,
-        endTime: null,
-        duration: null
-    });
     const [password, setPassword] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [processing, setProcessing] = useState({
@@ -314,14 +311,28 @@ function ArxivAnalyzer() {
         scoredPapers: [],
         finalRanking: []
     });
+    const [processingTiming, setProcessingTiming] = useState({
+        startTime: null,
+        endTime: null,
+        duration: null
+    });
+    const [testState, setTestState] = useState({
+        dryRunCompleted: false,
+        dryRunInProgress: false,
+        minimalTestInProgress: false,
+        lastDryRunTime: null,
+        lastMinimalTestTime: null
+    });
     const [showErrors, setShowErrors] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [expandedCategory, setExpandedCategory] = useState(null);
+    const [showTestDropdown, setShowTestDropdown] = useState(false);
 
     const abortControllerRef = useRef(null);
     const pauseRef = useRef(false);
     const dropdownRef = useRef(null);
+    const mockAPITesterRef = useRef(new MockAPITester());
 
     // Handle clicks outside dropdown
     useEffect(() => {
@@ -352,16 +363,22 @@ function ArxivAnalyzer() {
                         delete parsed.config.categories;
                     }
 
-                    // Merge saved config with new defaults to pick up any new default values
-                    const mergedConfig = {
-                        ...DEFAULT_CONFIG,  // Start with current defaults
-                        ...parsed.config,   // Override with saved user preferences
-                        // Always use current defaults for any missing fields
-                    };
-
-                    setConfig(mergedConfig);
+                    // Check if saved config is from an older version
+                    if (!parsed.config.version || parsed.config.version < DEFAULT_CONFIG.version) {
+                        // Use fresh defaults for outdated configs
+                        setConfig(DEFAULT_CONFIG);
+                    } else {
+                        // Merge saved config with new defaults to pick up any new default values
+                        const mergedConfig = {
+                            ...DEFAULT_CONFIG,
+                            ...parsed.config,
+                        };
+                        setConfig(mergedConfig);
+                    }
                 }
                 if (parsed.results) setResults(parsed.results);
+                if (parsed.processingTiming) setProcessingTiming(parsed.processingTiming);
+                if (parsed.testState) setTestState(parsed.testState);
                 if (parsed.password) {
                     setPassword(parsed.password);
                     setIsAuthenticated(true);
@@ -378,10 +395,12 @@ function ArxivAnalyzer() {
             localStorage.setItem('arxivAnalyzerState', JSON.stringify({
                 config,
                 results,
+                processingTiming,
+                testState,
                 password: isAuthenticated ? password : ''
             }));
         }
-    }, [config, results, password, isAuthenticated]);
+    }, [config, results, processingTiming, testState, password, isAuthenticated]);
 
     // Add error to log
     const addError = useCallback((error) => {
@@ -413,12 +432,10 @@ function ArxivAnalyzer() {
         const newCategories = [];
 
         if (categoryData.prefix === "") {
-            // Single categories
             Object.values(categoryData.subcategories).forEach(subcat => {
                 newCategories.push(subcat.code);
             });
         } else {
-            // Categories with subcategories
             Object.values(categoryData.subcategories).forEach(subcat => {
                 newCategories.push(subcat.code);
             });
@@ -452,16 +469,14 @@ function ArxivAnalyzer() {
             try {
                 let responseText = await apiCallFunction();
 
-                // Try to parse the initial response
                 try {
                     const result = parseFunction(responseText);
-                    return result; // Success!
+                    return result;
                 } catch (parseError) {
                     lastError = parseError;
                     addError(`${context} - Initial parse failed: ${parseError.message}`);
                 }
 
-                // If initial parse failed, try corrections
                 for (let correctionCount = 1; correctionCount <= config.maxCorrections; correctionCount++) {
                     try {
                         addError(`${context} - Attempting correction ${correctionCount}/${config.maxCorrections}`);
@@ -476,13 +491,11 @@ ${originalPromptInfo ? `Original task: ${originalPromptInfo}` : ''}
 
 Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT respond with anything other than valid JSON.`;
 
-                        // Make correction API call
-                        responseText = await apiCallFunction(correctionPrompt, true); // true indicates this is a correction
+                        responseText = await apiCallFunction(correctionPrompt, true);
 
-                        // Try to parse the corrected response
                         const result = parseFunction(responseText);
                         addError(`${context} - Correction ${correctionCount} succeeded`);
-                        return result; // Success!
+                        return result;
 
                     } catch (correctionError) {
                         lastError = correctionError;
@@ -490,7 +503,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     }
                 }
 
-                // If we get here, all corrections failed
                 if (retryCount < config.maxRetries) {
                     addError(`${context} - All corrections failed, attempting full retry ${retryCount + 1}/${config.maxRetries}`);
                 } else {
@@ -501,8 +513,56 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 lastError = apiError;
                 if (retryCount < config.maxRetries) {
                     addError(`${context} - API call failed, retrying ${retryCount + 1}/${config.maxRetries}: ${apiError.message}`);
-                    // Add a delay before retrying
                     await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw apiError;
+                }
+            }
+        }
+
+        throw lastError;
+    }, [config.maxRetries, config.maxCorrections, addError]);
+
+    // Mock robust API call for dry run tests
+    const makeMockRobustAPICall = useCallback(async (mockApiFunction, parseFunction, context = "") => {
+        let lastError = null;
+
+        for (let retryCount = 0; retryCount <= config.maxRetries; retryCount++) {
+            try {
+                let responseText = await mockApiFunction();
+
+                try {
+                    const result = parseFunction(responseText);
+                    return result;
+                } catch (parseError) {
+                    lastError = parseError;
+                    addError(`${context} - Mock parse failed: ${parseError.message}`);
+                }
+
+                for (let correctionCount = 1; correctionCount <= config.maxCorrections; correctionCount++) {
+                    try {
+                        addError(`${context} - Mock correction ${correctionCount}/${config.maxCorrections}`);
+                        responseText = await mockApiFunction(true); // Pass isCorrection = true
+                        const result = parseFunction(responseText);
+                        addError(`${context} - Mock correction ${correctionCount} succeeded`);
+                        return result;
+                    } catch (correctionError) {
+                        lastError = correctionError;
+                        addError(`${context} - Mock correction ${correctionCount} failed: ${correctionError.message}`);
+                    }
+                }
+
+                if (retryCount < config.maxRetries) {
+                    addError(`${context} - Mock corrections failed, retry ${retryCount + 1}/${config.maxRetries}`);
+                } else {
+                    throw new Error(`Mock retries exhausted. Last error: ${lastError?.message || 'Unknown error'}`);
+                }
+
+            } catch (apiError) {
+                lastError = apiError;
+                if (retryCount < config.maxRetries) {
+                    addError(`${context} - Mock API failed, retrying ${retryCount + 1}/${config.maxRetries}: ${apiError.message}`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } else {
                     throw apiError;
                 }
@@ -520,14 +580,13 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         }
 
         try {
-            // Test password with a simple API call
             const response = await fetch('/api/score-abstracts', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    papers: [], // Empty test
+                    papers: [],
                     scoringCriteria: '',
                     password: password
                 })
@@ -562,7 +621,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
             const categoriesQuery = categories.map(cat => `cat:${cat}`).join(' OR ');
 
-            // Calculate date range
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - config.daysBack);
@@ -570,7 +628,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const dateQuery = `submittedDate:[${startDate.toISOString().split('T')[0].replace(/-/g, '')}0000 TO ${endDate.toISOString().split('T')[0].replace(/-/g, '')}2359]`;
 
             const query = `${categoriesQuery} AND ${dateQuery}`;
-            const maxResults = 200; // Fetch up to 200 recent papers
+            const maxResults = 1000;
 
             const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(query)}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
 
@@ -617,12 +675,12 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         }
     };
 
-    // Score abstracts using chosen API
-    const scoreAbstracts = async (papers) => {
+    // Score abstracts using chosen API (or mock for dry run)
+    const scoreAbstracts = async (papers, isDryRun = false) => {
         setProcessing(prev => ({ ...prev, stage: 'initial-scoring', progress: { current: 0, total: papers.length } }));
 
         const scoredPapers = [];
-        const batchSize = config.batchSize; // Use configurable batch size
+        const batchSize = config.batchSize;
 
         for (let i = 0; i < papers.length; i += batchSize) {
             if (pauseRef.current) {
@@ -632,69 +690,97 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const batch = papers.slice(i, Math.min(i + batchSize, papers.length));
 
             try {
-                // Create API call function for this batch
-                const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
-                    const requestBody = {
-                        papers: batch,
-                        scoringCriteria: config.scoringCriteria,
-                        password: password,
-                        model: config.selectedModel
+                let scores;
+
+                if (isDryRun) {
+                    // Use mock API for dry run
+                    const mockApiCall = async (isCorrection = false) => {
+                        return await mockAPITesterRef.current.mockScoreAbstracts(batch, isCorrection);
                     };
 
-                    // If this is a correction call, add the correction prompt
-                    if (isCorrection && correctionPrompt) {
-                        requestBody.correctionPrompt = correctionPrompt;
-                    }
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const scores = JSON.parse(cleanedText);
 
-                    const response = await fetch('/api/score-abstracts', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `API error: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    // Return the raw response text for parsing
-                    return data.rawResponse || JSON.stringify(data.scores || data);
-                };
-
-                // Parse function with robust validation
-                const parseResponse = (responseText) => {
-                    // Try basic cleaning first
-                    let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
-                    const scores = JSON.parse(cleanedText);
-
-                    if (!Array.isArray(scores)) {
-                        throw new Error("Response is not an array");
-                    }
-
-                    // Validate that each score has required fields
-                    scores.forEach((score, idx) => {
-                        if (!score.hasOwnProperty('paperIndex') || !score.hasOwnProperty('score') || !score.hasOwnProperty('justification')) {
-                            throw new Error(`Score object ${idx} missing required fields`);
+                        if (!Array.isArray(scores)) {
+                            throw new Error("Response is not an array");
                         }
-                        if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
-                            throw new Error(`Score object ${idx} has invalid field types`);
+
+                        scores.forEach((score, idx) => {
+                            if (!score.hasOwnProperty('paperIndex') || !score.hasOwnProperty('score') || !score.hasOwnProperty('justification')) {
+                                throw new Error(`Score object ${idx} missing required fields`);
+                            }
+                            if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
+                                throw new Error(`Score object ${idx} has invalid field types`);
+                            }
+                        });
+
+                        return scores;
+                    };
+
+                    scores = await makeMockRobustAPICall(
+                        mockApiCall,
+                        parseResponse,
+                        `Mock scoring batch ${Math.floor(i / batchSize) + 1}`
+                    );
+                } else {
+                    // Use real API for production
+                    const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                        const requestBody = {
+                            papers: batch,
+                            scoringCriteria: config.scoringCriteria,
+                            password: password,
+                            model: config.selectedModel
+                        };
+
+                        if (isCorrection && correctionPrompt) {
+                            requestBody.correctionPrompt = correctionPrompt;
                         }
-                    });
 
-                    return scores;
-                };
+                        const response = await fetch('/api/score-abstracts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
 
-                // Use robust API call with proper correction support
-                const scores = await makeRobustAPICall(
-                    makeAPICall,
-                    parseResponse,
-                    `Scoring batch ${Math.floor(i / batchSize) + 1}`,
-                    `Score ${batch.length} paper abstracts for relevance using the provided criteria`
-                );
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `API error: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        return data.rawResponse || JSON.stringify(data.scores || data);
+                    };
+
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const scores = JSON.parse(cleanedText);
+
+                        if (!Array.isArray(scores)) {
+                            throw new Error("Response is not an array");
+                        }
+
+                        scores.forEach((score, idx) => {
+                            if (!score.hasOwnProperty('paperIndex') || !score.hasOwnProperty('score') || !score.hasOwnProperty('justification')) {
+                                throw new Error(`Score object ${idx} missing required fields`);
+                            }
+                            if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
+                                throw new Error(`Score object ${idx} has invalid field types`);
+                            }
+                        });
+
+                        return scores;
+                    };
+
+                    scores = await makeRobustAPICall(
+                        makeAPICall,
+                        parseResponse,
+                        `Scoring batch ${Math.floor(i / batchSize) + 1}`,
+                        `Score ${batch.length} paper abstracts for relevance using the provided criteria`
+                    );
+                }
 
                 scores.forEach((scoreData) => {
                     const paperIdx = scoreData.paperIndex - 1;
@@ -712,27 +798,24 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     progress: { current: Math.min(i + batchSize, papers.length), total: papers.length }
                 }));
 
-                // Add delay between batches
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
             } catch (error) {
                 addError(`Failed to score batch starting at paper ${i + 1} after all retries: ${error.message}`);
-                // Add unscored papers with default score
                 batch.forEach(p => {
                     scoredPapers.push({ ...p, relevanceScore: 0, scoreJustification: 'Failed to score after retries' });
                 });
             }
         }
 
-        // Sort by relevance score
         scoredPapers.sort((a, b) => b.relevanceScore - a.relevanceScore);
         setResults(prev => ({ ...prev, scoredPapers }));
 
         return scoredPapers;
     };
 
-    // Deep analysis of PDFs
-    const analyzePDFs = async (papers) => {
+    // Deep analysis of PDFs (or mock for dry run)
+    const analyzePDFs = async (papers, isDryRun = false) => {
         setProcessing(prev => ({
             ...prev,
             stage: 'deep-analysis',
@@ -749,70 +832,95 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const paper = papers[i];
 
             try {
-                // Create API call function for this paper
-                const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
-                    const requestBody = {
-                        pdfUrl: paper.pdfUrl,
-                        scoringCriteria: config.scoringCriteria,
-                        originalScore: paper.relevanceScore,
-                        originalJustification: paper.scoreJustification,
-                        password: password,
-                        model: config.selectedModel
+                let analysis;
+
+                if (isDryRun) {
+                    // Use mock API for dry run
+                    const mockApiCall = async (isCorrection = false) => {
+                        return await mockAPITesterRef.current.mockAnalyzePDF(paper, isCorrection);
                     };
 
-                    // If this is a correction call, add the correction prompt
-                    if (isCorrection && correctionPrompt) {
-                        requestBody.correctionPrompt = correctionPrompt;
-                    }
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const analysis = JSON.parse(cleanedText);
 
-                    const response = await fetch('/api/analyze-pdf', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
+                        if (!analysis.summary || typeof analysis.updatedScore === 'undefined') {
+                            throw new Error("Missing required fields (summary or updatedScore) in analysis response");
+                        }
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `API error: ${response.status}`);
-                    }
+                        if (typeof analysis.summary !== 'string') {
+                            throw new Error("Summary field must be a string");
+                        }
+                        if (typeof analysis.updatedScore !== 'number') {
+                            throw new Error("UpdatedScore field must be a number");
+                        }
 
-                    const data = await response.json();
-                    // Return the raw response text for parsing
-                    return data.rawResponse || JSON.stringify(data.analysis || data);
-                };
+                        return analysis;
+                    };
 
-                // Parse function with robust validation
-                const parseResponse = (responseText) => {
-                    // Try basic cleaning first
-                    let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                    analysis = await makeMockRobustAPICall(
+                        mockApiCall,
+                        parseResponse,
+                        `Mock analyzing paper "${paper.title}"`
+                    );
+                } else {
+                    // Use real API for production
+                    const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                        const requestBody = {
+                            pdfUrl: paper.pdfUrl,
+                            scoringCriteria: config.scoringCriteria,
+                            originalScore: paper.relevanceScore,
+                            originalJustification: paper.scoreJustification,
+                            password: password,
+                            model: config.selectedModel
+                        };
 
-                    const analysis = JSON.parse(cleanedText);
+                        if (isCorrection && correctionPrompt) {
+                            requestBody.correctionPrompt = correctionPrompt;
+                        }
 
-                    // Validate required fields
-                    if (!analysis.summary || typeof analysis.updatedScore === 'undefined') {
-                        throw new Error("Missing required fields (summary or updatedScore) in analysis response");
-                    }
+                        const response = await fetch('/api/analyze-pdf', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
 
-                    // Validate field types
-                    if (typeof analysis.summary !== 'string') {
-                        throw new Error("Summary field must be a string");
-                    }
-                    if (typeof analysis.updatedScore !== 'number') {
-                        throw new Error("UpdatedScore field must be a number");
-                    }
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `API error: ${response.status}`);
+                        }
 
-                    return analysis;
-                };
+                        const data = await response.json();
+                        return data.rawResponse || JSON.stringify(data.analysis || data);
+                    };
 
-                // Use robust API call with proper correction support
-                const analysis = await makeRobustAPICall(
-                    makeAPICall,
-                    parseResponse,
-                    `Analyzing paper "${paper.title}"`,
-                    `Analyze PDF content and provide updated relevance score with detailed summary`
-                );
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const analysis = JSON.parse(cleanedText);
+
+                        if (!analysis.summary || typeof analysis.updatedScore === 'undefined') {
+                            throw new Error("Missing required fields (summary or updatedScore) in analysis response");
+                        }
+
+                        if (typeof analysis.summary !== 'string') {
+                            throw new Error("Summary field must be a string");
+                        }
+                        if (typeof analysis.updatedScore !== 'number') {
+                            throw new Error("UpdatedScore field must be a number");
+                        }
+
+                        return analysis;
+                    };
+
+                    analysis = await makeRobustAPICall(
+                        makeAPICall,
+                        parseResponse,
+                        `Analyzing paper "${paper.title}"`,
+                        `Analyze PDF content and provide updated relevance score with detailed summary`
+                    );
+                }
 
                 analyzedPapers.push({
                     ...paper,
@@ -825,7 +933,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     progress: { current: i + 1, total: papers.length }
                 }));
 
-                // Add delay between API calls
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
             } catch (error) {
@@ -854,7 +961,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
     };
 
     // Main processing pipeline
-    const startProcessing = async () => {
+    const startProcessing = async (isDryRun = false, useTestPapers = false) => {
         const startTime = new Date();
         setProcessingTiming({ startTime, endTime: null, duration: null });
         setProcessing(prev => ({ ...prev, isRunning: true, isPaused: false, errors: [] }));
@@ -862,27 +969,35 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         abortControllerRef.current = new AbortController();
 
         try {
-            // Stage 1: Fetch papers
-            const papers = await fetchPapers();
-            if (papers.length === 0) {
-                addError('No papers found for specified categories');
-                return;
+            let papers;
+
+            if (useTestPapers) {
+                // Use hardcoded test papers for minimal test
+                setProcessing(prev => ({ ...prev, stage: 'fetching' }));
+                papers = TEST_PAPERS;
+                setResults(prev => ({ ...prev, allPapers: papers }));
+            } else {
+                // Stage 1: Fetch papers from arXiv
+                papers = await fetchPapers();
+                if (papers.length === 0) {
+                    addError('No papers found for specified categories');
+                    return;
+                }
             }
 
             // Stage 2: Score abstracts
-            const scoredPapers = await scoreAbstracts(papers);
+            const scoredPapers = await scoreAbstracts(papers, isDryRun);
 
             // Stage 3: Select top papers for deep analysis
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
             const topPapers = scoredPapers.slice(0, config.maxDeepAnalysis);
 
             // Stage 4: Deep analysis
-            const analyzedPapers = await analyzePDFs(topPapers);
+            const analyzedPapers = await analyzePDFs(topPapers, isDryRun);
 
             // Stage 5: Final ranking and output
             setProcessing(prev => ({ ...prev, stage: 'complete' }));
 
-            // Sort by final score and select top papers
             analyzedPapers.sort((a, b) => b.finalScore - a.finalScore);
             const finalPapers = analyzedPapers.slice(0, config.finalOutputCount);
 
@@ -906,9 +1021,77 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         }
     };
 
+    // Test functions
+    const runDryRunTest = async () => {
+        setTestState(prev => ({ ...prev, dryRunInProgress: true }));
+
+        try {
+            // Reset mock API tester
+            mockAPITesterRef.current = new MockAPITester();
+            addError('Starting dry run test - no API costs incurred');
+
+            await startProcessing(true, false); // isDryRun = true, useTestPapers = false
+
+            // Generate and download test report
+            const testReport = generateTestReport(results.finalRanking, 'dry-run');
+            const blob = new Blob([testReport], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aparture_dry_run_test_${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setTestState(prev => ({
+                ...prev,
+                dryRunCompleted: true,
+                lastDryRunTime: new Date(),
+                dryRunInProgress: false
+            }));
+
+            addError('Dry run test completed successfully');
+
+        } catch (error) {
+            addError(`Dry run test failed: ${error.message}`);
+            setTestState(prev => ({ ...prev, dryRunInProgress: false }));
+        }
+    };
+
+    const runMinimalTest = async () => {
+        setTestState(prev => ({ ...prev, minimalTestInProgress: true }));
+
+        try {
+            addError('Starting minimal test with real API calls');
+
+            await startProcessing(false, true); // isDryRun = false, useTestPapers = true
+
+            // Generate and download test report
+            const testReport = generateTestReport(results.finalRanking, 'minimal');
+            const blob = new Blob([testReport], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `aparture_minimal_test_${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setTestState(prev => ({
+                ...prev,
+                lastMinimalTestTime: new Date(),
+                minimalTestInProgress: false
+            }));
+
+            addError('Minimal test completed successfully');
+
+        } catch (error) {
+            addError(`Minimal test failed: ${error.message}`);
+            setTestState(prev => ({ ...prev, minimalTestInProgress: false }));
+        }
+    };
+
     // Control functions
     const handleStart = () => {
-        startProcessing();
+        startProcessing(false, false);
     };
 
     const handlePause = () => {
@@ -944,6 +1127,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             isRunning: false,
             isPaused: false
         });
+        setProcessingTiming({ startTime: null, endTime: null, duration: null });
         localStorage.removeItem('arxivAnalyzerState');
     };
 
@@ -1331,7 +1515,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
 
                 {/* Control Panel */}
                 <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                         <div className="flex gap-3">
                             {!processing.isRunning && (
                                 <button
@@ -1382,6 +1566,114 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                             </button>
                         </div>
                     </div>
+
+                    {/* System Tests - Collapsible Section */}
+                    <div>
+                        <button
+                            onClick={() => setShowTestDropdown(!showTestDropdown)}
+                            className="flex items-center text-sm text-gray-400 hover:text-white transition-colors"
+                        >
+                            {showTestDropdown ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+                            System Tests
+                        </button>
+
+                        {showTestDropdown && (
+                            <div className="mt-3 space-y-3 pl-5 border-l-2 border-slate-700">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Dry Run Test */}
+                                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                                        <div className="flex items-center mb-2">
+                                            <div className={`w-3 h-3 rounded-full mr-2 ${testState.dryRunCompleted ? 'bg-green-400' : 'bg-slate-500'}`} />
+                                            <h3 className="font-medium">Dry Run Test</h3>
+                                        </div>
+                                        <p className="text-sm text-gray-400 mb-3">
+                                            Tests all components with mock APIs. No API costs incurred.
+                                        </p>
+
+                                        {testState.lastDryRunTime && (
+                                            <p className="text-xs text-gray-500 mb-3">
+                                                Last run: {testState.lastDryRunTime.toLocaleString()}
+                                            </p>
+                                        )}
+
+                                        <button
+                                            onClick={runDryRunTest}
+                                            disabled={testState.dryRunInProgress || processing.isRunning}
+                                            className={`w-full px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${testState.dryRunInProgress || processing.isRunning
+                                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                                                }`}
+                                        >
+                                            {testState.dryRunInProgress ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Testing...
+                                                </>
+                                            ) : testState.dryRunCompleted ? (
+                                                <>
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    Run Again
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <TestTube className="w-4 h-4" />
+                                                    Run Dry Test
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Minimal Test */}
+                                    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                                        <div className="flex items-center mb-2">
+                                            <div className={`w-3 h-3 rounded-full mr-2 ${testState.lastMinimalTestTime ? 'bg-green-400' : 'bg-slate-500'}`} />
+                                            <h3 className="font-medium">Minimal API Test</h3>
+                                        </div>
+                                        <p className="text-sm text-gray-400 mb-3">
+                                            Tests with 5 hardcoded papers using real APIs. Incurs costs.
+                                        </p>
+
+                                        {testState.lastMinimalTestTime && (
+                                            <p className="text-xs text-gray-500 mb-3">
+                                                Last run: {testState.lastMinimalTestTime.toLocaleString()}
+                                            </p>
+                                        )}
+
+                                        <button
+                                            onClick={runMinimalTest}
+                                            disabled={!testState.dryRunCompleted || testState.minimalTestInProgress || processing.isRunning}
+                                            className={`w-full px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${!testState.dryRunCompleted || testState.minimalTestInProgress || processing.isRunning
+                                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                                }`}
+                                        >
+                                            {testState.minimalTestInProgress ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Testing...
+                                                </>
+                                            ) : !testState.dryRunCompleted ? (
+                                                <>
+                                                    <XCircle className="w-4 h-4" />
+                                                    Run Dry Test First
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Zap className="w-4 h-4" />
+                                                    Run API Test
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="text-xs text-gray-400">
+                                    <strong>Testing workflow:</strong> Run the dry test first to verify all components work correctly without API costs.
+                                    Then run the minimal test to confirm real API integration with a small set of papers.
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Progress Tracker */}
@@ -1426,7 +1718,7 @@ ${paper.deepAnalysis?.keyFindings || 'N/A'}
                                     className="flex items-center text-sm text-red-400 hover:text-red-300 transition-colors"
                                 >
                                     <AlertCircle className="w-4 h-4 mr-1" />
-                                    {showErrors ? 'Hide' : 'Show'} Errors ({processing.errors.length})
+                                    {showErrors ? 'Hide' : 'Show'} Logs ({processing.errors.length})
                                 </button>
 
                                 {showErrors && (
