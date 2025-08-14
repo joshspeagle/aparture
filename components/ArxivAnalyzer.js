@@ -223,15 +223,13 @@ const ARXIV_CATEGORIES = {
 const DEFAULT_CONFIG = {
     version: 2,
     selectedCategories: ["cs.AI", "cs.CL", "cs.CV", "cs.IR", "cs.LG", "cs.MA", "cs.NE", "stat.AP", "stat.CO", "stat.ME", "stat.ML", "stat.OT", "stat.TH", "astro-ph.CO", "astro-ph.EP", "astro-ph.GA", "astro-ph.HE", "astro-ph.IM", "astro-ph.SR"],
-    scoringCriteria: `
-    **AI/ML (Broad Interest):** Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery.  
+    scoringCriteria: `**AI/ML (Broad Interest):** Deep learning advances, general ML methods, mechanistic interpretability, trustworthy AI, statistical learning theory, probabilistic ML, AI for scientific discovery.  
 
-    **Statistics, Computation, and Inference:** Sampling and approximate inference methods, uncertainty quantification, time series analysis, state space models, hierarchical modeling, scalable inference.
+**Statistics, Computation, and Inference:** Sampling and approximate inference methods, uncertainty quantification, time series analysis, state space models, hierarchical modeling, scalable inference.
 
-    **Astrophysics Applications:** Galactic structure and dynamics, stellar astrophysics and populations, galaxy formation and evolution, large astronomical surveys.
+**Astrophysics Applications:** Galactic structure and dynamics, stellar astrophysics and populations, galaxy formation and evolution, large astronomical surveys.
 
-    **Research Context:** Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.
-    `,
+**Research Context:** Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.`,
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
     daysBack: 2,
