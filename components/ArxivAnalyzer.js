@@ -1572,6 +1572,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         pauseRef.current = false;
         abortControllerRef.current = new AbortController();
 
+        let finalPapers = []; // Track final papers locally
+
         try {
             let papers;
 
@@ -1633,7 +1635,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 return scoreB - scoreA;
             });
 
-            const finalPapers = analyzedPapers.slice(0, config.finalOutputCount);
+            finalPapers = analyzedPapers.slice(0, config.finalOutputCount);
 
             setResults(prev => ({ ...prev, finalRanking: finalPapers }));
 
@@ -1655,7 +1657,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 ...prev,
                 isRunning: false,
                 isPaused: false,
-                stage: results.finalRanking.length > 0 ? 'complete' : 'idle'
+                // Use local finalPapers array instead of results.finalRanking
+                stage: finalPapers.length > 0 ? 'complete' : 'idle'
             }));
         }
     };
@@ -1820,7 +1823,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 **Generated:** ${timestamp}  
 **Duration:** ${duration} minutes  
 **Abstracts Screened:** ${results.scoredPapers.length}  
-**Papers Analyzed:** ${results.finalRanking.filter(p => p.deepAnalysis).length}
+**Papers Analyzed:** ${Math.min(results.scoredPapers.length, config.maxDeepAnalysis)}
 **Final Report:** ${results.finalRanking.length}
 **Categories:** ${config.selectedCategories.join(', ')}  
 **Models Used:** ${config.screeningModel} (screening), ${config.deepAnalysisModel} (analysis)
