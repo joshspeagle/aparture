@@ -289,10 +289,20 @@ export default async function handler(req, res) {
             const pdfBuffer = await pdfResponse.arrayBuffer();
             const base64Data = Buffer.from(pdfBuffer).toString('base64');
 
-            const prompt = `Please analyze this research paper and provide an updated assessment.
+            const prompt = `Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
+
+SCORING SCALE (use full range with one decimal place):
+- 0.0-1.0: Completely irrelevant - No connection to research interests
+- 1.1-3.0: Minimally relevant - Tangential connection, unlikely to be useful
+- 3.1-5.0: Somewhat relevant - Some connection but limited applicability
+- 5.1-7.0: Moderately relevant - Clear relevance with potential utility
+- 7.1-9.0: Highly relevant - Strong alignment with research interests
+- 9.1-10.0: Extremely relevant - Perfect match, must-read paper
+
+IMPORTANT: Use the FULL 0.0-10.0 range. The full paper analysis may reveal the work is less relevant than the abstract suggested - use lower scores when appropriate.
 
 CONTEXT FROM ABSTRACT ANALYSIS:
-- Original Score (based on abstract only): ${originalScore}/10
+- Original Score (based on abstract only): ${originalScore}/10.0
 - Original Justification: ${originalJustification}
 
 SCORING CRITERIA:
@@ -305,7 +315,7 @@ Now that you have access to the full paper, please provide:
 3. A concise 1 paragraph on methodological innovations or notable techniques used
 4. A concise 1 paragraph on limitations or areas for future work
 5. A concise 1 paragraph relevance assessment that ends with 1 sentence that compares your full-paper analysis to the original abstract-based assessment of ${originalScore}/10
-6. An updated relevance score (1-10)
+6. An updated relevance score (0.0-10.0 with one decimal place)
 
 Format your response as a JSON object with these fields:
 {
@@ -314,7 +324,7 @@ Format your response as a JSON object with these fields:
   "methodology": "string", 
   "limitations": "string",
   "relevanceAssessment": "string",
-  "updatedScore": number
+  "updatedScore": number (0.0-10.0 with one decimal place)
 }
 
 Your entire response MUST ONLY be a single, valid JSON object. DO NOT respond with anything other than a single, valid JSON object.`;

@@ -183,12 +183,22 @@ export default async function handler(req, res) {
         if (correctionPrompt) {
             prompt = correctionPrompt;
         } else {
-            prompt = `You are a research assistant scoring academic paper abstracts for relevance.
+            prompt = `You are a research assistant scoring academic paper abstracts for relevance using a precise 0.0-10.0 scale.
+
+SCORING SCALE (use full range with one decimal place):
+- 0.0-1.0: Completely irrelevant - No connection to research interests
+- 1.1-3.0: Minimally relevant - Tangential connection, unlikely to be useful
+- 3.1-5.0: Somewhat relevant - Some connection but limited applicability
+- 5.1-7.0: Moderately relevant - Clear relevance with potential utility
+- 7.1-9.0: Highly relevant - Strong alignment with research interests
+- 9.1-10.0: Extremely relevant - Perfect match, must-read paper
+
+IMPORTANT: Use the FULL 0.0-10.0 range. Avoid clustering scores around 6-8. Use lower scores for papers that don't strongly match the criteria.
 
 Scoring Criteria:
 ${scoringCriteria}
 
-For each paper below, provide a relevance score from 1-10 and a brief (2-3 sentence) justification.
+For each paper below, provide a relevance score from 0.0-10.0 (one decimal place) and a brief (2-3 sentence) justification.
 
 Papers to score:
 ${papers.map((p, idx) => `Paper ${idx + 1}: Title: ${p.title} Abstract: ${p.abstract}`).join('\n')}
@@ -197,7 +207,7 @@ Respond ONLY with a valid JSON array in this exact format:
 [
   {
     "paperIndex": number,
-    "score": number,
+    "score": number (0.0-10.0 with one decimal place),
     "justification": "string"
   }
 ]

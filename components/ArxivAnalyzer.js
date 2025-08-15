@@ -2,6 +2,13 @@ import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Download, FileText
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TEST_PAPERS, generateTestReport } from '../utils/testUtils';
 
+// Distribution that uses the full 0-10 range with decimals
+const generateRealisticScore = () => {
+    // Generate uniform distribution between 0 and 10 (exclusive)
+    const score = Math.random() * 10;
+    return Math.round(score * 10) / 10; // Round to 1 decimal place
+};
+
 // Complete arXiv category taxonomy
 const ARXIV_CATEGORIES = {
     "Computer Science": {
@@ -523,7 +530,7 @@ function ArxivAnalyzer() {
                 case 'valid':
                     return JSON.stringify(papers.map((_, idx) => ({
                         paperIndex: idx + 1,
-                        score: Math.floor(Math.random() * 10) + 1,
+                        score: generateRealisticScore(),
                         justification: `Mock evaluation for test paper ${idx + 1}. This is a simulated relevance assessment.`
                     })));
 
@@ -531,7 +538,7 @@ function ArxivAnalyzer() {
                     if (isCorrection) {
                         return JSON.stringify(papers.map((_, idx) => ({
                             paperIndex: idx + 1,
-                            score: Math.floor(Math.random() * 10) + 1,
+                            score: generateRealisticScore(),
                             justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                         })));
                     }
@@ -541,7 +548,7 @@ function ArxivAnalyzer() {
                     if (isCorrection) {
                         return JSON.stringify(papers.map((_, idx) => ({
                             paperIndex: idx + 1,
-                            score: Math.floor(Math.random() * 10) + 1,
+                            score: generateRealisticScore(),
                             justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                         })));
                     }
@@ -554,7 +561,7 @@ function ArxivAnalyzer() {
                     if (isCorrection) {
                         return JSON.stringify(papers.map((_, idx) => ({
                             paperIndex: idx + 1,
-                            score: Math.floor(Math.random() * 10) + 1,
+                            score: generateRealisticScore(),
                             justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                         })));
                     }
@@ -598,7 +605,7 @@ function ArxivAnalyzer() {
                         methodology: `Mock methodology analysis: The authors employed ${Math.random() > 0.5 ? 'experimental' : 'theoretical'} approaches with ${Math.random() > 0.5 ? 'empirical' : 'analytical'} validation.`,
                         limitations: `Mock limitations: Computational complexity, limited generalization, and potential scalability issues.`,
                         relevanceAssessment: `Mock relevance assessment: This work is highly relevant to current research trends. Updated from abstract-only analysis.`,
-                        updatedScore: Math.floor(Math.random() * 10) + 1
+                        updatedScore: generateRealisticScore()
                     });
 
                 case 'malformed':
@@ -609,7 +616,7 @@ function ArxivAnalyzer() {
                             methodology: `Corrected methodology analysis.`,
                             limitations: `Corrected limitations assessment.`,
                             relevanceAssessment: `Corrected relevance assessment.`,
-                            updatedScore: Math.floor(Math.random() * 10) + 1
+                            updatedScore: generateRealisticScore()
                         });
                     }
                     return `{"summary": "Invalid JSON structure" missing_bracket: true`;
@@ -622,7 +629,7 @@ function ArxivAnalyzer() {
                             methodology: `Corrected methodology.`,
                             limitations: `Corrected limitations.`,
                             relevanceAssessment: `Corrected relevance assessment.`,
-                            updatedScore: Math.floor(Math.random() * 10) + 1
+                            updatedScore: generateRealisticScore()
                         });
                     }
                     return JSON.stringify({
@@ -638,7 +645,7 @@ function ArxivAnalyzer() {
                             methodology: `Corrected methodology.`,
                             limitations: `Corrected limitations.`,
                             relevanceAssessment: `Corrected relevance assessment.`,
-                            updatedScore: Math.floor(Math.random() * 10) + 1
+                            updatedScore: generateRealisticScore()
                         });
                     }
                     return JSON.stringify({
@@ -1216,6 +1223,12 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
                                 throw new Error(`Score object ${idx} has invalid field types`);
                             }
+                            // Validate score range and decimal precision
+                            if (score.score < 0 || score.score > 10) {
+                                throw new Error(`Score object ${idx} score must be between 0.0 and 10.0`);
+                            }
+                            // Round to one decimal place to handle floating point precision issues
+                            score.score = Math.round(score.score * 10) / 10;
                         });
 
                         return scores;
@@ -1400,6 +1413,12 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         if (typeof analysis.updatedScore !== 'number') {
                             throw new Error("UpdatedScore field must be a number");
                         }
+                        // Validate score range
+                        if (analysis.updatedScore < 0 || analysis.updatedScore > 10) {
+                            throw new Error("UpdatedScore must be between 0.0 and 10.0");
+                        }
+                        // Round to one decimal place to handle floating point precision issues
+                        analysis.updatedScore = Math.round(analysis.updatedScore * 10) / 10;
 
                         return analysis;
                     };
@@ -1800,7 +1819,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
             return `## ${idx + 1}. ${paper.title}
 
-**Score:** ${paper.finalScore || paper.relevanceScore}/10  
+**Score:** ${(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
 **arXiv ID:** [${paper.id}](https://arxiv.org/abs/${paper.id})  
 **Authors:** ${authorTag}  
 
@@ -2515,7 +2534,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                     #{idx + 1}
                                                 </span>
                                                 <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
-                                                    Score: {paper.finalScore || paper.relevanceScore}/10
+                                                    Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
                                                 </span>
                                                 <a
                                                     href={`https://arxiv.org/abs/${paper.id}`}

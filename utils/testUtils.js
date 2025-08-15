@@ -44,6 +44,13 @@ export const TEST_PAPERS = [
     }
 ];
 
+// Distribution that uses the full 0-10 range with decimals
+const generateRealisticScore = () => {
+    // Generate uniform distribution between 0 and 10 (exclusive)
+    const score = Math.random() * 10;
+    return Math.round(score * 10) / 10; // Round to 1 decimal place
+};
+
 // Mock API response generator that simulates various scenarios
 export class MockAPITester {
     constructor() {
@@ -72,7 +79,7 @@ export class MockAPITester {
             case 'valid':
                 return JSON.stringify(papers.map((_, idx) => ({
                     paperIndex: idx + 1,
-                    score: Math.floor(Math.random() * 10) + 1,
+                    score: generateRealisticScore(),
                     justification: `Mock evaluation for test paper ${idx + 1}. This is a simulated relevance assessment.`
                 })));
 
@@ -81,7 +88,7 @@ export class MockAPITester {
                     // Return valid response after correction
                     return JSON.stringify(papers.map((_, idx) => ({
                         paperIndex: idx + 1,
-                        score: Math.floor(Math.random() * 10) + 1,
+                        score: generateRealisticScore(),
                         justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                     })));
                 }
@@ -91,7 +98,7 @@ export class MockAPITester {
                 if (isCorrection) {
                     return JSON.stringify(papers.map((_, idx) => ({
                         paperIndex: idx + 1,
-                        score: Math.floor(Math.random() * 10) + 1,
+                        score: generateRealisticScore(),
                         justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                     })));
                 }
@@ -105,7 +112,7 @@ export class MockAPITester {
                 if (isCorrection) {
                     return JSON.stringify(papers.map((_, idx) => ({
                         paperIndex: idx + 1,
-                        score: Math.floor(Math.random() * 10) + 1,
+                        score: generateRealisticScore(),
                         justification: `Corrected mock evaluation for test paper ${idx + 1}.`
                     })));
                 }
@@ -144,7 +151,7 @@ export class MockAPITester {
                     methodology: `Mock methodology analysis: The authors employed ${Math.random() > 0.5 ? 'experimental' : 'theoretical'} approaches with ${Math.random() > 0.5 ? 'empirical' : 'analytical'} validation.`,
                     limitations: `Mock limitations: Computational complexity, limited generalization, and potential scalability issues.`,
                     relevanceAssessment: `Mock relevance assessment: This work is highly relevant to current research trends. Updated from abstract-only analysis.`,
-                    updatedScore: Math.floor(Math.random() * 10) + 1
+                    updatedScore: generateRealisticScore()
                 });
 
             case 'malformed':
@@ -155,7 +162,7 @@ export class MockAPITester {
                         methodology: `Corrected methodology analysis.`,
                         limitations: `Corrected limitations assessment.`,
                         relevanceAssessment: `Corrected relevance assessment.`,
-                        updatedScore: Math.floor(Math.random() * 10) + 1
+                        updatedScore: generateRealisticScore()
                     });
                 }
                 return `{"summary": "Invalid JSON structure" missing_bracket: true`;
@@ -168,7 +175,7 @@ export class MockAPITester {
                         methodology: `Corrected methodology.`,
                         limitations: `Corrected limitations.`,
                         relevanceAssessment: `Corrected relevance assessment.`,
-                        updatedScore: Math.floor(Math.random() * 10) + 1
+                        updatedScore: generateRealisticScore()
                     });
                 }
                 return JSON.stringify({
@@ -185,7 +192,7 @@ export class MockAPITester {
                         methodology: `Corrected methodology.`,
                         limitations: `Corrected limitations.`,
                         relevanceAssessment: `Corrected relevance assessment.`,
-                        updatedScore: Math.floor(Math.random() * 10) + 1
+                        updatedScore: generateRealisticScore()
                     });
                 }
                 return JSON.stringify({
