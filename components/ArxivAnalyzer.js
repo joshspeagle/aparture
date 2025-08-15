@@ -520,7 +520,7 @@ function ArxivAnalyzer() {
             const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
 
             // Simulate API delay with abort checking
-            await this.sleepWithAbortCheck(500 + Math.random() * 1000);
+            await this.sleepWithAbortCheck(50 + Math.random() * 100);
 
             console.log(`Mock Abstract API Call ${this.callCount}: Testing scenario '${scenario}'${isCorrection ? ' (correction)' : ''}`);
 
@@ -591,7 +591,7 @@ function ArxivAnalyzer() {
             const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
 
             // Simulate longer PDF processing delay with abort checking
-            await this.sleepWithAbortCheck(1000 + Math.random() * 2000);
+            await this.sleepWithAbortCheck(100 + Math.random() * 200);
 
             console.log(`Mock PDF API Call ${this.callCount}: Testing scenario '${scenario}' for paper "${paper.title}"${isCorrection ? ' (correction)' : ''}`);
 
@@ -1366,7 +1366,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 failedPapers: failedPapers // Store failed papers separately
             }));
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, isDryRun ? 100 : 1500));
         }
 
         // Log summary of results
@@ -1377,7 +1377,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             addError(`Warning: ${failedPapers.length} papers failed to score and will be excluded from deep analysis`);
         }
 
-        return scoredPapers; // Return only successfully scored papers
+        const finalSorted = [...scoredPapers].sort((a, b) => b.relevanceScore - a.relevanceScore);
+        return finalSorted;
     };
 
     // Deep analysis of PDFs (or mock for dry run)
@@ -1536,7 +1537,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     return { ...prev, finalRanking: updatedRanking };
                 });
 
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, isDryRun ? 100 : 2000));
 
             } catch (error) {
                 addError(`Failed to analyze paper "${paper.title}" after all retries: ${error.message}`);
@@ -1818,7 +1819,9 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
 **Generated:** ${timestamp}  
 **Duration:** ${duration} minutes  
-**Papers Analyzed:** ${results.finalRanking.length}  
+**Abstracts Screened:** ${results.scoredPapers.length}  
+**Papers Analyzed:** ${results.finalRanking.filter(p => p.deepAnalysis).length}
+**Final Report:** ${results.finalRanking.length}
 **Categories:** ${config.selectedCategories.join(', ')}  
 **Models Used:** ${config.screeningModel} (screening), ${config.deepAnalysisModel} (analysis)
 
@@ -2545,7 +2548,11 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                             <span className="mx-2">•</span>
                                             Duration: {processingTiming.duration ? Math.round(processingTiming.duration / 60000) : 0} minutes
                                             <span className="mx-2">•</span>
-                                            {results.finalRanking.length} papers analyzed
+                                            {results.scoredPapers.length} abstracts screened
+                                            <span className="mx-2">•</span>
+                                            {Math.min(results.scoredPapers.length, config.maxDeepAnalysis)} papers analyzed
+                                            <span className="mx-2">•</span>
+                                            {results.finalRanking.length} papers summarized
                                         </>
                                     ) : processing.isRunning ? (
                                         <>
