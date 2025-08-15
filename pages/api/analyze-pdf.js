@@ -291,13 +291,8 @@ export default async function handler(req, res) {
 
             const prompt = `Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
 
-TARGET DISTRIBUTION (aim for these percentages when rescoring):
-- 0.0-3.0: ~30% of papers (most papers have limited relevance)
-- 3.1-6.0: ~40% of papers (decent but not exceptional)  
-- 6.1-8.0: ~25% of papers (good, worth reading)
-- 8.1-10.0: ~5% of papers (exceptional/groundbreaking)
-
-IMPORTANT: Full PDF analysis often reveals work is less impressive than the abstract suggested. Be selective with high scores and willing to downgrade based on methodology, execution, or limited novelty.
+SCORING CRITERIA:
+${scoringCriteria}
 
 SCORING RUBRIC:
 - 9.0-10.0: Groundbreaking work that will change the field (extremely rare)
@@ -312,8 +307,7 @@ CONTEXT FROM ABSTRACT ANALYSIS:
 - Original Score (based on abstract only): ${originalScore}/10
 - Original Justification: ${originalJustification}
 
-SCORING CRITERIA:
-${scoringCriteria}
+IMPORTANT: Full PDF analysis often reveals work is less impressive than the abstract suggested. Be selective with high scores and willing to downgrade based on methodology, execution, or limited novelty.
 
 Now that you have access to the full paper, please provide:
 

@@ -185,13 +185,13 @@ export default async function handler(req, res) {
         } else {
             prompt = `You are a research assistant scoring academic paper abstracts for relevance using a precise 0.0-10.0 scale.
 
-TARGET DISTRIBUTION (aim for these percentages):
-- 0.0-3.0: ~30% of papers (most papers have limited relevance)
-- 3.1-6.0: ~40% of papers (decent but not exceptional)  
-- 6.1-8.0: ~25% of papers (good, worth reading)
-- 8.1-10.0: ~5% of papers (exceptional/groundbreaking)
+Research Interests:
+${scoringCriteria}
 
-IMPORTANT: Be selective with high scores. Most academic papers are incremental work that should score 3-6. Reserve 8+ for truly outstanding contributions.
+For each paper below, provide a relevance score from 0.0-10.0 (one decimal place) and a brief (2-3 sentence) justification.
+
+Papers to score:
+${papers.map((p, idx) => `Paper ${idx + 1}: Title: ${p.title} Abstract: ${p.abstract}`).join('\n')}
 
 SCORING RUBRIC:
 - 9.0-10.0: Groundbreaking work that will change the field (extremely rare)
@@ -202,13 +202,7 @@ SCORING RUBRIC:
 - 2.0-3.9: Weak connection to interests, poor execution or outdated
 - 0.0-1.9: Irrelevant or fundamentally flawed
 
-Research Interests:
-${scoringCriteria}
-
-For each paper below, provide a relevance score from 0.0-10.0 (one decimal place) and a brief (2-3 sentence) justification.
-
-Papers to score:
-${papers.map((p, idx) => `Paper ${idx + 1}: Title: ${p.title} Abstract: ${p.abstract}`).join('\n')}
+IMPORTANT: Be selective with high scores. Most academic papers are incremental work that should score 3-6. Reserve 8+ for truly outstanding contributions.
 
 Respond ONLY with a valid JSON array in this exact format:
 [
