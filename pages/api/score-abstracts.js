@@ -185,17 +185,24 @@ export default async function handler(req, res) {
         } else {
             prompt = `You are a research assistant scoring academic paper abstracts for relevance using a precise 0.0-10.0 scale.
 
-SCORING SCALE (use full range with one decimal place):
-- 0.0-1.0: Completely irrelevant - No connection to research interests
-- 1.1-3.0: Minimally relevant - Tangential connection, unlikely to be useful
-- 3.1-5.0: Somewhat relevant - Some connection but limited applicability
-- 5.1-7.0: Moderately relevant - Clear relevance with potential utility
-- 7.1-9.0: Highly relevant - Strong alignment with research interests
-- 9.1-10.0: Extremely relevant - Perfect match, must-read paper
+TARGET DISTRIBUTION (aim for these percentages):
+- 0.0-3.0: ~30% of papers (most papers have limited relevance)
+- 3.1-6.0: ~40% of papers (decent but not exceptional)  
+- 6.1-8.0: ~25% of papers (good, worth reading)
+- 8.1-10.0: ~5% of papers (exceptional/groundbreaking)
 
-IMPORTANT: Use the FULL 0.0-10.0 range. Avoid clustering scores around 6-8. Use lower scores for papers that don't strongly match the criteria.
+IMPORTANT: Be selective with high scores. Most academic papers are incremental work that should score 3-6. Reserve 8+ for truly outstanding contributions.
 
-Scoring Criteria:
+SCORING RUBRIC:
+- 9.0-10.0: Groundbreaking work that will change the field (extremely rare)
+- 8.0-8.9: Significant methodological advance with clear practical impact
+- 7.0-7.9: Solid contribution with novel insights, well-executed
+- 6.0-6.9: Good work with some novelty, worth reading
+- 4.0-5.9: Competent but incremental work, limited novelty
+- 2.0-3.9: Weak connection to interests, poor execution or outdated
+- 0.0-1.9: Irrelevant or fundamentally flawed
+
+Research Interests:
 ${scoringCriteria}
 
 For each paper below, provide a relevance score from 0.0-10.0 (one decimal place) and a brief (2-3 sentence) justification.
