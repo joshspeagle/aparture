@@ -239,12 +239,13 @@ const DEFAULT_CONFIG = {
 **Research Context:** Researcher interested in statistical learning and ML/AI methods broadly, with particular focus on interpretability and uncertainty quantification. Applies these methods primarily in astrophysics but values methodological advances independent of application domain.`,
     maxDeepAnalysis: 30,
     finalOutputCount: 15,
-    daysBack: 2,
-    batchSize: 10,
+    daysBack: 1,
+    batchSize: 5,
     maxCorrections: 1,
     maxRetries: 1,
     screeningModel: 'gemini-2.5-flash',
-    deepAnalysisModel: 'gemini-2.5-pro'
+    deepAnalysisModel: 'gemini-2.5-pro',
+    maxAbstractDisplay: 500
 };
 
 // Available AI models
@@ -1223,9 +1224,9 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
                                 throw new Error(`Score object ${idx} has invalid field types`);
                             }
-                            // Validate score range and decimal precision
+                            // Validate score range (allow 0-10 inclusive)
                             if (score.score < 0 || score.score > 10) {
-                                throw new Error(`Score object ${idx} score must be between 0.0 and 10.0`);
+                                throw new Error(`Score object ${idx} score must be between 0.0 and 10.0, got ${score.score}`);
                             }
                             // Round to one decimal place to handle floating point precision issues
                             score.score = Math.round(score.score * 10) / 10;
@@ -1290,6 +1291,12 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             if (typeof score.paperIndex !== 'number' || typeof score.score !== 'number' || typeof score.justification !== 'string') {
                                 throw new Error(`Score object ${idx} has invalid field types`);
                             }
+                            // Validate score range - allow decimals
+                            if (score.score < 0 || score.score > 10) {
+                                throw new Error(`Score object ${idx} score must be between 0.0 and 10.0, got ${score.score}`);
+                            }
+                            // Round to one decimal place to handle floating point precision issues
+                            score.score = Math.round(score.score * 10) / 10;
                         });
 
                         return scores;
@@ -1413,9 +1420,9 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         if (typeof analysis.updatedScore !== 'number') {
                             throw new Error("UpdatedScore field must be a number");
                         }
-                        // Validate score range
+                        // Validate score range (allow 0-10 inclusive)
                         if (analysis.updatedScore < 0 || analysis.updatedScore > 10) {
-                            throw new Error("UpdatedScore must be between 0.0 and 10.0");
+                            throw new Error(`UpdatedScore must be between 0.0 and 10.0, got ${analysis.updatedScore}`);
                         }
                         // Round to one decimal place to handle floating point precision issues
                         analysis.updatedScore = Math.round(analysis.updatedScore * 10) / 10;
@@ -1479,6 +1486,12 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         if (typeof analysis.updatedScore !== 'number') {
                             throw new Error("UpdatedScore field must be a number");
                         }
+                        // Validate score range - allow decimals
+                        if (analysis.updatedScore < 0 || analysis.updatedScore > 10) {
+                            throw new Error(`UpdatedScore must be between 0.0 and 10.0, got ${analysis.updatedScore}`);
+                        }
+                        // Round to one decimal place to handle floating point precision issues
+                        analysis.updatedScore = Math.round(analysis.updatedScore * 10) / 10;
 
                         return analysis;
                     };
@@ -1587,7 +1600,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
 
             // Use the sorted scoredPapers from results, and ensure minimum score threshold
-            const availablePapers = results.scoredPapers.filter(paper =>
+            // Use the local scoredPapers variable (not results.scoredPapers which may not be updated yet)
+            const availablePapers = scoredPapers.filter(paper =>
                 paper.relevanceScore > 0 && paper.scoreJustification !== 'Failed to score after retries'
             );
 
@@ -1880,6 +1894,52 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         if (processing.progress.total === 0) return 0;
         return Math.round((processing.progress.current / processing.progress.total) * 100);
     };
+
+    // Paper Card Component
+    const PaperCard = ({ paper, idx, showDeepAnalysis }) => (
+        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+            <div className="flex items-start justify-between mb-2">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                            #{idx + 1}
+                        </span>
+                        <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
+                            Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
+                        </span>
+                        {showDeepAnalysis && paper.deepAnalysis && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                                📄 PDF Analyzed
+                            </span>
+                        )}
+
+                        <a
+                            href={`https://arxiv.org/abs/${paper.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+                        >
+                            arXiv:{paper.id}
+                        </a>
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
+                    <p className="text-sm text-gray-400 mb-2">
+                        {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+                    </p>
+                    <p className="text-sm text-gray-300 italic mb-2">
+                        {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
+                    </p>
+                    {showDeepAnalysis && paper.deepAnalysis && (
+                        <div className="mt-3 pt-3 border-t border-slate-700">
+                            <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+                                {paper.deepAnalysis.summary}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 
     // If not authenticated, show login screen
     if (!isAuthenticated) {
@@ -2520,50 +2580,56 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         <div className="flex items-center mb-4">
                             <FileText className="w-5 h-5 mr-2 text-green-400" />
                             <h2 className="text-xl font-semibold">
-                                {results.finalRanking.length > 0 ? 'Final Results' : 'Scored Papers'}
+                                {results.finalRanking.length > 0 ? 'Analysis Results' : 'Scored Papers'}
                             </h2>
                         </div>
 
-                        <div className="space-y-4">
-                            {((results.finalRanking.length > 0 && (processing.stage === 'deep-analysis' || processing.stage === 'complete')) ? results.finalRanking : results.scoredPapers.slice(0, 15)).map((paper, idx) => (
-                                <div key={paper.id} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-                                                    #{idx + 1}
-                                                </span>
-                                                <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
-                                                    Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
-                                                </span>
-                                                <a
-                                                    href={`https://arxiv.org/abs/${paper.id}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
-                                                >
-                                                    arXiv:{paper.id}
-                                                </a>
+                        {(() => {
+                            // During/after deep analysis: show two sections
+                            if (results.finalRanking.length > 0 && (processing.stage === 'deep-analysis' || processing.stage === 'complete')) {
+                                const deepAnalyzedIds = new Set(results.finalRanking.map(p => p.id));
+                                const abstractOnlyPapers = results.scoredPapers.filter(p => !deepAnalyzedIds.has(p.id));
+
+                                return (
+                                    <div className="space-y-6">
+                                        {/* Deep Analysis Section */}
+                                        <div>
+                                            <h3 className="text-lg font-medium mb-3 text-blue-400">
+                                                📄 Papers with Deep PDF Analysis ({results.finalRanking.length})
+                                            </h3>
+                                            <div className="space-y-4">
+                                                {results.finalRanking.map((paper, idx) => (
+                                                    <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={true} />
+                                                ))}
                                             </div>
-                                            <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
-                                            <p className="text-sm text-gray-400 mb-2">
-                                                {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
-                                            </p>
-                                            <p className="text-sm text-gray-300 italic mb-2">
-                                                {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
-                                            </p>
-                                            {paper.deepAnalysis && (
-                                                <div className="mt-3 pt-3 border-t border-slate-700">
-                                                    <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
-                                                        {paper.deepAnalysis.summary}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
+
+                                        {/* Abstract Only Section */}
+                                        {abstractOnlyPapers.length > 0 && (
+                                            <div>
+                                                <h3 className="text-lg font-medium mb-3 text-gray-400">
+                                                    📋 Abstract-Only Scores ({abstractOnlyPapers.length})
+                                                </h3>
+                                                <div className="space-y-4">
+                                                    {abstractOnlyPapers.map((paper, idx) => (
+                                                        <PaperCard key={paper.id} paper={paper} idx={results.finalRanking.length + idx} showDeepAnalysis={false} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
+                                );
+                            }
+
+                            // During abstract scoring: show all scored papers
+                            return (
+                                <div className="space-y-4">
+                                    {results.scoredPapers.map((paper, idx) => (
+                                        <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={false} />
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
