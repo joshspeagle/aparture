@@ -96,7 +96,7 @@ If you want to apply a custom domain, in your Vercel dashboard:
 
 ## Security
 
-This app includes password protection to prevent unauthorized use of your Claude API key. The password is checked on every API call to ensure security.
+This app includes password protection to prevent unauthorized use of your API keys. The password is checked on every API call to ensure security.
 
 ## Usage
 
@@ -112,7 +112,7 @@ This app includes password protection to prevent unauthorized use of your Claude
 
 ## API Usage Notes
 
-- The app processes abstracts in batches to respect API rate limits (default: 10)
+- The app processes abstracts in batches to respect API rate limits
 - PDF analysis is done directly over individual PDFs (no text extraction)
 - Error handling includes automatic retries and graceful degradation
 - All API calls are routed through secure backend endpoints
