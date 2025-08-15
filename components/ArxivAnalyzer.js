@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, TestTube, Unlock, XCircle, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MockAPITester, TEST_PAPERS, generateTestReport } from '../utils/testUtils';
+import { TEST_PAPERS, generateTestReport } from '../utils/testUtils';
 
 // Complete arXiv category taxonomy
 const ARXIV_CATEGORIES = {
@@ -338,7 +338,7 @@ function ArxivAnalyzer() {
     const abortControllerRef = useRef(null);
     const pauseRef = useRef(false);
     const dropdownRef = useRef(null);
-    const mockAPITesterRef = useRef(new MockAPITester());
+    const mockAPITesterRef = useRef(null);
 
     // Handle clicks outside dropdown
     useEffect(() => {
@@ -480,12 +480,209 @@ function ArxivAnalyzer() {
         return categoryCode;
     }, []);
 
-    // Robust API call with retry and correction logic
+    // Enhanced Mock API Tester with abort/pause support
+    const MockAPITesterEnhanced = class {
+        constructor() {
+            this.callCount = 0;
+            this.scenarios = [
+                'valid',
+                'malformed',
+                'missing_field',
+                'wrong_type',
+                'retry_failure',
+                'final_failure'
+            ];
+        }
+
+        // Check for abort/pause before continuing
+        async checkAbortAndPause() {
+            if (abortControllerRef.current?.signal.aborted) {
+                throw new Error('Operation aborted');
+            }
+            if (pauseRef.current) {
+                await waitForResume();
+            }
+        }
+
+        // Mock abstract scoring API with abort/pause support
+        async mockScoreAbstracts(papers, isCorrection = false) {
+            await this.checkAbortAndPause();
+
+            this.callCount++;
+            const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
+
+            // Simulate API delay with abort checking
+            await this.sleepWithAbortCheck(500 + Math.random() * 1000);
+
+            console.log(`Mock Abstract API Call ${this.callCount}: Testing scenario '${scenario}'${isCorrection ? ' (correction)' : ''}`);
+
+            // Check again after delay
+            await this.checkAbortAndPause();
+
+            switch (scenario) {
+                case 'valid':
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        score: Math.floor(Math.random() * 10) + 1,
+                        justification: `Mock evaluation for test paper ${idx + 1}. This is a simulated relevance assessment.`
+                    })));
+
+                case 'malformed':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            score: Math.floor(Math.random() * 10) + 1,
+                            justification: `Corrected mock evaluation for test paper ${idx + 1}.`
+                        })));
+                    }
+                    return `{"invalid": "json" "missing_comma": true}`;
+
+                case 'missing_field':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            score: Math.floor(Math.random() * 10) + 1,
+                            justification: `Corrected mock evaluation for test paper ${idx + 1}.`
+                        })));
+                    }
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        justification: `Mock evaluation missing score field.`
+                    })));
+
+                case 'wrong_type':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            score: Math.floor(Math.random() * 10) + 1,
+                            justification: `Corrected mock evaluation for test paper ${idx + 1}.`
+                        })));
+                    }
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        score: "not_a_number",
+                        justification: `Mock evaluation with wrong score type.`
+                    })));
+
+                case 'retry_failure':
+                    throw new Error('Mock API temporary failure - should trigger retry');
+
+                case 'final_failure':
+                    throw new Error('Mock API permanent failure - should fail after all retries');
+
+                default:
+                    return JSON.stringify([]);
+            }
+        }
+
+        // Mock PDF analysis API with abort/pause support
+        async mockAnalyzePDF(paper, isCorrection = false) {
+            await this.checkAbortAndPause();
+
+            this.callCount++;
+            const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
+
+            // Simulate longer PDF processing delay with abort checking
+            await this.sleepWithAbortCheck(1000 + Math.random() * 2000);
+
+            console.log(`Mock PDF API Call ${this.callCount}: Testing scenario '${scenario}' for paper "${paper.title}"${isCorrection ? ' (correction)' : ''}`);
+
+            // Check again after delay
+            await this.checkAbortAndPause();
+
+            switch (scenario) {
+                case 'valid':
+                    return JSON.stringify({
+                        summary: `Mock deep analysis of "${paper.title}". This simulated analysis would include detailed technical content, methodology discussion, and comprehensive evaluation of the paper's contributions.`,
+                        keyFindings: `Key mock findings: Novel approach to ${Math.random() > 0.5 ? 'neural networks' : 'optimization'}, significant performance improvements, and potential applications in ${Math.random() > 0.5 ? 'computer vision' : 'natural language processing'}.`,
+                        methodology: `Mock methodology analysis: The authors employed ${Math.random() > 0.5 ? 'experimental' : 'theoretical'} approaches with ${Math.random() > 0.5 ? 'empirical' : 'analytical'} validation.`,
+                        limitations: `Mock limitations: Computational complexity, limited generalization, and potential scalability issues.`,
+                        relevanceAssessment: `Mock relevance assessment: This work is highly relevant to current research trends. Updated from abstract-only analysis.`,
+                        updatedScore: Math.floor(Math.random() * 10) + 1
+                    });
+
+                case 'malformed':
+                    if (isCorrection) {
+                        return JSON.stringify({
+                            summary: `Corrected mock analysis of "${paper.title}".`,
+                            keyFindings: `Corrected key findings after initial formatting error.`,
+                            methodology: `Corrected methodology analysis.`,
+                            limitations: `Corrected limitations assessment.`,
+                            relevanceAssessment: `Corrected relevance assessment.`,
+                            updatedScore: Math.floor(Math.random() * 10) + 1
+                        });
+                    }
+                    return `{"summary": "Invalid JSON structure" missing_bracket: true`;
+
+                case 'missing_field':
+                    if (isCorrection) {
+                        return JSON.stringify({
+                            summary: `Corrected mock analysis of "${paper.title}".`,
+                            keyFindings: `Corrected key findings.`,
+                            methodology: `Corrected methodology.`,
+                            limitations: `Corrected limitations.`,
+                            relevanceAssessment: `Corrected relevance assessment.`,
+                            updatedScore: Math.floor(Math.random() * 10) + 1
+                        });
+                    }
+                    return JSON.stringify({
+                        summary: `Mock analysis missing updatedScore field.`,
+                        keyFindings: `Mock findings.`,
+                    });
+
+                case 'wrong_type':
+                    if (isCorrection) {
+                        return JSON.stringify({
+                            summary: `Corrected mock analysis of "${paper.title}".`,
+                            keyFindings: `Corrected key findings.`,
+                            methodology: `Corrected methodology.`,
+                            limitations: `Corrected limitations.`,
+                            relevanceAssessment: `Corrected relevance assessment.`,
+                            updatedScore: Math.floor(Math.random() * 10) + 1
+                        });
+                    }
+                    return JSON.stringify({
+                        summary: `Mock analysis with wrong type.`,
+                        updatedScore: "not_a_number"
+                    });
+
+                case 'retry_failure':
+                    throw new Error('Mock PDF API temporary failure - should trigger retry');
+
+                case 'final_failure':
+                    throw new Error('Mock PDF API permanent failure - should fail after all retries');
+
+                default:
+                    return JSON.stringify({});
+            }
+        }
+
+        // Sleep with periodic abort checking
+        async sleepWithAbortCheck(ms) {
+            const checkInterval = 100; // Check every 100ms
+            const iterations = Math.ceil(ms / checkInterval);
+
+            for (let i = 0; i < iterations; i++) {
+                await this.checkAbortAndPause();
+                await new Promise(resolve => setTimeout(resolve, Math.min(checkInterval, ms - (i * checkInterval))));
+            }
+        }
+    };
+
+    // Enhanced robust API call with better abort checking
     const makeRobustAPICall = useCallback(async (apiCallFunction, parseFunction, context = "", originalPromptInfo = "") => {
         let lastError = null;
 
         for (let retryCount = 0; retryCount <= config.maxRetries; retryCount++) {
             try {
+                // Check for abort before each retry
+                if (abortControllerRef.current?.signal.aborted) {
+                    throw new Error('Operation aborted');
+                }
+                if (pauseRef.current) {
+                    await waitForResume();
+                }
+
                 let responseText = await apiCallFunction();
 
                 try {
@@ -498,6 +695,14 @@ function ArxivAnalyzer() {
 
                 for (let correctionCount = 1; correctionCount <= config.maxCorrections; correctionCount++) {
                     try {
+                        // Check for abort before each correction
+                        if (abortControllerRef.current?.signal.aborted) {
+                            throw new Error('Operation aborted');
+                        }
+                        if (pauseRef.current) {
+                            await waitForResume();
+                        }
+
                         addError(`${context} - Attempting correction ${correctionCount}/${config.maxCorrections}`);
 
                         const correctionPrompt = `The previous response was not in the correct format. Here is the malformed output:
@@ -517,6 +722,9 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         return result;
 
                     } catch (correctionError) {
+                        if (correctionError.message === 'Operation aborted') {
+                            throw correctionError;
+                        }
                         lastError = correctionError;
                         addError(`${context} - Correction ${correctionCount} failed: ${correctionError.message}`);
                     }
@@ -529,10 +737,21 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 }
 
             } catch (apiError) {
+                if (apiError.message === 'Operation aborted') {
+                    throw apiError;
+                }
                 lastError = apiError;
                 if (retryCount < config.maxRetries) {
                     addError(`${context} - API call failed, retrying ${retryCount + 1}/${config.maxRetries}: ${apiError.message}`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // Sleep with abort checking
+                    const delay = 1000;
+                    for (let i = 0; i < delay; i += 50) {
+                        if (abortControllerRef.current?.signal.aborted) {
+                            throw new Error('Operation aborted');
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
                 } else {
                     throw apiError;
                 }
@@ -542,12 +761,20 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         throw lastError;
     }, [config.maxRetries, config.maxCorrections, addError]);
 
-    // Mock robust API call for dry run tests
+    // Enhanced mock robust API call with better abort checking
     const makeMockRobustAPICall = useCallback(async (mockApiFunction, parseFunction, context = "") => {
         let lastError = null;
 
         for (let retryCount = 0; retryCount <= config.maxRetries; retryCount++) {
             try {
+                // Check for abort before each retry
+                if (abortControllerRef.current?.signal.aborted) {
+                    throw new Error('Operation aborted');
+                }
+                if (pauseRef.current) {
+                    await waitForResume();
+                }
+
                 let responseText = await mockApiFunction();
 
                 try {
@@ -560,12 +787,23 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
                 for (let correctionCount = 1; correctionCount <= config.maxCorrections; correctionCount++) {
                     try {
+                        // Check for abort before each correction
+                        if (abortControllerRef.current?.signal.aborted) {
+                            throw new Error('Operation aborted');
+                        }
+                        if (pauseRef.current) {
+                            await waitForResume();
+                        }
+
                         addError(`${context} - Mock correction ${correctionCount}/${config.maxCorrections}`);
                         responseText = await mockApiFunction(true); // Pass isCorrection = true
                         const result = parseFunction(responseText);
                         addError(`${context} - Mock correction ${correctionCount} succeeded`);
                         return result;
                     } catch (correctionError) {
+                        if (correctionError.message === 'Operation aborted') {
+                            throw correctionError;
+                        }
                         lastError = correctionError;
                         addError(`${context} - Mock correction ${correctionCount} failed: ${correctionError.message}`);
                     }
@@ -578,10 +816,21 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 }
 
             } catch (apiError) {
+                if (apiError.message === 'Operation aborted') {
+                    throw apiError;
+                }
                 lastError = apiError;
                 if (retryCount < config.maxRetries) {
                     addError(`${context} - Mock API failed, retrying ${retryCount + 1}/${config.maxRetries}: ${apiError.message}`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Sleep with abort checking
+                    const delay = 500;
+                    for (let i = 0; i < delay; i += 50) {
+                        if (abortControllerRef.current?.signal.aborted) {
+                            throw new Error('Operation aborted');
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
                 } else {
                     throw apiError;
                 }
@@ -630,7 +879,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
     // Fetch papers from arXiv
     const fetchPapers = async () => {
-        setProcessing(prev => ({ ...prev, stage: 'fetching', progress: { current: 0, total: 1 } }));
+        setProcessing(prev => ({ ...prev, stage: 'fetching', progress: { current: 0, total: 0 } }));
 
         try {
             const categories = config.selectedCategories.filter(cat => cat.trim());
@@ -638,60 +887,294 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 throw new Error('No categories selected');
             }
 
-            const categoriesQuery = categories.map(cat => `cat:${cat}`).join(' OR ');
+            console.log(`Fetching papers for ${categories.length} categories: ${categories.join(', ')}`);
 
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - config.daysBack);
+            // Set initial progress with total categories
+            setProcessing(prev => ({
+                ...prev,
+                stage: 'fetching',
+                progress: { current: 0, total: categories.length }
+            }));
 
-            const dateQuery = `submittedDate:[${startDate.toISOString().split('T')[0].replace(/-/g, '')}0000 TO ${endDate.toISOString().split('T')[0].replace(/-/g, '')}2359]`;
+            let allPapers = [];
+            const requestDelay = 1000; // 1 second delay between requests
 
-            const query = `${categoriesQuery} AND ${dateQuery}`;
-            const maxResults = 1000;
+            // Process each category individually (like the Python version)
+            for (let i = 0; i < categories.length; i++) {
+                // Check for abort signal
+                if (abortControllerRef.current?.signal.aborted) {
+                    throw new Error('Operation aborted');
+                }
 
-            const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(query)}&start=0&max_results=${maxResults}&sortBy=submittedDate&sortOrder=descending`;
+                // Check for pause
+                if (pauseRef.current) {
+                    await waitForResume();
+                }
 
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`arXiv API error: ${response.status}`);
+                const category = categories[i];
 
-            const text = await response.text();
-            const parser = new DOMParser();
-            const xml = parser.parseFromString(text, 'text/xml');
+                try {
+                    console.log(`\nFetching category ${i + 1}/${categories.length}: ${category}`);
 
-            const entries = xml.getElementsByTagName('entry');
-            const papers = [];
+                    const categoryPapers = await fetchSingleCategory(category);
+                    allPapers.push(...categoryPapers);
 
-            for (let entry of entries) {
-                const getId = (entry) => {
-                    const id = entry.getElementsByTagName('id')[0]?.textContent;
-                    return id ? id.split('/abs/')[1] : '';
-                };
+                    console.log(`Found ${categoryPapers.length} papers for ${category}`);
 
-                const getAuthors = (entry) => {
-                    const authors = entry.getElementsByTagName('author');
-                    return Array.from(authors).map(a =>
-                        a.getElementsByTagName('name')[0]?.textContent || ''
-                    );
-                };
+                    // Update progress after each category
+                    setProcessing(prev => ({
+                        ...prev,
+                        stage: 'fetching',
+                        progress: { current: i + 1, total: categories.length }
+                    }));
 
-                papers.push({
-                    id: getId(entry),
-                    title: entry.getElementsByTagName('title')[0]?.textContent?.trim() || '',
-                    abstract: entry.getElementsByTagName('summary')[0]?.textContent?.trim() || '',
-                    authors: getAuthors(entry),
-                    published: entry.getElementsByTagName('published')[0]?.textContent || '',
-                    pdfUrl: `https://arxiv.org/pdf/${getId(entry)}.pdf`
-                });
+                    // Delay between requests (except for the last one)
+                    if (i < categories.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, requestDelay));
+                    }
+
+                } catch (error) {
+                    // Check if this is an abort error
+                    if (error.message === 'Operation aborted') {
+                        throw error;
+                    }
+
+                    console.error(`Error fetching category ${category}:`, error);
+                    addError(`Failed to fetch category ${category}: ${error.message}`);
+                    // Continue with other categories
+                }
             }
 
-            setResults(prev => ({ ...prev, allPapers: papers }));
-            setProcessing(prev => ({ ...prev, progress: { current: 1, total: 1 } }));
+            // Remove duplicates based on paper ID
+            const uniquePapers = removeDuplicatePapers(allPapers);
 
-            return papers;
+            // Sort by most recent submission date
+            uniquePapers.sort((a, b) => new Date(b.published) - new Date(a.published));
+
+            console.log(`\n=== FETCH SUMMARY ===`);
+            console.log(`Total papers found: ${allPapers.length}`);
+            console.log(`Unique papers: ${uniquePapers.length}`);
+            console.log(`Duplicates removed: ${allPapers.length - uniquePapers.length}`);
+
+            if (uniquePapers.length === 0) {
+                addError(`No papers found for any category in the specified time range. Try increasing 'Days to Look Back' or check if categories are valid.`);
+            }
+
+            setResults(prev => ({ ...prev, allPapers: uniquePapers }));
+
+            // Final progress update
+            setProcessing(prev => ({
+                ...prev,
+                stage: 'fetching',
+                progress: { current: categories.length, total: categories.length }
+            }));
+
+            return uniquePapers;
+
         } catch (error) {
             addError(`Failed to fetch papers: ${error.message}`);
             throw error;
         }
+    };
+
+    // Fetch papers for a single category with smart date range shifting
+    const fetchSingleCategory = async (category) => {
+        const maxResults = 200; // Increased from default
+        const maxDateShiftDays = 14; // Maximum days to shift back
+
+        // Try to find a date range that contains papers
+        for (let daysShifted = 0; daysShifted <= maxDateShiftDays; daysShifted++) {
+            // Check for abort/pause before each attempt
+            if (abortControllerRef.current?.signal.aborted) {
+                throw new Error('Operation aborted');
+            }
+            if (pauseRef.current) {
+                await waitForResume();
+            }
+
+            const { startDate, endDate } = calculateDateRange(daysShifted);
+            const query = buildArxivQuery(category, startDate, endDate);
+
+            console.log(`  Trying date range: ${startDate} to ${endDate}${daysShifted > 0 ? ` (shifted back ${daysShifted} days)` : ''}`);
+
+            try {
+                const papers = await executeArxivQuery(query, maxResults, category);
+
+                if (papers.length > 0) {
+                    if (daysShifted > 0) {
+                        console.log(`  ✓ Found ${papers.length} papers after shifting back ${daysShifted} days`);
+                    }
+                    return papers;
+                } else if (daysShifted === 0) {
+                    console.log(`  No papers found in original date range, trying with shifted dates...`);
+                }
+
+            } catch (error) {
+                // Check if this is an abort error
+                if (error.message === 'Operation aborted') {
+                    throw error;
+                }
+
+                console.error(`  Error with query for ${category}:`, error.message);
+                if (daysShifted === 0) {
+                    throw error; // Fail fast on first attempt if it's a real API error
+                }
+            }
+        }
+
+        console.log(`  Warning: No papers found for ${category} even after shifting back ${maxDateShiftDays} days`);
+        return [];
+    };
+
+    // Calculate date range for arXiv query
+    const calculateDateRange = (daysShifted = 0) => {
+        const endDate = new Date();
+        endDate.setUTCDate(endDate.getUTCDate() - daysShifted);
+
+        const startDate = new Date(endDate);
+        startDate.setUTCDate(startDate.getUTCDate() - config.daysBack);
+
+        // Format as YYYYMMDD for arXiv API
+        const formatDate = (date) => {
+            return date.toISOString().split('T')[0].replace(/-/g, '');
+        };
+
+        return {
+            startDate: formatDate(startDate),
+            endDate: formatDate(endDate)
+        };
+    };
+
+    // Build arXiv query string (following Python implementation pattern)
+    const buildArxivQuery = (category, startDate, endDate) => {
+        // Use submittedDate with wildcards like the Python version
+        const dateQuery = `submittedDate:[${startDate}* TO ${endDate}*]`;
+        const categoryQuery = `cat:${category}`;
+
+        // Combine with proper parentheses like Python version
+        return `(${categoryQuery}) AND ${dateQuery}`;
+    };
+
+    // Execute the actual arXiv API query
+    const executeArxivQuery = async (query, maxResults, category) => {
+        // Check for abort before making request
+        if (abortControllerRef.current?.signal.aborted) {
+            throw new Error('Operation aborted');
+        }
+
+        // Build URL with proper encoding
+        const params = new URLSearchParams({
+            search_query: query,
+            start: 0,
+            max_results: maxResults,
+            sortBy: 'submittedDate',
+            sortOrder: 'descending'
+        });
+
+        const url = `https://export.arxiv.org/api/query?${params.toString()}`;
+
+        console.log(`  Query: ${query}`);
+        console.log(`  URL length: ${url.length} chars`);
+
+        // Use abort controller signal in fetch
+        const response = await fetch(url, {
+            signal: abortControllerRef.current?.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`arXiv API HTTP error: ${response.status}`);
+        }
+
+        const text = await response.text();
+        console.log(`  Response length: ${text.length} chars`);
+
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+
+        // Check for parsing errors
+        const parseErrors = xml.getElementsByTagName('parsererror');
+        if (parseErrors.length > 0) {
+            throw new Error('XML parsing error in arXiv response');
+        }
+
+        // Check for arXiv API errors
+        const errorElements = xml.getElementsByTagName('error');
+        if (errorElements.length > 0) {
+            const errorText = errorElements[0].textContent;
+            throw new Error(`arXiv API error: ${errorText}`);
+        }
+
+        const entries = xml.getElementsByTagName('entry');
+        const papers = [];
+
+        for (let entry of entries) {
+            // Check for abort during parsing
+            if (abortControllerRef.current?.signal.aborted) {
+                throw new Error('Operation aborted');
+            }
+
+            try {
+                const paper = parseArxivEntry(entry, category);
+                if (paper && paper.id) {
+                    papers.push(paper);
+                }
+            } catch (error) {
+                console.warn(`Error parsing entry:`, error);
+                // Continue with other entries
+            }
+        }
+
+        return papers;
+    };
+
+    // Parse a single arXiv entry from the XML
+    const parseArxivEntry = (entry, fetchedCategory) => {
+        const getId = (entry) => {
+            const id = entry.getElementsByTagName('id')[0]?.textContent;
+            return id ? id.split('/abs/')[1] : '';
+        };
+
+        const getAuthors = (entry) => {
+            const authors = entry.getElementsByTagName('author');
+            return Array.from(authors).map(a =>
+                a.getElementsByTagName('name')[0]?.textContent || ''
+            ).filter(name => name.length > 0);
+        };
+
+        const getCategories = (entry) => {
+            const categories = entry.getElementsByTagName('category');
+            return Array.from(categories)
+                .map(c => c.getAttribute('term'))
+                .filter(term => term && term.length > 0);
+        };
+
+        const cleanText = (text) => {
+            return text ? text.replace(/\s+/g, ' ').trim() : '';
+        };
+
+        return {
+            id: getId(entry),
+            title: cleanText(entry.getElementsByTagName('title')[0]?.textContent || ''),
+            abstract: cleanText(entry.getElementsByTagName('summary')[0]?.textContent || ''),
+            authors: getAuthors(entry),
+            published: entry.getElementsByTagName('published')[0]?.textContent || '',
+            updated: entry.getElementsByTagName('updated')[0]?.textContent || '',
+            categories: getCategories(entry),
+            pdfUrl: `https://arxiv.org/pdf/${getId(entry)}.pdf`,
+            fetchedCategory: fetchedCategory
+        };
+    };
+
+    // Remove duplicate papers based on arXiv ID
+    const removeDuplicatePapers = (papers) => {
+        const seen = new Set();
+        return papers.filter(paper => {
+            if (seen.has(paper.id)) {
+                return false;
+            }
+            seen.add(paper.id);
+            return true;
+        });
     };
 
     // Score abstracts using chosen API (or mock for dry run)
@@ -699,6 +1182,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         setProcessing(prev => ({ ...prev, stage: 'initial-scoring', progress: { current: 0, total: papers.length } }));
 
         const scoredPapers = [];
+        const failedPapers = []; // Track failed papers separately
         const batchSize = config.batchSize;
 
         for (let i = 0; i < papers.length; i += batchSize) {
@@ -761,7 +1245,8 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify(requestBody)
+                            body: JSON.stringify(requestBody),
+                            signal: abortControllerRef.current?.signal
                         });
 
                         if (!response.ok) {
@@ -805,38 +1290,74 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     );
                 }
 
+                // Process successful scores
                 scores.forEach((scoreData) => {
                     const paperIdx = scoreData.paperIndex - 1;
                     if (paperIdx >= 0 && paperIdx < batch.length) {
-                        scoredPapers.push({
+                        const scoredPaper = {
                             ...batch[paperIdx],
                             relevanceScore: scoreData.score,
                             scoreJustification: scoreData.justification
-                        });
+                        };
+
+                        // Only add papers with valid scores (> 0) to the main results
+                        if (scoreData.score > 0) {
+                            scoredPapers.push(scoredPaper);
+                        } else {
+                            // Track papers with score 0 separately
+                            failedPapers.push({
+                                ...scoredPaper,
+                                failureReason: 'Scored as 0 relevance'
+                            });
+                        }
                     }
                 });
 
-                // Update progress AND results after each batch
-                setProcessing(prev => ({
-                    ...prev,
-                    progress: { current: Math.min(i + batchSize, papers.length), total: papers.length }
-                }));
-
-                // Update results with current scored papers (sorted by score)
-                const currentSorted = [...scoredPapers].sort((a, b) => b.relevanceScore - a.relevanceScore);
-                setResults(prev => ({ ...prev, scoredPapers: currentSorted }));
-
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
             } catch (error) {
+                // Check if this is an abort error
+                if (error.message === 'Operation aborted') {
+                    throw error;
+                }
+
                 addError(`Failed to score batch starting at paper ${i + 1} after all retries: ${error.message}`);
+
+                // Add failed papers to the failed list, not the main results
                 batch.forEach(p => {
-                    scoredPapers.push({ ...p, relevanceScore: 0, scoreJustification: 'Failed to score after retries' });
+                    failedPapers.push({
+                        ...p,
+                        relevanceScore: 0,
+                        scoreJustification: 'Failed to score after retries',
+                        failureReason: error.message
+                    });
                 });
             }
+
+            // Update progress AND results after each batch
+            setProcessing(prev => ({
+                ...prev,
+                progress: { current: Math.min(i + batchSize, papers.length), total: papers.length }
+            }));
+
+            // Update results with current scored papers (sorted by score, only successful ones)
+            const currentSorted = [...scoredPapers].sort((a, b) => b.relevanceScore - a.relevanceScore);
+            setResults(prev => ({
+                ...prev,
+                scoredPapers: currentSorted,
+                failedPapers: failedPapers // Store failed papers separately
+            }));
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
-        return scoredPapers;
+        // Log summary of results
+        console.log(`\n=== SCORING SUMMARY ===`);
+        console.log(`Successfully scored papers: ${scoredPapers.length}`);
+        console.log(`Failed papers: ${failedPapers.length}`);
+        if (failedPapers.length > 0) {
+            addError(`Warning: ${failedPapers.length} papers failed to score and will be excluded from deep analysis`);
+        }
+
+        return scoredPapers; // Return only successfully scored papers
     };
 
     // Deep analysis of PDFs (or mock for dry run)
@@ -1035,12 +1556,32 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 }
             }
 
-            // Stage 2: Score abstracts
+            // Stage 2: Score abstracts (now returns only successfully scored papers)
             const scoredPapers = await scoreAbstracts(papers, isDryRun);
 
-            // Stage 3: Select top papers for deep analysis
+            if (scoredPapers.length === 0) {
+                addError('No papers could be scored successfully. Check your API configuration and try again.');
+                return;
+            }
+
+            // Stage 3: Select top papers for deep analysis (now working with filtered, sorted papers)
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
-            const topPapers = scoredPapers.slice(0, config.maxDeepAnalysis);
+
+            // Use the sorted scoredPapers from results, and ensure minimum score threshold
+            const availablePapers = results.scoredPapers.filter(paper =>
+                paper.relevanceScore > 0 && paper.scoreJustification !== 'Failed to score after retries'
+            );
+
+            const topPapers = availablePapers.slice(0, config.maxDeepAnalysis);
+
+            console.log(`\n=== SELECTION SUMMARY ===`);
+            console.log(`Available papers for deep analysis: ${availablePapers.length}`);
+            console.log(`Selected for deep analysis: ${topPapers.length}`);
+
+            if (topPapers.length === 0) {
+                addError('No papers qualified for deep analysis. All papers either failed to score or had zero relevance.');
+                return;
+            }
 
             // Pre-populate finalRanking to prevent empty state during PDF analysis
             setResults(prev => ({ ...prev, finalRanking: topPapers }));
@@ -1051,13 +1592,19 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             // Stage 5: Final ranking and output
             setProcessing(prev => ({ ...prev, stage: 'complete' }));
 
-            analyzedPapers.sort((a, b) => b.finalScore - a.finalScore);
+            // Sort by final score (or relevance score as fallback)
+            analyzedPapers.sort((a, b) => {
+                const scoreA = a.finalScore ?? a.relevanceScore ?? 0;
+                const scoreB = b.finalScore ?? b.relevanceScore ?? 0;
+                return scoreB - scoreA;
+            });
+
             const finalPapers = analyzedPapers.slice(0, config.finalOutputCount);
 
             setResults(prev => ({ ...prev, finalRanking: finalPapers }));
 
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (error.name !== 'AbortError' && error.message !== 'Operation aborted') {
                 addError(`Processing failed: ${error.message}`);
             }
         } finally {
@@ -1065,7 +1612,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const duration = startTime ? endTime - startTime : 0;
             setProcessingTiming(prev => ({
                 ...prev,
-                startTime: prev.startTime || startTime, // Ensure startTime is preserved
+                startTime: prev.startTime || startTime,
                 endTime,
                 duration
             }));
@@ -1079,13 +1626,17 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         }
     };
 
-    // Test functions
+    // Enhanced test functions with proper abort controller setup
     const runDryRunTest = async () => {
         setTestState(prev => ({ ...prev, dryRunInProgress: true }));
 
         try {
-            // Reset mock API tester
-            mockAPITesterRef.current = new MockAPITester();
+            // Create new abort controller for this test
+            const oldAbortController = abortControllerRef.current;
+            abortControllerRef.current = new AbortController();
+
+            // Reset mock API tester to enhanced version
+            mockAPITesterRef.current = new MockAPITesterEnhanced();
             addError('Starting dry run test - no API costs incurred');
 
             await startProcessing(true, false); // isDryRun = true, useTestPapers = false
@@ -1109,8 +1660,15 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
             addError('Dry run test completed successfully');
 
+            // Restore previous abort controller
+            abortControllerRef.current = oldAbortController;
+
         } catch (error) {
-            addError(`Dry run test failed: ${error.message}`);
+            if (error.message === 'Operation aborted') {
+                addError('Dry run test was cancelled');
+            } else {
+                addError(`Dry run test failed: ${error.message}`);
+            }
             setTestState(prev => ({ ...prev, dryRunInProgress: false }));
         }
     };
@@ -1119,6 +1677,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         setTestState(prev => ({ ...prev, minimalTestInProgress: true }));
 
         try {
+            // Create new abort controller for this test
+            const oldAbortController = abortControllerRef.current;
+            abortControllerRef.current = new AbortController();
+
             addError('Starting minimal test with real API calls');
 
             await startProcessing(false, true); // isDryRun = false, useTestPapers = true
@@ -1141,8 +1703,15 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
             addError('Minimal test completed successfully');
 
+            // Restore previous abort controller
+            abortControllerRef.current = oldAbortController;
+
         } catch (error) {
-            addError(`Minimal test failed: ${error.message}`);
+            if (error.message === 'Operation aborted') {
+                addError('Minimal test was cancelled');
+            } else {
+                addError(`Minimal test failed: ${error.message}`);
+            }
             setTestState(prev => ({ ...prev, minimalTestInProgress: false }));
         }
     };
@@ -1162,17 +1731,35 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         setProcessing(prev => ({ ...prev, isPaused: false }));
     };
 
+    // Enhanced handleStop function
     const handleStop = () => {
+        console.log('Stop button clicked - aborting all operations');
+
+        // Abort current operations
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
+            console.log('Abort signal sent');
         }
+
+        // Reset pause state
         pauseRef.current = false;
+
+        // Update UI state immediately
         setProcessing(prev => ({
             ...prev,
             isRunning: false,
             isPaused: false,
             stage: 'idle'
         }));
+
+        // Reset test states
+        setTestState(prev => ({
+            ...prev,
+            dryRunInProgress: false,
+            minimalTestInProgress: false
+        }));
+
+        addError('Operation stopped by user');
     };
 
     const handleReset = () => {
@@ -1260,7 +1847,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     const getStageDisplay = () => {
         const stages = {
             'idle': 'Ready',
-            'fetching': 'Fetching Papers',
+            'fetching': 'Fetching Categories',
             'initial-scoring': 'Scoring Abstracts',
             'selecting': 'Selecting Top Papers',
             'deep-analysis': 'Analyzing PDFs',
@@ -1823,7 +2410,11 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm text-gray-400">
                                         <span>Progress</span>
-                                        <span>{processing.progress.current} / {processing.progress.total} papers</span>
+                                        <span>
+                                            {processing.progress.current} / {processing.progress.total} {
+                                                processing.stage === 'fetching' ? 'categories' : 'papers'
+                                            }
+                                        </span>
                                     </div>
                                     <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                                         <div
