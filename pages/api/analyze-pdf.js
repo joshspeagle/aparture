@@ -299,18 +299,19 @@ SCORING RUBRIC:
 - 8.0-8.9: Significant methodological advance with clear practical impact
 - 7.0-7.9: Solid contribution with novel insights, well-executed
 - 6.0-6.9: Good work with some novelty, worth reading
-- 4.0-5.9: Competent but incremental work, limited novelty
-- 2.0-3.9: Weak connection to interests, poor execution or outdated
-- 0.0-1.9: Irrelevant or fundamentally flawed
+- 5.0-5.9: Competent work, technically sound but limited novelty
+- 3.0-4.9: Incremental work or weak connection to interests
+- 1.0-2.9: Poor execution, outdated, or very limited relevance
+- 0.0-0.9: Irrelevant or fundamentally flawed
 
-CONTEXT FROM ABSTRACT ANALYSIS:
-- Original Score (based on abstract only): ${originalScore}/10
-- Original Justification: ${originalJustification}
+IMPORTANT: Full PDF analysis often reveals work is less impressive than abstracts suggest. Be much more selective with scores above 7.0 and willing to downgrade based on methodology, execution, or limited novelty. Don't reward papers just for:
+- Trendy buzzwords without genuine technical depth or methodological substance
+- Cross-disciplinary applications unless the methodology itself is genuinely novel
+- Standard applications of established methods to new domains or datasets
 
-IMPORTANT: Full PDF analysis often reveals work is less impressive than the abstract suggested. Be selective with high scores and willing to downgrade based on methodology, execution, or limited novelty.
+USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. to create better discrimination within bands.
 
-Now that you have access to the full paper, please provide:
-
+Furthermore, now that you have access to the full paper, please provide:
 1. A comprehensive 3-5 paragraph technical summary of the paper's contents, methodology, and contributions (use \\n\\n to separate paragraphs within the JSON string)
 2. A concise 1 paragraph summary of key findings and results
 3. A concise 1 paragraph on methodological innovations or notable techniques used
