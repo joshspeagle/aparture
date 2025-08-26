@@ -135,3 +135,6 @@ playwright-report/
 # Local configuration overrides
 config.local.js
 config.local.json
+
+# Reports
+reports/

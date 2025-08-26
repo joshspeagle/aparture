@@ -240,14 +240,14 @@ const DEFAULT_CONFIG = {
 
 **Astrophysics Domain Interests**:
 
-**Galaxy Formation & Evolution**: Physical processes driving galaxy assembly, environmental effects, chemical evolution, morphological evolution
-**Stellar Populations & Evolution**: Stellar activity, stellar populations as tracers of galactic history, stellar physics and evolution
-**Milky Way Structure & Dynamics**: Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, Gaia science
+**Galaxy Formation & Evolution**: Physical processes driving galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphology
+**Stellar Populations & Evolution**: Stellar activity, stellar populations, stellar physics and evolution, star clusters, star formation
+**Milky Way Structure & Dynamics**: Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
 **Large Survey Science**: Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
 
-**Research Philosophy**: Values fundamental methodological advances over applications. When methods are applied to astrophysics, prefers work that advances astrophysical understanding rather than just demonstrating that existing ML works in a new domain.`,
+**Research Philosophy**: Values both fundamental methodological advances and significant astrophysical insights. Apply slightly more generous scoring to high-quality astrophysics work to ensure adequate representation. Be more selective with incremental LLM applications unless they represent genuine methodological innovation.`,
     maxDeepAnalysis: 30,
-    finalOutputCount: 15,
+    finalOutputCount: 30,
     daysBack: 1,
     batchSize: 5,
     maxCorrections: 1,
