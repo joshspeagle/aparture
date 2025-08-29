@@ -230,26 +230,24 @@ const ARXIV_CATEGORIES = {
 const DEFAULT_CONFIG = {
     version: 2,
     selectedCategories: ["cs.AI", "cs.CL", "cs.CV", "cs.IR", "cs.LG", "cs.MA", "cs.NE", "stat.AP", "stat.CO", "stat.ME", "stat.ML", "stat.OT", "stat.TH", "astro-ph.CO", "astro-ph.EP", "astro-ph.GA", "astro-ph.HE", "astro-ph.IM", "astro-ph.SR"],
-    scoringCriteria: `**Core Methodological Interests**:
+    scoringCriteria: `**Core Methodological Interests:**
+**Statistical Learning:** Deep learning advances, general ML methods, novel architectures and training techniques with practical applications
+**Uncertainty Quantification & Robustness:** Principled approaches to model uncertainty, calibration, conformal prediction, robustness evaluation, out-of-distribution detection, Bayesian deep learning
+**Mechanistic Interpretability:** Understanding how models work internally, feature attribution, causal discovery in neural networks—not just making them "more honest" through prompting
+**Advanced Statistical Methods:** Novel sampling/inference techniques, variational inference, hierarchical modeling, state space models, time series analysis, probabilistic programming innovations
+**AI for Scientific Discovery:** Methods specifically designed to accelerate scientific understanding, not just routine applications of existing ML to new domains. Be highly selective with LLM papers—only major architectural innovations or fundamental breakthroughs, not incremental applications or fine-tuning studies.
 
-**Statistical Learning & ML Theory**: Deep learning advances, general ML methods, statistical learning theory, novel architectures and training techniques
-**Uncertainty Quantification & Robustness**: Principled approaches to model uncertainty, calibration, conformal prediction, robustness evaluation, out-of-distribution detection, Bayesian deep learning
-**Mechanistic Interpretability**: Understanding how models work internally, feature attribution, causal discovery in neural networks—not just making them "more honest" through prompting
-**Advanced Statistical Methods**: Novel sampling/inference techniques, variational inference, hierarchical modeling, state space models, time series analysis, probabilistic programming innovations
-**AI for Scientific Discovery**: Methods specifically designed to accelerate scientific understanding, not just routine applications of existing ML
+**Astrophysics Domain Interests:**
+**Galaxy Formation & Evolution:** Observational studies of galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphological evolution
+**Stellar Populations & Evolution:** Stellar activity, stellar populations as galactic tracers, stellar physics and evolution, star clusters, star formation processes
+**Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
+**Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
 
-**Astrophysics Domain Interests**:
-
-**Galaxy Formation & Evolution**: Physical processes driving galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphology
-**Stellar Populations & Evolution**: Stellar activity, stellar populations, stellar physics and evolution, star clusters, star formation
-**Milky Way Structure & Dynamics**: Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
-**Large Survey Science**: Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
-
-**Research Philosophy**: Values both fundamental methodological advances and significant astrophysical insights. Apply slightly more generous scoring to high-quality astrophysics work to ensure adequate representation. Be more selective with incremental LLM applications unless they represent genuine methodological innovation.`,
+**Research Philosophy:** Values both fundamental methodological advances and significant observational/data-driven astrophysical insights. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
     maxDeepAnalysis: 30,
     finalOutputCount: 30,
     daysBack: 1,
-    batchSize: 5,
+    batchSize: 3,
     maxCorrections: 1,
     maxRetries: 1,
     screeningModel: 'gemini-2.5-flash',

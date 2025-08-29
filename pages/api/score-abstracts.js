@@ -193,22 +193,34 @@ For each paper below, provide a relevance score from 0.0-10.0 (one decimal place
 Papers to score:
 ${papers.map((p, idx) => `Paper ${idx + 1}: Title: ${p.title} Abstract: ${p.abstract}`).join('\n')}
 
-SCORING RUBRIC:
-- 9.0-10.0: Groundbreaking work that will change the field (extremely rare)
-- 8.0-8.9: Significant methodological advance with clear practical impact
-- 7.0-7.9: Solid contribution with novel insights, well-executed
-- 6.0-6.9: Good work with some novelty, worth reading
-- 5.0-5.9: Competent work, technically sound but limited novelty
-- 3.0-4.9: Incremental work or weak connection to interests
-- 1.0-2.9: Poor execution, outdated, or very limited relevance
-- 0.0-0.9: Irrelevant or fundamentally flawed
+SCORING APPROACH:
+Assess each paper on two dimensions, then combine using the formula below:
 
-IMPORTANT: Be much more selective with scores above 7.0. Most solid academic papers should score 4-6. Don't reward papers just for:
-- Trendy buzzwords without genuine technical depth or methodological substance
-- Cross-disciplinary applications unless the methodology itself is genuinely novel
-- Standard applications of established methods to new domains or datasets
+RESEARCH ALIGNMENT (0-10): How well does this match my specific research interests?
+- 9-10: Directly addresses my core research areas with perfect fit
+- 7-8: Strong overlap with stated interests
+- 5-6: Moderate connection to research areas
+- 3-4: Weak connection, peripherally related
+- 0-2: Little to no connection to stated interests
 
-USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. to create better discrimination within bands.
+PAPER QUALITY (0-10): How impactful/well-executed is this work?
+- 9-10: Genuinely transformative work that will significantly advance the field
+- 7-8: Significant methodological advance or major discovery with clear impact
+- 5-6: Competent work, adequately executed using standard approaches
+- 3-4: Incremental work with limited novelty
+- 0-2: Poor execution, outdated, or fundamentally flawed
+
+FINAL SCORE = (Research Alignment x 0.5) + (Paper Quality x 0.5)
+
+IMPORTANT GUIDANCE:
+- Be strict with Paper Quality scores - most competent work should score 4-6 on quality
+- For Quality 7+: Ask "Does this introduce genuinely new methods or surprising findings?"
+- For Quality 8+: Ask "Will this change how other researchers approach problems?"
+- For Quality 9+: Ask "Will this be considered a landmark paper in 5-10 years?"
+- Don't reward papers just for trendy buzzwords without genuine technical depth
+- Keep in mind that papers are often less impressive than their abstracts suggest
+
+USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. to create better discrimination. Use the full 0-10 scale.
 
 Respond ONLY with a valid JSON array in this exact format:
 [
