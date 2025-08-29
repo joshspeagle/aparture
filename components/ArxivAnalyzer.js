@@ -243,7 +243,7 @@ const DEFAULT_CONFIG = {
 **Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
 **Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
 
-**Research Philosophy:** Values both fundamental methodological advances and significant observational/data-driven astrophysical insights. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
+**Research Philosophy:** Values both fundamental methodological advances in general along with significant observational/data-driven astrophysical insights. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
     maxDeepAnalysis: 30,
     finalOutputCount: 30,
     daysBack: 1,
