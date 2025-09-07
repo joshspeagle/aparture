@@ -83,7 +83,7 @@ async function callOpenAI(modelName, prompt) {
 
     const requestBody = {
         model: modelName,
-        max_tokens: 5000,
+        max_completion_tokens: 5000,
         messages: [{ role: "user", content: prompt }]
     };
 
