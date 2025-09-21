@@ -138,3 +138,11 @@ config.local.json
 
 # Reports
 reports/
+
+# Claude Code related files
+CLAUDE.md
+.claude/
+*.claude
+.claude-code/
+claude-code.json
+.claudecode*
