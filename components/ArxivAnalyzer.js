@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, TestTube, Unlock, XCircle, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TEST_PAPERS, generateTestReport, MockAPITester } from '../utils/testUtils';
 import { AVAILABLE_MODELS } from '../utils/models';
+import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
 
 // Distribution that uses the full 0-10 range with decimals
 const generateRealisticScore = () => {
@@ -244,7 +244,7 @@ const DEFAULT_CONFIG = {
 **Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
 **Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
 
-**Research Philosophy:** Values both (1) fundamental methodological advances in general and (2) significant observational/data-driven astrophysical insights. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
+**Research Philosophy:** Values EITHER (1) fundamental methodological advances in general OR (2) significant observational/data-driven astrophysical insights. Papers excelling in ANY category above should score highly - they do NOT need to match multiple domains. A landmark ML paper should score as highly as a landmark astrophysics paper. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
     maxDeepAnalysis: 30,
     finalOutputCount: 30,
     daysBack: 1,
@@ -2501,11 +2501,10 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         </span>
                         {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
                             <span
-                                className={`text-xs px-2 py-1 rounded ${
-                                    paper.scoreAdjustment > 0
+                                className={`text-xs px-2 py-1 rounded ${paper.scoreAdjustment > 0
                                         ? 'bg-green-500/20 text-green-400'
                                         : 'bg-orange-500/20 text-orange-400'
-                                }`}
+                                    }`}
                                 title={paper.adjustmentReason}
                             >
                                 {paper.scoreAdjustment > 0 ? '↑' : '↓'} {Math.abs(paper.scoreAdjustment).toFixed(1)}
@@ -2729,23 +2728,23 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-2">
                                         Quick Filter Model (Stage 1)
-                                        </label>
-                                        <select
-                                            value={config.filterModel}
-                                            onChange={(e) => setConfig(prev => ({ ...prev, filterModel: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
-                                            disabled={processing.isRunning}
-                                        >
-                                            {AVAILABLE_MODELS.filter(m => ['gemini-2.5-flash-lite', 'gpt-5-nano', 'claude-haiku-3.5'].includes(m.id)).map(model => (
-                                                <option key={model.id} value={model.id}>
-                                                    {model.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
-                                            <p className="text-xs text-gray-300">
-                                                {AVAILABLE_MODELS.find(m => m.id === config.filterModel)?.description}
-                                            </p>
+                                    </label>
+                                    <select
+                                        value={config.filterModel}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, filterModel: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
+                                        disabled={processing.isRunning}
+                                    >
+                                        {AVAILABLE_MODELS.filter(m => ['gemini-2.5-flash-lite', 'gpt-5-nano', 'claude-haiku-3.5'].includes(m.id)).map(model => (
+                                            <option key={model.id} value={model.id}>
+                                                {model.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+                                        <p className="text-xs text-gray-300">
+                                            {AVAILABLE_MODELS.find(m => m.id === config.filterModel)?.description}
+                                        </p>
                                     </div>
                                 </div>
 
