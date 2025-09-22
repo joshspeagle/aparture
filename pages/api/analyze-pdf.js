@@ -1,69 +1,51 @@
+const { MODEL_REGISTRY } = require('../../utils/models.js');
+
 // Simple password check function
 function checkPassword(password) {
     return password === process.env.ACCESS_PASSWORD;
 }
 
 // Function to call different AI models for PDF analysis
-async function callAIModelWithPDF(model, prompt, base64Data) {
-    switch (model) {
-        case 'claude-opus-4.1':
-            return await callClaudeWithPDF('claude-opus-4-1-20250805', prompt, base64Data);
+async function callAIModelWithPDF(modelId, prompt, base64Data) {
+    const modelConfig = MODEL_REGISTRY[modelId];
 
-        case 'claude-sonnet-4':
-            return await callClaudeWithPDF('claude-sonnet-4-20250514', prompt, base64Data);
+    if (!modelConfig) {
+        throw new Error(`Unsupported model: ${modelId}`);
+    }
 
-        case 'gpt-5':
-            return await callOpenAIWithPDF('gpt-5', prompt, base64Data);
+    const { apiId, provider } = modelConfig;
 
-        case 'gpt-5-mini':
-            return await callOpenAIWithPDF('gpt-5-mini', prompt, base64Data);
-
-        case 'gpt-5-nano':
-            return await callOpenAIWithPDF('gpt-5-nano', prompt, base64Data);
-
-        case 'gemini-2.5-pro':
-            return await callGeminiWithPDF('gemini-2.5-pro', prompt, base64Data);
-
-        case 'gemini-2.5-flash':
-            return await callGeminiWithPDF('gemini-2.5-flash', prompt, base64Data);
-
-        case 'gemini-2.5-flash-lite':
-            return await callGeminiWithPDF('gemini-2.5-flash-lite', prompt, base64Data);
-
+    switch (provider) {
+        case 'Anthropic':
+            return await callClaudeWithPDF(apiId, prompt, base64Data);
+        case 'OpenAI':
+            return await callOpenAIWithPDF(apiId, prompt, base64Data);
+        case 'Google':
+            return await callGeminiWithPDF(apiId, prompt, base64Data);
         default:
-            throw new Error(`Unsupported model: ${model}`);
+            throw new Error(`Unsupported provider: ${provider}`);
     }
 }
 
 // Function to call AI models without PDF (for corrections)
-async function callAIModel(model, prompt) {
-    switch (model) {
-        case 'claude-opus-4.1':
-            return await callClaude('claude-opus-4-1-20250805', prompt);
+async function callAIModel(modelId, prompt) {
+    const modelConfig = MODEL_REGISTRY[modelId];
 
-        case 'claude-sonnet-4':
-            return await callClaude('claude-sonnet-4-20250514', prompt);
+    if (!modelConfig) {
+        throw new Error(`Unsupported model: ${modelId}`);
+    }
 
-        case 'gpt-5':
-            return await callOpenAI('gpt-5', prompt);
+    const { apiId, provider } = modelConfig;
 
-        case 'gpt-5-mini':
-            return await callOpenAI('gpt-5-mini', prompt);
-
-        case 'gpt-5-nano':
-            return await callOpenAI('gpt-5-nano', prompt);
-
-        case 'gemini-2.5-pro':
-            return await callGemini('gemini-2.5-pro', prompt);
-
-        case 'gemini-2.5-flash':
-            return await callGemini('gemini-2.5-flash', prompt);
-
-        case 'gemini-2.5-flash-lite':
-            return await callGemini('gemini-2.5-flash-lite', prompt);
-
+    switch (provider) {
+        case 'Anthropic':
+            return await callClaude(apiId, prompt);
+        case 'OpenAI':
+            return await callOpenAI(apiId, prompt);
+        case 'Google':
+            return await callGemini(apiId, prompt);
         default:
-            throw new Error(`Unsupported model: ${model}`);
+            throw new Error(`Unsupported provider: ${provider}`);
     }
 }
 
@@ -263,6 +245,37 @@ async function callGemini(modelName, prompt) {
     return data.candidates[0].content.parts[0].text;
 }
 
+// Function to validate PDF analysis response structure
+function validatePDFAnalysisResponse(responseText) {
+    try {
+        const parsed = JSON.parse(responseText);
+
+        const errors = [];
+
+        // Check required fields
+        const requiredFields = ['summary', 'keyFindings', 'methodology', 'limitations', 'relevanceAssessment', 'updatedScore'];
+
+        requiredFields.forEach(field => {
+            if (!(field in parsed)) {
+                errors.push(`Missing required field: ${field}`);
+            } else if (field === 'updatedScore') {
+                if (typeof parsed[field] !== 'number' || parsed[field] < 0 || parsed[field] > 10) {
+                    errors.push(`updatedScore must be a number between 0 and 10`);
+                }
+            } else {
+                if (typeof parsed[field] !== 'string' || parsed[field].length < 20) {
+                    errors.push(`${field} must be a string with meaningful content`);
+                }
+            }
+        });
+
+        return { isValid: errors.length === 0, errors };
+
+    } catch (e) {
+        return { isValid: false, errors: ['Invalid JSON: ' + e.message] };
+    }
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -347,11 +360,51 @@ Your entire response MUST ONLY be a single, valid JSON object. DO NOT respond wi
         }
 
         // Clean up response text (remove markdown formatting if present)
-        const cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+        // Always validate response structure (not just on parse failure)
+        const validation = validatePDFAnalysisResponse(cleanedText);
+
+        // If validation fails and this isn't already a correction attempt, try to correct
+        if (!validation.isValid && !correctionPrompt) {
+            console.log('Initial PDF analysis response validation failed:', validation.errors);
+
+            // Build correction prompt with specific errors
+            const correctionRequest = `The previous response had formatting/structure errors:
+${validation.errors.join('\n')}
+
+Original response:
+${cleanedText}
+
+Please provide a corrected response with all required fields.
+Required fields: summary, keyFindings, methodology, limitations, relevanceAssessment, updatedScore
+
+Your entire response MUST ONLY be a valid JSON object in this exact format:
+{
+  "summary": "Multi-paragraph summary with \\n\\n between paragraphs",
+  "keyFindings": "Key findings paragraph",
+  "methodology": "Methodology paragraph",
+  "limitations": "Limitations paragraph",
+  "relevanceAssessment": "Relevance assessment paragraph",
+  "updatedScore": 5.5
+}`;
+
+            // Try correction
+            const correctedResponse = await callAIModel(model, correctionRequest);
+            responseText = correctedResponse;
+            cleanedText = correctedResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        }
 
         let analysis;
         try {
             analysis = JSON.parse(cleanedText);
+
+            // Final validation even after correction
+            const finalValidation = validatePDFAnalysisResponse(cleanedText);
+            if (!finalValidation.isValid) {
+                console.warn('PDF analysis response still invalid after correction:', finalValidation.errors);
+            }
+
         } catch (parseError) {
             // If this is a correction attempt that still failed, return the raw response for debugging
             if (correctionPrompt) {

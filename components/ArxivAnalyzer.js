@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Download, FileText, Loader2, Lock, Pause, Play, RotateCcw, Settings, Square, TestTube, Unlock, XCircle, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TEST_PAPERS, generateTestReport } from '../utils/testUtils';
+import { TEST_PAPERS, generateTestReport, MockAPITester } from '../utils/testUtils';
+import { AVAILABLE_MODELS } from '../utils/models';
 
 // Distribution that uses the full 0-10 range with decimals
 const generateRealisticScore = () => {
@@ -250,70 +251,19 @@ const DEFAULT_CONFIG = {
     batchSize: 3,
     maxCorrections: 1,
     maxRetries: 1,
-    screeningModel: 'gemini-2.5-flash',
-    deepAnalysisModel: 'gemini-2.5-pro',
+    // Three-stage model configuration
+    useQuickFilter: true,  // NEW: Enable quick filtering stage (enabled by default)
+    filterModel: 'gemini-2.5-flash-lite',  // NEW: Model for quick YES/NO/MAYBE filtering
+    filterBatchSize: 10,  // NEW: Batch size for filtering
+    categoriesToScore: ['YES', 'MAYBE'],  // NEW: Which filter categories proceed to scoring
+    scoringModel: 'gemini-2.5-flash',  // RENAMED from screeningModel
+    scoringBatchSize: 3,  // RENAMED from batchSize
+    pdfModel: 'gemini-2.5-pro',  // RENAMED from deepAnalysisModel
     maxAbstractDisplay: 500
 };
 
 // Available AI models
-const AVAILABLE_MODELS = [
-    {
-        id: 'claude-opus-4.1',
-        name: 'Claude Opus 4.1',
-        provider: 'Anthropic',
-        supportsPDF: true,
-        description: 'Most capable Claude model'
-    },
-    {
-        id: 'claude-sonnet-4',
-        name: 'Claude Sonnet 4',
-        provider: 'Anthropic',
-        supportsPDF: true,
-        description: 'Fast and efficient for most tasks'
-    },
-    {
-        id: 'gpt-5',
-        name: 'OpenAI GPT-5',
-        provider: 'OpenAI',
-        supportsPDF: true,
-        description: 'Most capable OpenAI model'
-    },
-    {
-        id: 'gpt-5-mini',
-        name: 'OpenAI GPT-5 Mini',
-        provider: 'OpenAI',
-        supportsPDF: true,
-        description: 'Balanced performance and cost'
-    },
-    {
-        id: 'gpt-5-nano',
-        name: 'OpenAI GPT-5 Nano',
-        provider: 'OpenAI',
-        supportsPDF: true,
-        description: 'Fastest and most cost-effective'
-    },
-    {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        provider: 'Google',
-        supportsPDF: true,
-        description: 'Most capable Gemini model'
-    },
-    {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        provider: 'Google',
-        supportsPDF: true,
-        description: 'Fast Google model'
-    },
-    {
-        id: 'gemini-2.5-flash-lite',
-        name: 'Gemini 2.5 Flash-Lite',
-        provider: 'Google',
-        supportsPDF: true,
-        description: 'Most cost-effective Google model'
-    }
-];
+// AVAILABLE_MODELS is now imported from utils/models.js
 
 // Main Application Component
 function ArxivAnalyzer() {
@@ -331,6 +281,15 @@ function ArxivAnalyzer() {
         allPapers: [],
         scoredPapers: [],
         finalRanking: []
+    });
+    const [filterResults, setFilterResults] = useState({
+        total: 0,
+        yes: [],
+        maybe: [],
+        no: [],
+        inProgress: false,
+        currentBatch: 0,
+        totalBatches: 0
     });
     const [processingTiming, setProcessingTiming] = useState({
         startTime: null,
@@ -389,10 +348,24 @@ function ArxivAnalyzer() {
                         // Use fresh defaults for outdated configs
                         setConfig(DEFAULT_CONFIG);
                     } else {
-                        // Handle migration from single model to dual model setup
-                        if (parsed.config.selectedModel && !parsed.config.screeningModel) {
-                            parsed.config.screeningModel = 'claude-sonnet-4';
-                            parsed.config.deepAnalysisModel = parsed.config.selectedModel;
+                        // Handle migration from old model names to new three-model setup
+                        if (parsed.config.screeningModel && !parsed.config.scoringModel) {
+                            // Migrate from two-model to three-model structure
+                            parsed.config.filterModel = 'gemini-2.5-flash-lite';
+                            parsed.config.scoringModel = parsed.config.screeningModel;
+                            parsed.config.pdfModel = parsed.config.deepAnalysisModel;
+                            parsed.config.filterBatchSize = 10;
+                            parsed.config.scoringBatchSize = parsed.config.batchSize || 3;
+                            parsed.config.useQuickFilter = false;
+                            parsed.config.categoriesToScore = ['YES', 'MAYBE'];
+                            delete parsed.config.screeningModel;
+                            delete parsed.config.deepAnalysisModel;
+                        }
+                        // Handle even older single model setup
+                        if (parsed.config.selectedModel) {
+                            parsed.config.filterModel = 'gemini-2.5-flash-lite';
+                            parsed.config.scoringModel = 'gemini-2.5-flash';
+                            parsed.config.pdfModel = parsed.config.selectedModel;
                             delete parsed.config.selectedModel;
                         }
 
@@ -516,6 +489,72 @@ function ArxivAnalyzer() {
             }
             if (pauseRef.current) {
                 await waitForResume();
+            }
+        }
+
+        // Mock quick filter API with abort/pause support
+        async mockQuickFilter(papers, isCorrection = false) {
+            await this.checkAbortAndPause();
+
+            this.callCount++;
+            const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
+
+            // Simulate API delay with abort checking
+            await this.sleepWithAbortCheck(50 + Math.random() * 100);
+
+            console.log(`Mock Quick Filter API Call ${this.callCount}: Testing scenario '${scenario}'${isCorrection ? ' (correction)' : ''}`);
+
+            // Check again after delay
+            await this.checkAbortAndPause();
+
+            switch (scenario) {
+                case 'valid':
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                    })));
+
+                case 'malformed':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                        })));
+                    }
+                    return `{"invalid": "json" "missing_comma": true}`;
+
+                case 'missing_field':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                        })));
+                    }
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1
+                        // Missing verdict field
+                    })));
+
+                case 'wrong_type':
+                    if (isCorrection) {
+                        return JSON.stringify(papers.map((_, idx) => ({
+                            paperIndex: idx + 1,
+                            verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                        })));
+                    }
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: 123 // Wrong type
+                    })));
+
+                case 'retry_failure':
+                    throw new Error('Mock Filter API temporary failure - should trigger retry');
+
+                case 'final_failure':
+                    throw new Error('Mock Filter API permanent failure - should fail after all retries');
+
+                default:
+                    return JSON.stringify([]);
             }
         }
 
@@ -718,13 +757,14 @@ function ArxivAnalyzer() {
                             await waitForResume();
                         }
 
-                        addError(`${context} - Attempting correction ${correctionCount}/${config.maxCorrections}`);
+                        addError(`${context} - Frontend correction attempt ${correctionCount}/${config.maxCorrections} (backend already attempted validation)`);
 
-                        const correctionPrompt = `The previous response was not in the correct format. Here is the malformed output:
+                        const correctionPrompt = `The response still has issues after backend validation. Please provide a properly formatted response.
 
+Previous response:
 ${responseText}
 
-Please fix the formatting and return ONLY valid JSON. The error was: ${lastError.message}
+Error: ${lastError.message}
 
 ${originalPromptInfo ? `Original task: ${originalPromptInfo}` : ''}
 
@@ -1192,13 +1232,189 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         });
     };
 
+    // Quick filter papers using YES/NO/MAYBE verdicts
+    const performQuickFilter = async (papers, isDryRun = false) => {
+        if (!config.useQuickFilter) {
+            return papers;  // Skip filtering if disabled
+        }
+
+        setProcessing(prev => ({ ...prev, stage: 'filtering', progress: { current: 0, total: papers.length } }));
+
+        const batchSize = config.filterBatchSize || 10;
+        const totalBatches = Math.ceil(papers.length / batchSize);
+
+        // Initialize filter results
+        setFilterResults({
+            total: papers.length,
+            yes: [],
+            maybe: [],
+            no: [],
+            inProgress: true,
+            currentBatch: 0,
+            totalBatches
+        });
+
+        const filteredPapers = [];
+        const allVerdicts = [];
+
+        for (let i = 0; i < papers.length; i += batchSize) {
+            if (pauseRef.current) {
+                await waitForResume();
+            }
+
+            if (abortControllerRef.current?.signal.aborted) {
+                throw new Error('Operation aborted');
+            }
+
+            const batch = papers.slice(i, Math.min(i + batchSize, papers.length));
+            const batchIndex = Math.floor(i / batchSize);
+
+            setFilterResults(prev => ({ ...prev, currentBatch: batchIndex + 1 }));
+
+            try {
+                let verdicts;
+
+                if (isDryRun) {
+                    // Mock filter for dry run using the mock API tester
+                    const mockApiCall = async (isCorrection = false) => {
+                        if (!mockAPITesterRef.current) {
+                            mockAPITesterRef.current = new MockAPITester();
+                        }
+                        return await mockAPITesterRef.current.mockQuickFilter(batch, isCorrection);
+                    };
+
+                    const parseResponse = (text) => {
+                        const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const parsed = JSON.parse(cleaned);
+                        // Ensure we return an array format
+                        return Array.isArray(parsed) ? parsed : (parsed.verdicts || []);
+                    };
+
+                    verdicts = await makeMockRobustAPICall(
+                        mockApiCall,
+                        parseResponse,
+                        `Mock filter batch ${batchIndex + 1}/${totalBatches}`
+                    );
+                } else {
+                    // Real API call
+                    const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                        const requestBody = {
+                            papers: batch.map(p => ({ title: p.title, id: p.id, abstract: p.abstract })),
+                            password: password,
+                            model: config.filterModel
+                        };
+
+                        if (isCorrection && correctionPrompt) {
+                            requestBody.correctionPrompt = correctionPrompt;
+                        }
+
+                        const response = await fetch('/api/quick-filter', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestBody),
+                            signal: abortControllerRef.current?.signal
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`Filter API error: ${response.status} - ${errorText}`);
+                        }
+
+                        const data = await response.json();
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        return data.rawResponse || JSON.stringify(data.verdicts);
+                    };
+
+                    const parseResponse = (text) => {
+                        const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const parsed = JSON.parse(cleaned);
+                        if (!parsed.verdicts && Array.isArray(parsed)) {
+                            return { verdicts: parsed };
+                        }
+                        return parsed;
+                    };
+
+                    const result = await makeRobustAPICall(
+                        makeAPICall,
+                        parseResponse,
+                        `Filter batch ${batchIndex + 1}/${totalBatches}`
+                    );
+
+                    verdicts = result.verdicts || result;
+                }
+
+                // Apply verdicts to papers
+                // Handle both array format (real API) and paperIndex format (mock API)
+                const verdictsArray = Array.isArray(verdicts) ? verdicts : [];
+
+                verdictsArray.forEach((verdict) => {
+                    // Get the paper based on paperIndex (1-indexed) or by order
+                    const paperIdx = verdict.paperIndex ? verdict.paperIndex - 1 : verdictsArray.indexOf(verdict);
+
+                    if (paperIdx >= 0 && paperIdx < batch.length) {
+                        const paper = batch[paperIdx];
+                        paper.filterVerdict = verdict.verdict;
+
+                        // Update live results
+                        if (verdict.verdict === 'YES') {
+                            setFilterResults(prev => ({ ...prev, yes: [...prev.yes, paper] }));
+                        } else if (verdict.verdict === 'MAYBE') {
+                            setFilterResults(prev => ({ ...prev, maybe: [...prev.maybe, paper] }));
+                        } else {
+                            setFilterResults(prev => ({ ...prev, no: [...prev.no, paper] }));
+                        }
+
+                        // Add to filtered list if in selected categories
+                        if (config.categoriesToScore.includes(verdict.verdict)) {
+                            filteredPapers.push(paper);
+                        }
+                    }
+                });
+
+                allVerdicts.push(...verdictsArray);
+
+                setProcessing(prev => ({
+                    ...prev,
+                    progress: { current: Math.min(i + batchSize, papers.length), total: papers.length }
+                }));
+
+            } catch (error) {
+                if (error.message === 'Operation aborted') {
+                    throw error;
+                }
+                addError(`Filter batch ${batchIndex + 1} failed: ${error.message}`);
+                // On failure, include all papers in batch as MAYBE (safe default)
+                batch.forEach(paper => {
+                    paper.filterVerdict = 'MAYBE';
+                    if (config.categoriesToScore.includes('MAYBE')) {
+                        filteredPapers.push(paper);
+                    }
+                });
+            }
+        }
+
+        setFilterResults(prev => ({ ...prev, inProgress: false }));
+
+        console.log(`\n=== FILTER SUMMARY ===`);
+        console.log(`Total papers: ${papers.length}`);
+        console.log(`YES: ${filterResults.yes.length} (${Math.round(filterResults.yes.length / papers.length * 100)}%)`);
+        console.log(`MAYBE: ${filterResults.maybe.length} (${Math.round(filterResults.maybe.length / papers.length * 100)}%)`);
+        console.log(`NO: ${filterResults.no.length} (${Math.round(filterResults.no.length / papers.length * 100)}%)`);
+        console.log(`Papers proceeding to scoring: ${filteredPapers.length}`);
+
+        return filteredPapers;
+    };
+
     // Score abstracts using chosen API (or mock for dry run)
     const scoreAbstracts = async (papers, isDryRun = false) => {
         setProcessing(prev => ({ ...prev, stage: 'initial-scoring', progress: { current: 0, total: papers.length } }));
 
         const scoredPapers = [];
         const failedPapers = []; // Track failed papers separately
-        const batchSize = config.batchSize;
+        const batchSize = config.scoringBatchSize || config.batchSize || 3;  // Use scoringBatchSize, fallback to old batchSize
 
         for (let i = 0; i < papers.length; i += batchSize) {
             if (pauseRef.current) {
@@ -1254,7 +1470,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             papers: batch,
                             scoringCriteria: config.scoringCriteria,
                             password: password,
-                            model: config.screeningModel
+                            model: config.scoringModel
                         };
 
                         if (isCorrection && correctionPrompt) {
@@ -1452,7 +1668,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                             originalScore: paper.relevanceScore,
                             originalJustification: paper.scoreJustification,
                             password: password,
-                            model: config.deepAnalysisModel
+                            model: config.pdfModel
                         };
 
                         if (isCorrection && correctionPrompt) {
@@ -1576,6 +1792,18 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         const startTime = new Date();
         setProcessingTiming({ startTime, endTime: null, duration: null });
         setProcessing(prev => ({ ...prev, isRunning: true, isPaused: false, errors: [] }));
+
+        // Reset filter results for new processing
+        setFilterResults({
+            total: 0,
+            yes: [],
+            maybe: [],
+            no: [],
+            inProgress: false,
+            currentBatch: 0,
+            totalBatches: 0
+        });
+
         pauseRef.current = false;
         abortControllerRef.current = new AbortController();
 
@@ -1598,15 +1826,29 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 }
             }
 
-            // Stage 2: Score abstracts (now returns only successfully scored papers)
-            const scoredPapers = await scoreAbstracts(papers, isDryRun);
+            // Stage 2: Quick filter (if enabled)
+            let papersToScore = papers;
+            if (config.useQuickFilter) {
+                papersToScore = await performQuickFilter(papers, isDryRun);
+
+                if (papersToScore.length === 0) {
+                    addError('No papers passed the initial filter. Consider adjusting filter criteria or categories.');
+                    return;
+                }
+
+                console.log(`\n=== FILTER COMPLETE ===`);
+                console.log(`Papers proceeding to scoring: ${papersToScore.length} of ${papers.length} (${Math.round(papersToScore.length / papers.length * 100)}%)`);
+            }
+
+            // Stage 3: Score abstracts (now returns only successfully scored papers)
+            const scoredPapers = await scoreAbstracts(papersToScore, isDryRun);
 
             if (scoredPapers.length === 0) {
                 addError('No papers could be scored successfully. Check your API configuration and try again.');
                 return;
             }
 
-            // Stage 3: Select top papers for deep analysis (now working with filtered, sorted papers)
+            // Stage 4: Select top papers for deep analysis (now working with filtered, sorted papers)
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
 
             // Use the sorted scoredPapers from results, and ensure minimum score threshold
@@ -1629,10 +1871,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             // Pre-populate finalRanking to prevent empty state during PDF analysis
             setResults(prev => ({ ...prev, finalRanking: topPapers }));
 
-            // Stage 4: Deep analysis
+            // Stage 5: Deep analysis
             const analyzedPapers = await analyzePDFs(topPapers, isDryRun);
 
-            // Stage 5: Final ranking and output
+            // Stage 6: Final ranking and output
             setProcessing(prev => ({ ...prev, stage: 'complete' }));
 
             // Sort by final score (or relevance score as fallback)
@@ -1809,6 +2051,15 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
     const handleReset = () => {
         handleStop();
         setResults({ allPapers: [], scoredPapers: [], finalRanking: [] });
+        setFilterResults({
+            total: 0,
+            yes: [],
+            maybe: [],
+            no: [],
+            inProgress: false,
+            currentBatch: 0,
+            totalBatches: 0
+        });
         setProcessing({
             stage: 'idle',
             progress: { current: 0, total: 0 },
@@ -1833,7 +2084,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 **Papers Analyzed:** ${Math.min(results.scoredPapers.length, config.maxDeepAnalysis)}
 **Final Report:** ${results.finalRanking.length}
 **Categories:** ${config.selectedCategories.join(', ')}  
-**Models Used:** ${config.screeningModel} (screening), ${config.deepAnalysisModel} (analysis)
+**Models Used:** ${config.useQuickFilter ? config.filterModel + ' (filter), ' : ''}${config.scoringModel} (scoring), ${config.pdfModel} (PDF analysis)
 
 ---
 
@@ -2129,17 +2380,43 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">
-                                AI Models
+                                AI Model Configuration
                             </label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Screening Model */}
+
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Quick Filter Model */}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-2">
-                                        Abstract Screening Model
+                                        Quick Filter Model (Stage 1)
+                                        </label>
+                                        <select
+                                            value={config.filterModel}
+                                            onChange={(e) => setConfig(prev => ({ ...prev, filterModel: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
+                                            disabled={processing.isRunning}
+                                        >
+                                            {AVAILABLE_MODELS.filter(m => ['gemini-2.5-flash-lite', 'gpt-5-nano', 'claude-haiku-3.5'].includes(m.id)).map(model => (
+                                                <option key={model.id} value={model.id}>
+                                                    {model.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+                                            <p className="text-xs text-gray-300">
+                                                {AVAILABLE_MODELS.find(m => m.id === config.filterModel)?.description}
+                                            </p>
+                                    </div>
+                                </div>
+
+                                {/* Abstract Scoring Model */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                                        Abstract Scoring Model (Stage 2)
                                     </label>
                                     <select
-                                        value={config.screeningModel}
-                                        onChange={(e) => setConfig(prev => ({ ...prev, screeningModel: e.target.value }))}
+                                        value={config.scoringModel}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, scoringModel: e.target.value }))}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
                                         disabled={processing.isRunning}
                                     >
@@ -2150,45 +2427,39 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                         ))}
                                     </select>
                                     <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
-                                        <p className="text-xs text-gray-400 mb-1">
-                                            <strong>Selected:</strong> {AVAILABLE_MODELS.find(m => m.id === config.screeningModel)?.name}
-                                        </p>
                                         <p className="text-xs text-gray-300">
-                                            {AVAILABLE_MODELS.find(m => m.id === config.screeningModel)?.description}
+                                            {AVAILABLE_MODELS.find(m => m.id === config.scoringModel)?.description}
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Deep Analysis Model */}
+                                {/* Deep PDF Analysis Model */}
                                 <div>
                                     <label className="block text-xs font-medium text-gray-400 mb-2">
-                                        Deep PDF Analysis Model
+                                        Deep PDF Analysis Model (Stage 3)
                                     </label>
                                     <select
-                                        value={config.deepAnalysisModel}
-                                        onChange={(e) => setConfig(prev => ({ ...prev, deepAnalysisModel: e.target.value }))}
+                                        value={config.pdfModel}
+                                        onChange={(e) => setConfig(prev => ({ ...prev, pdfModel: e.target.value }))}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
                                         disabled={processing.isRunning}
                                     >
-                                        {AVAILABLE_MODELS.map(model => (
+                                        {AVAILABLE_MODELS.filter(m => m.supportsPDF).map(model => (
                                             <option key={model.id} value={model.id}>
                                                 {model.name}
                                             </option>
                                         ))}
                                     </select>
                                     <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
-                                        <p className="text-xs text-gray-400 mb-1">
-                                            <strong>Selected:</strong> {AVAILABLE_MODELS.find(m => m.id === config.deepAnalysisModel)?.name}
-                                        </p>
                                         <p className="text-xs text-gray-300">
-                                            {AVAILABLE_MODELS.find(m => m.id === config.deepAnalysisModel)?.description}
+                                            {AVAILABLE_MODELS.find(m => m.id === config.pdfModel)?.description}
                                         </p>
                                     </div>
                                 </div>
                             </div>
                             <div className="mt-3 p-3 bg-blue-900/20 border border-blue-800 rounded-lg">
                                 <p className="text-xs text-blue-300">
-                                    <strong>Strategy:</strong> Use a cost-effective model for screening abstracts, then a more powerful model for detailed PDF analysis of top papers.
+                                    <strong>Tip:</strong> Use cheaper models for early filtering and scoring stages, and more expensive models for analyzing PDFs to optimize cost while maintaining accuracy.
                                 </p>
                             </div>
                         </div>
@@ -2217,98 +2488,154 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                             </button>
 
                             {showAdvanced && (
-                                <div className="mt-3 space-y-3 pl-5 border-l-2 border-slate-700">
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Days to Look Back
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.daysBack}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, daysBack: parseInt(e.target.value) || 7 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="1"
-                                                max="30"
-                                                disabled={processing.isRunning}
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Abstract Batch Size
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.batchSize}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, batchSize: parseInt(e.target.value) || 5 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="1"
-                                                max="20"
-                                                disabled={processing.isRunning}
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">Papers per API call</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Max Papers for Deep Analysis
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.maxDeepAnalysis}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, maxDeepAnalysis: parseInt(e.target.value) || 30 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="1"
-                                                max="100"
-                                                disabled={processing.isRunning}
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Final Output Count
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.finalOutputCount}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, finalOutputCount: parseInt(e.target.value) || 15 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="1"
-                                                max="50"
-                                                disabled={processing.isRunning}
-                                            />
+                                <div className="mt-3 space-y-4 pl-5 border-l-2 border-slate-700">
+                                    {/* Query Options */}
+                                    <div>
+                                        <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Query Options</p>
+                                        <div className="flex gap-4">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Days to Look Back
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.daysBack}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, daysBack: parseInt(e.target.value) || 7 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="1"
+                                                    max="30"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">ArXiv search range</p>
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Correction Attempts
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.maxCorrections}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, maxCorrections: parseInt(e.target.value) || 1 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="0"
+                                                    max="5"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Fix malformed responses</p>
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Retry Attempts
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.maxRetries}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, maxRetries: parseInt(e.target.value) || 3 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="0"
+                                                    max="10"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Retry failed API calls</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Max Corrections
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.maxCorrections}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, maxCorrections: parseInt(e.target.value) || 1 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="0"
-                                                max="5"
-                                                disabled={processing.isRunning}
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">AI calls to fix malformed output</p>
+
+                                    {/* Filter Options */}
+                                    <div>
+                                        <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Filter Options</p>
+                                        <div className="flex gap-4 items-end">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Filter Batch Size
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.filterBatchSize}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, filterBatchSize: parseInt(e.target.value) || 10 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="1"
+                                                    max="20"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Papers per API call</p>
+                                            </div>
+                                            <div className="flex-2">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">Categories to Process</label>
+                                                <div className="flex gap-4 py-1.5">
+                                                    {['YES', 'MAYBE', 'NO'].map(category => (
+                                                        <label key={category} className="flex items-center text-sm text-gray-300">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={config.categoriesToScore.includes(category)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setConfig(prev => ({ ...prev, categoriesToScore: [...prev.categoriesToScore, category] }));
+                                                                    } else {
+                                                                        setConfig(prev => ({ ...prev, categoriesToScore: prev.categoriesToScore.filter(c => c !== category) }));
+                                                                    }
+                                                                }}
+                                                                className="mr-2 h-4 w-4"
+                                                                disabled={processing.isRunning}
+                                                            />
+                                                            {category}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs text-gray-400 mt-1">Filter results to score</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Max Retries
-                                            </label>
-                                            <input
-                                                type="number"
-                                                value={config.maxRetries}
-                                                onChange={(e) => setConfig(prev => ({ ...prev, maxRetries: parseInt(e.target.value) || 1 }))}
-                                                className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                                                min="0"
-                                                max="5"
-                                                disabled={processing.isRunning}
-                                            />
-                                            <p className="text-xs text-gray-400 mt-1">Full API call re-attempts</p>
+                                    </div>
+
+                                    {/* Scoring & Analysis Options */}
+                                    <div>
+                                        <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Scoring & Analysis</p>
+                                        <div className="flex gap-4">
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Scoring Batch Size
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.scoringBatchSize}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, scoringBatchSize: parseInt(e.target.value) || 3 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="1"
+                                                    max="10"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Papers per API call</p>
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Max PDF Analysis
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.maxDeepAnalysis}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, maxDeepAnalysis: parseInt(e.target.value) || 30 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="1"
+                                                    max="100"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Papers to analyze PDFs</p>
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Final Output
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.finalOutputCount}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, finalOutputCount: parseInt(e.target.value) || 15 }))}
+                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                    min="1"
+                                                    max="50"
+                                                    disabled={processing.isRunning}
+                                                />
+                                                <p className="text-xs text-gray-400 mt-1">Top papers to display</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2591,9 +2918,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                     </div>
                 </div>
 
-                {/* Results Display */}
+                {/* Scored Papers Display - Show papers that have been scored */}
                 {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
-                    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 border border-slate-800">
+                    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
                         <div className="flex items-center mb-4">
                             <FileText className="w-5 h-5 mr-2 text-green-400" />
                             <h2 className="text-xl font-semibold">
@@ -2614,7 +2941,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                             <h3 className="text-lg font-medium mb-3 text-blue-400">
                                                 📄 Papers with Deep PDF Analysis ({results.finalRanking.length})
                                             </h3>
-                                            <div className="space-y-4">
+                                            <div className="space-y-2 max-h-[1000px] overflow-y-auto pr-2">
                                                 {results.finalRanking.map((paper, idx) => (
                                                     <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={true} />
                                                 ))}
@@ -2627,7 +2954,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                 <h3 className="text-lg font-medium mb-3 text-gray-400">
                                                     📋 Abstract-Only Scores ({abstractOnlyPapers.length})
                                                 </h3>
-                                                <div className="space-y-4">
+                                                <div className="space-y-2 max-h-[750px] overflow-y-auto pr-2">
                                                     {abstractOnlyPapers.map((paper, idx) => (
                                                         <PaperCard key={paper.id} paper={paper} idx={results.finalRanking.length + idx} showDeepAnalysis={false} />
                                                     ))}
@@ -2638,15 +2965,148 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                 );
                             }
 
-                            // During abstract scoring: show all scored papers
+                            // During abstract scoring: show all scored papers with scroll
                             return (
-                                <div className="space-y-4">
+                                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                                     {results.scoredPapers.map((paper, idx) => (
                                         <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={false} />
                                     ))}
                                 </div>
                             );
                         })()}
+                    </div>
+                )}
+
+                {/* Filtered Papers Display - Persistent display that shows all papers */}
+                {(filterResults.yes.length > 0 || filterResults.maybe.length > 0 || filterResults.no.length > 0) && (
+                    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+                        <div className="flex items-center mb-4">
+                            <FileText className="w-5 h-5 mr-2 text-yellow-400" />
+                            <h2 className="text-xl font-semibold">
+                                Filtered Papers
+                                {filterResults.inProgress && (
+                                    <span className="text-sm text-gray-400 ml-2">
+                                        (Processing batch {filterResults.currentBatch || 0} of {filterResults.totalBatches || 0})
+                                    </span>
+                                )}
+                            </h2>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Get scored paper IDs to exclude them from filtered display */}
+                            {(() => {
+                                // Include all scored papers from results
+                                const scoredPaperIds = new Set([
+                                    ...results.scoredPapers.map(p => p.id),
+                                    ...(results.failedPapers || []).map(p => p.id)
+                                ]);
+
+                                const unscoredYes = filterResults.yes.filter(p => !scoredPaperIds.has(p.id));
+                                const unscoredMaybe = filterResults.maybe.filter(p => !scoredPaperIds.has(p.id));
+                                const unscoredNo = filterResults.no.filter(p => !scoredPaperIds.has(p.id));
+
+                                // Count how many were actually scored from each category
+                                const scoredYesCount = filterResults.yes.filter(p => scoredPaperIds.has(p.id)).length;
+                                const scoredMaybeCount = filterResults.maybe.filter(p => scoredPaperIds.has(p.id)).length;
+
+                                return (
+                                    <>
+                                        {/* YES papers (excluding scored ones) */}
+                                        {unscoredYes.length > 0 && (
+                                            <div>
+                                                <h3 className="text-sm font-medium mb-2 text-green-400">
+                                                    ✓ YES ({unscoredYes.length})
+                                                    {scoredYesCount > 0 && (
+                                                        <span className="text-xs text-gray-400 ml-2">
+                                                            ({scoredYesCount} scored)
+                                                        </span>
+                                                    )}
+                                                </h3>
+                                                <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
+                                                    {unscoredYes.map((paper) => (
+                                                        <div key={paper.id} className="bg-slate-800/50 rounded-lg p-3 border border-green-900/50">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1">
+                                                                    <h4 className="text-sm font-medium text-white">{paper.title}</h4>
+                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                        {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* MAYBE papers (excluding scored ones) */}
+                                        {unscoredMaybe.length > 0 && (
+                                            <div>
+                                                <h3 className="text-sm font-medium mb-2 text-yellow-400">
+                                                    ? MAYBE ({unscoredMaybe.length})
+                                                    {scoredMaybeCount > 0 && (
+                                                        <span className="text-xs text-gray-400 ml-2">
+                                                            ({scoredMaybeCount} scored)
+                                                        </span>
+                                                    )}
+                                                </h3>
+                                                <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
+                                                    {unscoredMaybe.map((paper) => (
+                                                        <div key={paper.id} className="bg-slate-800/50 rounded-lg p-3 border border-yellow-900/50">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1">
+                                                                    <h4 className="text-sm font-medium text-white">{paper.title}</h4>
+                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                        {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* NO papers (not being scored, so show all) */}
+                                        {unscoredNo.length > 0 && (
+                                            <div>
+                                                <h3 className="text-sm font-medium mb-2 text-red-400">
+                                                    ✗ NO ({unscoredNo.length} filtered out)
+                                                </h3>
+                                                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+                                                    {unscoredNo.map((paper) => (
+                                                        <div key={paper.id} className="bg-slate-800/50 rounded-lg p-3 border border-red-900/50">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1">
+                                                                    <h4 className="text-sm font-medium text-white">{paper.title}</h4>
+                                                                    <p className="text-xs text-gray-400 mt-1">
+                                                                        {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Summary stats */}
+                                        {(unscoredYes.length > 0 || unscoredMaybe.length > 0 || unscoredNo.length > 0) && (
+                                            <div className="pt-3 border-t border-slate-700 text-xs text-gray-400">
+                                                <div className="flex justify-between">
+                                                    <span>
+                                                        Filtered: {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length} papers
+                                                    </span>
+                                                    <span>
+                                                        Remaining to score: {unscoredYes.length + unscoredMaybe.length}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </div>
                     </div>
                 )}
             </div>

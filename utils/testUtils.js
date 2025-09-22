@@ -60,9 +60,100 @@ export class MockAPITester {
             'malformed',      // Malformed JSON that needs correction
             'missing_field',  // Missing required fields
             'wrong_type',     // Wrong field types
+            'incomplete',     // Incomplete response (cut off)
+            'extra_text',     // Valid JSON with extra text
             'retry_failure',  // API failure requiring retry
             'final_failure'   // Failure after all retries
         ];
+        this.validationTestMode = true; // Test new validation behavior
+    }
+
+    // Mock quick filter API
+    async mockQuickFilter(papers, isCorrection = false) {
+        this.callCount++;
+        const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
+
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 500));
+
+        console.log(`Mock Filter API Call ${this.callCount}: Testing scenario '${scenario}'${isCorrection ? ' (correction)' : ''}`);
+
+        switch (scenario) {
+            case 'valid':
+                return JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                })));
+
+            case 'malformed':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: ['YES', 'NO', 'MAYBE'][Math.floor(Math.random() * 3)]
+                    })));
+                }
+                return `{invalid json missing quotes and brackets`;
+
+            case 'missing_field':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: 'MAYBE'
+                    })));
+                }
+                return JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    // Missing verdict field
+                })));
+
+            case 'wrong_type':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: 'YES'
+                    })));
+                }
+                return JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    verdict: Math.random() > 0.5  // Boolean instead of string
+                })));
+
+            case 'incomplete':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: 'MAYBE'
+                    })));
+                }
+                const fullJson = JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    verdict: 'NO'
+                })));
+                return fullJson.slice(0, -5); // Cut off end
+
+            case 'extra_text':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: 'YES'
+                    })));
+                }
+                return `Here are the filter results:\n` +
+                    JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        verdict: ['YES', 'NO', 'MAYBE'][idx % 3]
+                    }))) +
+                    `\n\nFiltering complete.`;
+
+            case 'retry_failure':
+                throw new Error('Mock filter API temporary failure');
+
+            case 'final_failure':
+                throw new Error('Mock filter API permanent failure');
+
+            default:
+                return JSON.stringify([]);
+        }
     }
 
     // Mock abstract scoring API
@@ -121,6 +212,37 @@ export class MockAPITester {
                     score: "not_a_number", // Wrong type
                     justification: `Mock evaluation with wrong score type.`
                 })));
+
+            case 'incomplete':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        score: generateRealisticScore(),
+                        justification: `Corrected after incomplete response.`
+                    })));
+                }
+                // Simulate incomplete/cut-off response
+                const incompleteJson = JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    score: generateRealisticScore(),
+                    justification: `Mock evaluation`
+                })));
+                return incompleteJson.slice(0, -10); // Cut off last 10 chars
+
+            case 'extra_text':
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((_, idx) => ({
+                        paperIndex: idx + 1,
+                        score: generateRealisticScore(),
+                        justification: `Corrected clean response.`
+                    })));
+                }
+                // Valid JSON with extra text that might confuse parser
+                return `Here are the scores:\n\n` + JSON.stringify(papers.map((_, idx) => ({
+                    paperIndex: idx + 1,
+                    score: generateRealisticScore(),
+                    justification: `Mock evaluation for test paper ${idx + 1}.`
+                }))) + `\n\nThese scores reflect the analysis.`;
 
             case 'retry_failure':
                 throw new Error('Mock API temporary failure - should trigger retry');
@@ -200,6 +322,49 @@ export class MockAPITester {
                     updatedScore: "not_a_number" // Wrong type
                 });
 
+            case 'incomplete':
+                if (isCorrection) {
+                    return JSON.stringify({
+                        summary: `Corrected complete analysis of "${paper.title}".`,
+                        keyFindings: `Corrected key findings after incomplete response.`,
+                        methodology: `Corrected methodology analysis.`,
+                        limitations: `Corrected limitations.`,
+                        relevanceAssessment: `Corrected relevance.`,
+                        updatedScore: generateRealisticScore()
+                    });
+                }
+                // Simulate incomplete JSON response
+                const completePdf = JSON.stringify({
+                    summary: `Analysis of "${paper.title}".`,
+                    keyFindings: `Key findings here.`,
+                    methodology: `Methodology analysis.`,
+                    limitations: `Limitations noted.`,
+                    relevanceAssessment: `Relevance assessment.`,
+                    updatedScore: generateRealisticScore()
+                });
+                return completePdf.slice(0, -15); // Cut off end
+
+            case 'extra_text':
+                if (isCorrection) {
+                    return JSON.stringify({
+                        summary: `Clean corrected analysis of "${paper.title}".`,
+                        keyFindings: `Clean key findings.`,
+                        methodology: `Clean methodology.`,
+                        limitations: `Clean limitations.`,
+                        relevanceAssessment: `Clean relevance assessment.`,
+                        updatedScore: generateRealisticScore()
+                    });
+                }
+                // Valid JSON with surrounding text
+                return `Based on my analysis:\n\n` + JSON.stringify({
+                    summary: `Detailed analysis of "${paper.title}".`,
+                    keyFindings: `Important findings noted.`,
+                    methodology: `Strong methodology.`,
+                    limitations: `Some limitations exist.`,
+                    relevanceAssessment: `Highly relevant to research.`,
+                    updatedScore: generateRealisticScore()
+                }) + `\n\nThis completes the analysis.`;
+
             case 'retry_failure':
                 throw new Error('Mock PDF API temporary failure - should trigger retry');
 
@@ -223,18 +388,24 @@ Test Type: Dry Run (No API Costs Incurred)
 
 === TEST SUMMARY ===
 ✅ arXiv API queries: Working
-✅ Abstract processing: Working 
+✅ Abstract processing: Working
+✅ Mock quick filtering: Working (YES/NO/MAYBE verdicts)
 ✅ Mock abstract scoring: Working (tested error scenarios)
 ✅ PDF downloads: Working
 ✅ Mock PDF analysis: Working (tested error scenarios)
 ✅ Report generation: Working
 ✅ Error handling: Working (retries, corrections, failures)
+✅ Three-stage pipeline: Working (filter → score → PDF)
 
 === MOCK SCENARIOS TESTED ===
 - Valid API responses
 - Malformed JSON requiring correction
 - Missing required fields
 - Wrong field types
+- Incomplete/truncated responses
+- Valid JSON with extra surrounding text
+- Backend validation with auto-correction
+- Frontend fallback corrections
 - Temporary failures requiring retries
 - Permanent failures after max retries
 
