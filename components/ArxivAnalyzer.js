@@ -314,6 +314,13 @@ function ArxivAnalyzer() {
     const [expandedCategory, setExpandedCategory] = useState(null);
     const [showTestDropdown, setShowTestDropdown] = useState(false);
 
+    // NotebookLM states
+    const [podcastDuration, setPodcastDuration] = useState(20); // Default to 20 minutes
+    const [notebookLMModel, setNotebookLMModel] = useState('gemini-2.5-pro');
+    const [notebookLMStatus, setNotebookLMStatus] = useState('');
+    const [notebookLMContent, setNotebookLMContent] = useState(null);
+    const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
+
     const abortControllerRef = useRef(null);
     const pauseRef = useRef(false);
     const dropdownRef = useRef(null);
@@ -823,6 +830,70 @@ function ArxivAnalyzer() {
                 adjustmentReason: 'Default mock assessment',
                 confidence: 'MEDIUM'
             })));
+        }
+
+        // Mock NotebookLM generation API with abort/pause support
+        async mockGenerateNotebookLM(papers, targetDuration, model) {
+            await this.checkAbortAndPause();
+
+            this.callCount++;
+
+            // Simulate API delay
+            await this.sleepWithAbortCheck(100 + Math.random() * 200);
+
+            console.log(`Mock NotebookLM API Call ${this.callCount}: Generating ${targetDuration}-minute document with ${model}`);
+
+            // Check again after delay
+            await this.checkAbortAndPause();
+
+            const durationText = {
+                5: "Quick Overview",
+                10: "Standard Discussion",
+                15: "Detailed Analysis",
+                20: "In-depth Coverage",
+                30: "Comprehensive Review"
+            }[targetDuration] || "Custom Duration";
+
+            const markdown = `# Research Analysis: Mock Test Papers for ${durationText}
+
+## Executive Summary
+This is a mock NotebookLM document generated for testing purposes. The analysis covers ${papers.length} papers with a target podcast duration of ${targetDuration} minutes using the ${model} model.
+
+## Research Context and Methodology
+This document was generated through the Aparture testing system to validate NotebookLM integration. The papers analyzed represent a diverse range of topics in computer science and related fields.
+
+## Thematic Analysis
+
+### Theme 1: Machine Learning Advances
+Several papers in this collection focus on breakthrough ML techniques...
+
+#### Key Papers in This Theme
+${papers.slice(0, Math.min(3, papers.length)).map(p => `- **${p.title}** (Score: ${p.score || p.relevanceScore || 0}/10)
+  - Core Contribution: Mock contribution for ${p.title}
+  - Methodological Approach: Simulated methodology description
+  - Principal Findings: Test findings placeholder`).join('\n')}
+
+### Theme 2: System Architecture Innovations
+Another significant theme involves novel system architectures...
+
+## Comparative Insights
+The papers demonstrate complementary approaches that could be synthesized for greater impact. Notable connections include shared methodological frameworks and overlapping application domains.
+
+## Key Takeaways for Practitioners
+- Method adoption recommendations based on analyzed papers
+- Implementation considerations for production systems
+- Future research directions suggested by the collective findings
+
+## Discussion Prompts for Podcast
+- What are the most surprising findings across these papers?
+- How do these advances change current practice in the field?
+- What technical challenges remain unsolved?
+- Where might this research lead in the next 5 years?
+
+---
+*Document prepared for NotebookLM podcast generation. Target duration: ${targetDuration} minutes. Model: ${model}. Generated at: ${new Date().toISOString()}*`;
+
+            return markdown;
         }
 
         // Sleep with periodic abort checking
@@ -2468,6 +2539,84 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         URL.revokeObjectURL(url);
     };
 
+    // Generate NotebookLM document
+    const generateNotebookLM = async () => {
+        try {
+            setNotebookLMGenerating(true);
+            setNotebookLMStatus('Generating NotebookLM document...');
+            setNotebookLMContent(null);
+
+            // Combine scored papers and final ranking
+            const allPapers = results.finalRanking.length > 0 ?
+                results.finalRanking :
+                results.scoredPapers.filter(p => p.score > 0);
+
+            if (allPapers.length === 0) {
+                setNotebookLMStatus('No papers available for NotebookLM generation');
+                setNotebookLMGenerating(false);
+                return;
+            }
+
+            let markdown;
+
+            // Use mock API if in test mode
+            if (testState.dryRunInProgress && mockAPITesterRef.current) {
+                console.log('Using mock NotebookLM generation API...');
+                markdown = await mockAPITesterRef.current.mockGenerateNotebookLM(
+                    allPapers,
+                    podcastDuration,
+                    notebookLMModel
+                );
+            } else {
+                const response = await fetch('/api/generate-notebooklm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        papers: allPapers.map(paper => ({
+                            ...paper,
+                            pdfAnalysis: paper.pdfAnalysis || null
+                        })),
+                        scoringCriteria: config.scoringCriteria,
+                        targetDuration: podcastDuration,
+                        model: notebookLMModel,
+                        password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate NotebookLM document');
+                }
+
+                markdown = data.markdown;
+            }
+
+            setNotebookLMContent(markdown);
+            setNotebookLMStatus('NotebookLM document generated successfully');
+        } catch (error) {
+            console.error('NotebookLM generation error:', error);
+            setNotebookLMStatus(`Error: ${error.message}`);
+        } finally {
+            setNotebookLMGenerating(false);
+        }
+    };
+
+    // Download NotebookLM document
+    const downloadNotebookLM = () => {
+        if (!notebookLMContent) return;
+
+        const blob = new Blob([notebookLMContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        a.download = `notebooklm_${timestamp}_${podcastDuration}min.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     // Get stage display name
     const getStageDisplay = () => {
         const stages = {
@@ -2502,8 +2651,8 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
                             <span
                                 className={`text-xs px-2 py-1 rounded ${paper.scoreAdjustment > 0
-                                        ? 'bg-green-500/20 text-green-400'
-                                        : 'bg-orange-500/20 text-orange-400'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-orange-500/20 text-orange-400'
                                     }`}
                                 title={paper.adjustmentReason}
                             >
@@ -3212,6 +3361,12 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                     <div className="flex items-center mb-4">
                         <Zap className="w-5 h-5 mr-2 text-yellow-400" />
                         <h2 className="text-xl font-semibold">Progress</h2>
+                        {testState.dryRunInProgress && (
+                            <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                <TestTube className="w-3 h-3" />
+                                DRY RUN MODE
+                            </span>
+                        )}
                     </div>
 
                     <div className="space-y-4">
@@ -3275,6 +3430,12 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                             <div className="flex items-center mb-2">
                                 <Download className="w-5 h-5 mr-2 text-green-400" />
                                 <h2 className="text-xl font-semibold">Download Report</h2>
+                                {testState.dryRunInProgress && (
+                                    <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                        <TestTube className="w-3 h-3" />
+                                        TEST DATA
+                                    </span>
+                                )}
                             </div>
 
                             {processingTiming.startTime && (
@@ -3318,6 +3479,123 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                     </div>
                 </div>
 
+                {/* NotebookLM Podcast Generation Section */}
+                {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
+                    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+                        <div className="flex items-center mb-4">
+                            <FileText className="w-5 h-5 mr-2 text-purple-400" />
+                            <h2 className="text-xl font-semibold">NotebookLM Podcast Generation</h2>
+                            {testState.dryRunInProgress && (
+                                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                    <TestTube className="w-3 h-3" />
+                                    TEST MODE
+                                </span>
+                            )}
+                        </div>
+
+                        <p className="text-sm text-gray-400 mb-4">
+                            Generate a structured document optimized for NotebookLM to create an expert-level podcast discussion
+                        </p>
+
+                        <div className="space-y-4">
+                            {/* Duration and Model Selection on same line */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Duration Selection */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                                        Target Podcast Duration
+                                    </label>
+                                    <select
+                                        value={podcastDuration}
+                                        onChange={(e) => setPodcastDuration(Number(e.target.value))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white text-sm"
+                                        disabled={notebookLMGenerating}
+                                    >
+                                        <option value="5">5 minutes - Quick Overview</option>
+                                        <option value="10">10 minutes - Standard Discussion</option>
+                                        <option value="15">15 minutes - Detailed Analysis</option>
+                                        <option value="20">20 minutes - In-depth Coverage (Recommended)</option>
+                                        <option value="30">30 minutes - Comprehensive Review</option>
+                                    </select>
+                                </div>
+
+                                {/* Model Selection */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-400 mb-2">
+                                        Generation Model
+                                    </label>
+                                    <select
+                                        value={notebookLMModel}
+                                        onChange={(e) => setNotebookLMModel(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white text-sm"
+                                        disabled={notebookLMGenerating}
+                                    >
+                                        {AVAILABLE_MODELS.map(model => (
+                                            <option key={model.id} value={model.id}>
+                                                {model.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Model description below both dropdowns */}
+                            <div className="p-2 bg-slate-800/50 rounded-lg">
+                                <p className="text-xs text-gray-300">
+                                    <span className="text-gray-400">Model: </span>
+                                    {AVAILABLE_MODELS.find(m => m.id === notebookLMModel)?.description}
+                                </p>
+                            </div>
+
+                            {/* Status Display */}
+                            {notebookLMStatus && (
+                                <div className={`p-3 rounded-lg text-sm ${notebookLMStatus.includes('Error')
+                                    ? 'bg-red-900/20 text-red-400 border border-red-800'
+                                    : notebookLMStatus.includes('successfully')
+                                        ? 'bg-green-900/20 text-green-400 border border-green-800'
+                                        : 'bg-blue-900/20 text-blue-400 border border-blue-800'
+                                    }`}>
+                                    {notebookLMStatus}
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={generateNotebookLM}
+                                    disabled={notebookLMGenerating || results.scoredPapers.length === 0}
+                                    className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${notebookLMGenerating || results.scoredPapers.length === 0
+                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
+                                        }`}
+                                >
+                                    {notebookLMGenerating ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Generating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileText className="w-4 h-4" />
+                                            Generate NotebookLM File
+                                        </>
+                                    )}
+                                </button>
+
+                                {notebookLMContent && (
+                                    <button
+                                        onClick={downloadNotebookLM}
+                                        className="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        Download NotebookLM Document
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Scored Papers Display - Show papers that have been scored */}
                 {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
                     <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
@@ -3326,6 +3604,12 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                             <h2 className="text-xl font-semibold">
                                 {results.finalRanking.length > 0 ? 'Analysis Results' : 'Scored Papers'}
                             </h2>
+                            {testState.dryRunInProgress && (
+                                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                    <TestTube className="w-3 h-3" />
+                                    TEST DATA
+                                </span>
+                            )}
                         </div>
 
                         {(() => {
@@ -3390,6 +3674,12 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                     </span>
                                 )}
                             </h2>
+                            {testState.dryRunInProgress && (
+                                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                    <TestTube className="w-3 h-3" />
+                                    TEST DATA
+                                </span>
+                            )}
                         </div>
 
                         <div className="space-y-4">
