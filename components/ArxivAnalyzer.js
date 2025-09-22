@@ -258,6 +258,11 @@ const DEFAULT_CONFIG = {
     categoriesToScore: ['YES', 'MAYBE'],  // NEW: Which filter categories proceed to scoring
     scoringModel: 'gemini-2.5-flash',  // RENAMED from screeningModel
     scoringBatchSize: 3,  // RENAMED from batchSize
+    // Post-processing configuration
+    enableScorePostProcessing: true,  // Enable score post-processing
+    postProcessingCount: 50,  // Number of top papers to post-process
+    postProcessingBatchSize: 5,  // Batch size for post-processing
+    postProcessingModel: 'gemini-2.5-flash',  // Model for post-processing (defaults to scoringModel)
     pdfModel: 'gemini-2.5-pro',  // RENAMED from deepAnalysisModel
     maxAbstractDisplay: 500
 };
@@ -709,6 +714,115 @@ function ArxivAnalyzer() {
                 default:
                     return JSON.stringify({});
             }
+        }
+
+        // Mock rescore abstracts API with abort/pause support
+        async mockRescoreAbstracts(papers, isCorrection = false) {
+            await this.checkAbortAndPause();
+
+            this.callCount++;
+            const scenario = this.scenarios[(this.callCount - 1) % this.scenarios.length];
+
+            // Simulate API delay with abort checking
+            await this.sleepWithAbortCheck(50 + Math.random() * 100);
+
+            console.log(`Mock Rescore API Call ${this.callCount}: Testing scenario '${scenario}'${isCorrection ? ' (correction)' : ''}`);
+
+            // Helper to generate realistic score adjustments
+            const generateAdjustedScore = (initialScore) => {
+                // Generate adjustment between -2.0 and +2.0, with bias toward small adjustments
+                const adjustment = (Math.random() - 0.5) * 2 * (Math.random() > 0.7 ? 2.0 : 1.0);
+                const adjusted = Math.max(0, Math.min(10, initialScore + adjustment));
+                return Math.round(adjusted * 10) / 10;
+            };
+
+            const confidenceLevels = ['HIGH', 'MEDIUM', 'LOW'];
+            const adjustmentReasons = [
+                'Initially over-scored compared to similar papers in batch',
+                'Initially under-scored; stronger research alignment than first assessment',
+                'Score maintained after comparative review',
+                'Adjusted down due to less novel methodology than initially assessed',
+                'Adjusted up based on stronger technical contribution',
+                'Score confirmed as appropriate relative to other papers'
+            ];
+
+            if (scenario === 'valid' || isCorrection) {
+                return JSON.stringify(papers.map((p, idx) => {
+                    const adjusted = generateAdjustedScore(p.initialScore || p.relevanceScore);
+                    const changed = Math.abs(adjusted - (p.initialScore || p.relevanceScore)) > 0.1;
+                    return {
+                        paperIndex: idx + 1,
+                        adjustedScore: adjusted,
+                        adjustmentReason: changed
+                            ? adjustmentReasons[Math.floor(Math.random() * adjustmentReasons.length)]
+                            : 'Score maintained after comparative review',
+                        confidence: confidenceLevels[Math.floor(Math.random() * confidenceLevels.length)]
+                    };
+                }));
+            }
+
+            // Test error scenarios
+            if (scenario === 'malformed') {
+                if (isCorrection) {
+                    // Provide valid response on correction
+                    return JSON.stringify(papers.map((p, idx) => ({
+                        paperIndex: idx + 1,
+                        adjustedScore: generateAdjustedScore(p.initialScore || p.relevanceScore),
+                        adjustmentReason: 'Corrected assessment',
+                        confidence: 'MEDIUM'
+                    })));
+                }
+                return "Not valid JSON {broken";
+            }
+
+            if (scenario === 'missing_field') {
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((p, idx) => ({
+                        paperIndex: idx + 1,
+                        adjustedScore: generateAdjustedScore(p.initialScore || p.relevanceScore),
+                        adjustmentReason: 'Corrected assessment with all fields',
+                        confidence: 'HIGH'
+                    })));
+                }
+                return JSON.stringify(papers.map((p, idx) => ({
+                    paperIndex: idx + 1,
+                    adjustedScore: generateAdjustedScore(p.initialScore || p.relevanceScore)
+                    // Missing adjustmentReason and confidence
+                })));
+            }
+
+            if (scenario === 'wrong_type') {
+                if (isCorrection) {
+                    return JSON.stringify(papers.map((p, idx) => ({
+                        paperIndex: idx + 1,
+                        adjustedScore: generateAdjustedScore(p.initialScore || p.relevanceScore),
+                        adjustmentReason: 'Corrected type assessment',
+                        confidence: 'LOW'
+                    })));
+                }
+                return JSON.stringify(papers.map((p, idx) => ({
+                    paperIndex: idx + 1,
+                    adjustedScore: "not_a_number",
+                    adjustmentReason: 'Test wrong type',
+                    confidence: 'INVALID'
+                })));
+            }
+
+            if (scenario === 'retry_failure') {
+                throw new Error("Simulated API failure - should retry");
+            }
+
+            if (scenario === 'final_failure') {
+                throw new Error("Simulated persistent failure");
+            }
+
+            // Default case
+            return JSON.stringify(papers.map((p, idx) => ({
+                paperIndex: idx + 1,
+                adjustedScore: generateAdjustedScore(p.initialScore || p.relevanceScore),
+                adjustmentReason: 'Default mock assessment',
+                confidence: 'MEDIUM'
+            })));
         }
 
         // Sleep with periodic abort checking
@@ -1278,7 +1392,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     // Mock filter for dry run using the mock API tester
                     const mockApiCall = async (isCorrection = false) => {
                         if (!mockAPITesterRef.current) {
-                            mockAPITesterRef.current = new MockAPITester();
+                            mockAPITesterRef.current = new MockAPITesterEnhanced();
                         }
                         return await mockAPITesterRef.current.mockQuickFilter(batch, isCorrection);
                     };
@@ -1540,7 +1654,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         const scoredPaper = {
                             ...batch[paperIdx],
                             relevanceScore: scoreData.score,
-                            scoreJustification: scoreData.justification
+                            scoreJustification: scoreData.justification,
+                            // Store initial scores for post-processing
+                            initialScore: scoreData.score,
+                            initialJustification: scoreData.justification
                         };
 
                         // Only add papers with valid scores (> 0) to the main results
@@ -1602,6 +1719,211 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
         const finalSorted = [...scoredPapers].sort((a, b) => b.relevanceScore - a.relevanceScore);
         return finalSorted;
+    };
+
+    // Post-process scores for consistency and accuracy
+    const postProcessScores = async (papers, isDryRun = false) => {
+        // Skip if disabled or no papers to process
+        if (!config.enableScorePostProcessing || papers.length === 0) {
+            return papers;
+        }
+
+        setProcessing(prev => ({
+            ...prev,
+            stage: 'post-processing',
+            progress: { current: 0, total: Math.min(config.postProcessingCount, papers.length) }
+        }));
+
+        // Select papers for post-processing (simply take the top N papers)
+        const selectedPapers = papers.slice(0, config.postProcessingCount);
+
+        if (selectedPapers.length === 0) {
+            console.log('No papers to post-process');
+            return papers;
+        }
+
+        // Randomize the selected papers to prevent bias in batch comparisons
+        // Fisher-Yates shuffle to ensure uniform distribution
+        const papersToProcess = [...selectedPapers];
+        for (let i = papersToProcess.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [papersToProcess[i], papersToProcess[j]] = [papersToProcess[j], papersToProcess[i]];
+        }
+
+        console.log(`\n=== POST-PROCESSING ${papersToProcess.length} PAPERS ===`);
+        console.log(`Papers shuffled for unbiased batch comparisons`);
+
+        const processedPapers = [];
+        const batchSize = config.postProcessingBatchSize || 5;
+
+        for (let i = 0; i < papersToProcess.length; i += batchSize) {
+            if (pauseRef.current) {
+                await waitForResume();
+            }
+
+            const batch = papersToProcess.slice(i, Math.min(i + batchSize, papersToProcess.length));
+
+            try {
+                let rescores;
+
+                if (isDryRun) {
+                    // Use mock API for dry run
+                    const mockApiCall = async (isCorrection = false) => {
+                        return await mockAPITesterRef.current.mockRescoreAbstracts(batch, isCorrection);
+                    };
+
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const rescores = JSON.parse(cleanedText);
+
+                        if (!Array.isArray(rescores)) {
+                            throw new Error("Response is not an array");
+                        }
+
+                        rescores.forEach((rescore, idx) => {
+                            if (!rescore.hasOwnProperty('paperIndex') || !rescore.hasOwnProperty('adjustedScore') ||
+                                !rescore.hasOwnProperty('adjustmentReason') || !rescore.hasOwnProperty('confidence')) {
+                                throw new Error(`Rescore object ${idx} missing required fields`);
+                            }
+                            if (typeof rescore.paperIndex !== 'number' || typeof rescore.adjustedScore !== 'number' ||
+                                typeof rescore.adjustmentReason !== 'string' || typeof rescore.confidence !== 'string') {
+                                throw new Error(`Rescore object ${idx} has invalid field types`);
+                            }
+                            if (rescore.adjustedScore < 0 || rescore.adjustedScore > 10) {
+                                throw new Error(`Rescore object ${idx} adjustedScore must be between 0.0 and 10.0`);
+                            }
+                            if (!['HIGH', 'MEDIUM', 'LOW'].includes(rescore.confidence)) {
+                                throw new Error(`Rescore object ${idx} confidence must be HIGH, MEDIUM, or LOW`);
+                            }
+                            // Round to one decimal place
+                            rescore.adjustedScore = Math.round(rescore.adjustedScore * 10) / 10;
+                        });
+
+                        return rescores;
+                    };
+
+                    rescores = await makeMockRobustAPICall(
+                        mockApiCall,
+                        parseResponse,
+                        `Mock rescoring batch ${Math.floor(i / batchSize) + 1}`
+                    );
+                } else {
+                    // Use real API for production
+                    const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
+                        const requestBody = {
+                            papers: batch.map(p => ({
+                                title: p.title,
+                                abstract: p.abstract,
+                                initialScore: p.initialScore,
+                                initialJustification: p.initialJustification
+                            })),
+                            scoringCriteria: config.scoringCriteria,
+                            password: password,
+                            model: config.postProcessingModel || config.scoringModel
+                        };
+
+                        if (isCorrection && correctionPrompt) {
+                            requestBody.correctionPrompt = correctionPrompt;
+                        }
+
+                        const response = await fetch('/api/rescore-abstracts', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody),
+                            signal: abortControllerRef.current?.signal
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `API error: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        if (data.rescores && Array.isArray(data.rescores)) {
+                            return JSON.stringify(data.rescores);
+                        }
+                        return data.rawResponse;
+                    };
+
+                    const parseResponse = (responseText) => {
+                        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                        const rescores = JSON.parse(cleanedText);
+
+                        if (!Array.isArray(rescores)) {
+                            throw new Error("Response is not an array");
+                        }
+
+                        // Validate each rescore
+                        rescores.forEach((rescore, idx) => {
+                            if (rescore.adjustedScore < 0 || rescore.adjustedScore > 10) {
+                                throw new Error(`Adjusted score must be between 0.0 and 10.0`);
+                            }
+                            // Round to one decimal place
+                            rescore.adjustedScore = Math.round(rescore.adjustedScore * 10) / 10;
+                        });
+
+                        return rescores;
+                    };
+
+                    rescores = await makeRobustAPICall(
+                        makeAPICall,
+                        parseResponse,
+                        `Rescoring batch ${Math.floor(i / batchSize) + 1}`,
+                        `Rescore ${batch.length} paper abstracts for consistency`
+                    );
+                }
+
+                // Apply rescores to papers
+                rescores.forEach((rescoreData) => {
+                    const paperIdx = rescoreData.paperIndex - 1;
+                    if (paperIdx >= 0 && paperIdx < batch.length) {
+                        const processedPaper = {
+                            ...batch[paperIdx],
+                            relevanceScore: rescoreData.adjustedScore,  // Update current score
+                            adjustedScore: rescoreData.adjustedScore,    // Store adjusted score
+                            adjustmentReason: rescoreData.adjustmentReason,
+                            adjustmentConfidence: rescoreData.confidence,
+                            scoreAdjustment: rescoreData.adjustedScore - batch[paperIdx].initialScore
+                        };
+                        processedPapers.push(processedPaper);
+                    }
+                });
+
+            } catch (error) {
+                // Check if this is an abort error
+                if (error.message === 'Operation aborted') {
+                    throw error;
+                }
+
+                addError(`Failed to rescore batch starting at paper ${i + 1}: ${error.message}`);
+
+                // Keep original scores for failed batch
+                batch.forEach(p => {
+                    processedPapers.push(p);
+                });
+            }
+
+            // Update progress
+            setProcessing(prev => ({
+                ...prev,
+                progress: { current: Math.min(i + batchSize, papersToProcess.length), total: papersToProcess.length }
+            }));
+        }
+
+        // Merge processed papers back with unprocessed ones
+        const processedIds = new Set(processedPapers.map(p => p.id));
+        const unchangedPapers = papers.filter(p => !processedIds.has(p.id));
+        const allPapers = [...processedPapers, ...unchangedPapers];
+
+        console.log(`\n=== POST-PROCESSING SUMMARY ===`);
+        console.log(`Papers post-processed: ${processedPapers.length}`);
+        const adjustedCount = processedPapers.filter(p => p.scoreAdjustment && Math.abs(p.scoreAdjustment) > 0.1).length;
+        console.log(`Papers with adjusted scores: ${adjustedCount}`);
+
+        // Re-sort by updated scores
+        return allPapers.sort((a, b) => b.relevanceScore - a.relevanceScore);
     };
 
     // Deep analysis of PDFs (or mock for dry run)
@@ -1848,12 +2170,18 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 return;
             }
 
-            // Stage 4: Select top papers for deep analysis (now working with filtered, sorted papers)
+            // Stage 3.5: Post-process scores for consistency (optional)
+            let postProcessedPapers = scoredPapers;
+            if (config.enableScorePostProcessing) {
+                postProcessedPapers = await postProcessScores(scoredPapers, isDryRun);
+            }
+
+            // Stage 4: Select top papers for deep analysis (now working with filtered, sorted, and optionally post-processed papers)
             setProcessing(prev => ({ ...prev, stage: 'selecting' }));
 
-            // Use the sorted scoredPapers from results, and ensure minimum score threshold
-            // Use the local scoredPapers variable (not results.scoredPapers which may not be updated yet)
-            const availablePapers = scoredPapers.filter(paper =>
+            // Use the sorted postProcessedPapers from results, and ensure minimum score threshold
+            // Use the local postProcessedPapers variable (not results.scoredPapers which may not be updated yet)
+            const availablePapers = postProcessedPapers.filter(paper =>
                 paper.relevanceScore > 0 && paper.scoreJustification !== 'Failed to score after retries'
             );
 
@@ -2171,6 +2499,18 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
                             Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
                         </span>
+                        {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
+                            <span
+                                className={`text-xs px-2 py-1 rounded ${
+                                    paper.scoreAdjustment > 0
+                                        ? 'bg-green-500/20 text-green-400'
+                                        : 'bg-orange-500/20 text-orange-400'
+                                }`}
+                                title={paper.adjustmentReason}
+                            >
+                                {paper.scoreAdjustment > 0 ? '↑' : '↓'} {Math.abs(paper.scoreAdjustment).toFixed(1)}
+                            </span>
+                        )}
                         {showDeepAnalysis && paper.deepAnalysis && (
                             <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
                                 📄 PDF Analyzed
@@ -2542,7 +2882,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                     </div>
 
                                     {/* Filter Options */}
-                                    <div>
+                                    <div className="mt-4 pt-4 border-t border-slate-700">
                                         <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Filter Options</p>
                                         <div className="flex gap-4 items-end">
                                             <div className="flex-1">
@@ -2587,9 +2927,21 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                         </div>
                                     </div>
 
-                                    {/* Scoring & Analysis Options */}
-                                    <div>
-                                        <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Scoring & Analysis</p>
+                                    {/* Abstract Scoring Options */}
+                                    <div className="mt-4 pt-4 border-t border-slate-700">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Abstract Scoring Options</p>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={config.enableScorePostProcessing}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, enableScorePostProcessing: e.target.checked }))}
+                                                    disabled={processing.isRunning}
+                                                    className="rounded border-slate-600 text-blue-500 focus:ring-blue-500"
+                                                />
+                                                <span className="text-xs text-gray-300">Enable Post-Processing</span>
+                                            </label>
+                                        </div>
                                         <div className="flex gap-4">
                                             <div className="flex-1">
                                                 <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -2606,9 +2958,58 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                 />
                                                 <p className="text-xs text-gray-400 mt-1">Papers per API call</p>
                                             </div>
+                                            {config.enableScorePostProcessing && (
+                                                <>
+                                                    <div className="flex-1">
+                                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                            Review Batch Size
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={config.postProcessingBatchSize}
+                                                            onChange={(e) => setConfig(prev => ({ ...prev, postProcessingBatchSize: parseInt(e.target.value) || 5 }))}
+                                                            className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                            min="3"
+                                                            max="10"
+                                                            disabled={processing.isRunning}
+                                                        />
+                                                        <p className="text-xs text-gray-400 mt-1">Papers per comparison</p>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                            Papers to Review
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            value={config.postProcessingCount}
+                                                            onChange={(e) => setConfig(prev => ({ ...prev, postProcessingCount: parseInt(e.target.value) || 50 }))}
+                                                            className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
+                                                            min="5"
+                                                            max="200"
+                                                            disabled={processing.isRunning}
+                                                        />
+                                                        <p className="text-xs text-gray-400 mt-1">Top papers to post-process</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                        {config.enableScorePostProcessing && (
+                                            <div className="bg-slate-800/50 rounded-lg p-2 mt-2">
+                                                <p className="text-xs text-gray-400">
+                                                    Post-processing reviews initial scores for consistency by comparing papers in batches.
+                                                    This helps correct scoring errors from complex research criteria.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* PDF Analysis Options */}
+                                    <div className="mt-4 pt-4 border-t border-slate-700">
+                                        <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">PDF Analysis Options</p>
+                                        <div className="flex gap-4">
                                             <div className="flex-1">
                                                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                    Max PDF Analysis
+                                                    Papers to Analyze
                                                 </label>
                                                 <input
                                                     type="number"
@@ -2619,11 +3020,11 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                     max="100"
                                                     disabled={processing.isRunning}
                                                 />
-                                                <p className="text-xs text-gray-400 mt-1">Papers to analyze PDFs</p>
+                                                <p className="text-xs text-gray-400 mt-1">Number of PDFs to analyze</p>
                                             </div>
                                             <div className="flex-1">
                                                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                    Final Output
+                                                    Summaries to Output
                                                 </label>
                                                 <input
                                                     type="number"
@@ -2634,7 +3035,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                     max="50"
                                                     disabled={processing.isRunning}
                                                 />
-                                                <p className="text-xs text-gray-400 mt-1">Top papers to display</p>
+                                                <p className="text-xs text-gray-400 mt-1">Final papers to display</p>
                                             </div>
                                         </div>
                                     </div>

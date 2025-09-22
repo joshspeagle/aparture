@@ -302,7 +302,7 @@ export default async function handler(req, res) {
             const pdfBuffer = await pdfResponse.arrayBuffer();
             const base64Data = Buffer.from(pdfBuffer).toString('base64');
 
-            const prompt = `Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
+            const prompt = `You are a research assistant scoring academic papers for relevance using a precise 0.0-10.0 scale. Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
 
 SCORING CRITERIA:
 ${scoringCriteria}
