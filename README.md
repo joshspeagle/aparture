@@ -8,18 +8,30 @@ It was mainly designed to help the author (Josh Speagle) survive searching throu
 
 ## Features
 
-The package is straightforward and current supports the following workflow:
+### Core Workflow
 
-- Fetches recent papers from ArXiv based on configurable categories
-- Scores abstracts for relevance based on a customized user prompt
-- Performs deep PDF analysis on the top-scoring papers (including producing a summary and a revised score)
-- Exports summaries of the top papers in a report
+- **Multi-stage filtering**: Optional quick filter → Abstract scoring → PDF analysis
+- **Flexible processing**: Process papers from multiple ArXiv categories simultaneously
+- **Smart scoring**: 0-10 scale relevance scoring with detailed justifications
+- **Deep analysis**: Full PDF content analysis for top papers
+- **Post-processing**: Optional second-pass scoring for consistency
+- **Report generation**: Comprehensive markdown reports with all analyses
+- **Podcast creation**: Generate NotebookLM-optimized documents for AI podcasts
+
+### Advanced Features
+
+- **Testing modes**: Dry run with mock data and minimal API testing
+- **Visual indicators**: Clear "TEST MODE" badges when using simulated data
+- **Customizable models**: Choose different LLMs for each processing stage
+- **Batch processing**: Efficient API usage with configurable batch sizes
+- **Research criteria**: Fully editable prompts for domain-specific analysis
+- **Error handling**: Automatic retries and correction mechanisms
 
 ## Supported Models
 
 The package currently supports the following APIs:
 
-- **Anthropic**: Claude Opus 4.1, Claude Sonnet 4
+- **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude Haiku 3.5
 - **OpenAI**: GPT-5, GPT-5 Mini, GPT-5 Nano
 - **Google**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite
 
@@ -100,22 +112,47 @@ This app includes password protection to prevent unauthorized use of your API ke
 
 ## Usage
 
+### Basic Workflow
+
 1. Enter your password to access the app
-2. Select the ArXiv categories you would like to search
-3. Select your preferred AI model from the dropdown
-4. Specify your research interests (used to score papers by relevance)
-5. (Optional:) Configure any additional settings for your search
-6. (Optional:) Conduct a "Dry Run" Test and a "Minimal API" Test to confirm functionality
-7. Click "Start Analysis" to begin the analysis pipeline
-8. Wait for the multi-stage process to complete
-9. Download your results
+2. Select the ArXiv categories you want to search
+3. Configure your research interests (used for relevance scoring)
+4. (Optional) Enable quick filtering to reduce paper volume
+5. Select AI models for each processing stage
+6. Click "Start Analysis" to begin processing
+
+### Testing Your Configuration
+
+1. **Dry Run Test**: Complete workflow with mock API responses (no API costs)
+2. **Minimal API Test**: Test with 3 real papers to verify API integration
+3. Look for "TEST MODE" badges to confirm you're using simulated data
+
+### Advanced Configuration
+
+- **Abstract Scoring Options**: Batch size, post-processing, score thresholds
+- **PDF Analysis Options**: Number of papers to analyze, minimum score threshold
+- **Model Selection**: Choose different models for filtering, scoring, and analysis
+- **Research Criteria**: Edit the prompt to match your specific research interests
+
+### Generating Reports
+
+1. **Download Report**: Export comprehensive markdown analysis
+2. **NotebookLM Integration**:
+   - Select target podcast duration (5-30 minutes)
+   - Choose generation model
+   - Generate structured document optimized for podcast creation
+   - Upload to NotebookLM along with the main report for best results
 
 ## API Usage Notes
 
-- The app processes abstracts in batches to respect API rate limits
-- PDF analysis is done directly over individual PDFs (no text extraction)
-- Error handling includes automatic retries and graceful degradation
-- All API calls are routed through secure backend endpoints
+- **Batch Processing**: Abstracts are processed in configurable batches to respect rate limits
+- **PDF Analysis**: Direct multimodal analysis without text extraction
+- **Error Recovery**: Automatic retries with correction prompts for malformed responses
+- **Security**: All API calls routed through secure backend endpoints
+- **Cost Optimization**:
+  - Use quick filtering to reduce volume before scoring
+  - Test with dry run mode before using real APIs
+  - Choose appropriate models for each stage (e.g., cheaper models for filtering)
 
 ## License
 
@@ -124,3 +161,11 @@ MIT
 ## Acknowledgements
 
 Created in collaboration with Claude Sonnet 4 and Claude Opus 4.1
+
+## Recent Updates
+
+- **NotebookLM Integration**: Generate podcast-ready documents from analysis results
+- **Post-Processing**: Two-stage scoring for improved consistency
+- **Quick Filtering**: Optional first-pass filtering to reduce API costs
+- **Visual Indicators**: Clear badges showing when test mode is active
+- **Enhanced Testing**: Comprehensive mock API for workflow validation
