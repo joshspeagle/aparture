@@ -5,6 +5,157 @@ function checkPassword(password) {
     return password === process.env.ACCESS_PASSWORD;
 }
 
+// Levenshtein distance for fuzzy string matching
+function levenshteinDistance(str1, str2) {
+    const matrix = [];
+    for (let i = 0; i <= str2.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= str1.length; j++) {
+        matrix[0][j] = j;
+    }
+    for (let i = 1; i <= str2.length; i++) {
+        for (let j = 1; j <= str1.length; j++) {
+            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+    return matrix[str2.length][str1.length];
+}
+
+// Detect hallucinations in generated NotebookLM content
+function detectHallucination(generatedText, originalPapers) {
+    const issues = [];
+    const warnings = [];
+
+    // ===== PAPER TITLE DETECTION =====
+
+    // Step 1: Extract all quoted strings that look like paper titles
+    const quotedStrings = [];
+    const quoteRegex = /"([^"]+)"/g;
+    let match;
+    while ((match = quoteRegex.exec(generatedText)) !== null) {
+        const quoted = match[1];
+        // Heuristic: likely a paper title if it's long and has multiple words
+        if (quoted.length > 15 && quoted.split(' ').length > 3) {
+            // Check if first letters are capitalized (typical of titles)
+            const words = quoted.split(' ').filter(w => w.length > 0);
+            const likelyTitle = words.filter(w => w[0] && w[0] === w[0].toUpperCase()).length > words.length * 0.5;
+            if (likelyTitle) {
+                quotedStrings.push(quoted);
+            }
+        }
+    }
+
+    // Step 2: Check each potential title against our paper list
+    for (const potentialTitle of quotedStrings) {
+        let found = false;
+        let closestMatch = null;
+        let closestDistance = Infinity;
+
+        for (const paper of originalPapers) {
+            // Exact match
+            if (paper.title === potentialTitle) {
+                found = true;
+                break;
+            }
+
+            // Calculate similarity for near matches
+            const distance = levenshteinDistance(paper.title.toLowerCase(), potentialTitle.toLowerCase());
+            const similarity = 1 - (distance / Math.max(paper.title.length, potentialTitle.length));
+
+            // Track closest match
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestMatch = paper.title;
+            }
+
+            // Near match (>90% similar) - might be minor formatting difference
+            if (similarity > 0.9) {
+                found = true;
+                warnings.push(`Near match: "${potentialTitle}" ≈ "${paper.title}"`);
+                break;
+            }
+        }
+
+        if (!found && closestMatch) {
+            // Check if it's clearly fabricated (no similarity to any real paper)
+            const maxSimilarity = 1 - (closestDistance / Math.max(closestMatch.length, potentialTitle.length));
+            if (maxSimilarity < 0.3) {
+                issues.push(`HALLUCINATED PAPER: "${potentialTitle}" (no match in provided papers)`);
+            } else {
+                issues.push(`Possible hallucination: "${potentialTitle}" (closest: "${closestMatch}")`);
+            }
+        }
+    }
+
+    // ===== PAPER REFERENCE VALIDATION =====
+
+    // Step 3: Check all [P#] references
+    const pRefs = generatedText.match(/\[P(\d+)\]/g) || [];
+    const uniqueRefs = new Set();
+    const maxValidId = originalPapers.length;
+
+    for (const ref of pRefs) {
+        const id = parseInt(ref.match(/\d+/)[0]);
+        uniqueRefs.add(id);
+
+        if (id < 1 || id > maxValidId) {
+            issues.push(`Invalid reference ${ref} - only P1-P${maxValidId} exist`);
+        }
+    }
+
+    // Step 4: Check if [P#] is followed by correct title
+    const refWithTitle = /\[P(\d+)\](?:\s*:)?\s*"([^"]+)"/g;
+    let refMatch;
+    while ((refMatch = refWithTitle.exec(generatedText)) !== null) {
+        const paperId = parseInt(refMatch[1]);
+        const claimedTitle = refMatch[2];
+
+        if (paperId <= originalPapers.length) {
+            const actualTitle = originalPapers[paperId - 1].title;
+            if (actualTitle !== claimedTitle) {
+                const similarity = 1 - (levenshteinDistance(actualTitle.toLowerCase(), claimedTitle.toLowerCase()) /
+                                       Math.max(actualTitle.length, claimedTitle.length));
+
+                if (similarity < 0.9) {
+                    issues.push(`Wrong title for [P${paperId}]: got "${claimedTitle}", expected "${actualTitle}"`);
+                }
+            }
+        }
+    }
+
+    // ===== PATTERN-BASED DETECTION =====
+
+    // Step 5: Check for theme sections without paper references
+    if (generatedText.includes('Theme')) {
+        const themeBlocks = generatedText.split(/### Theme \d+/);
+        for (let i = 1; i < themeBlocks.length; i++) {
+            const block = themeBlocks[i].substring(0, 500); // Check first 500 chars of theme
+            const hasRefs = /\[P\d+\]/.test(block);
+            if (!hasRefs) {
+                issues.push(`Theme ${i} lacks paper references - possible hallucination`);
+            }
+        }
+    }
+
+    // ===== SCORING AND DECISION =====
+
+    return {
+        hasHallucination: issues.length > 0,
+        issues: issues,
+        warnings: warnings,
+        confidence: issues.length > 0 ? 'high' : warnings.length > 2 ? 'medium' : 'low'
+    };
+}
+
 // Function to call different AI models
 async function callAIModel(modelId, prompt) {
     const modelConfig = MODEL_REGISTRY[modelId];
@@ -196,12 +347,223 @@ function getContentDepth(targetDuration) {
     }
 }
 
+// Generate clean prompt (less constrained, more natural)
+function generateCleanPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth) {
+    return `You are preparing a discussion guide for NotebookLM using these ${relevantPapers.length} papers:
+
+${relevantPapers.map((p, i) => `[P${i + 1}] "${p.title}"`).join('\n')}
+
+CONSTRAINT: Reference papers using [P#] notation only. If papers don't match the research criteria well, acknowledge this explicitly rather than creating examples.
+
+RESEARCH CONTEXT:
+${scoringCriteria}
+
+DETAILED PAPER INFORMATION:
+${relevantPapers.map((p, idx) => `
+[P${idx + 1}]:
+- Title: "${p.title}"
+- Score: ${p.score}/10
+- Abstract: ${p.abstract}
+- Justification: ${p.justification || 'N/A'}
+${p.adjustedScore ? `- Adjusted Score: ${p.adjustedScore}/10` : ''}
+${p.adjustmentReason ? `- Adjustment Reason: ${p.adjustmentReason}` : ''}
+${p.pdfAnalysis ? `- PDF Analysis: ${p.pdfAnalysis.summary || ''}` : ''}
+`).join('\n')}
+
+Create a well-structured markdown document for NotebookLM podcast generation (${targetDuration} minutes).
+
+Include sections based on these settings:
+- Thematic Analysis: ${contentDepth.includeThemes ? 'Yes' : 'No'}
+- Methodology Discussion: ${contentDepth.includeMethodology ? 'Yes' : 'No'}
+- Comparative Insights: ${contentDepth.includeComparative ? 'Yes' : 'No'}
+- Technical Deep-Dive: ${contentDepth.includeTechnical ? 'Yes' : 'No'}
+
+Structure your response with proper markdown headers and clear organization. Focus on insights that would generate engaging expert discussion.`;
+}
+
+// Generate strict prompt (heavily constrained to prevent hallucination)
+function generateStrictPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth) {
+    const prompt = `You are preparing a discussion guide for NotebookLM. NotebookLM will use this guide along with the full analysis report to generate an expert-level technical podcast discussion (approximately ${targetDuration} minutes).
+
+⚠️ CRITICAL ANTI-HALLUCINATION PROTOCOL ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. You MUST ONLY discuss the EXACT papers listed below - NO EXCEPTIONS
+2. You MUST NOT invent, imagine, hypothesize, or create ANY papers not explicitly listed
+3. You MUST use paper titles EXACTLY as provided, word-for-word
+4. Every paper reference MUST use the ID system: [P1], [P2], etc.
+5. If papers don't match the research criteria, acknowledge this explicitly
+6. NEVER use phrases like "for example, a paper on X" without a specific [P#] reference
+7. NEVER create illustrative examples using fictional papers
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 INPUT VERIFICATION - EXACTLY ${relevantPapers.length} PAPERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${relevantPapers.map((p, idx) => `[P${idx + 1}] Title: "${p.title}"
+    Score: ${p.score}/10${p.adjustedScore ? ` (Adjusted: ${p.adjustedScore}/10)` : ''}`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONFIRM: You will discuss ONLY these ${relevantPapers.length} papers listed above. No other papers exist for this analysis.
+
+RESEARCH CONTEXT:
+${scoringCriteria}
+
+DETAILED PAPER INFORMATION:
+${relevantPapers.map((p, idx) => `
+[P${idx + 1}] PAPER DETAILS:
+- Title: "${p.title}"
+- Score: ${p.score}/10
+- Abstract: ${p.abstract}
+- Justification: ${p.justification || 'N/A'}
+${p.adjustedScore ? `- Adjusted Score: ${p.adjustedScore}/10` : ''}
+${p.adjustmentReason ? `- Adjustment Reason: ${p.adjustmentReason}` : ''}
+${p.pdfAnalysis ? `- PDF Analysis Summary: ${p.pdfAnalysis.summary || ''}
+- Key Findings: ${p.pdfAnalysis.keyFindings || ''}
+- Methodology: ${p.pdfAnalysis.methodology || ''}
+- Limitations: ${p.pdfAnalysis.limitations || ''}
+- Relevance Assessment: ${p.pdfAnalysis.relevanceAssessment || ''}` : ''}
+`).join('\n')}
+
+YOUR SPECIFIC ROLE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Create a DISCUSSION GUIDE using ONLY the ${relevantPapers.length} papers above
+- NotebookLM has access to the full report, so focus on organization and connections
+- You are NOT summarizing papers - you are organizing them for discussion
+- Every claim must reference a specific paper using [P#] format
+- If papers don't align well with research criteria, explicitly acknowledge this
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MISMATCH HANDLING PROTOCOL:
+If the provided papers don't match the research criteria well:
+1. Explicitly state: "Note: The provided papers focus primarily on [actual focus] rather than [expected focus from criteria]"
+2. Still organize ONLY the provided papers
+3. DO NOT create fictional papers that would better match
+4. Work with what you have, acknowledging limitations
+
+CONTENT DEPTH PARAMETERS:
+- Detail Level: ${contentDepth.detailLevel}
+- Include Thematic Grouping: ${contentDepth.includeThemes ? 'Yes' : 'No'}
+- Include Methodological Analysis: ${contentDepth.includeMethodology ? 'Yes' : 'No'}
+- Include Comparative Insights: ${contentDepth.includeComparative ? 'Yes' : 'No'}
+- Include Technical Deep-Dives: ${contentDepth.includeTechnical ? 'Yes' : 'No'}
+
+STRUCTURE YOUR RESPONSE AS A MARKDOWN DOCUMENT:
+
+# Research Discussion Guide: [Title based on the ACTUAL papers provided]
+
+## Papers Under Discussion (EXACTLY ${relevantPapers.length} papers)
+[List all papers with their [P#] IDs - this section is MANDATORY]
+
+## Executive Summary
+[Synthesize ONLY the provided papers, using [P#] references throughout]
+
+## Research Context and Available Papers
+[Explain the research criteria and note if there's a mismatch with the actual papers]
+
+${contentDepth.includeThemes ? `
+## Thematic Analysis of the ${relevantPapers.length} Provided Papers
+
+⚠️ CRITICAL: Extract themes ONLY from the papers listed above
+- Every theme must cite specific [P#] papers
+- Do NOT invent papers to support themes
+- If few papers share themes, acknowledge this limitation
+
+### Theme 1: [Theme evident in provided papers]
+Papers exhibiting this theme: [Must list specific P#s, e.g., [P2], [P5], [P8]]
+
+Explanation using ONLY the listed papers:
+- [P#]: Specific contribution from this paper
+- [P#]: How this paper relates to the theme
+- [P#]: Another paper's perspective
+
+### Theme 2: [Another theme from provided papers]
+Papers in this category: [List specific P#s only]
+[Continue with same strict [P#] referencing]
+
+### Theme 3: [Only if clearly supported by multiple papers]
+[Only include if papers actually support this theme]
+` : ''}
+
+${contentDepth.includeComparative ? `
+## Comparative Insights
+[Analyze relationships between the ${relevantPapers.length} provided papers ONLY:]
+- Complementary approaches in papers [P#] and [P#]
+- Conflicting findings between [P#] and [P#]
+- Methodological patterns across [list specific P# references]
+- Note: Gaps should be noted but NOT filled with fictional papers
+` : ''}
+
+${contentDepth.includeMethodology ? `
+## Methodological Innovations (from the ${relevantPapers.length} provided papers)
+[Discuss ONLY methods from provided papers using [P#] references:]
+- Breakthrough methods in [P#]: [specific method from that paper]
+- Paper [P#] improves upon [describe from paper's content]
+- Technical challenges addressed by [P#]
+- Implementation details from papers [list specific P#s]
+NOTE: Every method discussed must reference a specific [P#] paper
+` : ''}
+
+## Research Implications and Future Directions
+[Based STRICTLY on the ${relevantPapers.length} provided papers:]
+- Impact of papers [list specific P#s] on the field
+- Open questions raised by [P#] and [P#]
+- Applications suggested in papers [P#], [P#]
+- Limitations acknowledged in [P#] that need addressing
+NOTE: Discuss only implications directly stated or clearly implied by provided papers
+
+${contentDepth.includeTechnical ? `
+## Technical Deep-Dive for Expert Discussion
+[Technical points from the ${relevantPapers.length} provided papers ONLY:]
+- Algorithmic details from [P#]: [specific details]
+- Mathematical foundations in [P#]: [specific math]
+- Experimental design in papers [list P#s]
+- Statistical methods used by [P#] and [P#]
+- Implementation challenges noted in [P#]
+REMINDER: Do not discuss techniques not present in the provided papers
+` : ''}
+
+## Key Takeaways for Practitioners
+[Actionable insights from the ${relevantPapers.length} provided papers:]
+- Methods worth adopting from [P#]: [specific method]
+- Pitfalls identified in [P#]: [specific issue]
+- Tools mentioned in papers [list P#s]
+- Collaboration opportunities suggested by [P#]
+EVERY takeaway must reference its source paper [P#]
+
+## Discussion Prompts for Podcast
+[Questions about the ${relevantPapers.length} provided papers:]
+- What are the most surprising findings in [list specific P# papers]?
+- How do papers [P#] and [P#] complement or contradict each other?
+- What patterns emerge across papers [P#], [P#], and [P#]?
+- Based on these ${relevantPapers.length} specific papers, what questions remain?
+
+---
+*Document prepared for NotebookLM podcast generation. Target duration: ${targetDuration} minutes. Intended audience: Expert researchers and practitioners in the field.*
+
+## Validation Checklist
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+☐ Number of papers discussed: ${relevantPapers.length} (MUST match input count)
+☐ All paper references use [P#] format
+☐ No papers mentioned beyond the input list of ${relevantPapers.length}
+☐ All titles are exact matches to input
+☐ Any mismatch between papers and criteria is explicitly noted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FINAL REMINDERS:
+- Every paper mention MUST use [P#] format
+- NEVER invent papers to fill gaps or illustrate points
+- Work ONLY with the ${relevantPapers.length} papers provided
+- If examples are needed, use [P#] references to actual papers
+- Acknowledge limitations rather than inventing content`;
+
+    return prompt;
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { papers, scoringCriteria, targetDuration = 15, model = 'gemini-2.5-pro', password } = req.body;
+    const { papers, scoringCriteria, targetDuration = 15, model = 'gemini-2.5-pro', password, enableHallucinationCheck = true } = req.body;
 
     // Check password
     if (!checkPassword(password)) {
@@ -217,148 +579,77 @@ export default async function handler(req, res) {
             .sort((a, b) => b.score - a.score)
             .slice(0, contentDepth.paperLimit);
 
-        const prompt = `You are a research assistant preparing a comprehensive document for NotebookLM to generate an expert-level technical podcast discussion. The podcast will be approximately ${targetDuration} minutes long.
+        // Start with clean prompt by default
+        let prompt = generateCleanPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth);
+        let useStrictMode = false;
+        let hallucinationDetected = false;
+        let hallucinationIssues = [];
+        let warnings = [];
 
-RESEARCH CONTEXT:
-${scoringCriteria}
-
-PAPERS TO ANALYZE (${relevantPapers.length} papers):
-${relevantPapers.map((p, idx) => `
-Paper ${idx + 1}:
-- Title: ${p.title}
-- Score: ${p.score}/10
-- Abstract: ${p.abstract}
-- Justification: ${p.justification || 'N/A'}
-${p.adjustedScore ? `- Adjusted Score: ${p.adjustedScore}/10` : ''}
-${p.adjustmentReason ? `- Adjustment Reason: ${p.adjustmentReason}` : ''}
-${p.pdfAnalysis ? `
-- PDF Analysis Summary: ${p.pdfAnalysis.summary || ''}
-- Key Findings: ${p.pdfAnalysis.keyFindings || ''}
-- Methodology: ${p.pdfAnalysis.methodology || ''}
-- Limitations: ${p.pdfAnalysis.limitations || ''}
-- Relevance Assessment: ${p.pdfAnalysis.relevanceAssessment || ''}
-` : ''}
-`).join('\n')}
-
-DOCUMENT REQUIREMENTS:
-1. Generate a well-structured markdown document optimized for NotebookLM podcast generation
-2. Organize papers into thematic groups based on research approaches, methodologies, or findings
-3. Maintain an expert-to-expert tone throughout (for experts, by experts)
-4. Include technical depth appropriate for researchers in the field
-5. Create logical narrative flow between sections
-
-CONTENT DEPTH PARAMETERS:
-- Detail Level: ${contentDepth.detailLevel}
-- Include Thematic Grouping: ${contentDepth.includeThemes ? 'Yes' : 'No'}
-- Include Methodological Analysis: ${contentDepth.includeMethodology ? 'Yes' : 'No'}
-- Include Comparative Insights: ${contentDepth.includeComparative ? 'Yes' : 'No'}
-- Include Technical Deep-Dives: ${contentDepth.includeTechnical ? 'Yes' : 'No'}
-
-STRUCTURE YOUR RESPONSE AS A MARKDOWN DOCUMENT:
-
-# Research Analysis: [Create a compelling title based on the dominant themes]
-
-## Executive Summary
-[Provide a high-level synthesis of the research landscape, major findings, and implications for the field - 2-3 paragraphs]
-
-## Research Context and Methodology
-[Explain the research interests, evaluation criteria, and approach taken in this analysis]
-
-${contentDepth.includeThemes ? `
-## Thematic Analysis
-
-### Theme 1: [Identify first major theme across papers]
-[Provide context and significance of this theme]
-
-#### Key Papers in This Theme
-[For each relevant paper, include:]
-- **[Paper Title]** (Score: X.X/10)
-  - Core Contribution: [What makes this paper significant]
-  - Methodological Approach: [Key techniques used]
-  - Principal Findings: [Main results and their implications]
-  - Technical Innovation: [What's novel about the approach]
-
-### Theme 2: [Second major theme]
-[Similar structure as Theme 1]
-
-### Theme 3: [If applicable]
-[Similar structure]
-` : ''}
-
-${contentDepth.includeComparative ? `
-## Comparative Insights
-[Analyze relationships between papers, identifying:]
-- Complementary approaches that could be combined
-- Conflicting findings that need reconciliation
-- Evolution of methodologies across papers
-- Gaps in the current research landscape
-` : ''}
-
-${contentDepth.includeMethodology ? `
-## Methodological Innovations
-[Deep dive into novel techniques and approaches:]
-- Breakthrough methods introduced
-- Improvements over existing approaches
-- Technical challenges addressed
-- Reproducibility and implementation considerations
-` : ''}
-
-## Research Implications and Future Directions
-[Discuss:]
-- Impact on the field
-- Open questions raised
-- Potential applications
-- Areas needing further investigation
-
-${contentDepth.includeTechnical ? `
-## Technical Deep-Dive for Expert Discussion
-[Include sophisticated technical points for podcast hosts to explore:]
-- Complex algorithmic details
-- Mathematical foundations
-- Experimental design considerations
-- Statistical significance and limitations
-- Implementation challenges and solutions
-` : ''}
-
-## Key Takeaways for Practitioners
-[Actionable insights for researchers in the field:]
-- Methods worth adopting
-- Pitfalls to avoid
-- Resources and tools mentioned
-- Collaboration opportunities
-
-## Discussion Prompts for Podcast
-[Questions and talking points to guide the podcast conversation:]
-- What are the most surprising findings across these papers?
-- How do these advances change current practice in the field?
-- What technical challenges remain unsolved?
-- Where might this research lead in the next 5 years?
-
----
-*Document prepared for NotebookLM podcast generation. Target duration: ${targetDuration} minutes. Intended audience: Expert researchers and practitioners in the field.*
-
-IMPORTANT:
-- Use clear markdown formatting with proper headers (# ## ###)
-- Maintain technical precision while ensuring narrative flow
-- Include specific paper titles and scores throughout
-- Create natural transitions between sections
-- Focus on insights that would generate engaging expert discussion`;
-
+        // Generate initial response
+        console.log('Generating NotebookLM document with', relevantPapers.length, 'papers...');
         let responseText = await callAIModel(model, prompt);
+
+        // Check for hallucinations if enabled
+        if (enableHallucinationCheck) {
+            console.log('Checking for hallucinations in NotebookLM generation...');
+            const check = detectHallucination(responseText, relevantPapers);
+
+            if (check.hasHallucination) {
+                console.log('HALLUCINATION DETECTED:', check.issues);
+                console.log('Retrying with strict prompt to prevent hallucinations...');
+
+                hallucinationDetected = true;
+                hallucinationIssues = check.issues;
+                warnings = check.warnings;
+                useStrictMode = true;
+
+                // Generate with strict prompt
+                prompt = generateStrictPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth);
+                responseText = await callAIModel(model, prompt);
+
+                // Re-check to ensure it's fixed
+                const recheck = detectHallucination(responseText, relevantPapers);
+
+                if (recheck.hasHallucination) {
+                    console.error('WARNING: Some hallucination issues persist after strict mode:', recheck.issues);
+                    // Add persistent issues to warnings
+                    warnings = [...warnings, ...recheck.issues.map(i => `[Persistent] ${i}`)];
+                }
+            } else if (check.warnings.length > 0) {
+                console.log('Minor issues detected (not triggering retry):', check.warnings);
+                warnings = check.warnings;
+            }
+        }
 
         // Clean up any potential markdown code blocks
         responseText = responseText.replace(/^```markdown\n?/, '').replace(/\n?```$/, '');
+
+        // Build metadata with hallucination info
+        const metadata = {
+            paperCount: relevantPapers.length,
+            targetDuration,
+            model,
+            generatedAt: new Date().toISOString(),
+            hallucinationCheckEnabled: enableHallucinationCheck
+        };
+
+        if (hallucinationDetected) {
+            metadata.hallucinationDetected = true;
+            metadata.hallucinationIssues = hallucinationIssues;
+            metadata.usedStrictMode = useStrictMode;
+            metadata.strictModeSuccessful = warnings.filter(w => w.startsWith('[Persistent]')).length === 0;
+        }
+
+        if (warnings.length > 0) {
+            metadata.warnings = warnings;
+        }
 
         // Return the generated markdown
         res.status(200).json({
             success: true,
             markdown: responseText,
-            metadata: {
-                paperCount: relevantPapers.length,
-                targetDuration,
-                model,
-                generatedAt: new Date().toISOString()
-            }
+            metadata
         });
 
     } catch (error) {

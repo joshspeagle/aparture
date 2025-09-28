@@ -320,6 +320,8 @@ function ArxivAnalyzer() {
     const [notebookLMStatus, setNotebookLMStatus] = useState('');
     const [notebookLMContent, setNotebookLMContent] = useState(null);
     const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
+    const [enableHallucinationCheck, setEnableHallucinationCheck] = useState(true);
+    const [hallucinationWarning, setHallucinationWarning] = useState(null);
 
     const abortControllerRef = useRef(null);
     const pauseRef = useRef(false);
@@ -2546,6 +2548,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             setNotebookLMGenerating(true);
             setNotebookLMStatus('Generating NotebookLM document...');
             setNotebookLMContent(null);
+            setHallucinationWarning(null); // Reset previous warning
 
             // Combine scored papers and final ranking
             const allPapers = results.finalRanking.length > 0 ?
@@ -2580,7 +2583,8 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         scoringCriteria: config.scoringCriteria,
                         targetDuration: podcastDuration,
                         model: notebookLMModel,
-                        password
+                        password,
+                        enableHallucinationCheck
                     })
                 });
 
@@ -2591,6 +2595,28 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 }
 
                 markdown = data.markdown;
+
+                // Handle hallucination warning
+                if (data.metadata?.hallucinationDetected) {
+                    const issueCount = data.metadata.hallucinationIssues?.length || 0;
+                    const fictionalPapers = data.metadata.hallucinationIssues?.filter(i => i.includes('HALLUCINATED PAPER')).length || 0;
+
+                    setHallucinationWarning({
+                        detected: true,
+                        issues: data.metadata.hallucinationIssues || [],
+                        summary: `Found ${fictionalPapers} fictional papers and ${issueCount - fictionalPapers} other issues`,
+                        resolved: data.metadata.strictModeSuccessful !== false
+                    });
+
+                    addError(`Hallucination detected: ${issueCount} issues found - automatically corrected with strict mode`);
+                    if (data.metadata.strictModeSuccessful !== false) {
+                        addError('✓ Strict mode successfully prevented hallucinations');
+                    }
+                } else if (data.metadata?.warnings?.length > 0) {
+                    console.log('Minor warnings:', data.metadata.warnings);
+                } else {
+                    setHallucinationWarning(null);
+                }
             }
 
             setNotebookLMContent(markdown);
@@ -3483,20 +3509,61 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 {/* NotebookLM Podcast Generation Section */}
                 {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
                     <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-                        <div className="flex items-center mb-4">
-                            <FileText className="w-5 h-5 mr-2 text-purple-400" />
-                            <h2 className="text-xl font-semibold">NotebookLM Podcast Generation</h2>
-                            {testState.dryRunInProgress && (
-                                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                                    <TestTube className="w-3 h-3" />
-                                    TEST MODE
-                                </span>
-                            )}
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center">
+                                <FileText className="w-5 h-5 mr-2 text-purple-400" />
+                                <h2 className="text-xl font-semibold">NotebookLM Podcast Generation</h2>
+                                {testState.dryRunInProgress && (
+                                    <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                                        <TestTube className="w-3 h-3" />
+                                        TEST MODE
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Hallucination Check Control */}
+                            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={enableHallucinationCheck}
+                                    onChange={(e) => setEnableHallucinationCheck(e.target.checked)}
+                                    className="rounded border-gray-600 text-purple-500 focus:ring-purple-500"
+                                />
+                                Enable hallucination check & retry
+                            </label>
                         </div>
 
                         <p className="text-sm text-gray-400 mb-4">
                             Generate a structured document optimized for NotebookLM to create an expert-level podcast discussion
                         </p>
+
+                        {/* Hallucination Warning */}
+                        {hallucinationWarning && (
+                            <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+                                <p className="text-yellow-400 text-sm font-medium mb-2 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    Hallucination detected and corrected
+                                </p>
+                                {hallucinationWarning.issues && hallucinationWarning.issues.length > 0 && (
+                                    <>
+                                        <p className="text-yellow-300 text-xs mb-2">{hallucinationWarning.summary}</p>
+                                        <details className="text-yellow-300 text-xs">
+                                            <summary className="cursor-pointer hover:text-yellow-200">View details</summary>
+                                            <ul className="mt-2 space-y-1 pl-4">
+                                                {hallucinationWarning.issues.map((issue, i) => (
+                                                    <li key={i} className="list-disc">{issue}</li>
+                                                ))}
+                                            </ul>
+                                        </details>
+                                    </>
+                                )}
+                                {hallucinationWarning.resolved ? (
+                                    <p className="text-green-400 text-xs mt-2">✓ Successfully corrected with strict generation mode</p>
+                                ) : (
+                                    <p className="text-orange-400 text-xs mt-2">⚠️ Some issues may persist - please review carefully</p>
+                                )}
+                            </div>
+                        )}
 
                         <div className="space-y-4">
                             {/* Duration and Model Selection on same line */}
