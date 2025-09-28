@@ -153,6 +153,7 @@ This app includes password protection to prevent unauthorized use of your API ke
   - Use quick filtering to reduce volume before scoring
   - Test with dry run mode before using real APIs
   - Choose appropriate models for each stage (e.g., cheaper models for filtering)
+- **Default Models**: Google Gemini models are set as defaults across all stages due to their generous [free tier offering](https://ai.google.dev/gemini-api/docs/rate-limits#free-tier)
 
 ## License
 
