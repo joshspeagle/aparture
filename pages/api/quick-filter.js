@@ -35,7 +35,7 @@ async function callClaude(modelName, prompt) {
 
     const requestBody = {
         model: modelName,
-        max_tokens: 1000,  // Smaller for quick filtering
+        max_tokens: 5000,  // Increased to match scoring stage for thinking tokens
         messages: [{ role: "user", content: prompt }]
     };
 
@@ -70,7 +70,7 @@ async function callOpenAI(modelName, prompt) {
 
     const requestBody = {
         model: modelName,
-        max_completion_tokens: 1000,  // Smaller for quick filtering
+        max_completion_tokens: 5000,  // Increased to match scoring stage for thinking tokens
         messages: [{ role: "user", content: prompt }]
     };
 
@@ -113,7 +113,7 @@ async function callGemini(modelName, prompt) {
             parts: [{ text: prompt }]
         }],
         generationConfig: {
-            maxOutputTokens: 1000,  // Smaller for quick filtering
+            maxOutputTokens: 5000,  // Increased to match scoring stage for thinking tokens
         }
     };
 
@@ -185,7 +185,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { papers, password, model, correctionPrompt } = req.body;
+    const { papers, scoringCriteria, password, model, correctionPrompt } = req.body;
 
     // Check password
     if (!checkPassword(password)) {
@@ -201,7 +201,10 @@ export default async function handler(req, res) {
         } else {
             prompt = `You are a research assistant doing quick relevance screening of academic papers.
 
-For each paper below, determine if it is potentially relevant to the user's research interests.
+Research Interests:
+${scoringCriteria}
+
+For each paper below, determine if it is potentially relevant to the research interests specified above.
 Respond with ONLY: YES (clearly relevant), NO (clearly not relevant), or MAYBE (possibly relevant, needs closer look).
 
 Papers to screen:
@@ -209,11 +212,12 @@ ${papers.map((p, idx) => `Paper ${idx + 1}:
 Title: ${p.title}
 Abstract: ${p.abstract || 'No abstract available'}`).join('\n\n')}
 
-IMPORTANT:
-- Be inclusive rather than exclusive - when in doubt, choose MAYBE over NO
-- Only mark NO for papers clearly outside the research area
-- Consider interdisciplinary connections
-- Use both title and abstract to make your determination
+FILTERING GUIDANCE:
+- YES: Papers that clearly align with the specified research interests
+- NO: Papers clearly outside the research areas or using fundamentally different approaches
+- MAYBE: Papers with potential relevance that need deeper review (borderline cases)
+- Focus on the specific criteria provided, not general AI/ML relevance
+- Consider interdisciplinary connections only if they relate to the stated interests
 
 Respond ONLY with a valid JSON array in this exact format:
 [

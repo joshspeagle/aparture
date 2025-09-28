@@ -1423,7 +1423,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             return papers;  // Skip filtering if disabled
         }
 
-        setProcessing(prev => ({ ...prev, stage: 'filtering', progress: { current: 0, total: papers.length } }));
+        setProcessing(prev => ({ ...prev, stage: 'Filtering', progress: { current: 0, total: papers.length } }));
 
         const batchSize = config.filterBatchSize || 10;
         const totalBatches = Math.ceil(papers.length / batchSize);
@@ -1485,6 +1485,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
                         const requestBody = {
                             papers: batch.map(p => ({ title: p.title, id: p.id, abstract: p.abstract })),
+                            scoringCriteria: config.scoringCriteria,
                             password: password,
                             model: config.filterModel
                         };
@@ -2884,7 +2885,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
                                         disabled={processing.isRunning}
                                     >
-                                        {AVAILABLE_MODELS.filter(m => ['gemini-2.5-flash-lite', 'gpt-5-nano', 'claude-haiku-3.5'].includes(m.id)).map(model => (
+                                        {AVAILABLE_MODELS.map(model => (
                                             <option key={model.id} value={model.id}>
                                                 {model.name}
                                             </option>
