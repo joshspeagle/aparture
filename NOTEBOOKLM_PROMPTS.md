@@ -16,6 +16,10 @@ This guide provides optimized prompts for generating technical podcasts using No
 - Focus on methodological innovations and research implications
 - Include critical analysis, not just summaries
 - Discuss connections between papers and emerging themes
+- **CRITICAL: Always cite papers by author names and year when discussing any finding**
+- **Mention paper titles when introducing major contributions**
+- **Use phrases like "Smith et al. 2025 showed that..." or "In the Johnson paper on X..."**
+- **This attribution is ESSENTIAL for listeners to follow up on interesting work**
 
 ---
 
@@ -34,6 +38,8 @@ Structure:
 5. Wrap-up with key takeaway for researchers (30 seconds)
 
 Maintain an expert tone. Skip basic explanations and dive directly into technical implications. Prioritize breakthrough methods and surprising results over incremental work.
+
+CITATION REQUIREMENT: Even in this short format, always cite papers by author (e.g., "The Chen et al. paper shows..."). Never discuss findings without attribution.
 ```
 
 ---
@@ -59,6 +65,8 @@ Focus on:
 - Practical implications for ongoing research
 
 Keep the discussion at a graduate/postdoc level, assuming familiarity with the field's fundamentals.
+
+ATTRIBUTION: Always mention author names when discussing findings (e.g., "Wang et al.'s novel approach...", "The surprising result from Liu and colleagues..."). This helps listeners locate papers for deeper reading.
 ```
 
 ---
@@ -94,6 +102,8 @@ Emphasize:
 - Gaps that represent opportunities
 
 Maintain high technical standards throughout, discussing statistical significance, experimental design, and theoretical foundations where relevant.
+
+CITATION PROTOCOL: Every technical point must reference its source. Use clear attributions: "According to the Park et al. study...", "The Kumar paper on [topic] demonstrates...", "As shown by Martinez and colleagues in their work on [topic]..."
 ```
 
 ---
@@ -139,6 +149,8 @@ Include:
 - Potential collaboration opportunities suggested by complementary work
 
 Assume listeners are deciding how to allocate their limited time and resources. Help them prioritize.
+
+ESSENTIAL FOR FOLLOW-UP: When recommending papers, always use full attribution: "The must-read is the Zhang et al. paper titled 'X' because...", "You can skip the Brown study unless...". Every recommendation must include author names so listeners can find the papers.
 ```
 
 ---
@@ -196,6 +208,12 @@ Throughout the discussion:
 - Suggest follow-up experiments
 
 This comprehensive review should leave listeners feeling they have a complete understanding of the current research landscape and concrete next steps for their own work.
+
+COMPREHENSIVE CITATION REQUIREMENT: In this extended format, maintain rigorous attribution throughout:
+- Start each topic with "The [Author] et al. paper on [topic] introduces..."
+- Use varied citation styles: "As demonstrated by [Author] and colleagues...", "In '[Paper Title]' by [Author] et al....", "[Author]'s team found that..."
+- When comparing papers: "While [Author1] et al. argue X, [Author2]'s group shows Y..."
+- Never leave listeners wondering "which paper was that?" - every claim needs clear attribution
 ```
 
 ---
@@ -216,7 +234,10 @@ After generating the podcast, verify that it:
 - Avoids oversimplification
 - Includes critical analysis, not just summaries
 - Provides actionable insights for researchers
-- Correctly attributes findings to specific papers
+- Correctly attributes EVERY finding to specific papers with author names
+- Uses frequent citations throughout (aim for author names every 30-60 seconds)
+- Makes it easy for listeners to identify which paper to read for any topic
+- Never discusses results without clear attribution
 
 ### Follow-up Prompts
 
@@ -227,6 +248,9 @@ If the initial generation needs adjustment:
 - "Include more specific details about the algorithms and implementations"
 - "Compare these findings more directly to established baselines in the field"
 - "Focus more on practical implications for researchers starting new projects"
+- "Add more specific citations - always mention author names when discussing findings"
+- "Include paper titles when introducing major contributions"
+- "Ensure every technical claim is attributed to its source paper by author"
 
 ### Integration with Research Workflow
 
