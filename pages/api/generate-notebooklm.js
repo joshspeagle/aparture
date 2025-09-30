@@ -30,10 +30,18 @@ function levenshteinDistance(str1, str2) {
     return matrix[str2.length][str1.length];
 }
 
-// Detect hallucinations in generated NotebookLM content
+// Helper to extract context around a position in text
+function extractContext(text, position, contextLength = 100) {
+    const start = Math.max(0, position - contextLength);
+    const end = Math.min(text.length, position + contextLength);
+    return text.substring(start, end).trim();
+}
+
+// Detect hallucinations in generated NotebookLM content with detailed categorization
 function detectHallucination(generatedText, originalPapers) {
     const issues = [];
     const warnings = [];
+    const detailedIssues = []; // New: structured issue tracking
 
     // ===== PAPER TITLE DETECTION =====
 
@@ -43,24 +51,29 @@ function detectHallucination(generatedText, originalPapers) {
     let match;
     while ((match = quoteRegex.exec(generatedText)) !== null) {
         const quoted = match[1];
+        const position = match.index;
         // Heuristic: likely a paper title if it's long and has multiple words
         if (quoted.length > 15 && quoted.split(' ').length > 3) {
             // Check if first letters are capitalized (typical of titles)
             const words = quoted.split(' ').filter(w => w.length > 0);
             const likelyTitle = words.filter(w => w[0] && w[0] === w[0].toUpperCase()).length > words.length * 0.5;
             if (likelyTitle) {
-                quotedStrings.push(quoted);
+                quotedStrings.push({ title: quoted, position });
             }
         }
     }
 
     // Step 2: Check each potential title against our paper list
-    for (const potentialTitle of quotedStrings) {
+    for (const potentialTitleObj of quotedStrings) {
+        const potentialTitle = potentialTitleObj.title;
+        const position = potentialTitleObj.position;
         let found = false;
         let closestMatch = null;
         let closestDistance = Infinity;
+        let closestPaperIndex = -1;
 
-        for (const paper of originalPapers) {
+        for (let i = 0; i < originalPapers.length; i++) {
+            const paper = originalPapers[i];
             // Exact match
             if (paper.title === potentialTitle) {
                 found = true;
@@ -75,6 +88,7 @@ function detectHallucination(generatedText, originalPapers) {
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closestMatch = paper.title;
+                closestPaperIndex = i;
             }
 
             // Near match (>90% similar) - might be minor formatting difference
@@ -88,10 +102,31 @@ function detectHallucination(generatedText, originalPapers) {
         if (!found && closestMatch) {
             // Check if it's clearly fabricated (no similarity to any real paper)
             const maxSimilarity = 1 - (closestDistance / Math.max(closestMatch.length, potentialTitle.length));
+            const context = extractContext(generatedText, position);
+
             if (maxSimilarity < 0.3) {
                 issues.push(`HALLUCINATED PAPER: "${potentialTitle}" (no match in provided papers)`);
+                detailedIssues.push({
+                    type: 'hallucinated_title',
+                    severity: 'critical',
+                    hallucinatedText: potentialTitle,
+                    position,
+                    context,
+                    suggestion: `Remove this paper title or replace with an actual paper from the list`,
+                    availablePapers: originalPapers.map(p => p.title)
+                });
             } else {
                 issues.push(`Possible hallucination: "${potentialTitle}" (closest: "${closestMatch}")`);
+                detailedIssues.push({
+                    type: 'wrong_title',
+                    severity: 'high',
+                    hallucinatedText: potentialTitle,
+                    position,
+                    context,
+                    suggestion: `Replace "${potentialTitle}" with "${closestMatch}" [P${closestPaperIndex + 1}]`,
+                    correctText: closestMatch,
+                    correctPaperId: closestPaperIndex + 1
+                });
             }
         }
     }
@@ -99,16 +134,29 @@ function detectHallucination(generatedText, originalPapers) {
     // ===== PAPER REFERENCE VALIDATION =====
 
     // Step 3: Check all [P#] references
-    const pRefs = generatedText.match(/\[P(\d+)\]/g) || [];
+    const pRefRegex = /\[P(\d+)\]/g;
+    const pRefs = generatedText.match(pRefRegex) || [];
     const uniqueRefs = new Set();
     const maxValidId = originalPapers.length;
 
-    for (const ref of pRefs) {
-        const id = parseInt(ref.match(/\d+/)[0]);
+    let refMatch2;
+    pRefRegex.lastIndex = 0; // Reset regex
+    while ((refMatch2 = pRefRegex.exec(generatedText)) !== null) {
+        const id = parseInt(refMatch2[1]);
+        const position = refMatch2.index;
         uniqueRefs.add(id);
 
         if (id < 1 || id > maxValidId) {
-            issues.push(`Invalid reference ${ref} - only P1-P${maxValidId} exist`);
+            issues.push(`Invalid reference ${refMatch2[0]} - only P1-P${maxValidId} exist`);
+            detailedIssues.push({
+                type: 'invalid_reference',
+                severity: 'critical',
+                hallucinatedText: refMatch2[0],
+                position,
+                context: extractContext(generatedText, position),
+                suggestion: `Remove ${refMatch2[0]} or replace with a valid reference [P1-P${maxValidId}]`,
+                validRange: { min: 1, max: maxValidId }
+            });
         }
     }
 
@@ -118,6 +166,7 @@ function detectHallucination(generatedText, originalPapers) {
     while ((refMatch = refWithTitle.exec(generatedText)) !== null) {
         const paperId = parseInt(refMatch[1]);
         const claimedTitle = refMatch[2];
+        const position = refMatch.index;
 
         if (paperId <= originalPapers.length) {
             const actualTitle = originalPapers[paperId - 1].title;
@@ -127,6 +176,16 @@ function detectHallucination(generatedText, originalPapers) {
 
                 if (similarity < 0.9) {
                     issues.push(`Wrong title for [P${paperId}]: got "${claimedTitle}", expected "${actualTitle}"`);
+                    detailedIssues.push({
+                        type: 'wrong_reference_title',
+                        severity: 'high',
+                        hallucinatedText: claimedTitle,
+                        position,
+                        context: extractContext(generatedText, position),
+                        suggestion: `[P${paperId}] should reference "${actualTitle}", not "${claimedTitle}"`,
+                        correctText: actualTitle,
+                        paperId: paperId
+                    });
                 }
             }
         }
@@ -136,12 +195,25 @@ function detectHallucination(generatedText, originalPapers) {
 
     // Step 5: Check for theme sections without paper references
     if (generatedText.includes('Theme')) {
-        const themeBlocks = generatedText.split(/### Theme \d+/);
-        for (let i = 1; i < themeBlocks.length; i++) {
-            const block = themeBlocks[i].substring(0, 500); // Check first 500 chars of theme
-            const hasRefs = /\[P\d+\]/.test(block);
+        const themeRegex = /### Theme (\d+)[^\n]*\n([\s\S]*?)(?=###|$)/g;
+        let themeMatch;
+        while ((themeMatch = themeRegex.exec(generatedText)) !== null) {
+            const themeNum = themeMatch[1];
+            const themeContent = themeMatch[2].substring(0, 500); // Check first 500 chars
+            const position = themeMatch.index;
+            const hasRefs = /\[P\d+\]/.test(themeContent);
+
             if (!hasRefs) {
-                issues.push(`Theme ${i} lacks paper references - possible hallucination`);
+                issues.push(`Theme ${themeNum} lacks paper references - possible hallucination`);
+                detailedIssues.push({
+                    type: 'missing_citations',
+                    severity: 'medium',
+                    hallucinatedText: null,
+                    position,
+                    context: themeContent.substring(0, 200),
+                    suggestion: `Add paper references [P#] to Theme ${themeNum} to support the claims`,
+                    section: `Theme ${themeNum}`
+                });
             }
         }
     }
@@ -152,8 +224,132 @@ function detectHallucination(generatedText, originalPapers) {
         hasHallucination: issues.length > 0,
         issues: issues,
         warnings: warnings,
+        detailedIssues: detailedIssues, // New: return detailed issues for correction
         confidence: issues.length > 0 ? 'high' : warnings.length > 2 ? 'medium' : 'low'
     };
+}
+
+// Categorize hallucinations by severity and type for prioritized correction
+function categorizeHallucinations(detailedIssues) {
+    const critical = [];
+    const high = [];
+    const medium = [];
+
+    detailedIssues.forEach(issue => {
+        switch(issue.severity) {
+            case 'critical':
+                critical.push(issue);
+                break;
+            case 'high':
+                high.push(issue);
+                break;
+            case 'medium':
+                medium.push(issue);
+                break;
+        }
+    });
+
+    return {
+        critical,
+        high,
+        medium,
+        total: detailedIssues.length,
+        needsUrgentFix: critical.length > 0,
+        canBeFixed: critical.length === 0 && (high.length > 0 || medium.length > 0)
+    };
+}
+
+// Generate a targeted correction prompt based on detected issues
+function generateCorrectionPrompt(originalResponse, detailedIssues, relevantPapers) {
+    // Group issues by type for better organization
+    const issuesByType = {
+        hallucinated_title: [],
+        wrong_title: [],
+        invalid_reference: [],
+        wrong_reference_title: [],
+        missing_citations: []
+    };
+
+    detailedIssues.forEach(issue => {
+        if (issuesByType[issue.type]) {
+            issuesByType[issue.type].push(issue);
+        }
+    });
+
+    let prompt = `You previously generated a NotebookLM discussion guide that contains some errors.
+Please fix ONLY the following specific issues while keeping everything else unchanged.
+
+IMPORTANT: Return the COMPLETE corrected document with all fixes applied. Do not add new content or restructure existing content unless specifically required by the corrections below.
+
+⚠️ CORRECTIONS REQUIRED ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
+    let correctionNum = 1;
+
+    // Handle hallucinated titles
+    if (issuesByType.hallucinated_title.length > 0) {
+        prompt += `\n${correctionNum}. REMOVE OR REPLACE HALLUCINATED PAPERS:\n`;
+        issuesByType.hallucinated_title.forEach(issue => {
+            prompt += `   - Remove "${issue.hallucinatedText}" - this paper does not exist\n`;
+            prompt += `     Context: "...${issue.context.substring(0, 100)}..."\n`;
+        });
+        correctionNum++;
+    }
+
+    // Handle wrong titles
+    if (issuesByType.wrong_title.length > 0) {
+        prompt += `\n${correctionNum}. CORRECT PAPER TITLES:\n`;
+        issuesByType.wrong_title.forEach(issue => {
+            prompt += `   - Replace "${issue.hallucinatedText}"\n`;
+            prompt += `     With: "${issue.correctText}" [P${issue.correctPaperId}]\n`;
+        });
+        correctionNum++;
+    }
+
+    // Handle invalid references
+    if (issuesByType.invalid_reference.length > 0) {
+        prompt += `\n${correctionNum}. FIX INVALID REFERENCES:\n`;
+        issuesByType.invalid_reference.forEach(issue => {
+            prompt += `   - ${issue.hallucinatedText} is invalid (valid range: P1-P${issue.validRange.max})\n`;
+            prompt += `     Either remove it or replace with a valid reference\n`;
+        });
+        correctionNum++;
+    }
+
+    // Handle wrong reference titles
+    if (issuesByType.wrong_reference_title.length > 0) {
+        prompt += `\n${correctionNum}. CORRECT REFERENCE-TITLE MAPPINGS:\n`;
+        issuesByType.wrong_reference_title.forEach(issue => {
+            prompt += `   - [P${issue.paperId}] should reference "${issue.correctText}"\n`;
+            prompt += `     NOT "${issue.hallucinatedText}"\n`;
+        });
+        correctionNum++;
+    }
+
+    // Handle missing citations
+    if (issuesByType.missing_citations.length > 0) {
+        prompt += `\n${correctionNum}. ADD MISSING CITATIONS:\n`;
+        issuesByType.missing_citations.forEach(issue => {
+            prompt += `   - ${issue.section} needs paper references [P#] to support its claims\n`;
+            prompt += `     Add appropriate citations from the available papers\n`;
+        });
+        correctionNum++;
+    }
+
+    prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+VALID PAPERS (use ONLY these):
+${relevantPapers.map((p, i) => `[P${i + 1}] "${p.title}"`).join('\n')}
+
+ORIGINAL DOCUMENT TO CORRECT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${originalResponse}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Please apply all the corrections listed above and return the complete corrected document.`;
+
+    return prompt;
 }
 
 // Function to call different AI models
@@ -362,9 +558,9 @@ DETAILED PAPER INFORMATION:
 ${relevantPapers.map((p, idx) => `
 [P${idx + 1}]:
 - Title: "${p.title}"
-- Score: ${p.score}/10
+- Score: ${p.score || p.relevanceScore}/10
 - Abstract: ${p.abstract}
-- Justification: ${p.justification || 'N/A'}
+- Justification: ${p.justification || p.scoreJustification || 'N/A'}
 ${p.adjustedScore ? `- Adjusted Score: ${p.adjustedScore}/10` : ''}
 ${p.adjustmentReason ? `- Adjustment Reason: ${p.adjustmentReason}` : ''}
 ${p.pdfAnalysis ? `- PDF Analysis: ${p.pdfAnalysis.summary || ''}` : ''}
@@ -399,7 +595,7 @@ function generateStrictPrompt(relevantPapers, scoringCriteria, targetDuration, c
 📋 INPUT VERIFICATION - EXACTLY ${relevantPapers.length} PAPERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${relevantPapers.map((p, idx) => `[P${idx + 1}] Title: "${p.title}"
-    Score: ${p.score}/10${p.adjustedScore ? ` (Adjusted: ${p.adjustedScore}/10)` : ''}`).join('\n')}
+    Score: ${(p.score || p.relevanceScore)}/10${p.adjustedScore ? ` (Adjusted: ${p.adjustedScore}/10)` : ''}`).join('\n')}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONFIRM: You will discuss ONLY these ${relevantPapers.length} papers listed above. No other papers exist for this analysis.
@@ -411,9 +607,9 @@ DETAILED PAPER INFORMATION:
 ${relevantPapers.map((p, idx) => `
 [P${idx + 1}] PAPER DETAILS:
 - Title: "${p.title}"
-- Score: ${p.score}/10
+- Score: ${p.score || p.relevanceScore}/10
 - Abstract: ${p.abstract}
-- Justification: ${p.justification || 'N/A'}
+- Justification: ${p.justification || p.scoreJustification || 'N/A'}
 ${p.adjustedScore ? `- Adjusted Score: ${p.adjustedScore}/10` : ''}
 ${p.adjustmentReason ? `- Adjustment Reason: ${p.adjustmentReason}` : ''}
 ${p.pdfAnalysis ? `- PDF Analysis Summary: ${p.pdfAnalysis.summary || ''}
@@ -573,11 +769,27 @@ export default async function handler(req, res) {
     try {
         const contentDepth = getContentDepth(targetDuration);
 
-        // Filter and sort papers by score
+        // Filter and sort papers by score (handle both score and relevanceScore)
         const relevantPapers = papers
-            .filter(p => p.score > 0)
-            .sort((a, b) => b.score - a.score)
+            .filter(p => (p.score > 0 || p.relevanceScore > 0))
+            .sort((a, b) => {
+                const scoreA = a.score || a.relevanceScore || 0;
+                const scoreB = b.score || b.relevanceScore || 0;
+                return scoreB - scoreA;
+            })
             .slice(0, contentDepth.paperLimit);
+
+        // Check if we have any papers to work with
+        if (relevantPapers.length === 0) {
+            console.log('No papers available for NotebookLM generation. Input papers:', papers.length);
+            if (papers.length > 0) {
+                console.log('Sample paper data:', papers[0]);
+            }
+            return res.status(400).json({
+                error: 'No papers with positive scores available for NotebookLM generation',
+                details: `Received ${papers.length} papers, but none had score > 0 or relevanceScore > 0`
+            });
+        }
 
         // Start with clean prompt by default
         let prompt = generateCleanPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth);
@@ -590,15 +802,54 @@ export default async function handler(req, res) {
         console.log('Generating NotebookLM document with', relevantPapers.length, 'papers...');
         let responseText = await callAIModel(model, prompt);
 
-        // Check for hallucinations if enabled
+        // Progressive hallucination correction system
+        const maxCorrectionRetries = 2;
+        let correctionAttempts = 0;
+        let correctionHistory = [];
+        let finalHallucinationCheck = null;
+
         if (enableHallucinationCheck) {
             console.log('Checking for hallucinations in NotebookLM generation...');
-            const check = detectHallucination(responseText, relevantPapers);
+            let check = detectHallucination(responseText, relevantPapers);
 
-            if (check.hasHallucination) {
-                console.log('HALLUCINATION DETECTED:', check.issues);
-                console.log('Retrying with strict prompt to prevent hallucinations...');
+            // Stage 1: Targeted corrections (up to 2 retries)
+            while (check.hasHallucination && correctionAttempts < maxCorrectionRetries) {
+                const categorized = categorizeHallucinations(check.detailedIssues);
+                console.log(`HALLUCINATION DETECTED (Attempt ${correctionAttempts + 1}/${maxCorrectionRetries}):`,
+                    `Critical: ${categorized.critical.length}, High: ${categorized.high.length}, Medium: ${categorized.medium.length}`);
+                console.log('Issues:', check.issues);
 
+                // Store correction attempt info
+                correctionHistory.push({
+                    attempt: correctionAttempts + 1,
+                    issues: check.issues.slice(),
+                    detailedIssues: check.detailedIssues.slice(),
+                    categorized
+                });
+
+                // Generate targeted correction prompt
+                console.log('Generating targeted correction prompt...');
+                const correctionPrompt = generateCorrectionPrompt(responseText, check.detailedIssues, relevantPapers);
+
+                // Apply corrections
+                console.log('Applying targeted corrections...');
+                responseText = await callAIModel(model, correctionPrompt);
+
+                // Re-check for hallucinations
+                console.log('Re-checking for hallucinations after correction...');
+                check = detectHallucination(responseText, relevantPapers);
+                correctionAttempts++;
+
+                if (!check.hasHallucination) {
+                    console.log('SUCCESS: Hallucinations fixed with targeted corrections!');
+                    hallucinationDetected = false;
+                    break;
+                }
+            }
+
+            // Stage 2: Strict mode fallback if corrections failed
+            if (check.hasHallucination && correctionAttempts === maxCorrectionRetries) {
+                console.log('Targeted corrections insufficient, falling back to strict prompt...');
                 hallucinationDetected = true;
                 hallucinationIssues = check.issues;
                 warnings = check.warnings;
@@ -608,17 +859,25 @@ export default async function handler(req, res) {
                 prompt = generateStrictPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth);
                 responseText = await callAIModel(model, prompt);
 
-                // Re-check to ensure it's fixed
-                const recheck = detectHallucination(responseText, relevantPapers);
+                // Final check after strict mode
+                const finalCheck = detectHallucination(responseText, relevantPapers);
+                finalHallucinationCheck = finalCheck;
 
-                if (recheck.hasHallucination) {
-                    console.error('WARNING: Some hallucination issues persist after strict mode:', recheck.issues);
+                if (finalCheck.hasHallucination) {
+                    console.error('WARNING: Some hallucination issues persist even after strict mode:', finalCheck.issues);
                     // Add persistent issues to warnings
-                    warnings = [...warnings, ...recheck.issues.map(i => `[Persistent] ${i}`)];
+                    warnings = [...warnings, ...finalCheck.issues.map(i => `[Persistent after strict mode] ${i}`)];
+                } else {
+                    console.log('SUCCESS: Strict mode eliminated remaining hallucinations');
                 }
-            } else if (check.warnings.length > 0) {
-                console.log('Minor issues detected (not triggering retry):', check.warnings);
+            } else if (!check.hasHallucination && check.warnings.length > 0) {
+                console.log('Minor issues detected (not requiring correction):', check.warnings);
                 warnings = check.warnings;
+            }
+
+            // Store final state
+            if (!finalHallucinationCheck && check) {
+                finalHallucinationCheck = check;
             }
         }
 
@@ -634,15 +893,37 @@ export default async function handler(req, res) {
             hallucinationCheckEnabled: enableHallucinationCheck
         };
 
+        // Add correction history if applicable
+        if (correctionHistory.length > 0) {
+            metadata.correctionAttempts = correctionHistory.length;
+            metadata.correctionHistory = correctionHistory.map(h => ({
+                attempt: h.attempt,
+                issueCount: h.issues.length,
+                criticalCount: h.categorized.critical.length,
+                highCount: h.categorized.high.length,
+                mediumCount: h.categorized.medium.length
+            }));
+        }
+
         if (hallucinationDetected) {
             metadata.hallucinationDetected = true;
             metadata.hallucinationIssues = hallucinationIssues;
             metadata.usedStrictMode = useStrictMode;
-            metadata.strictModeSuccessful = warnings.filter(w => w.startsWith('[Persistent]')).length === 0;
+            metadata.strictModeSuccessful = !finalHallucinationCheck?.hasHallucination;
         }
 
         if (warnings.length > 0) {
             metadata.warnings = warnings;
+        }
+
+        // Add final status
+        if (finalHallucinationCheck) {
+            metadata.finalStatus = {
+                hasHallucinations: finalHallucinationCheck.hasHallucination,
+                remainingIssues: finalHallucinationCheck.issues.length,
+                correctionMethod: useStrictMode ? 'strict_mode' :
+                                correctionAttempts > 0 ? 'targeted_corrections' : 'clean_generation'
+            };
         }
 
         // Return the generated markdown

@@ -2551,9 +2551,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             setHallucinationWarning(null); // Reset previous warning
 
             // Combine scored papers and final ranking
-            const allPapers = results.finalRanking.length > 0 ?
+            const allPapers = results.finalRanking && results.finalRanking.length > 0 ?
                 results.finalRanking :
-                results.scoredPapers.filter(p => p.score > 0);
+                results.scoredPapers.filter(p => (p.score > 0 || p.relevanceScore > 0));
 
             if (allPapers.length === 0) {
                 setNotebookLMStatus('No papers available for NotebookLM generation');
