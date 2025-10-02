@@ -50,16 +50,48 @@ function detectHallucination(generatedText, originalPapers) {
     const quoteRegex = /"([^"]+)"/g;
     let match;
     while ((match = quoteRegex.exec(generatedText)) !== null) {
-        const quoted = match[1];
+        const quoted = match[1].trim();
         const position = match.index;
-        // Heuristic: likely a paper title if it's long and has multiple words
-        if (quoted.length > 15 && quoted.split(' ').length > 3) {
-            // Check if first letters are capitalized (typical of titles)
-            const words = quoted.split(' ').filter(w => w.length > 0);
-            const likelyTitle = words.filter(w => w[0] && w[0] === w[0].toUpperCase()).length > words.length * 0.5;
-            if (likelyTitle) {
-                quotedStrings.push({ title: quoted, position });
-            }
+
+        // Skip empty strings or very short strings (likely formatting artifacts)
+        if (quoted.length < 15) continue;
+
+        // Get context around the quote to check if it's a structural element
+        const contextBefore = generatedText.substring(Math.max(0, position - 50), position).trim();
+        const contextAfter = generatedText.substring(position + match[0].length, Math.min(generatedText.length, position + match[0].length + 50)).trim();
+
+        // Skip strings that are clearly structural elements
+        // - Contains markdown formatting (##, **, --, etc.)
+        // - Is part of a section header pattern
+        // - Contains timing markers like "(8 Minutes)"
+        // - Appears after colons (like "Prompt: " or "Focus: ")
+        // - Is surrounded by structural markdown
+        if (quoted.includes('##') ||
+            quoted.includes('**') ||
+            quoted.includes('---') ||
+            quoted.match(/\(\d+\s*[Mm]inutes?\)/) ||
+            quoted.startsWith('Part ') ||
+            quoted.includes('Discussion Prompt') ||
+            quoted.includes('Focus:') ||
+            quoted.includes('Summary') ||
+            quoted.includes('Sign-off') ||
+            quoted.includes('Final Thoughts') ||
+            quoted.includes('Conclusion') ||
+            contextBefore.endsWith(':') ||
+            contextBefore.endsWith(':**') ||
+            contextBefore.match(/\*\s*$/) ||  // Ends with bullet point marker
+            contextBefore.includes('##')) {
+            continue;
+        }
+
+        // Heuristic: likely a paper title if it has multiple words
+        const words = quoted.split(' ').filter(w => w.length > 0);
+        if (words.length < 4) continue;
+
+        // Check if first letters are capitalized (typical of titles)
+        const likelyTitle = words.filter(w => w[0] && w[0] === w[0].toUpperCase()).length > words.length * 0.5;
+        if (likelyTitle) {
+            quotedStrings.push({ title: quoted, position });
         }
     }
 
