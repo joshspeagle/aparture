@@ -1,8 +1,80 @@
 const { MODEL_REGISTRY } = require('../../utils/models.js');
+const { chromium } = require('playwright');
+const path = require('path');
+const fs = require('fs');
 
 // Simple password check function
 function checkPassword(password) {
     return password === process.env.ACCESS_PASSWORD;
+}
+
+// Helper function to detect if response is HTML (reCAPTCHA) instead of PDF
+function isPDFResponse(buffer) {
+    if (buffer.byteLength < 5) return false;
+
+    // Check for PDF magic bytes: %PDF-
+    const header = Buffer.from(buffer.slice(0, 5)).toString('ascii');
+    return header === '%PDF-';
+}
+
+// Helper function to download PDF using Playwright (bypasses reCAPTCHA)
+async function downloadPDFWithPlaywright(pdfUrl) {
+    console.log('Attempting PDF download via Playwright (reCAPTCHA bypass)...');
+
+    const userDataDir = path.join(process.cwd(), 'temp', 'playwright-profile');
+
+    // Ensure temp directory exists
+    if (!fs.existsSync(userDataDir)) {
+        fs.mkdirSync(userDataDir, { recursive: true });
+    }
+
+    let context;
+    try {
+        // Launch persistent context to maintain cookies/session
+        context = await chromium.launchPersistentContext(userDataDir, {
+            headless: true,
+            acceptDownloads: true
+        });
+
+        const page = context.pages()[0] || await context.newPage();
+
+        // Extract arXiv ID from URL
+        const arxivIdMatch = pdfUrl.match(/\/pdf\/([^\/]+)(?:\.pdf)?/);
+        if (!arxivIdMatch) {
+            throw new Error(`Could not extract arXiv ID from URL: ${pdfUrl}`);
+        }
+        const arxivId = arxivIdMatch[1];
+
+        // Navigate to abstract page first
+        const absUrl = `https://arxiv.org/abs/${arxivId}`;
+        console.log(`Navigating to abstract page: ${absUrl}`);
+        await page.goto(absUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+        // Get the PDF URL and fetch it with browser context (includes cookies/session)
+        const fullPdfUrl = `https://arxiv.org/pdf/${arxivId}.pdf`;
+        console.log(`Fetching PDF via browser context: ${fullPdfUrl}`);
+
+        const response = await context.request.get(fullPdfUrl);
+
+        if (response.status() !== 200) {
+            throw new Error(`Playwright PDF download failed: HTTP ${response.status()}`);
+        }
+
+        const pdfBuffer = await response.body();
+        console.log(`PDF downloaded via Playwright: ${pdfBuffer.length} bytes`);
+
+        // Verify it's a valid PDF
+        if (!isPDFResponse(pdfBuffer)) {
+            throw new Error('Playwright downloaded invalid PDF (HTML/reCAPTCHA page)');
+        }
+
+        return pdfBuffer;
+
+    } finally {
+        if (context) {
+            await context.close();
+        }
+    }
 }
 
 // Function to call different AI models for PDF analysis
@@ -58,6 +130,7 @@ async function callClaudeWithPDF(modelName, prompt, base64Data) {
         headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
             model: modelName,
@@ -85,7 +158,13 @@ async function callClaudeWithPDF(modelName, prompt, base64Data) {
     });
 
     if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error('Claude PDF API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+        });
+        throw new Error(`Claude API error: ${response.status} - ${errorData?.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
@@ -101,6 +180,7 @@ async function callClaude(modelName, prompt) {
         headers: {
             "Content-Type": "application/json",
             "x-api-key": process.env.CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
             model: modelName,
@@ -110,7 +190,13 @@ async function callClaude(modelName, prompt) {
     });
 
     if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error('Claude API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+        });
+        throw new Error(`Claude API error: ${response.status} - ${errorData?.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
@@ -149,7 +235,13 @@ async function callOpenAIWithPDF(modelName, prompt, base64Data) {
     });
 
     if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error('OpenAI PDF API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+        });
+        throw new Error(`OpenAI API error: ${response.status} - ${errorData?.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
@@ -174,14 +266,20 @@ async function callOpenAI(modelName, prompt) {
     });
 
     if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error('OpenAI API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+        });
+        throw new Error(`OpenAI API error: ${response.status} - ${errorData?.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
     return data.choices[0].message.content;
 }
 
-// Google Gemini API call with PDF  
+// Google Gemini API call with PDF
 async function callGeminiWithPDF(modelName, prompt, base64Data) {
     console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
 
@@ -211,7 +309,13 @@ async function callGeminiWithPDF(modelName, prompt, base64Data) {
     });
 
     if (!response.ok) {
-        throw new Error(`Google AI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error('Google AI PDF API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+        });
+        throw new Error(`Google AI API error: ${response.status} - ${errorData?.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
@@ -295,12 +399,48 @@ export default async function handler(req, res) {
         if (correctionPrompt) {
             responseText = await callAIModel(model, correctionPrompt);
         } else {
-            // Download PDF for normal analysis
-            const pdfResponse = await fetch(pdfUrl);
-            if (!pdfResponse.ok) throw new Error(`Failed to download PDF: ${pdfResponse.status}`);
+            // Download PDF for normal analysis - try direct fetch first, fallback to Playwright if blocked
+            console.log('Downloading PDF from:', pdfUrl);
+            let pdfBuffer;
+            let usedPlaywright = false;
 
-            const pdfBuffer = await pdfResponse.arrayBuffer();
+            try {
+                // Try direct fetch first
+                const pdfResponse = await fetch(pdfUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                });
+
+                if (!pdfResponse.ok) {
+                    throw new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
+                }
+
+                pdfBuffer = await pdfResponse.arrayBuffer();
+
+                // Check if we got HTML/reCAPTCHA instead of PDF
+                if (!isPDFResponse(pdfBuffer)) {
+                    console.warn('Direct fetch returned HTML/reCAPTCHA page, attempting Playwright fallback...');
+                    throw new Error('reCAPTCHA detected');
+                }
+
+                console.log('PDF downloaded via direct fetch:', { sizeBytes: pdfBuffer.byteLength, sizeKB: (pdfBuffer.byteLength / 1024).toFixed(2) });
+
+            } catch (fetchError) {
+                // If direct fetch failed or got reCAPTCHA, try Playwright fallback
+                console.warn(`Direct fetch failed (${fetchError.message}), using Playwright fallback...`);
+                pdfBuffer = await downloadPDFWithPlaywright(pdfUrl);
+                usedPlaywright = true;
+            }
+
+            const bufferSize = pdfBuffer.byteLength;
+
+            if (bufferSize === 0) {
+                throw new Error('Downloaded PDF is empty (0 bytes)');
+            }
+
             const base64Data = Buffer.from(pdfBuffer).toString('base64');
+            console.log(`PDF ready for analysis: { sizeBytes: ${bufferSize}, sizeKB: ${(bufferSize / 1024).toFixed(2)}, usedPlaywright: ${usedPlaywright}, base64Length: ${base64Data.length} }`);
 
             const prompt = `You are a research assistant scoring academic papers for relevance using a precise 0.0-10.0 scale. Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
 
