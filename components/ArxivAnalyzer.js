@@ -2335,7 +2335,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `aparture_dry_run_test_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `${new Date().toISOString().split('T')[0]}_aparture_dry_run_test.txt`;
             a.click();
             URL.revokeObjectURL(url);
 
@@ -2379,7 +2379,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `aparture_minimal_test_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `${new Date().toISOString().split('T')[0]}_aparture_minimal_test.txt`;
             a.click();
             URL.revokeObjectURL(url);
 
@@ -2528,16 +2528,15 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         const a = document.createElement('a');
         a.href = url;
 
-        // Generate filename with timing info
-        const fileTimestamp = processingTiming.startTime ?
-            processingTiming.startTime.toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
-            processingTiming.startTime.toTimeString().split(' ')[0].replace(/:/g, '-') :
+        // Generate filename with date first: YYYY-MM-DD_arxiv_analysis_XXmin.md
+        const dateStr = processingTiming.startTime ?
+            processingTiming.startTime.toISOString().split('T')[0] :
             new Date().toISOString().split('T')[0];
 
         const durationStr = processingTiming.duration ?
             `_${Math.round(processingTiming.duration / 60000)}min` : '';
 
-        a.download = `arxiv_analysis_${fileTimestamp}${durationStr}.md`;
+        a.download = `${dateStr}_arxiv_analysis${durationStr}.md`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -2639,7 +2638,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         a.href = url;
 
         const timestamp = new Date().toISOString().split('T')[0];
-        a.download = `notebooklm_${timestamp}_${podcastDuration}min.md`;
+        a.download = `${timestamp}_notebooklm_${podcastDuration}min.md`;
         a.click();
         URL.revokeObjectURL(url);
     };
