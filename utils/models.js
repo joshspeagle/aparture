@@ -8,8 +8,8 @@ const MODEL_REGISTRY = {
         apiId: 'claude-opus-4-1-20250805',
         provider: 'Anthropic'
     },
-    'claude-sonnet-4': {
-        apiId: 'claude-sonnet-4-20250514',
+    'claude-sonnet-4.5': {
+        apiId: 'claude-sonnet-4-5-20250929',
         provider: 'Anthropic'
     },
     'claude-haiku-3.5': {
@@ -55,12 +55,12 @@ const AVAILABLE_MODELS = [
         apiKeyEnv: 'CLAUDE_API_KEY'
     },
     {
-        id: 'claude-sonnet-4',
-        name: 'Claude Sonnet 4',
+        id: 'claude-sonnet-4.5',
+        name: 'Claude Sonnet 4.5',
         provider: 'Anthropic',
         supportsPDF: true,
         supportsQuickFilter: false,  // Too expensive for simple filtering
-        description: 'Balanced speed and capability',
+        description: 'Most intelligent, best for coding and complex agents',
         apiKeyEnv: 'CLAUDE_API_KEY'
     },
     {
@@ -170,7 +170,7 @@ const MODEL_PRESETS = {
     },
     'quality': {
         filterModel: 'gpt-5-nano',
-        scoringModel: 'claude-sonnet-4',
+        scoringModel: 'claude-sonnet-4.5',
         pdfModel: 'claude-opus-4.1'
     },
     'google-free': {

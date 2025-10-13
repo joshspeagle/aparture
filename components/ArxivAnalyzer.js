@@ -400,6 +400,10 @@ function ArxivAnalyzer() {
                     setProcessingTiming(timing);
                 }
                 if (parsed.testState) setTestState(parsed.testState);
+                if (parsed.notebookLM) {
+                    if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
+                    if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
+                }
                 if (parsed.password) {
                     setPassword(parsed.password);
                     setIsAuthenticated(true);
@@ -418,10 +422,14 @@ function ArxivAnalyzer() {
                 results,
                 processingTiming,
                 testState,
+                notebookLM: {
+                    duration: podcastDuration,
+                    model: notebookLMModel
+                },
                 password: isAuthenticated ? password : ''
             }));
         }
-    }, [config, results, processingTiming, testState, password, isAuthenticated]);
+    }, [config, results, processingTiming, testState, podcastDuration, notebookLMModel, password, isAuthenticated]);
 
     // Add error to log
     const addError = useCallback((error) => {

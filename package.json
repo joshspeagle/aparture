@@ -4,7 +4,11 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "start": "next start"
+        "start": "next start",
+        "setup": "node cli/setup.js",
+        "analyze": "node cli/run-analysis.js",
+        "test:minimal": "node cli/tests/test-browser-minimal.js",
+        "test:dryrun": "node cli/tests/test-browser-dryrun.js"
     },
     "dependencies": {
         "chalk": "^5.6.2",
