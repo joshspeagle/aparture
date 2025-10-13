@@ -87,10 +87,13 @@ class ServerManager {
 
         return new Promise((resolve, reject) => {
             // Start the dev server
+            // On Windows, npm is npm.cmd, so we use shell:true for cross-platform compatibility
+            const isWindows = process.platform === 'win32';
             this.serverProcess = spawn('npm', ['run', 'dev'], {
                 cwd: process.cwd(),
                 stdio: ['ignore', 'pipe', 'pipe'],
-                detached: false
+                detached: false,
+                shell: isWindows // Use shell on Windows to find npm.cmd
             });
 
             let output = '';

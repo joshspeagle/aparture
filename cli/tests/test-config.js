@@ -17,7 +17,7 @@ async function testConfigManager() {
             scoringCriteria: 'Computer vision papers',
             daysBack: 14,
             filterModel: 'claude-3.5-haiku',
-            scoringModel: 'claude-sonnet-4'
+            scoringModel: 'claude-sonnet-4.5'
         };
         await manager.save('test-config', testConfig);
         console.log('✓ Config saved successfully\n');

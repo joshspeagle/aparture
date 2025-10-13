@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = {
 
     // Models
     filterModel: 'claude-3.5-haiku',
-    scoringModel: 'claude-sonnet-4',
+    scoringModel: 'claude-sonnet-4.5',
     postProcessingModel: 'gemini-2.5-flash',
     pdfModel: 'gemini-2.5-flash',
     notebookLMModel: 'gemini-2.5-pro',

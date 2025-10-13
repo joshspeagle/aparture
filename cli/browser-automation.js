@@ -1,35 +1,50 @@
 const { chromium } = require('playwright');
+const path = require('path');
 
 /**
  * BrowserAutomation - Playwright wrapper for Aparture UI automation
  *
  * Provides core browser automation primitives for interacting with
  * the Aparture web interface programmatically.
+ *
+ * Uses persistent browser context to preserve localStorage (configuration)
+ * between runs.
  */
 class BrowserAutomation {
   constructor() {
     this.browser = null;
     this.context = null;
     this.page = null;
+    this.isPersistent = false;
   }
 
   /**
-   * Launch browser instance
+   * Launch browser instance with persistent context
    * @param {boolean} headless - Run in headless mode (default: true)
    * @param {Object} options - Additional Playwright launch options
    * @returns {Promise<void>}
    */
   async launch(headless = true, options = {}) {
+    const userDataDir = options.userDataDir || path.join(process.cwd(), 'temp', 'browser-profile');
+
     const launchOptions = {
       headless,
+      viewport: { width: 1280, height: 720 },
+      acceptDownloads: true,
       ...options
     };
 
-    this.browser = await chromium.launch(launchOptions);
-    this.context = await this.browser.newContext({
-      viewport: { width: 1280, height: 720 }
-    });
-    this.page = await this.context.newPage();
+    // Use persistent context to preserve localStorage between runs
+    this.context = await chromium.launchPersistentContext(userDataDir, launchOptions);
+    this.isPersistent = true;
+
+    // Get the first page (or create one if none exist)
+    const pages = this.context.pages();
+    if (pages.length > 0) {
+      this.page = pages[0];
+    } else {
+      this.page = await this.context.newPage();
+    }
   }
 
   /**
@@ -164,19 +179,29 @@ class BrowserAutomation {
    * @returns {Promise<void>}
    */
   async close() {
-    if (this.page) {
-      await this.page.close();
-      this.page = null;
-    }
+    if (this.isPersistent) {
+      // For persistent context, just close the context (which closes all pages)
+      if (this.context) {
+        await this.context.close();
+        this.context = null;
+        this.page = null;
+      }
+    } else {
+      // For non-persistent, close page, context, and browser separately
+      if (this.page) {
+        await this.page.close();
+        this.page = null;
+      }
 
-    if (this.context) {
-      await this.context.close();
-      this.context = null;
-    }
+      if (this.context) {
+        await this.context.close();
+        this.context = null;
+      }
 
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
+      if (this.browser) {
+        await this.browser.close();
+        this.browser = null;
+      }
     }
   }
 
@@ -463,6 +488,134 @@ class BrowserAutomation {
   }
 
   /**
+   * Check if NotebookLM generation button is available
+   * @returns {Promise<boolean>}
+   */
+  async isNotebookLMAvailable() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    // Check if "Generate NotebookLM" button exists and is not disabled
+    const button = await this.page.$('button:has-text("Generate NotebookLM")');
+    if (!button) {
+      return false;
+    }
+
+    const isDisabled = await this.page.evaluate((btn) => {
+      return btn.disabled;
+    }, button);
+
+    return !isDisabled;
+  }
+
+  /**
+   * Generate NotebookLM document
+   * Uses the duration and model settings already configured in the UI (persisted in localStorage)
+   * @returns {Promise<void>}
+   */
+  async generateNotebookLM() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    // Check if NotebookLM generation is available
+    if (!(await this.isNotebookLMAvailable())) {
+      throw new Error('NotebookLM generation not available - no papers analyzed yet');
+    }
+
+    // Click "Generate NotebookLM" button
+    await this.page.click('button:has-text("Generate NotebookLM")');
+
+    // Wait a moment for generation to start
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Wait for NotebookLM generation to complete
+   * @param {Object} options - { timeout, pollInterval }
+   * @returns {Promise<boolean>} - True if completed successfully
+   */
+  async waitForNotebookLMComplete(options = {}) {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    const timeout = options.timeout || 300000; // 5 minutes default
+    const pollInterval = options.pollInterval || 2000; // 2 seconds
+
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      // Check if "Download NotebookLM" button appears (indicates completion)
+      const hasDownloadButton = await this.exists('button:has-text("Download NotebookLM")');
+      if (hasDownloadButton) {
+        return true;
+      }
+
+      // Check if still generating (button says "Generating...")
+      const isGenerating = await this.exists('button:has-text("Generating...")');
+      if (!isGenerating) {
+        // Not generating and no download button - might be an error
+        // Check for error messages in status
+        const status = await this.page.evaluate(() => {
+          const statusElements = document.querySelectorAll('p');
+          for (const el of statusElements) {
+            if (el.textContent.includes('NotebookLM') || el.textContent.includes('Error')) {
+              return el.textContent;
+            }
+          }
+          return null;
+        });
+
+        if (status && status.includes('Error')) {
+          throw new Error(`NotebookLM generation failed: ${status}`);
+        }
+
+        // Otherwise might have completed - check for download button again
+        const hasDownload = await this.exists('button:has-text("Download NotebookLM")');
+        if (hasDownload) {
+          return true;
+        }
+      }
+
+      await this.page.waitForTimeout(pollInterval);
+    }
+
+    throw new Error(`NotebookLM generation did not complete within ${timeout}ms`);
+  }
+
+  /**
+   * Download NotebookLM document
+   * @param {string} downloadPath - Directory to save download
+   * @returns {Promise<string>} - Path to downloaded file
+   */
+  async downloadNotebookLM(downloadPath) {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    // Check if download button is available
+    const hasDownloadButton = await this.exists('button:has-text("Download NotebookLM")');
+    if (!hasDownloadButton) {
+      throw new Error('NotebookLM document not available for download');
+    }
+
+    // Set up download handling
+    const [download] = await Promise.all([
+      this.page.waitForEvent('download', { timeout: 10000 }),
+      this.page.click('button:has-text("Download NotebookLM")')
+    ]);
+
+    // Save the download
+    const fileName = download.suggestedFilename();
+    const filePath = `${downloadPath}/${fileName}`;
+    await download.saveAs(filePath);
+
+    return filePath;
+  }
+
+  /**
    * Get current stage from Progress section
    * @returns {Promise<string>}
    */
@@ -545,6 +698,358 @@ class BrowserAutomation {
     }
 
     throw new Error(`Minimal test did not complete within ${timeout}ms`);
+  }
+
+  // ==================== Full Analysis Methods ====================
+
+  /**
+   * Click the "Start Analysis" button to begin full production run
+   * @returns {Promise<void>}
+   */
+  async startFullAnalysis() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    // Click the main "Start Analysis" button
+    const startButton = await this.page.$('button:has-text("Start Analysis")');
+    if (!startButton) {
+      throw new Error('Start Analysis button not found');
+    }
+
+    await startButton.click();
+
+    // Wait a moment for processing to begin
+    await this.page.waitForTimeout(1000);
+
+    // Verify that processing started (button should change to Pause/Abort controls)
+    const isProcessing = await this.exists('button:has-text("Pause")') ||
+                         await this.exists('button:has-text("Resume")') ||
+                         await this.exists('button:has-text("Abort")');
+
+    if (!isProcessing) {
+      throw new Error('Analysis does not appear to have started');
+    }
+  }
+
+  /**
+   * Get current processing stage and progress
+   * @returns {Promise<Object>} - { stage, current, total, isPaused }
+   */
+  async getCurrentProgress() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    // Get stage - look for stage indicator in UI
+    let stage = 'unknown';
+    try {
+      // Try to extract stage from the processing section
+      // The UI shows stages like "fetching", "Filtering", "initial-scoring", etc.
+      const stageText = await this.page.evaluate(() => {
+        // Look for progress section text patterns
+        const progressSection = document.body.innerText;
+
+        // Match common stage patterns (ORDER MATTERS - check PDF analysis BEFORE 'Download Report')
+        if (progressSection.includes('Fetching papers') || progressSection.includes('Fetching category')) {
+          return 'fetching';
+        } else if (progressSection.includes('Filtering')) {
+          return 'filtering';
+        } else if (progressSection.includes('Scoring') || progressSection.includes('initial-scoring')) {
+          return 'scoring';
+        } else if (progressSection.includes('Post-Processing')) {
+          return 'post-processing';
+        }
+        // Check for PDF analysis stage - MUST come before 'complete' check
+        // UI shows: "Analyzing PDFs" (plural), "Analyzing paper" (singular during processing)
+        // Also check for progress like "Analyzing paper 3 of 20"
+        else if (progressSection.includes('Analyzing PDF') ||
+                 progressSection.includes('deep-analysis') ||
+                 progressSection.includes('Analyzing paper') ||
+                 /Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)) {
+          return 'pdf-analysis';
+        }
+        // Only mark complete if truly done (NOT just because Download Report button exists)
+        else if (progressSection.includes('Analysis complete')) {
+          return 'complete';
+        }
+
+        return 'processing';
+      });
+
+      if (stageText) {
+        stage = stageText;
+      }
+    } catch (err) {
+      // Ignore errors, keep 'unknown'
+    }
+
+    // Get progress numbers (current / total)
+    let current = 0;
+    let total = 0;
+    try {
+      const progressText = await this.page.evaluate(() => {
+        // Look for progress indicators like "15 / 344" or "Processing 3 of 10"
+        const text = document.body.innerText;
+
+        // Match patterns like "X / Y" or "X of Y"
+        const slashMatch = text.match(/(\d+)\s*\/\s*(\d+)/);
+        if (slashMatch) {
+          return { current: parseInt(slashMatch[1]), total: parseInt(slashMatch[2]) };
+        }
+
+        const ofMatch = text.match(/(\d+)\s+of\s+(\d+)/i);
+        if (ofMatch) {
+          return { current: parseInt(ofMatch[1]), total: parseInt(ofMatch[2]) };
+        }
+
+        return null;
+      });
+
+      if (progressText) {
+        current = progressText.current;
+        total = progressText.total;
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+
+    // Check if paused
+    const isPaused = await this.exists('button:has-text("Resume")');
+
+    return {
+      stage,
+      current,
+      total,
+      isPaused
+    };
+  }
+
+  /**
+   * Get status messages from the logs/errors panel
+   * @param {number} limit - Maximum number of messages to return (most recent)
+   * @returns {Promise<Array<string>>}
+   */
+  async getStatusMessages(limit = 50) {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    try {
+      const messages = await this.page.evaluate((maxMessages) => {
+        // Find the errors/logs section - it has timestamped messages
+        const errorMessages = [];
+
+        // Look for the errors/logs panel - typically has class indicators
+        // Messages are formatted like "[7:35:01 AM] Message text"
+        const bodyText = document.body.innerText;
+        const lines = bodyText.split('\n');
+
+        for (const line of lines) {
+          // Match timestamp pattern [HH:MM:SS AM/PM]
+          if (line.match(/\[\d{1,2}:\d{2}:\d{2}\s(?:AM|PM)\]/)) {
+            errorMessages.push(line.trim());
+          }
+        }
+
+        // Return most recent messages
+        return errorMessages.slice(-maxMessages);
+      }, limit);
+
+      return messages;
+    } catch (err) {
+      return [];
+    }
+  }
+
+  /**
+   * Wait for full analysis to complete through all stages
+   * Stages: fetching → filtering → scoring → post-processing → pdf-analysis → complete
+   * @param {Object} options - { timeout, onProgress, pollInterval, verbose }
+   * @returns {Promise<boolean>} - True if completed successfully
+   */
+  async waitForFullAnalysisComplete(options = {}) {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    const timeout = options.timeout || 7200000; // 120 minutes (2 hours) default - runtimes often around 80 minutes
+    const pollInterval = options.pollInterval || 5000; // 5 seconds
+    const onProgress = options.onProgress || null;
+    const verbose = options.verbose || false;
+
+    const startTime = Date.now();
+    let lastStage = '';
+    let lastProgress = '';
+    let stageStartTime = Date.now();
+    let stageTimings = {};
+
+    while (Date.now() - startTime < timeout) {
+      // Get current progress to check stage
+      const progress = await this.getCurrentProgress();
+
+      // Check if we're truly done (not just filtering complete)
+      // Report button appears after filtering, but PDF analysis may still be pending
+      const reportAvailable = await this.isReportAvailable();
+      const stillProcessing = await this.exists('button:has-text("Pause")') ||
+                              await this.exists('button:has-text("Resume")');
+
+      // Consider it complete only if:
+      // 1. Report is available AND
+      // 2. Not currently processing (no Pause/Resume buttons) AND
+      // 3. Not in pdf-analysis stage AND
+      // 4. Stage is explicitly 'complete' (not just 'filtering', 'scoring', etc.)
+      const isPdfAnalysisPending = progress.stage === 'pdf-analysis' ||
+                                    progress.stage === 'deep-analysis' ||
+                                    // If transitioning from filtering and report just appeared, PDF analysis is pending
+                                    (reportAvailable && !stillProcessing && lastStage === 'filtering') ||
+                                    // If transitioning from scoring and report available, might be pending
+                                    (reportAvailable && !stillProcessing && lastStage === 'scoring');
+
+      if (reportAvailable && !stillProcessing && !isPdfAnalysisPending && progress.stage === 'complete') {
+        // Wait to ensure PDF analysis isn't about to start (triple-check)
+        await this.page.waitForTimeout(5000);
+
+        // Check again after waiting - all three checks must pass
+        const progress2 = await this.getCurrentProgress();
+        const stillNotPdfAnalysis = progress2.stage !== 'pdf-analysis' &&
+                                     progress2.stage !== 'deep-analysis';
+        const reportStillAvailable = await this.isReportAvailable();
+        const stillNotProcessing = !(await this.exists('button:has-text("Pause")') ||
+                                      await this.exists('button:has-text("Resume")'));
+
+        if (stillNotPdfAnalysis && reportStillAvailable && stillNotProcessing && progress2.stage === 'complete') {
+          // Truly completed!
+          if (lastStage && lastStage !== 'complete') {
+            const stageDuration = Date.now() - stageStartTime;
+            stageTimings[lastStage] = stageDuration;
+          }
+
+          if (verbose) {
+            console.log('\n=== Stage Timings ===');
+            for (const [stage, duration] of Object.entries(stageTimings)) {
+              const minutes = Math.floor(duration / 60000);
+              const seconds = Math.floor((duration % 60000) / 1000);
+              console.log(`  ${stage}: ${minutes}m ${seconds}s`);
+            }
+          }
+
+          return true;
+        } else {
+          if (verbose) {
+            console.log('  ⚠ Completion check failed - PDF analysis may be starting');
+            console.log(`    Stage after wait: ${progress2.stage}`);
+            console.log(`    Is PDF analysis: ${!stillNotPdfAnalysis}`);
+          }
+        }
+      }
+
+      // Detect stage transition
+      if (progress.stage !== lastStage && progress.stage !== 'unknown') {
+        if (lastStage && lastStage !== 'unknown') {
+          const stageDuration = Date.now() - stageStartTime;
+          stageTimings[lastStage] = stageDuration;
+
+          if (verbose) {
+            const minutes = Math.floor(stageDuration / 60000);
+            const seconds = Math.floor((stageDuration % 60000) / 1000);
+            console.log(`  ${lastStage} completed in ${minutes}m ${seconds}s`);
+          }
+        }
+
+        lastStage = progress.stage;
+        stageStartTime = Date.now();
+
+        // Call progress callback
+        if (onProgress) {
+          onProgress({
+            type: 'stage_change',
+            stage: progress.stage,
+            progress: { current: progress.current, total: progress.total }
+          });
+        }
+      }
+
+      // Detect progress change
+      const progressStr = `${progress.current}/${progress.total}`;
+      if (progressStr !== lastProgress && progress.total > 0) {
+        lastProgress = progressStr;
+
+        if (onProgress) {
+          onProgress({
+            type: 'progress_update',
+            stage: progress.stage,
+            progress: { current: progress.current, total: progress.total }
+          });
+        }
+      }
+
+      // Handle pause state
+      if (progress.isPaused) {
+        if (onProgress) {
+          onProgress({
+            type: 'paused',
+            stage: progress.stage
+          });
+        }
+
+        if (verbose) {
+          console.log('  ⏸ Analysis is paused, waiting for resume...');
+        }
+      }
+
+      await this.page.waitForTimeout(pollInterval);
+    }
+
+    throw new Error(`Full analysis did not complete within ${timeout}ms`);
+  }
+
+  /**
+   * Check if analysis is currently paused
+   * @returns {Promise<boolean>}
+   */
+  async isPaused() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    return await this.exists('button:has-text("Resume")');
+  }
+
+  /**
+   * Resume paused analysis
+   * @returns {Promise<void>}
+   */
+  async resumeAnalysis() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    const resumeButton = await this.page.$('button:has-text("Resume")');
+    if (!resumeButton) {
+      throw new Error('Resume button not found - analysis may not be paused');
+    }
+
+    await resumeButton.click();
+    await this.page.waitForTimeout(1000); // Wait for resume to take effect
+  }
+
+  /**
+   * Abort running analysis
+   * @returns {Promise<void>}
+   */
+  async abortAnalysis() {
+    if (!this.page) {
+      throw new Error('Browser not launched. Call launch() first.');
+    }
+
+    const abortButton = await this.page.$('button:has-text("Abort")');
+    if (!abortButton) {
+      throw new Error('Abort button not found - analysis may not be running');
+    }
+
+    await abortButton.click();
+    await this.page.waitForTimeout(1000); // Wait for abort to take effect
   }
 }
 
