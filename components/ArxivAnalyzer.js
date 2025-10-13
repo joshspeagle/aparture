@@ -1804,7 +1804,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
         setProcessing(prev => ({
             ...prev,
-            stage: 'post-processing',
+            stage: 'Post-Processing',
             progress: { current: 0, total: Math.min(config.postProcessingCount, papers.length) }
         }));
 
