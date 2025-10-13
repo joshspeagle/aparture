@@ -769,8 +769,9 @@ class BrowserAutomation {
                  /Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)) {
           return 'pdf-analysis';
         }
-        // Only mark complete if truly done (NOT just because Download Report button exists)
-        else if (progressSection.includes('Analysis complete')) {
+        // Only mark complete if truly done - look for "Completed:" in Download Report section
+        // UI shows "Download Report" section with "Completed: <timestamp>" when analysis finishes
+        else if (progressSection.includes('Download Report') && progressSection.includes('Completed:')) {
           return 'complete';
         }
 
