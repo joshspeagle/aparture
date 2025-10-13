@@ -254,7 +254,7 @@ const DEFAULT_CONFIG = {
     // Three-stage model configuration
     useQuickFilter: true,  // NEW: Enable quick filtering stage (enabled by default)
     filterModel: 'gemini-2.5-flash-lite',  // NEW: Model for quick YES/NO/MAYBE filtering
-    filterBatchSize: 10,  // NEW: Batch size for filtering
+    filterBatchSize: 3,  // NEW: Batch size for filtering
     categoriesToScore: ['YES', 'MAYBE'],  // NEW: Which filter categories proceed to scoring
     scoringModel: 'gemini-2.5-flash',  // RENAMED from screeningModel
     scoringBatchSize: 3,  // RENAMED from batchSize
@@ -368,7 +368,7 @@ function ArxivAnalyzer() {
                             parsed.config.filterModel = 'gemini-2.5-flash-lite';
                             parsed.config.scoringModel = parsed.config.screeningModel;
                             parsed.config.pdfModel = parsed.config.deepAnalysisModel;
-                            parsed.config.filterBatchSize = 10;
+                            parsed.config.filterBatchSize = 3;
                             parsed.config.scoringBatchSize = parsed.config.batchSize || 3;
                             parsed.config.useQuickFilter = false;
                             parsed.config.categoriesToScore = ['YES', 'MAYBE'];
@@ -1158,10 +1158,14 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 try {
                     console.log(`\nFetching category ${i + 1}/${categories.length}: ${category}`);
 
-                    const categoryPapers = await fetchSingleCategory(category);
+                    // Add status message for category start
+                    addError(`Fetching ${category}...`);
+
+                    const categoryPapers = await fetchSingleCategory(category, addError);
                     allPapers.push(...categoryPapers);
 
                     console.log(`Found ${categoryPapers.length} papers for ${category}`);
+                    addError(`✓ ${category}: Found ${categoryPapers.length} papers`);
 
                     // Update progress after each category
                     setProcessing(prev => ({
@@ -1169,11 +1173,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                         stage: 'fetching',
                         progress: { current: i + 1, total: categories.length }
                     }));
-
-                    // Delay between requests (except for the last one)
-                    if (i < categories.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, requestDelay));
-                    }
 
                 } catch (error) {
                     // Check if this is an abort error
@@ -1184,6 +1183,11 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     console.error(`Error fetching category ${category}:`, error);
                     addError(`Failed to fetch category ${category}: ${error.message}`);
                     // Continue with other categories
+                } finally {
+                    // Always delay between categories (except for the last one)
+                    if (i < categories.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, requestDelay));
+                    }
                 }
             }
 
@@ -1220,9 +1224,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
     };
 
     // Fetch papers for a single category with smart date range shifting
-    const fetchSingleCategory = async (category) => {
-        const maxResults = 200; // Increased from default
+    const fetchSingleCategory = async (category, statusCallback) => {
+        const maxResults = 300; // Maximum papers to fetch per category
         const maxDateShiftDays = 14; // Maximum days to shift back
+        const minPapersThreshold = 5; // Only stop shifting if we find at least this many papers
 
         // Try to find a date range that contains papers
         for (let daysShifted = 0; daysShifted <= maxDateShiftDays; daysShifted++) {
@@ -1239,16 +1244,50 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
             console.log(`  Trying date range: ${startDate} to ${endDate}${daysShifted > 0 ? ` (shifted back ${daysShifted} days)` : ''}`);
 
+            // Show date shift attempts in UI (only after first attempt)
+            if (daysShifted > 0 && statusCallback) {
+                statusCallback(`  ${category}: Trying -${daysShifted} days (${startDate}-${endDate})`);
+            }
+
             try {
                 const papers = await executeArxivQuery(query, maxResults, category);
 
-                if (papers.length > 0) {
+                // Stop if we found enough papers
+                if (papers.length >= minPapersThreshold) {
                     if (daysShifted > 0) {
                         console.log(`  ✓ Found ${papers.length} papers after shifting back ${daysShifted} days`);
+                        if (statusCallback) {
+                            statusCallback(`  ${category}: ✓ ${papers.length} papers (shifted back ${daysShifted} days)`);
+                        }
                     }
                     return papers;
-                } else if (daysShifted === 0) {
+                }
+                // Last attempt - take whatever we have
+                else if (papers.length > 0 && daysShifted === maxDateShiftDays) {
+                    console.log(`  ✓ Found ${papers.length} papers after ${daysShifted} days (below threshold of ${minPapersThreshold}, but final attempt)`);
+                    if (statusCallback) {
+                        statusCallback(`  ${category}: ✓ ${papers.length} papers (final attempt, below threshold)`);
+                    }
+                    return papers;
+                }
+                // First attempt with few papers - keep looking
+                else if (papers.length > 0 && daysShifted === 0) {
+                    console.log(`  Found only ${papers.length} papers in original range (below threshold of ${minPapersThreshold}), trying shifted dates...`);
+                    if (statusCallback) {
+                        statusCallback(`  ${category}: Only ${papers.length} papers found, looking back further...`);
+                    }
+                }
+                // No papers at all on first attempt
+                else if (papers.length === 0 && daysShifted === 0) {
                     console.log(`  No papers found in original date range, trying with shifted dates...`);
+                    if (statusCallback) {
+                        statusCallback(`  ${category}: No papers in recent range, looking back...`);
+                    }
+                }
+
+                // Add delay before next attempt (if not the last attempt)
+                if (daysShifted < maxDateShiftDays) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
                 }
 
             } catch (error) {
@@ -1257,9 +1296,13 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                     throw error;
                 }
 
-                console.error(`  Error with query for ${category}:`, error.message);
-                if (daysShifted === 0) {
-                    throw error; // Fail fast on first attempt if it's a real API error
+                console.error(`  Error with query for ${category} (day shift ${daysShifted}):`, error.message);
+                // Don't fail fast - continue trying with date shifts
+                // Network errors might be transient
+
+                // Add delay before retry even on error
+                if (daysShifted < maxDateShiftDays) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
                 }
             }
         }
@@ -3066,7 +3109,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                                                 <input
                                                     type="number"
                                                     value={config.filterBatchSize}
-                                                    onChange={(e) => setConfig(prev => ({ ...prev, filterBatchSize: parseInt(e.target.value) || 10 }))}
+                                                    onChange={(e) => setConfig(prev => ({ ...prev, filterBatchSize: parseInt(e.target.value) || 3 }))}
                                                     className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                                                     min="1"
                                                     max="20"
