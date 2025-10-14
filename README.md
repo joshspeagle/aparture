@@ -10,7 +10,7 @@ It was mainly designed to help the author (Josh Speagle) survive searching throu
 
 ### Core Workflow
 
-- **Multi-stage filtering**: Optional quick filter → Abstract scoring → PDF analysis
+- **Multi-stage filtering**: Quick filter → Abstract scoring → PDF analysis
 - **Flexible processing**: Process papers from multiple ArXiv categories simultaneously
 - **Smart scoring**: 0-10 scale relevance scoring with detailed justifications
 - **Deep analysis**: Full PDF content analysis for top papers
@@ -110,7 +110,7 @@ If you want to apply a custom domain, in your Vercel dashboard:
 
 This app includes password protection to prevent unauthorized use of your API keys. The password is checked on every API call to ensure security.
 
-## Usage
+## Web Interface (default)
 
 ### Basic Workflow
 
@@ -155,17 +155,94 @@ This app includes password protection to prevent unauthorized use of your API ke
   - Choose appropriate models for each stage (e.g., cheaper models for filtering)
 - **Default Models**: Google Gemini models are set as defaults across all stages due to their generous [free tier offering](https://ai.google.dev/gemini-api/docs/rate-limits#free-tier)
 
+## Command Line Interface (advanced)
+
+**For frequent users**: If you are using this routinely rather than just on occassion (or just prefer to run things directly on the command line), there are additional CLI automation tools available.
+
+### Prerequisites
+
+1. Complete steps 1-2 from "Setup Instructions" above (install dependencies and set up .env.local)
+2. Install Playwright browsers (first time only):
+   ```bash
+   npx playwright install chromium
+   ```
+
+### First-Time Setup
+
+1. **Configure Your Analysis Settings**
+   ```bash
+   npm run setup
+   ```
+   This opens an interactive browser UI where you:
+   - Select arXiv categories to monitor
+   - Choose AI models for each processing stage
+   - Set score thresholds and batch sizes
+   - Configure NotebookLM podcast duration (5-30 minutes)
+   - Define your research interests
+
+   All settings are saved automatically in browser localStorage.
+
+   Doing this properly is important, since browser settings are not shared between your default browser and the instances that will be spawned from Playwright.
+
+2. **Test Your Configuration** (optional but recommended)
+
+You can use the setup browser to adjust other settings at any time and to execute "dry run" tests as well as "minimal API" tests. Alternatively, you can also do this directly from the command line via:
+
+   ```bash
+   # Test with mock data (fast, no API costs)
+   npm run test:dryrun
+
+   # Or test with 3 real papers (minimal cost)
+   npm run test:minimal
+   ```
+
+### Running Your First Analysis
+
+```bash
+npm run analyze
+```
+
+This command will:
+- Start the Next.js server automatically
+- Run the complete analysis workflow (30-90 minutes) and download the report
+- Generate a NotebookLM document and download it
+- Upload both documents to Google NotebookLM (you'll be prompted to log in the first time)
+- Generate and download a podcast (5-30 minutes-ish, depending on your settings)
+- Save everything to the `reports/` directory
+- Clean up and shut down when complete
+
+**First Run Note**: Google will prompt you to log in for NotebookLM authentication. Complete the OAuth flow in the browser window that opens automatically. Your session will be cached for future runs.
+
+**Server conflicts**: If you find localhost server conflicts, the recommendation is just to kill all running instances and start fresh.
+
+### Daily Usage
+
+After initial setup, running analyses is simple:
+
+```bash
+npm run analyze                                     # Full workflow (recommended)
+npm run analyze --skip-podcast --skip-notebooklm    # Skip all NotebookLM-related features
+```
+
+All outputs are saved to `reports/` with dated filenames.
+
 ## License
 
 MIT
 
 ## Acknowledgements
 
-Created in collaboration with Claude Sonnet 4 and Claude Opus 4.1
+Created in collaboration with Claude Sonnet 4/4.5 and Claude Opus 4.1.
 
 ## Recent Updates
 
+- **CLI Automation (NEW!)**: Complete end-to-end automation from analysis to podcast generation
+  - Interactive setup with persistent configuration
+  - Automated NotebookLM podcast generation with Google OAuth
+  - Hands-free workflow execution via `npm run analyze`
+  - Independent test phases for validation
 - **NotebookLM Integration**: Generate podcast-ready documents from analysis results
+- **External NotebookLM Automation**: Automated podcast generation via browser automation
 - **Post-Processing**: Two-stage scoring for improved consistency
 - **Quick Filtering**: Optional first-pass filtering to reduce API costs
 - **Visual Indicators**: Clear badges showing when test mode is active

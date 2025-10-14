@@ -8,7 +8,8 @@
         "setup": "node cli/setup.js",
         "analyze": "node cli/run-analysis.js",
         "test:minimal": "node cli/tests/test-browser-minimal.js",
-        "test:dryrun": "node cli/tests/test-browser-dryrun.js"
+        "test:dryrun": "node cli/tests/test-browser-dryrun.js",
+        "test:notebooklm": "node cli/tests/test-notebooklm.js"
     },
     "dependencies": {
         "chalk": "^5.6.2",

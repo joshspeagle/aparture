@@ -12,25 +12,31 @@
  * - Handling long runtimes (30-90+ minutes)
  * - Downloading comprehensive report
  * - Generating NotebookLM podcast-optimized document (optional)
+ * - Uploading to NotebookLM and generating podcast (optional)
  * - Verifying complete analysis results
  *
  * Setup (first time):
- *   npm run setup                      # Interactive configuration UI
+ *   npm run setup                       # Interactive configuration UI
  *
  * Usage:
- *   npm run analyze                    # Generate report + NotebookLM document
- *   npm run analyze --skip-notebooklm  # Generate report only
+ *   npm run analyze                     # Full workflow: report + document + podcast
+ *   npm run analyze --skip-notebooklm   # Skip NotebookLM document generation
+ *   npm run analyze --skip-podcast      # Generate document but skip podcast
+ *   npm run analyze --skip-notebooklm --skip-podcast  # Report only
  *
  * Configuration:
  *   - First run "npm run setup" to configure all settings via UI
  *   - Settings persist in browser localStorage for subsequent runs
  *   - Categories, models, thresholds, NotebookLM options all saved automatically
+ *   - Google authentication for NotebookLM (interactive on first podcast generation)
  *
  * NOTE: This uses extensive real API calls and will incur significant costs!
- * Runtime: Typically 30-90 minutes depending on configuration
+ * Runtime: Typically 30-90 minutes for analysis + 10-20 minutes for podcast generation
  */
 
 const BrowserAutomation = require('./browser-automation');
+const NotebookLMAutomation = require('./notebooklm-automation');
+const { getPromptForFile, extractDurationFromFilename } = require('./notebooklm-prompts');
 const { ServerManager } = require('./server-manager');
 const path = require('path');
 const fs = require('fs').promises;
@@ -38,6 +44,7 @@ const fs = require('fs').promises;
 // Parse command-line arguments
 const args = process.argv.slice(2);
 const skipNotebookLM = args.includes('--skip-notebooklm') || args.includes('--no-notebooklm');
+const skipPodcast = args.includes('--skip-podcast') || args.includes('--no-podcast');
 
 // Configuration
 const CONFIG = {
@@ -50,7 +57,9 @@ const CONFIG = {
   pollInterval: 5000, // Check progress every 5 seconds
   screenshotInterval: 300000, // Take screenshot every 5 minutes
   generateNotebookLM: !skipNotebookLM, // Generate NotebookLM by default (disable with --skip-notebooklm)
-  notebookLMTimeout: 300000 // 5 minutes for NotebookLM generation
+  notebookLMTimeout: 300000, // 5 minutes for NotebookLM generation
+  generatePodcast: !skipPodcast, // Generate podcast via NotebookLM external automation (disable with --skip-podcast)
+  podcastGenerationTimeout: 1800000 // 30 minutes for podcast generation
 };
 
 /**
@@ -138,9 +147,14 @@ async function runAnalysis() {
     console.log('⚠️  WARNING: This uses extensive real API calls and will incur significant costs!');
     console.log('    Expected runtime: 30-90 minutes depending on configuration');
     if (CONFIG.generateNotebookLM) {
-      console.log('    NotebookLM generation: ENABLED (add --skip-notebooklm to disable)');
+      console.log('    NotebookLM document: ENABLED (add --skip-notebooklm to disable)');
     } else {
-      console.log('    NotebookLM generation: DISABLED');
+      console.log('    NotebookLM document: DISABLED');
+    }
+    if (CONFIG.generatePodcast) {
+      console.log('    Podcast generation: ENABLED (add --skip-podcast to disable)');
+    } else {
+      console.log('    Podcast generation: DISABLED');
     }
     console.log('');
 
@@ -373,6 +387,131 @@ async function runAnalysis() {
       console.log('\nStep 12: Skipping NotebookLM generation (--skip-notebooklm flag set)');
     }
 
+    // Step 13: Upload to NotebookLM and generate podcast (optional)
+    let podcastFile = null;
+    if (CONFIG.generatePodcast && notebookLMFile) {
+      console.log('\nStep 13: Uploading to NotebookLM and generating podcast...');
+      console.log('  Note: This requires Google authentication and may take 10-20 minutes');
+
+      const notebookLM = new NotebookLMAutomation();
+
+      try {
+        // Launch browser
+        console.log('  Launching browser for NotebookLM...');
+        await notebookLM.launch({ headless: false });
+        log('NotebookLM browser launched');
+
+        // Authenticate with Google (interactive on first run)
+        await notebookLM.ensureAuthenticated({ timeout: 120000 });
+        log('Authenticated with Google');
+
+        // Extract date prefix from report filename for consistent naming
+        const reportBasename = path.basename(downloadedFile);
+        const dateMatch = reportBasename.match(/^(\d{4}-\d{2}-\d{2})/);
+        const datePrefix = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0];
+        const notebookName = `${datePrefix}_aparture`;
+
+        // Create notebook
+        console.log(`  Creating notebook: ${notebookName}...`);
+        await notebookLM.createNotebook(notebookName);
+        log(`Notebook created: ${notebookName}`);
+
+        // Take screenshot after notebook creation
+        await notebookLM.takeScreenshot(
+          path.join(CONFIG.screenshotDir, 'notebooklm-notebook-created.png')
+        );
+
+        // Upload files
+        console.log('  Uploading report and NotebookLM document...');
+        await notebookLM.uploadFiles(downloadedFile, notebookLMFile);
+        log('Files uploaded successfully');
+
+        // Take screenshot after file upload
+        await notebookLM.takeScreenshot(
+          path.join(CONFIG.screenshotDir, 'notebooklm-files-uploaded.png')
+        );
+
+        // Extract duration and get appropriate prompt
+        const duration = extractDurationFromFilename(notebookLMFile);
+        console.log(`  Podcast duration target: ${duration}`);
+
+        const customPrompt = await getPromptForFile(notebookLMFile);
+        console.log(`  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`);
+
+        // Generate audio overview with customization
+        console.log('  Configuring audio overview (Deep Dive, Default length)...');
+        await notebookLM.generateAudioOverview(customPrompt, duration);
+        log('Audio generation started');
+
+        // Take screenshot of customization dialog (captured during generateAudioOverview)
+        log('Screenshot captured: notebooklm-customization-dialog.png');
+
+        // Take screenshot of generation start
+        await notebookLM.takeScreenshot(
+          path.join(CONFIG.screenshotDir, 'notebooklm-generation-started.png')
+        );
+
+        // Wait for generation to complete
+        console.log('  Waiting for podcast generation...');
+        console.log('  This typically takes 10-20 minutes. Progress updates will appear below.');
+        const podcastStartTime = Date.now();
+        await notebookLM.waitForAudioGeneration({
+          timeout: CONFIG.podcastGenerationTimeout
+        });
+        const podcastDuration = Date.now() - podcastStartTime;
+        log(`Podcast generation completed in ${formatDuration(podcastDuration)}`);
+
+        // Take screenshot of completion
+        await notebookLM.takeScreenshot(
+          path.join(CONFIG.screenshotDir, 'notebooklm-generation-complete.png')
+        );
+
+        // Download podcast
+        const podcastFileName = `${datePrefix}_podcast.m4a`;
+        console.log(`  Downloading podcast: ${podcastFileName}...`);
+        podcastFile = await notebookLM.downloadAudio(CONFIG.downloadDir, podcastFileName);
+        log(`Podcast downloaded: ${podcastFile}`);
+
+        // Verify file was downloaded
+        const podcastStats = await fs.stat(podcastFile);
+        const podcastSizeMB = (podcastStats.size / (1024 * 1024)).toFixed(2);
+        log(`Podcast file size: ${podcastSizeMB} MB`);
+
+        // Keep browser open briefly for inspection
+        console.log('  Keeping browser open for 5 seconds for inspection...');
+        await notebookLM.getPage().waitForTimeout(5000);
+
+        // Close NotebookLM browser
+        await notebookLM.close();
+        log('NotebookLM browser closed');
+
+      } catch (error) {
+        console.log(`  ⚠ Podcast generation failed: ${error.message}`);
+        console.log('  You can manually upload the files to NotebookLM to generate the podcast');
+
+        // Take error screenshot
+        try {
+          await notebookLM.takeScreenshot(
+            path.join(CONFIG.screenshotDir, 'notebooklm-error.png')
+          );
+        } catch (screenshotError) {
+          // Ignore screenshot errors
+        }
+
+        // Close browser on error
+        try {
+          await notebookLM.close();
+        } catch (closeError) {
+          // Ignore close errors
+        }
+      }
+    } else if (CONFIG.generatePodcast && !notebookLMFile) {
+      console.log('\nStep 13: Skipping podcast generation (no NotebookLM document available)');
+      console.log('  Tip: Remove --skip-notebooklm flag to generate podcast');
+    } else {
+      console.log('\nStep 13: Skipping podcast generation (--skip-podcast flag set)');
+    }
+
     // Success!
     console.log('\n' + '='.repeat(70));
     console.log('✓ Analysis Complete!');
@@ -397,9 +536,15 @@ async function runAnalysis() {
     if (notebookLMFile) {
       console.log('  ✓ NotebookLM document generated and downloaded');
     }
+    if (podcastFile) {
+      console.log('  ✓ Podcast generated via NotebookLM and downloaded');
+    }
     console.log(`\nReport saved to: ${downloadedFile}`);
     if (notebookLMFile) {
       console.log(`NotebookLM document saved to: ${notebookLMFile}`);
+    }
+    if (podcastFile) {
+      console.log(`Podcast saved to: ${podcastFile}`);
     }
     console.log('');
 
