@@ -179,7 +179,7 @@ async function runPodcastOnly() {
     console.log('Finding most recent report and NotebookLM document...\n');
 
     // Find most recent files
-    const reportFile = await findMostRecentFile(CONFIG.downloadDir, 'aparture_analysis');
+    const reportFile = await findMostRecentFile(CONFIG.downloadDir, 'arxiv_analysis');
     const notebookLMFile = await findMostRecentFile(CONFIG.downloadDir, 'notebooklm');
 
     if (!reportFile) {
@@ -189,8 +189,22 @@ async function runPodcastOnly() {
       throw new Error('No NotebookLM document found in reports/ directory');
     }
 
+    // Extract dates and verify they match
+    const reportDate = path.basename(reportFile).match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+    const notebookDate = path.basename(notebookLMFile).match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+
     console.log(`Found report: ${path.basename(reportFile)}`);
-    console.log(`Found NotebookLM document: ${path.basename(notebookLMFile)}\n`);
+    console.log(`Found NotebookLM document: ${path.basename(notebookLMFile)}`);
+
+    if (reportDate !== notebookDate) {
+      console.log(`\n⚠️  WARNING: Files are from different dates!`);
+      console.log(`  Report date: ${reportDate}`);
+      console.log(`  NotebookLM date: ${notebookDate}`);
+      console.log(`  This may indicate mismatched files from different analysis runs.`);
+      console.log(`  Continuing anyway, but you may want to verify these are the correct files.\n`);
+    } else {
+      console.log(`✓ Files are from the same analysis (${reportDate})\n`);
+    }
 
     // Verify files exist and are readable
     const reportStats = await fs.stat(reportFile);

@@ -507,7 +507,8 @@ class NotebookLMAutomation {
       await this.page.waitForTimeout(300);
       await promptTextarea.fill(''); // Clear any existing text
       await this.page.waitForTimeout(300);
-      await promptTextarea.type(focusPrompt, { delay: 10 }); // Type with slight delay for reliability
+      // Use fill() instead of type() for long prompts - much faster and no timeout issues
+      await promptTextarea.fill(focusPrompt);
       await this.page.waitForTimeout(500);
 
       // Verify the text was entered
@@ -556,10 +557,9 @@ class NotebookLMAutomation {
     }
 
     const timeout = options.timeout || 1800000; // 30 minutes default
-    const pollInterval = 5000; // Check every 5 seconds
+    const pollInterval = 30000; // Refresh and check every 30 seconds
 
     const startTime = Date.now();
-    let lastUpdate = startTime;
 
     console.log('  Waiting for audio generation to complete (typically 10-20 minutes)...');
 
@@ -591,16 +591,17 @@ class NotebookLMAutomation {
         throw new Error(`Audio generation failed: ${errorText}`);
       }
 
-      // Progress update every 30 seconds
-      if (Date.now() - lastUpdate > 30000) {
-        const elapsed = Math.round((Date.now() - startTime) / 1000);
-        console.log(
-          `  Still generating... (${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed)`
-        );
-        lastUpdate = Date.now();
-      }
-
+      // Wait 30 seconds before next check
       await this.page.waitForTimeout(pollInterval);
+
+      // Progress update and refresh page every 30 seconds
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+      console.log(
+        `  Refreshing page to check generation status... (${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed)`
+      );
+
+      await this.page.reload({ waitUntil: 'domcontentloaded' });
+      await this.page.waitForTimeout(3000); // Wait for page to load after refresh
     }
 
     throw new Error(`Audio generation did not complete within ${timeout / 1000}s`);
@@ -618,24 +619,62 @@ class NotebookLMAutomation {
     }
 
     try {
-      // Find download button
-      const downloadButton = await this.page.$(
-        'button:has-text("Download"), [aria-label*="Download"]'
-      );
+      console.log('  Looking for Audio Overview three-dot menu...');
 
-      if (!downloadButton) {
-        throw new Error('Could not find download button - audio may not be ready');
+      // The download is in a menu accessed via three-dot button on the Audio Overview card
+      // Look for all buttons with "More" or "menu" aria-labels in the Studio panel
+      const menuButtons = await this.page.$$('[aria-label*="More"]');
+
+      let menuButton = null;
+      for (const btn of menuButtons) {
+        const isVisible = await btn.isVisible().catch(() => false);
+        if (isVisible) {
+          menuButton = btn;
+          break;
+        }
       }
+
+      if (!menuButton) {
+        await this.takeScreenshot(
+          path.join(process.cwd(), 'reports', 'screenshots', 'menu-button-not-found.png')
+        );
+        throw new Error('Could not find three-dot menu button on Audio Overview card');
+      }
+
+      console.log('  ✓ Found three-dot menu button');
+      console.log('  Clicking menu button...');
+      await menuButton.click();
+      await this.page.waitForTimeout(500); // Wait for menu to appear
+
+      console.log('  Looking for Download option in menu...');
+
+      // Find and click Download option from the menu
+      const downloadOption = await this.page.$('text="Download"');
+
+      if (!downloadOption) {
+        await this.takeScreenshot(
+          path.join(process.cwd(), 'reports', 'screenshots', 'download-option-not-found.png')
+        );
+        throw new Error('Could not find Download option in menu');
+      }
+
+      console.log('  ✓ Found Download option');
+      console.log('  Clicking Download and waiting for download event...');
 
       // Set up download handling
       const [download] = await Promise.all([
         this.page.waitForEvent('download', { timeout: 30000 }),
-        downloadButton.click(),
+        downloadOption.click(),
       ]);
+
+      console.log('  ✓ Download event triggered');
+      console.log(`  Saving file as: ${fileName}...`);
 
       // Save with custom filename
       const filePath = path.join(downloadPath, fileName);
       await download.saveAs(filePath);
+
+      console.log(`  ✓ File saved successfully`);
 
       return filePath;
     } catch (error) {
