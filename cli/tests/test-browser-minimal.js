@@ -27,7 +27,7 @@ const TEST_CONFIG = {
   downloadDir: path.join(__dirname, '../reports'),
   headless: false, // Set to false for visibility during testing
   envFile: path.join(__dirname, '../.env.local'),
-  minimalTestTimeout: 600000 // 10 minutes (real API calls take time)
+  minimalTestTimeout: 600000, // 10 minutes (real API calls take time)
 };
 
 /**
@@ -66,15 +66,15 @@ async function verifyReport(filePath) {
     hasMetadata: content.includes('Generated') || content.includes('MINIMAL'),
     hasTestInfo: content.includes('TEST') || content.includes('Working'),
     hasAPIsWorking: content.includes('API') || content.includes('Real'),
-    hasContent: content.length > 200 // Minimal test reports are brief summaries
+    hasContent: content.length > 200, // Minimal test reports are brief summaries
   };
 
-  const allPassed = Object.values(checks).every(v => v);
+  const allPassed = Object.values(checks).every((v) => v);
 
   return {
     passed: allPassed,
     checks,
-    size: content.length
+    size: content.length,
   };
 }
 
@@ -120,10 +120,9 @@ async function runTest() {
     logTest('System Tests section expanded');
 
     // Take screenshot showing test buttons
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'minimal-ready.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'minimal-ready.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: minimal-ready.png');
 
     // Step 5.5: Check if dry run has been completed (prerequisite)
@@ -141,7 +140,7 @@ async function runTest() {
       const dryRunStartTime = Date.now();
       let dryRunCompleted = false;
 
-      while (!dryRunCompleted && (Date.now() - dryRunStartTime < 120000)) {
+      while (!dryRunCompleted && Date.now() - dryRunStartTime < 120000) {
         const hasRunAgain = await browser.exists('button:has-text("Run Again")');
         if (hasRunAgain) {
           dryRunCompleted = true;
@@ -177,10 +176,9 @@ async function runTest() {
     await browser.getPage().waitForTimeout(3000);
 
     // Take screenshot of test in progress
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'minimal-in-progress.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'minimal-in-progress.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: minimal-in-progress.png');
 
     // Step 7: Wait for completion with progress updates
@@ -210,7 +208,7 @@ async function runTest() {
     const pollInterval = 5000; // Check every 5 seconds
     let completed = false;
 
-    while (!completed && (Date.now() - startTime < TEST_CONFIG.minimalTestTimeout)) {
+    while (!completed && Date.now() - startTime < TEST_CONFIG.minimalTestTimeout) {
       // Check if "Run API Test" button is back (completion indicator)
       const hasRunButton = await browser.exists('button:has-text("Run API Test")');
       const isTesting = await browser.exists('button:has-text("Testing...")');
@@ -228,7 +226,7 @@ async function runTest() {
           lastStage = stage;
           lastUpdate = Date.now();
         }
-      } catch (err) {
+      } catch {
         // Ignore errors getting stage
       }
 
@@ -248,7 +246,9 @@ async function runTest() {
     }
 
     const duration = Math.round((Date.now() - startTime) / 1000);
-    logTest(`Minimal test completed in ${duration} seconds (${Math.round(duration/60)}m ${duration%60}s)`);
+    logTest(
+      `Minimal test completed in ${duration} seconds (${Math.round(duration / 60)}m ${duration % 60}s)`
+    );
 
     // Wait a moment for automatic download to trigger
     await browser.getPage().waitForTimeout(3000);
@@ -258,10 +258,9 @@ async function runTest() {
     }
 
     // Take screenshot of completion
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'minimal-complete.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'minimal-complete.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: minimal-complete.png');
 
     // Step 8: Check if report is available (manual download button)
@@ -291,7 +290,9 @@ async function runTest() {
       console.log(`    - Has metadata: ${verification.checks.hasMetadata}`);
       console.log(`    - Has test info: ${verification.checks.hasTestInfo}`);
       console.log(`    - Has APIs working: ${verification.checks.hasAPIsWorking}`);
-      console.log(`    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`);
+      console.log(
+        `    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`
+      );
       throw new Error('Report verification failed');
     }
 
@@ -308,24 +309,21 @@ async function runTest() {
     console.log('  - Report generation with actual paper data');
     console.log('  - Ready for Phase 5 (full production run)');
     console.log('');
-
   } catch (error) {
     console.error('\n✗ Test failed:', error.message);
 
     // Take error screenshot
     try {
-      await browser.takeScreenshot(
-        path.join(TEST_CONFIG.screenshotDir, 'minimal-error.png'),
-        { fullPage: true }
-      );
+      await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'minimal-error.png'), {
+        fullPage: true,
+      });
       console.error('Error screenshot saved: minimal-error.png');
-    } catch (screenshotError) {
+    } catch {
       // Ignore screenshot errors
     }
 
     console.error('');
     process.exit(1);
-
   } finally {
     // Cleanup
     console.log('Cleaning up...');

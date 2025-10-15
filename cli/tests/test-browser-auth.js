@@ -22,7 +22,7 @@ const TEST_CONFIG = {
   serverPort: 3000,
   screenshotDir: path.join(__dirname, '../reports/test-screenshots'),
   headless: true, // Set to false for debugging
-  envFile: path.join(__dirname, '../.env.local')
+  envFile: path.join(__dirname, '../.env.local'),
 };
 
 /**
@@ -95,10 +95,9 @@ async function runTest() {
     logTest('Authentication successful');
 
     // Take screenshot of authenticated UI
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'authenticated-ui.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'authenticated-ui.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: authenticated-ui.png');
 
     // Step 7: Verify authenticated state
@@ -118,11 +117,9 @@ async function runTest() {
 
     if (configKeys.length > 0) {
       console.log('\n  localStorage keys:');
-      configKeys.forEach(key => {
+      configKeys.forEach((key) => {
         const value = localStorage[key];
-        const preview = value.length > 50
-          ? `${value.substring(0, 50)}...`
-          : value;
+        const preview = value.length > 50 ? `${value.substring(0, 50)}...` : value;
         console.log(`    - ${key}: ${preview}`);
       });
     }
@@ -137,10 +134,9 @@ async function runTest() {
     logTest('Password screen reappeared after logout');
 
     // Take screenshot of logout
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'after-logout.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'after-logout.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: after-logout.png');
 
     // Success!
@@ -154,24 +150,21 @@ async function runTest() {
     console.log('  - Logout functionality');
     console.log('  - Ready for Phase 3 (dry run execution)');
     console.log('');
-
   } catch (error) {
     console.error('\n✗ Test failed:', error.message);
 
     // Take error screenshot
     try {
-      await browser.takeScreenshot(
-        path.join(TEST_CONFIG.screenshotDir, 'auth-error.png'),
-        { fullPage: true }
-      );
+      await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'auth-error.png'), {
+        fullPage: true,
+      });
       console.error('Error screenshot saved: auth-error.png');
-    } catch (screenshotError) {
+    } catch {
       // Ignore screenshot errors
     }
 
     console.error('');
     process.exit(1);
-
   } finally {
     // Cleanup
     console.log('Cleaning up...');

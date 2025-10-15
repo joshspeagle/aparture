@@ -35,7 +35,7 @@ const CONFIG = {
   // Use the most recent files from today (2025-10-13)
   reportFile: '2025-10-13_arxiv_analysis_63min.md',
   notebooklmFile: '2025-10-13_notebooklm_30min.md',
-  podcastGenerationTimeout: 1800000 // 30 minutes
+  podcastGenerationTimeout: 1800000, // 30 minutes
 };
 
 /**
@@ -88,14 +88,14 @@ async function runTest() {
     try {
       await fs.access(reportPath);
       log(`Report file found: ${CONFIG.reportFile}`);
-    } catch (error) {
+    } catch {
       throw new Error(`Report file not found: ${reportPath}`);
     }
 
     try {
       await fs.access(notebooklmPath);
       log(`NotebookLM document found: ${CONFIG.notebooklmFile}`);
-    } catch (error) {
+    } catch {
       throw new Error(`NotebookLM document not found: ${notebooklmPath}`);
     }
 
@@ -179,7 +179,7 @@ async function runTest() {
 
     const generationStartTime = Date.now();
     await notebookLM.waitForAudioGeneration({
-      timeout: CONFIG.podcastGenerationTimeout
+      timeout: CONFIG.podcastGenerationTimeout,
     });
     const generationDuration = Date.now() - generationStartTime;
     log(`Podcast generated in ${formatDuration(generationDuration)}`);
@@ -216,7 +216,6 @@ async function runTest() {
     console.log(`  Podcast: ${podcastFile}`);
     console.log(`  Screenshots: ${CONFIG.screenshotDir}/test-notebooklm-*.png`);
     console.log('');
-
   } catch (error) {
     console.error('\n' + '='.repeat(70));
     console.error('✗ NotebookLM Automation Test FAILED');
@@ -226,11 +225,9 @@ async function runTest() {
 
     // Take error screenshot
     try {
-      await notebookLM.takeScreenshot(
-        path.join(CONFIG.screenshotDir, 'test-notebooklm-error.png')
-      );
+      await notebookLM.takeScreenshot(path.join(CONFIG.screenshotDir, 'test-notebooklm-error.png'));
       console.error('Error screenshot saved: test-notebooklm-error.png');
-    } catch (screenshotError) {
+    } catch {
       // Ignore screenshot errors
     }
 
@@ -242,7 +239,6 @@ async function runTest() {
     console.error('');
 
     process.exit(1);
-
   } finally {
     // Close browser
     console.log('Cleaning up...');
@@ -256,7 +252,7 @@ async function runTest() {
 }
 
 // Run test
-runTest().catch(error => {
+runTest().catch((error) => {
   console.error('Unexpected error:', error);
   process.exit(1);
 });

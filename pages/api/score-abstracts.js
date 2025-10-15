@@ -2,216 +2,222 @@ const { MODEL_REGISTRY } = require('../../utils/models.js');
 
 // Simple password check function
 function checkPassword(password) {
-    return password === process.env.ACCESS_PASSWORD;
+  return password === process.env.ACCESS_PASSWORD;
 }
 
 // Function to call different AI models
 async function callAIModel(modelId, prompt) {
-    const modelConfig = MODEL_REGISTRY[modelId];
+  const modelConfig = MODEL_REGISTRY[modelId];
 
-    if (!modelConfig) {
-        throw new Error(`Unsupported model: ${modelId}`);
-    }
+  if (!modelConfig) {
+    throw new Error(`Unsupported model: ${modelId}`);
+  }
 
-    const { apiId, provider } = modelConfig;
+  const { apiId, provider } = modelConfig;
 
-    switch (provider) {
-        case 'Anthropic':
-            return await callClaude(apiId, prompt);
-        case 'OpenAI':
-            return await callOpenAI(apiId, prompt);
-        case 'Google':
-            return await callGemini(apiId, prompt);
-        default:
-            throw new Error(`Unsupported provider: ${provider}`);
-    }
+  switch (provider) {
+    case 'Anthropic':
+      return await callClaude(apiId, prompt);
+    case 'OpenAI':
+      return await callOpenAI(apiId, prompt);
+    case 'Google':
+      return await callGemini(apiId, prompt);
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
 }
 
 // Claude API call
 async function callClaude(modelName, prompt) {
-    if (!process.env.CLAUDE_API_KEY) {
-        throw new Error('CLAUDE_API_KEY environment variable is not set');
-    }
+  if (!process.env.CLAUDE_API_KEY) {
+    throw new Error('CLAUDE_API_KEY environment variable is not set');
+  }
 
-    const requestBody = {
-        model: modelName,
-        max_tokens: 5000,
-        messages: [{ role: "user", content: prompt }]
-    };
+  const requestBody = {
+    model: modelName,
+    max_tokens: 5000,
+    messages: [{ role: 'user', content: prompt }],
+  };
 
-    console.log('Sending request to Anthropic:', { model: modelName, promptLength: prompt.length });
+  console.log('Sending request to Anthropic:', { model: modelName, promptLength: prompt.length });
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.CLAUDE_API_KEY,
-            "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify(requestBody)
-    });
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(requestBody),
+  });
 
-    const responseText = await response.text();
+  const responseText = await response.text();
 
-    if (!response.ok) {
-        console.error('Anthropic API Error:', response.status, responseText);
-        throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
-    }
+  if (!response.ok) {
+    console.error('Anthropic API Error:', response.status, responseText);
+    throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
+  }
 
-    const data = JSON.parse(responseText);
-    return data.content[0].text;
+  const data = JSON.parse(responseText);
+  return data.content[0].text;
 }
 
 // OpenAI API call
 async function callOpenAI(modelName, prompt) {
-    if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY environment variable is not set');
-    }
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY environment variable is not set');
+  }
 
-    // Add debugging
-    console.log('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
-    console.log('OpenAI API Key format:', process.env.OPENAI_API_KEY?.slice(0, 10) + '...');
-    console.log('Model name:', modelName);
+  // Add debugging
+  console.log('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
+  console.log('OpenAI API Key format:', process.env.OPENAI_API_KEY?.slice(0, 10) + '...');
+  console.log('Model name:', modelName);
 
-    const requestBody = {
-        model: modelName,
-        max_completion_tokens: 5000,
-        messages: [{ role: "user", content: prompt }]
-    };
+  const requestBody = {
+    model: modelName,
+    max_completion_tokens: 5000,
+    messages: [{ role: 'user', content: prompt }],
+  };
 
-    console.log('Sending request to OpenAI:', { model: modelName, promptLength: prompt.length });
+  console.log('Sending request to OpenAI:', { model: modelName, promptLength: prompt.length });
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify(requestBody)
-    });
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
 
-    const responseText = await response.text();
+  const responseText = await response.text();
 
-    if (!response.ok) {
-        console.error('OpenAI API Error:', response.status, responseText);
-        throw new Error(`OpenAI API error: ${response.status} - ${responseText}`);
-    }
+  if (!response.ok) {
+    console.error('OpenAI API Error:', response.status, responseText);
+    throw new Error(`OpenAI API error: ${response.status} - ${responseText}`);
+  }
 
-    const data = JSON.parse(responseText);
+  const data = JSON.parse(responseText);
 
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error('Unexpected OpenAI response format:', data);
-        throw new Error('Unexpected response format from OpenAI API');
-    }
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    console.error('Unexpected OpenAI response format:', data);
+    throw new Error('Unexpected response format from OpenAI API');
+  }
 
-    return data.choices[0].message.content;
+  return data.choices[0].message.content;
 }
 
 // Google Gemini API call
 async function callGemini(modelName, prompt) {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-        throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
-    }
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
+  }
 
-    // Add debugging
-    console.log('Google AI API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
-    console.log('Google AI API Key format:', process.env.GOOGLE_AI_API_KEY?.slice(0, 10) + '...');
-    console.log('Model name:', modelName);
+  // Add debugging
+  console.log('Google AI API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
+  console.log('Google AI API Key format:', process.env.GOOGLE_AI_API_KEY?.slice(0, 10) + '...');
+  console.log('Model name:', modelName);
 
-    const requestBody = {
-        contents: [{
-            parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-            maxOutputTokens: 5000,
-        }
-    };
+  const requestBody = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+    generationConfig: {
+      maxOutputTokens: 5000,
+    },
+  };
 
-    console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
+  console.log('Sending request to Google AI:', { model: modelName, promptLength: prompt.length });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
 
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody)
-    });
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
 
-    const responseText = await response.text();
+  const responseText = await response.text();
 
-    if (!response.ok) {
-        console.error('Google AI API Error:', response.status, responseText);
-        throw new Error(`Google AI API error: ${response.status} - ${responseText}`);
-    }
+  if (!response.ok) {
+    console.error('Google AI API Error:', response.status, responseText);
+    throw new Error(`Google AI API error: ${response.status} - ${responseText}`);
+  }
 
-    const data = JSON.parse(responseText);
+  const data = JSON.parse(responseText);
 
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
-        console.error('Unexpected Google AI response format:', data);
-        throw new Error('Unexpected response format from Google AI API');
-    }
+  if (
+    !data.candidates ||
+    !data.candidates[0] ||
+    !data.candidates[0].content ||
+    !data.candidates[0].content.parts
+  ) {
+    console.error('Unexpected Google AI response format:', data);
+    throw new Error('Unexpected response format from Google AI API');
+  }
 
-    return data.candidates[0].content.parts[0].text;
+  return data.candidates[0].content.parts[0].text;
 }
 
 // Function to validate response structure
 function validateScoringResponse(responseText, expectedCount) {
-    try {
-        const parsed = JSON.parse(responseText);
+  try {
+    const parsed = JSON.parse(responseText);
 
-        if (!Array.isArray(parsed)) {
-            return { isValid: false, errors: ['Response is not an array'] };
-        }
-
-        const errors = [];
-
-        // Check if we have the right number of scores
-        if (parsed.length !== expectedCount) {
-            errors.push(`Expected ${expectedCount} scores, got ${parsed.length}`);
-        }
-
-        // Validate each score object
-        parsed.forEach((item, index) => {
-            if (typeof item.paperIndex !== 'number') {
-                errors.push(`Item ${index}: paperIndex is not a number`);
-            }
-            if (typeof item.score !== 'number' || item.score < 0 || item.score > 10) {
-                errors.push(`Item ${index}: score is not a valid number (0-10)`);
-            }
-            if (typeof item.justification !== 'string' || item.justification.length < 10) {
-                errors.push(`Item ${index}: justification is missing or too short`);
-            }
-        });
-
-        return { isValid: errors.length === 0, errors };
-
-    } catch (e) {
-        return { isValid: false, errors: ['Invalid JSON: ' + e.message] };
+    if (!Array.isArray(parsed)) {
+      return { isValid: false, errors: ['Response is not an array'] };
     }
+
+    const errors = [];
+
+    // Check if we have the right number of scores
+    if (parsed.length !== expectedCount) {
+      errors.push(`Expected ${expectedCount} scores, got ${parsed.length}`);
+    }
+
+    // Validate each score object
+    parsed.forEach((item, index) => {
+      if (typeof item.paperIndex !== 'number') {
+        errors.push(`Item ${index}: paperIndex is not a number`);
+      }
+      if (typeof item.score !== 'number' || item.score < 0 || item.score > 10) {
+        errors.push(`Item ${index}: score is not a valid number (0-10)`);
+      }
+      if (typeof item.justification !== 'string' || item.justification.length < 10) {
+        errors.push(`Item ${index}: justification is missing or too short`);
+      }
+    });
+
+    return { isValid: errors.length === 0, errors };
+  } catch (e) {
+    return { isValid: false, errors: ['Invalid JSON: ' + e.message] };
+  }
 }
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-    const { papers, scoringCriteria, password, model, correctionPrompt } = req.body;
+  const { papers, scoringCriteria, password, model, correctionPrompt } = req.body;
 
-    // Check password
-    if (!checkPassword(password)) {
-        return res.status(401).json({ error: 'Invalid password' });
-    }
+  // Check password
+  if (!checkPassword(password)) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
 
-    try {
-        let prompt;
+  try {
+    let prompt;
 
-        // Use correction prompt if provided, otherwise generate normal scoring prompt
-        if (correctionPrompt) {
-            prompt = correctionPrompt;
-        } else {
-            prompt = `You are a research assistant scoring academic paper abstracts for relevance using a precise 0.0-10.0 scale.
+    // Use correction prompt if provided, otherwise generate normal scoring prompt
+    if (correctionPrompt) {
+      prompt = correctionPrompt;
+    } else {
+      prompt = `You are a research assistant scoring academic paper abstracts for relevance using a precise 0.0-10.0 scale.
 
 Research Interests:
 ${scoringCriteria}
@@ -260,22 +266,25 @@ Respond ONLY with a valid JSON array in this exact format:
 ]
 
 Your entire response MUST ONLY be a single, valid JSON array. DO NOT respond with anything other than a single, valid JSON array.`;
-        }
+    }
 
-        let responseText = await callAIModel(model, prompt);
+    let responseText = await callAIModel(model, prompt);
 
-        // Clean up response text (remove markdown formatting if present)
-        let cleanedText = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    // Clean up response text (remove markdown formatting if present)
+    let cleanedText = responseText
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
-        // Always validate response structure (not just on parse failure)
-        const validation = validateScoringResponse(cleanedText, papers.length);
+    // Always validate response structure (not just on parse failure)
+    const validation = validateScoringResponse(cleanedText, papers.length);
 
-        // If validation fails and this isn't already a correction attempt, try to correct
-        if (!validation.isValid && !correctionPrompt) {
-            console.log('Initial response validation failed:', validation.errors);
+    // If validation fails and this isn't already a correction attempt, try to correct
+    if (!validation.isValid && !correctionPrompt) {
+      console.log('Initial response validation failed:', validation.errors);
 
-            // Build correction prompt with specific errors
-            const correctionRequest = `The previous response had formatting/structure errors:
+      // Build correction prompt with specific errors
+      const correctionRequest = `The previous response had formatting/structure errors:
 ${validation.errors.join('\n')}
 
 Original response:
@@ -293,45 +302,46 @@ Your entire response MUST ONLY be a valid JSON array in this exact format:
   }
 ]`;
 
-            // Try correction
-            const correctedResponse = await callAIModel(model, correctionRequest);
-            responseText = correctedResponse;
-            cleanedText = correctedResponse.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        }
-
-        let scores;
-        try {
-            scores = JSON.parse(cleanedText);
-
-            // Final validation even after correction
-            const finalValidation = validateScoringResponse(cleanedText, papers.length);
-            if (!finalValidation.isValid) {
-                console.warn('Response still invalid after correction:', finalValidation.errors);
-            }
-
-        } catch (parseError) {
-            // If this is a correction attempt that still failed, return the raw response for debugging
-            if (correctionPrompt) {
-                return res.status(200).json({
-                    scores: [],
-                    rawResponse: responseText,
-                    error: `Correction parsing failed: ${parseError.message}`
-                });
-            }
-            throw parseError;
-        }
-
-        // Return both the parsed scores and the raw response
-        res.status(200).json({
-            scores,
-            rawResponse: responseText
-        });
-
-    } catch (error) {
-        console.error('Error scoring abstracts:', error);
-        res.status(500).json({
-            error: 'Failed to score abstracts',
-            details: error.message
-        });
+      // Try correction
+      const correctedResponse = await callAIModel(model, correctionRequest);
+      responseText = correctedResponse;
+      cleanedText = correctedResponse
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
     }
+
+    let scores;
+    try {
+      scores = JSON.parse(cleanedText);
+
+      // Final validation even after correction
+      const finalValidation = validateScoringResponse(cleanedText, papers.length);
+      if (!finalValidation.isValid) {
+        console.warn('Response still invalid after correction:', finalValidation.errors);
+      }
+    } catch (parseError) {
+      // If this is a correction attempt that still failed, return the raw response for debugging
+      if (correctionPrompt) {
+        return res.status(200).json({
+          scores: [],
+          rawResponse: responseText,
+          error: `Correction parsing failed: ${parseError.message}`,
+        });
+      }
+      throw parseError;
+    }
+
+    // Return both the parsed scores and the raw response
+    res.status(200).json({
+      scores,
+      rawResponse: responseText,
+    });
+  } catch (error) {
+    console.error('Error scoring abstracts:', error);
+    res.status(500).json({
+      error: 'Failed to score abstracts',
+      details: error.message,
+    });
+  }
 }

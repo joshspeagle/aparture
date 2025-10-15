@@ -23,6 +23,7 @@
  *   npm run analyze --skip-notebooklm   # Skip NotebookLM document generation
  *   npm run analyze --skip-podcast      # Generate document but skip podcast
  *   npm run analyze --skip-notebooklm --skip-podcast  # Report only
+ *   npm run analyze --podcast-only      # Skip analysis, use existing files for podcast
  *
  * Configuration:
  *   - First run "npm run setup" to configure all settings via UI
@@ -45,6 +46,7 @@ const fs = require('fs').promises;
 const args = process.argv.slice(2);
 const skipNotebookLM = args.includes('--skip-notebooklm') || args.includes('--no-notebooklm');
 const skipPodcast = args.includes('--skip-podcast') || args.includes('--no-podcast');
+const podcastOnly = args.includes('--podcast-only');
 
 // Configuration
 const CONFIG = {
@@ -59,7 +61,7 @@ const CONFIG = {
   generateNotebookLM: !skipNotebookLM, // Generate NotebookLM by default (disable with --skip-notebooklm)
   notebookLMTimeout: 300000, // 5 minutes for NotebookLM generation
   generatePodcast: !skipPodcast, // Generate podcast via NotebookLM external automation (disable with --skip-podcast)
-  podcastGenerationTimeout: 1800000 // 30 minutes for podcast generation
+  podcastGenerationTimeout: 1800000, // 30 minutes for podcast generation
 };
 
 /**
@@ -104,6 +106,40 @@ async function readPassword() {
 }
 
 /**
+ * Find most recent files by date prefix in filename
+ * @param {string} directory - Directory to search
+ * @param {string} pattern - Filename pattern (e.g., 'aparture_analysis', 'notebooklm')
+ * @returns {Promise<string|null>} - Path to most recent file, or null if not found
+ */
+async function findMostRecentFile(directory, pattern) {
+  try {
+    const files = await fs.readdir(directory);
+
+    // Filter files matching pattern and extract date prefix
+    const matchingFiles = files
+      .filter((f) => f.includes(pattern))
+      .map((f) => {
+        const match = f.match(/^(\d{4}-\d{2}-\d{2})/);
+        return {
+          name: f,
+          date: match ? match[1] : null,
+          path: path.join(directory, f),
+        };
+      })
+      .filter((f) => f.date !== null)
+      .sort((a, b) => b.date.localeCompare(a.date)); // Sort descending by date
+
+    if (matchingFiles.length === 0) {
+      return null;
+    }
+
+    return matchingFiles[0].path;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Verify report file contents
  */
 async function verifyReport(filePath) {
@@ -111,22 +147,195 @@ async function verifyReport(filePath) {
 
   // Check for key sections in full analysis report
   const checks = {
-    hasTitle: content.includes('arXiv') || content.includes('Aparture') || content.includes('Analysis Report'),
+    hasTitle:
+      content.includes('arXiv') ||
+      content.includes('Aparture') ||
+      content.includes('Analysis Report'),
     hasMetadata: content.includes('Generated') || content.includes('Duration'),
     hasPapers: /Papers? Analyzed.*\d+/i.test(content) || /\d+\s+papers/i.test(content), // Match "Papers Analyzed: 20" or "344 papers"
     hasScores: content.includes('Score:') || content.includes('**Score:**'),
-    hasCategories: content.includes('Categories:') || content.includes('cs.') || content.includes('stat.'),
+    hasCategories:
+      content.includes('Categories:') || content.includes('cs.') || content.includes('stat.'),
     hasAnalysis: content.includes('Relevance Assessment') || content.includes('Abstract'),
-    hasContent: content.length > 5000 // Full reports are substantial
+    hasContent: content.length > 5000, // Full reports are substantial
   };
 
-  const allPassed = Object.values(checks).every(v => v);
+  const allPassed = Object.values(checks).every((v) => v);
 
   return {
     passed: allPassed,
     checks,
-    size: content.length
+    size: content.length,
   };
+}
+
+/**
+ * Run podcast-only workflow using existing report and NotebookLM files
+ */
+async function runPodcastOnly() {
+  let notebookLM = null;
+
+  try {
+    console.log('\n=== Aparture: Podcast-Only Mode ===\n');
+    console.log('Finding most recent report and NotebookLM document...\n');
+
+    // Find most recent files
+    const reportFile = await findMostRecentFile(CONFIG.downloadDir, 'aparture_analysis');
+    const notebookLMFile = await findMostRecentFile(CONFIG.downloadDir, 'notebooklm');
+
+    if (!reportFile) {
+      throw new Error('No analysis report found in reports/ directory');
+    }
+    if (!notebookLMFile) {
+      throw new Error('No NotebookLM document found in reports/ directory');
+    }
+
+    console.log(`Found report: ${path.basename(reportFile)}`);
+    console.log(`Found NotebookLM document: ${path.basename(notebookLMFile)}\n`);
+
+    // Verify files exist and are readable
+    const reportStats = await fs.stat(reportFile);
+    const notebookStats = await fs.stat(notebookLMFile);
+
+    console.log(`Report size: ${Math.round(reportStats.size / 1024)} KB`);
+    console.log(`NotebookLM document size: ${Math.round(notebookStats.size / 1024)} KB\n`);
+
+    // Extract date prefix for naming
+    const reportBasename = path.basename(reportFile);
+    const dateMatch = reportBasename.match(/^(\d{4}-\d{2}-\d{2})/);
+    const datePrefix = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0];
+    const notebookName = `${datePrefix}_aparture`;
+
+    console.log('Starting podcast generation...\n');
+
+    notebookLM = new NotebookLMAutomation();
+
+    // Launch browser
+    console.log('Step 1: Launching browser for NotebookLM...');
+    await notebookLM.launch({ headless: false });
+    log('NotebookLM browser launched');
+
+    // Authenticate with Google (interactive on first run)
+    console.log('\nStep 2: Authenticating with Google...');
+    await notebookLM.ensureAuthenticated({ timeout: 120000 });
+    log('Authenticated with Google');
+
+    // Create notebook
+    console.log(`\nStep 3: Creating notebook: ${notebookName}...`);
+    await notebookLM.createNotebook(notebookName);
+    log(`Notebook created: ${notebookName}`);
+
+    // Take screenshot after notebook creation
+    await notebookLM.takeScreenshot(
+      path.join(CONFIG.screenshotDir, 'notebooklm-notebook-created.png')
+    );
+
+    // Upload files
+    console.log('\nStep 4: Uploading report and NotebookLM document...');
+    await notebookLM.uploadFiles(reportFile, notebookLMFile);
+    log('Files uploaded successfully');
+
+    // Take screenshot after file upload
+    await notebookLM.takeScreenshot(
+      path.join(CONFIG.screenshotDir, 'notebooklm-files-uploaded.png')
+    );
+
+    // Extract duration and get appropriate prompt
+    console.log('\nStep 5: Configuring podcast generation...');
+    const duration = extractDurationFromFilename(notebookLMFile);
+    console.log(`  Podcast duration target: ${duration}`);
+
+    const customPrompt = await getPromptForFile(notebookLMFile);
+    console.log(
+      `  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`
+    );
+
+    // Generate audio overview with customization
+    console.log('  Configuring audio overview (Deep Dive, Default length)...');
+    await notebookLM.generateAudioOverview(customPrompt, duration);
+    log('Audio generation started');
+
+    // Take screenshot of customization dialog (captured during generateAudioOverview)
+    log('Screenshot captured: notebooklm-customization-dialog.png');
+
+    // Take screenshot of generation start
+    await notebookLM.takeScreenshot(
+      path.join(CONFIG.screenshotDir, 'notebooklm-generation-started.png')
+    );
+
+    // Wait for generation to complete
+    console.log('\nStep 6: Waiting for podcast generation...');
+    console.log('  This typically takes 10-20 minutes. Progress updates will appear below.');
+    const podcastStartTime = Date.now();
+    await notebookLM.waitForAudioGeneration({
+      timeout: CONFIG.podcastGenerationTimeout,
+    });
+    const podcastDuration = Date.now() - podcastStartTime;
+    log(`Podcast generation completed in ${formatDuration(podcastDuration)}`);
+
+    // Take screenshot of completion
+    await notebookLM.takeScreenshot(
+      path.join(CONFIG.screenshotDir, 'notebooklm-generation-complete.png')
+    );
+
+    // Download podcast
+    console.log('\nStep 7: Downloading podcast...');
+    const podcastFileName = `${datePrefix}_podcast.m4a`;
+    console.log(`  Filename: ${podcastFileName}...`);
+    const podcastFile = await notebookLM.downloadAudio(CONFIG.downloadDir, podcastFileName);
+    log(`Podcast downloaded: ${podcastFile}`);
+
+    // Verify file was downloaded
+    const podcastStats = await fs.stat(podcastFile);
+    const podcastSizeMB = (podcastStats.size / (1024 * 1024)).toFixed(2);
+    log(`Podcast file size: ${podcastSizeMB} MB`);
+
+    // Keep browser open briefly for inspection
+    console.log('\n  Keeping browser open for 5 seconds for inspection...');
+    await notebookLM.getPage().waitForTimeout(5000);
+
+    // Close NotebookLM browser
+    await notebookLM.close();
+    log('NotebookLM browser closed');
+
+    // Success!
+    console.log('\n' + '='.repeat(70));
+    console.log('✓ Podcast Generation Complete!');
+    console.log('='.repeat(70));
+
+    console.log('\n=== Summary ===');
+    console.log('Input files:');
+    console.log(`  Report: ${reportFile}`);
+    console.log(`  NotebookLM document: ${notebookLMFile}`);
+    console.log('\nOutput:');
+    console.log(`  Podcast: ${podcastFile}`);
+    console.log(`  Duration: ${formatDuration(podcastDuration)}`);
+    console.log('');
+  } catch (error) {
+    console.error('\n✗ Podcast generation failed:', error.message);
+
+    // Take error screenshot
+    try {
+      if (notebookLM) {
+        await notebookLM.takeScreenshot(path.join(CONFIG.screenshotDir, 'notebooklm-error.png'));
+      }
+    } catch {
+      // Ignore screenshot errors
+    }
+
+    console.error('');
+    process.exit(1);
+  } finally {
+    // Cleanup
+    if (notebookLM) {
+      try {
+        await notebookLM.close();
+        console.log('✓ NotebookLM browser closed');
+      } catch {
+        // Ignore close errors
+      }
+    }
+  }
 }
 
 /**
@@ -144,7 +353,9 @@ async function runAnalysis() {
 
   try {
     console.log('\n=== Aparture: Full arXiv Analysis ===\n');
-    console.log('⚠️  WARNING: This uses extensive real API calls and will incur significant costs!');
+    console.log(
+      '⚠️  WARNING: This uses extensive real API calls and will incur significant costs!'
+    );
     console.log('    Expected runtime: 30-90 minutes depending on configuration');
     if (CONFIG.generateNotebookLM) {
       console.log('    NotebookLM document: ENABLED (add --skip-notebooklm to disable)');
@@ -199,10 +410,9 @@ async function runAnalysis() {
 
     // Step 5: Take initial screenshot
     console.log('\nStep 5: Capturing initial state...');
-    await browser.takeScreenshot(
-      path.join(CONFIG.screenshotDir, 'full-ready.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'full-ready.png'), {
+      fullPage: true,
+    });
     log('Screenshot captured: full-ready.png');
 
     // Step 6: Set up automatic download handling
@@ -217,8 +427,8 @@ async function runAnalysis() {
         console.log(`\n  📥 Automatic download captured: ${fileName}`);
         downloadedFile = filePath;
         autoDownloadCaptured = true;
-      } catch (err) {
-        console.log(`  Note: Automatic download encountered issue: ${err.message}`);
+      } catch (_err) {
+        console.log(`  Note: Automatic download encountered issue: ${_err.message}`);
       }
     });
     log('Download monitoring active');
@@ -234,10 +444,9 @@ async function runAnalysis() {
     await browser.getPage().waitForTimeout(3000);
 
     // Take screenshot of analysis starting
-    await browser.takeScreenshot(
-      path.join(CONFIG.screenshotDir, 'full-started.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'full-started.png'), {
+      fullPage: true,
+    });
     log('Screenshot captured: full-started.png');
 
     // Step 8: Monitor progress through all stages
@@ -248,7 +457,7 @@ async function runAnalysis() {
     let currentStage = '';
     let stageStartTime = Date.now();
 
-    const completed = await browser.waitForFullAnalysisComplete({
+    await browser.waitForFullAnalysisComplete({
       timeout: CONFIG.fullAnalysisTimeout,
       pollInterval: CONFIG.pollInterval,
       verbose: false, // We'll handle our own logging
@@ -272,12 +481,14 @@ async function runAnalysis() {
         } else if (update.type === 'progress_update') {
           if (update.progress.total > 0) {
             const percentage = Math.round((update.progress.current / update.progress.total) * 100);
-            console.log(`  Progress: ${update.progress.current} / ${update.progress.total} (${percentage}%)`);
+            console.log(
+              `  Progress: ${update.progress.current} / ${update.progress.total} (${percentage}%)`
+            );
           }
         } else if (update.type === 'paused') {
           console.log(`  ⏸  Analysis paused (stage: ${update.stage})`);
         }
-      }
+      },
     });
 
     // Record final stage timing
@@ -302,10 +513,9 @@ async function runAnalysis() {
 
     // Step 9: Take final screenshot
     console.log('\nStep 9: Capturing completion state...');
-    await browser.takeScreenshot(
-      path.join(CONFIG.screenshotDir, 'full-complete.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'full-complete.png'), {
+      fullPage: true,
+    });
     log('Screenshot captured: full-complete.png');
 
     // Step 10: Download report (if not already downloaded)
@@ -337,7 +547,9 @@ async function runAnalysis() {
       console.log(`    - Has scores: ${verification.checks.hasScores}`);
       console.log(`    - Has categories: ${verification.checks.hasCategories}`);
       console.log(`    - Has analysis: ${verification.checks.hasAnalysis}`);
-      console.log(`    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`);
+      console.log(
+        `    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`
+      );
       throw new Error('Report verification failed');
     }
 
@@ -353,7 +565,9 @@ async function runAnalysis() {
         // Check if NotebookLM generation is available
         const isAvailable = await browser.isNotebookLMAvailable();
         if (!isAvailable) {
-          console.log('  ⚠ NotebookLM generation not available (no papers analyzed or feature disabled)');
+          console.log(
+            '  ⚠ NotebookLM generation not available (no papers analyzed or feature disabled)'
+          );
         } else {
           // Start generation
           await browser.generateNotebookLM();
@@ -363,7 +577,7 @@ async function runAnalysis() {
           const notebookLMStartTime = Date.now();
           await browser.waitForNotebookLMComplete({
             timeout: CONFIG.notebookLMTimeout,
-            pollInterval: 2000
+            pollInterval: 2000,
           });
           const notebookLMDuration = Date.now() - notebookLMStartTime;
           log(`NotebookLM generation completed in ${formatDuration(notebookLMDuration)}`);
@@ -373,10 +587,9 @@ async function runAnalysis() {
           log(`NotebookLM document downloaded: ${notebookLMFile}`);
 
           // Take screenshot of NotebookLM completion
-          await browser.takeScreenshot(
-            path.join(CONFIG.screenshotDir, 'notebooklm-complete.png'),
-            { fullPage: true }
-          );
+          await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'notebooklm-complete.png'), {
+            fullPage: true,
+          });
           log('Screenshot captured: notebooklm-complete.png');
         }
       } catch (error) {
@@ -436,7 +649,9 @@ async function runAnalysis() {
         console.log(`  Podcast duration target: ${duration}`);
 
         const customPrompt = await getPromptForFile(notebookLMFile);
-        console.log(`  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`);
+        console.log(
+          `  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`
+        );
 
         // Generate audio overview with customization
         console.log('  Configuring audio overview (Deep Dive, Default length)...');
@@ -456,7 +671,7 @@ async function runAnalysis() {
         console.log('  This typically takes 10-20 minutes. Progress updates will appear below.');
         const podcastStartTime = Date.now();
         await notebookLM.waitForAudioGeneration({
-          timeout: CONFIG.podcastGenerationTimeout
+          timeout: CONFIG.podcastGenerationTimeout,
         });
         const podcastDuration = Date.now() - podcastStartTime;
         log(`Podcast generation completed in ${formatDuration(podcastDuration)}`);
@@ -484,24 +699,21 @@ async function runAnalysis() {
         // Close NotebookLM browser
         await notebookLM.close();
         log('NotebookLM browser closed');
-
       } catch (error) {
         console.log(`  ⚠ Podcast generation failed: ${error.message}`);
         console.log('  You can manually upload the files to NotebookLM to generate the podcast');
 
         // Take error screenshot
         try {
-          await notebookLM.takeScreenshot(
-            path.join(CONFIG.screenshotDir, 'notebooklm-error.png')
-          );
-        } catch (screenshotError) {
+          await notebookLM.takeScreenshot(path.join(CONFIG.screenshotDir, 'notebooklm-error.png'));
+        } catch {
           // Ignore screenshot errors
         }
 
         // Close browser on error
         try {
           await notebookLM.close();
-        } catch (closeError) {
+        } catch {
           // Ignore close errors
         }
       }
@@ -529,7 +741,9 @@ async function runAnalysis() {
     console.log('\n=== Summary ===');
     console.log('Completed:');
     console.log('  ✓ Full production analysis workflow');
-    console.log('  ✓ Multi-stage processing (fetching → filtering → scoring → post-processing → pdf-analysis)');
+    console.log(
+      '  ✓ Multi-stage processing (fetching → filtering → scoring → post-processing → pdf-analysis)'
+    );
     console.log('  ✓ Progress monitoring through all stages');
     console.log('  ✓ Comprehensive report generation');
     console.log('  ✓ Report downloaded and verified');
@@ -547,18 +761,16 @@ async function runAnalysis() {
       console.log(`Podcast saved to: ${podcastFile}`);
     }
     console.log('');
-
   } catch (error) {
     console.error('\n✗ Analysis failed:', error.message);
 
     // Take error screenshot
     try {
-      await browser.takeScreenshot(
-        path.join(CONFIG.screenshotDir, 'full-error.png'),
-        { fullPage: true }
-      );
+      await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'full-error.png'), {
+        fullPage: true,
+      });
       console.error('Error screenshot saved: full-error.png');
-    } catch (screenshotError) {
+    } catch {
       // Ignore screenshot errors
     }
 
@@ -577,7 +789,6 @@ async function runAnalysis() {
 
     console.error('');
     process.exit(1);
-
   } finally {
     // Cleanup
     console.log('Cleaning up...');
@@ -600,12 +811,19 @@ async function runAnalysis() {
   }
 }
 
-// Run test
+// Run appropriate workflow based on flags
 if (require.main === module) {
-  runAnalysis().catch((error) => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  });
+  if (podcastOnly) {
+    runPodcastOnly().catch((error) => {
+      console.error('Fatal error:', error);
+      process.exit(1);
+    });
+  } else {
+    runAnalysis().catch((error) => {
+      console.error('Fatal error:', error);
+      process.exit(1);
+    });
+  }
 }
 
-module.exports = { runAnalysis };
+module.exports = { runAnalysis, runPodcastOnly };

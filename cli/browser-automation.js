@@ -31,7 +31,7 @@ class BrowserAutomation {
       headless,
       viewport: { width: 1280, height: 720 },
       acceptDownloads: true,
-      ...options
+      ...options,
     };
 
     // Use persistent context to preserve localStorage between runs
@@ -61,7 +61,7 @@ class BrowserAutomation {
     const navOptions = {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
-      ...options
+      ...options,
     };
 
     await this.page.goto(url, navOptions);
@@ -81,7 +81,7 @@ class BrowserAutomation {
     const waitOptions = {
       timeout: 10000,
       state: 'visible',
-      ...options
+      ...options,
     };
 
     await this.page.waitForSelector(selector, waitOptions);
@@ -101,7 +101,7 @@ class BrowserAutomation {
     const screenshotOptions = {
       path,
       fullPage: false,
-      ...options
+      ...options,
     };
 
     await this.page.screenshot(screenshotOptions);
@@ -242,9 +242,12 @@ class BrowserAutomation {
       throw new Error('Browser not launched. Call launch() first.');
     }
 
-    await this.page.evaluate(({ k, v }) => {
-      localStorage.setItem(k, v);
-    }, { k: key, v: value });
+    await this.page.evaluate(
+      ({ k, v }) => {
+        localStorage.setItem(k, v);
+      },
+      { k: key, v: value }
+    );
   }
 
   /**
@@ -308,7 +311,7 @@ class BrowserAutomation {
       // Look for "Start Analysis" button which appears after successful auth
       await this.page.waitForSelector('button:has-text("Start Analysis")', {
         timeout: 10000,
-        state: 'visible'
+        state: 'visible',
       });
       return true;
     } catch (error) {
@@ -476,7 +479,7 @@ class BrowserAutomation {
     // Set up download handling
     const [download] = await Promise.all([
       this.page.waitForEvent('download', { timeout: 10000 }),
-      this.page.click('button:has-text("Download Report")')
+      this.page.click('button:has-text("Download Report")'),
     ]);
 
     // Save the download
@@ -604,7 +607,7 @@ class BrowserAutomation {
     // Set up download handling
     const [download] = await Promise.all([
       this.page.waitForEvent('download', { timeout: 10000 }),
-      this.page.click('button:has-text("Download NotebookLM")')
+      this.page.click('button:has-text("Download NotebookLM")'),
     ]);
 
     // Save the download
@@ -723,9 +726,10 @@ class BrowserAutomation {
     await this.page.waitForTimeout(1000);
 
     // Verify that processing started (button should change to Pause/Abort controls)
-    const isProcessing = await this.exists('button:has-text("Pause")') ||
-                         await this.exists('button:has-text("Resume")') ||
-                         await this.exists('button:has-text("Abort")');
+    const isProcessing =
+      (await this.exists('button:has-text("Pause")')) ||
+      (await this.exists('button:has-text("Resume")')) ||
+      (await this.exists('button:has-text("Abort")'));
 
     if (!isProcessing) {
       throw new Error('Analysis does not appear to have started');
@@ -751,11 +755,17 @@ class BrowserAutomation {
         const progressSection = document.body.innerText;
 
         // Match common stage patterns (ORDER MATTERS - check PDF analysis BEFORE 'Download Report')
-        if (progressSection.includes('Fetching papers') || progressSection.includes('Fetching category')) {
+        if (
+          progressSection.includes('Fetching papers') ||
+          progressSection.includes('Fetching category')
+        ) {
           return 'fetching';
         } else if (progressSection.includes('Filtering')) {
           return 'filtering';
-        } else if (progressSection.includes('Scoring') || progressSection.includes('initial-scoring')) {
+        } else if (
+          progressSection.includes('Scoring') ||
+          progressSection.includes('initial-scoring')
+        ) {
           return 'scoring';
         } else if (progressSection.includes('Post-Processing')) {
           return 'post-processing';
@@ -763,16 +773,31 @@ class BrowserAutomation {
         // Check for PDF analysis stage - MUST come before 'complete' check
         // UI shows: "Analyzing PDFs" (plural), "Analyzing paper" (singular during processing)
         // Also check for progress like "Analyzing paper 3 of 20"
-        else if (progressSection.includes('Analyzing PDF') ||
-                 progressSection.includes('deep-analysis') ||
-                 progressSection.includes('Analyzing paper') ||
-                 /Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)) {
+        else if (
+          progressSection.includes('Analyzing PDF') ||
+          progressSection.includes('deep-analysis') ||
+          progressSection.includes('Analyzing paper') ||
+          /Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)
+        ) {
           return 'pdf-analysis';
         }
-        // Only mark complete if truly done - look for "Completed:" in Download Report section
-        // UI shows "Download Report" section with "Completed: <timestamp>" when analysis finishes
-        else if (progressSection.includes('Download Report') && progressSection.includes('Completed:')) {
-          return 'complete';
+        // Mark complete if:
+        // 1. Download Report section is present AND Completed timestamp shown, OR
+        // 2. Download Report button visible and no processing indicators (Pause/Resume buttons)
+        else if (progressSection.includes('Download Report')) {
+          // If we see "Completed:" timestamp, definitely done
+          if (progressSection.includes('Completed:')) {
+            return 'complete';
+          }
+          // Otherwise, check if still processing
+          // If Pause/Resume/Abort buttons are gone and report is available, likely complete
+          const hasProcessingButtons =
+            progressSection.includes('Pause') ||
+            progressSection.includes('Resume') ||
+            progressSection.includes('Abort');
+          if (!hasProcessingButtons) {
+            return 'complete';
+          }
         }
 
         return 'processing';
@@ -781,7 +806,7 @@ class BrowserAutomation {
       if (stageText) {
         stage = stageText;
       }
-    } catch (err) {
+    } catch {
       // Ignore errors, keep 'unknown'
     }
 
@@ -811,7 +836,7 @@ class BrowserAutomation {
         current = progressText.current;
         total = progressText.total;
       }
-    } catch (err) {
+    } catch {
       // Ignore errors
     }
 
@@ -822,7 +847,7 @@ class BrowserAutomation {
       stage,
       current,
       total,
-      isPaused
+      isPaused,
     };
   }
 
@@ -858,7 +883,7 @@ class BrowserAutomation {
       }, limit);
 
       return messages;
-    } catch (err) {
+    } catch {
       return [];
     }
   }
@@ -883,44 +908,36 @@ class BrowserAutomation {
     let lastStage = '';
     let lastProgress = '';
     let stageStartTime = Date.now();
-    let stageTimings = {};
+    const stageTimings = {};
 
     while (Date.now() - startTime < timeout) {
       // Get current progress to check stage
       const progress = await this.getCurrentProgress();
 
-      // Check if we're truly done (not just filtering complete)
-      // Report button appears after filtering, but PDF analysis may still be pending
+      // Check if analysis is complete
+      // The analysis is done when:
+      // 1. Report is available for download AND
+      // 2. No processing buttons (Pause/Resume) are visible AND
+      // 3. Stage is marked as 'complete' (not 'pdf-analysis', 'filtering', etc.)
       const reportAvailable = await this.isReportAvailable();
-      const stillProcessing = await this.exists('button:has-text("Pause")') ||
-                              await this.exists('button:has-text("Resume")');
+      const stillProcessing =
+        (await this.exists('button:has-text("Pause")')) ||
+        (await this.exists('button:has-text("Resume")'));
 
-      // Consider it complete only if:
-      // 1. Report is available AND
-      // 2. Not currently processing (no Pause/Resume buttons) AND
-      // 3. Not in pdf-analysis stage AND
-      // 4. Stage is explicitly 'complete' (not just 'filtering', 'scoring', etc.)
-      const isPdfAnalysisPending = progress.stage === 'pdf-analysis' ||
-                                    progress.stage === 'deep-analysis' ||
-                                    // If transitioning from filtering and report just appeared, PDF analysis is pending
-                                    (reportAvailable && !stillProcessing && lastStage === 'filtering') ||
-                                    // If transitioning from scoring and report available, might be pending
-                                    (reportAvailable && !stillProcessing && lastStage === 'scoring');
+      if (reportAvailable && !stillProcessing && progress.stage === 'complete') {
+        // Found completion conditions - wait a moment to ensure it's stable
+        await this.page.waitForTimeout(3000);
 
-      if (reportAvailable && !stillProcessing && !isPdfAnalysisPending && progress.stage === 'complete') {
-        // Wait to ensure PDF analysis isn't about to start (triple-check)
-        await this.page.waitForTimeout(5000);
-
-        // Check again after waiting - all three checks must pass
+        // Verify completion is still true (not transitioning to another stage)
         const progress2 = await this.getCurrentProgress();
-        const stillNotPdfAnalysis = progress2.stage !== 'pdf-analysis' &&
-                                     progress2.stage !== 'deep-analysis';
         const reportStillAvailable = await this.isReportAvailable();
-        const stillNotProcessing = !(await this.exists('button:has-text("Pause")') ||
-                                      await this.exists('button:has-text("Resume")'));
+        const stillNotProcessing = !(
+          (await this.exists('button:has-text("Pause")')) ||
+          (await this.exists('button:has-text("Resume")'))
+        );
 
-        if (stillNotPdfAnalysis && reportStillAvailable && stillNotProcessing && progress2.stage === 'complete') {
-          // Truly completed!
+        if (reportStillAvailable && stillNotProcessing && progress2.stage === 'complete') {
+          // Analysis is truly complete!
           if (lastStage && lastStage !== 'complete') {
             const stageDuration = Date.now() - stageStartTime;
             stageTimings[lastStage] = stageDuration;
@@ -936,12 +953,6 @@ class BrowserAutomation {
           }
 
           return true;
-        } else {
-          if (verbose) {
-            console.log('  ⚠ Completion check failed - PDF analysis may be starting');
-            console.log(`    Stage after wait: ${progress2.stage}`);
-            console.log(`    Is PDF analysis: ${!stillNotPdfAnalysis}`);
-          }
         }
       }
 
@@ -966,7 +977,7 @@ class BrowserAutomation {
           onProgress({
             type: 'stage_change',
             stage: progress.stage,
-            progress: { current: progress.current, total: progress.total }
+            progress: { current: progress.current, total: progress.total },
           });
         }
       }
@@ -980,7 +991,7 @@ class BrowserAutomation {
           onProgress({
             type: 'progress_update',
             stage: progress.stage,
-            progress: { current: progress.current, total: progress.total }
+            progress: { current: progress.current, total: progress.total },
           });
         }
       }
@@ -990,7 +1001,7 @@ class BrowserAutomation {
         if (onProgress) {
           onProgress({
             type: 'paused',
-            stage: progress.stage
+            stage: progress.stage,
           });
         }
 

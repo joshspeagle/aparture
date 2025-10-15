@@ -57,6 +57,9 @@ jspm_packages/
 # Optional stylelint cache
 .stylelintcache
 
+# Husky auto-generated files
+.husky/_
+
 # Microbundle cache
 .rpt2_cache/
 .rts2_cache_cjs/

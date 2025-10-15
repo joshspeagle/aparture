@@ -1,32 +1,53 @@
 {
-    "name": "aparture",
-    "version": "0.1.0",
-    "scripts": {
-        "dev": "next dev",
-        "build": "next build",
-        "start": "next start",
-        "setup": "node cli/setup.js",
-        "analyze": "node cli/run-analysis.js",
-        "test:minimal": "node cli/tests/test-browser-minimal.js",
-        "test:dryrun": "node cli/tests/test-browser-dryrun.js",
-        "test:notebooklm": "node cli/tests/test-notebooklm.js"
-    },
-    "dependencies": {
-        "chalk": "^5.6.2",
-        "commander": "^14.0.1",
-        "lucide-react": "^0.263.1",
-        "next": "^14.0.0",
-        "node-fetch": "^3.3.2",
-        "ora": "^9.0.0",
-        "prompts": "^2.4.2",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.56.0",
-        "autoprefixer": "^10.4.0",
-        "playwright": "^1.56.0",
-        "postcss": "^8.4.0",
-        "tailwindcss": "^3.4.0"
-    }
+  "name": "aparture",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "setup": "node cli/setup.js",
+    "analyze": "node cli/run-analysis.js",
+    "test:minimal": "node cli/tests/test-browser-minimal.js",
+    "test:dryrun": "node cli/tests/test-browser-dryrun.js",
+    "test:notebooklm": "node cli/tests/test-notebooklm.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1",
+    "lucide-react": "^0.263.1",
+    "next": "^14.0.0",
+    "node-fetch": "^3.3.2",
+    "ora": "^9.0.0",
+    "prompts": "^2.4.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.4",
+    "playwright": "^1.56.0",
+    "postcss": "^8.4.0",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^3.4.0"
+  }
 }

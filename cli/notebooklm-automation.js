@@ -1,6 +1,5 @@
 const { chromium } = require('playwright');
 const path = require('path');
-const fs = require('fs').promises;
 
 /**
  * NotebookLMAutomation - Playwright automation for Google NotebookLM
@@ -29,7 +28,8 @@ class NotebookLMAutomation {
    * @returns {Promise<void>}
    */
   async launch(options = {}) {
-    const userDataDir = options.userDataDir || path.join(process.cwd(), 'temp', 'notebooklm-profile');
+    const userDataDir =
+      options.userDataDir || path.join(process.cwd(), 'temp', 'notebooklm-profile');
     const headless = options.headless || false; // Non-headless by default for auth reliability
 
     const launchOptions = {
@@ -43,9 +43,9 @@ class NotebookLMAutomation {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process'
+        '--disable-features=IsolateOrigins,site-per-process',
       ],
-      ...options
+      ...options,
     };
 
     // Use persistent context to preserve Google authentication
@@ -54,7 +54,7 @@ class NotebookLMAutomation {
     // Remove webdriver flag to appear more like a regular browser
     await this.context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', {
-        get: () => undefined
+        get: () => undefined,
       });
     });
 
@@ -91,13 +91,16 @@ class NotebookLMAutomation {
     console.log(`  Current URL: ${currentUrl}`);
 
     // Check if we're on NotebookLM (not redirected to Google login)
-    const isOnNotebookLM = currentUrl.includes('notebooklm.google.com') && !currentUrl.includes('accounts.google.com');
+    const isOnNotebookLM =
+      currentUrl.includes('notebooklm.google.com') && !currentUrl.includes('accounts.google.com');
 
     if (isOnNotebookLM) {
       // We're on NotebookLM - check for actual UI elements to confirm we're logged in
       // Look for very specific NotebookLM UI that wouldn't be on a login page
-      const notebookButton = await this.page.$('button:has-text("Create new"), button:has-text("New notebook")');
-      if (notebookButton && await notebookButton.isVisible()) {
+      const notebookButton = await this.page.$(
+        'button:has-text("Create new"), button:has-text("New notebook")'
+      );
+      if (notebookButton && (await notebookButton.isVisible())) {
         console.log('  ✓ Already authenticated\n');
         return true;
       }
@@ -121,12 +124,15 @@ class NotebookLMAutomation {
       checkCount++;
 
       const url = this.page.url();
-      const onNotebookLM = url.includes('notebooklm.google.com') && !url.includes('accounts.google.com');
+      const onNotebookLM =
+        url.includes('notebooklm.google.com') && !url.includes('accounts.google.com');
 
       // Only check for UI elements if we're on NotebookLM domain
       if (onNotebookLM) {
         // Look for the "Create new" button (or "New notebook") which is definitive proof we're logged in
-        const button = await this.page.$('button:has-text("Create new"), button:has-text("New notebook")');
+        const button = await this.page.$(
+          'button:has-text("Create new"), button:has-text("New notebook")'
+        );
         if (button) {
           const isVis = await button.isVisible();
           if (isVis) {
@@ -140,15 +146,19 @@ class NotebookLMAutomation {
       // Show progress every 30 seconds
       const elapsed = Math.round((Date.now() - startTime) / 1000);
       if (elapsed - lastProgressUpdate >= 30 && elapsed > 0) {
-        console.log(`  Still waiting... (${elapsed}s elapsed, check #${checkCount}, URL: ${url.substring(0, 50)}...)`);
+        console.log(
+          `  Still waiting... (${elapsed}s elapsed, check #${checkCount}, URL: ${url.substring(0, 50)}...)`
+        );
         lastProgressUpdate = elapsed;
       }
     }
 
     // Timeout
     try {
-      await this.takeScreenshot(path.join(process.cwd(), 'reports', 'screenshots', 'auth-timeout.png'));
-    } catch (err) { }
+      await this.takeScreenshot(
+        path.join(process.cwd(), 'reports', 'screenshots', 'auth-timeout.png')
+      );
+    } catch {}
 
     throw new Error('Authentication timeout - please log in to Google and try again');
   }
@@ -182,15 +192,16 @@ class NotebookLMAutomation {
       // Try to set notebook title if there's an input field
       // (NotebookLM may auto-name or provide a rename option)
       try {
-        const titleInput = await this.page.$('input[placeholder*="title"], input[placeholder*="name"], [aria-label*="title"]');
+        const titleInput = await this.page.$(
+          'input[placeholder*="title"], input[placeholder*="name"], [aria-label*="title"]'
+        );
         if (titleInput) {
           await titleInput.fill(notebookName);
           await this.page.waitForTimeout(500);
         }
-      } catch (error) {
+      } catch {
         console.log('  Note: Could not set notebook title automatically, may need manual rename');
       }
-
     } catch (error) {
       throw new Error(`Failed to create notebook: ${error.message}`);
     }
@@ -222,7 +233,7 @@ class NotebookLMAutomation {
             // If text clicks don't work, try clicking the upload icon/area
             this.page.click('.dropzone, [class*="upload"], [class*="drop"]')
           )
-        )
+        ),
       ]);
 
       // Set the files
@@ -237,10 +248,10 @@ class NotebookLMAutomation {
         // Look for "2 sources" or similar text
         await this.page.waitForSelector('text=/2/, text=/sources/i', {
           timeout: 15000,
-          state: 'visible'
+          state: 'visible',
         });
         console.log('  ✓ Upload verification: Found source count indicator');
-      } catch (error) {
+      } catch {
         console.log('  Warning: Could not confirm file upload completion');
       }
 
@@ -256,7 +267,6 @@ class NotebookLMAutomation {
       console.log('  Refreshing page to process uploaded sources...');
       await this.page.reload({ waitUntil: 'domcontentloaded' });
       await this.page.waitForTimeout(3000); // Wait for page to fully load
-
     } catch (error) {
       throw new Error(`Failed to upload files: ${error.message}`);
     }
@@ -283,13 +293,14 @@ class NotebookLMAutomation {
       console.log('  Waiting for source processing to complete...');
 
       const maxWaitTime = 120000; // 2 minutes total
-      const refreshInterval = 15000; // Refresh every 15 seconds
       const startTime = Date.now();
       let audioOverviewButton = null;
 
       while (Date.now() - startTime < maxWaitTime) {
         // Check if Audio Overview button is enabled
-        audioOverviewButton = await this.page.$('button:has-text("Audio Overview"):not([disabled]), button:has-text("Audio overview"):not([disabled])');
+        audioOverviewButton = await this.page.$(
+          'button:has-text("Audio Overview"):not([disabled]), button:has-text("Audio overview"):not([disabled])'
+        );
 
         if (audioOverviewButton) {
           console.log('  ✓ Audio Overview button is now enabled');
@@ -344,21 +355,29 @@ class NotebookLMAutomation {
       try {
         await this.page.waitForSelector('text="Customize Audio Overview"', { timeout: 10000 });
         console.log('  ✓ Customization dialog opened');
-      } catch (error) {
+      } catch {
         // Take screenshot to debug
-        await this.takeScreenshot(path.join(process.cwd(), 'reports', 'screenshots', 'customization-dialog-error.png'));
+        await this.takeScreenshot(
+          path.join(process.cwd(), 'reports', 'screenshots', 'customization-dialog-error.png')
+        );
         throw new Error('Customization dialog did not appear');
       }
 
       // Take a screenshot of the customization dialog
-      await this.takeScreenshot(path.join(process.cwd(), 'reports', 'screenshots', 'test-notebooklm-customization-dialog.png'));
+      await this.takeScreenshot(
+        path.join(
+          process.cwd(),
+          'reports',
+          'screenshots',
+          'test-notebooklm-customization-dialog.png'
+        )
+      );
 
       // Configure customization settings (format, length, prompt)
       await this.setCustomization('Deep Dive', 'Default', customPrompt);
 
       // Click final "Generate" button to start
       await this.startGeneration();
-
     } catch (error) {
       throw new Error(`Failed to generate audio overview: ${error.message}`);
     }
@@ -374,11 +393,15 @@ class NotebookLMAutomation {
     }
 
     // Check if customization UI is already visible
-    const customizationVisible = await this.page.$('text=Deep Dive, text=Format, [aria-label*="Customize"]');
+    const customizationVisible = await this.page.$(
+      'text=Deep Dive, text=Format, [aria-label*="Customize"]'
+    );
 
     if (!customizationVisible) {
       // Try to find and click customize button
-      const customizeBtn = await this.page.$('button:has-text("Customize"), [aria-label*="Customize"]');
+      const customizeBtn = await this.page.$(
+        'button:has-text("Customize"), [aria-label*="Customize"]'
+      );
       if (customizeBtn) {
         await customizeBtn.click();
         await this.page.waitForTimeout(1500);
@@ -421,7 +444,9 @@ class NotebookLMAutomation {
         }
         console.log(`  ✓ Format confirmed: ${format}`);
       } else {
-        console.log(`  Warning: Could not find "${format}" format option - assuming already selected`);
+        console.log(
+          `  Warning: Could not find "${format}" format option - assuming already selected`
+        );
       }
 
       // Verify/Select Length (Default)
@@ -438,7 +463,9 @@ class NotebookLMAutomation {
         }
         console.log(`  ✓ Length confirmed: ${length}`);
       } else {
-        console.log(`  Warning: Could not find "${length}" length option - assuming already selected`);
+        console.log(
+          `  Warning: Could not find "${length}" length option - assuming already selected`
+        );
       }
 
       // Fill custom focus prompt
@@ -454,12 +481,17 @@ class NotebookLMAutomation {
         const ariaLabel = await ta.getAttribute('aria-label').catch(() => '');
         const isVisible = await ta.isVisible().catch(() => false);
 
-        console.log(`    Textarea: placeholder="${placeholder}" aria-label="${ariaLabel}" visible=${isVisible}`);
+        console.log(
+          `    Textarea: placeholder="${placeholder}" aria-label="${ariaLabel}" visible=${isVisible}`
+        );
 
         // The customization textarea should have placeholder about "focus" or "hosts"
-        if (isVisible && (placeholder.toLowerCase().includes('focus') ||
-                          placeholder.toLowerCase().includes('host') ||
-                          ariaLabel.toLowerCase().includes('focus'))) {
+        if (
+          isVisible &&
+          (placeholder.toLowerCase().includes('focus') ||
+            placeholder.toLowerCase().includes('host') ||
+            ariaLabel.toLowerCase().includes('focus'))
+        ) {
           promptTextarea = ta;
           console.log(`    ✓ This appears to be the custom focus prompt textarea`);
           break;
@@ -485,7 +517,6 @@ class NotebookLMAutomation {
       } else {
         console.log(`  Warning: Entered text seems short (${enteredText.length} characters)`);
       }
-
     } catch (error) {
       throw new Error(`Failed to set customization: ${error.message}`);
     }
@@ -541,7 +572,9 @@ class NotebookLMAutomation {
 
       if (isComplete) {
         const duration = Math.round((Date.now() - startTime) / 1000);
-        console.log(`  ✓ Audio generation completed in ${Math.floor(duration / 60)}m ${duration % 60}s`);
+        console.log(
+          `  ✓ Audio generation completed in ${Math.floor(duration / 60)}m ${duration % 60}s`
+        );
         return true;
       }
 
@@ -561,7 +594,9 @@ class NotebookLMAutomation {
       // Progress update every 30 seconds
       if (Date.now() - lastUpdate > 30000) {
         const elapsed = Math.round((Date.now() - startTime) / 1000);
-        console.log(`  Still generating... (${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed)`);
+        console.log(
+          `  Still generating... (${Math.floor(elapsed / 60)}m ${elapsed % 60}s elapsed)`
+        );
         lastUpdate = Date.now();
       }
 
@@ -595,7 +630,7 @@ class NotebookLMAutomation {
       // Set up download handling
       const [download] = await Promise.all([
         this.page.waitForEvent('download', { timeout: 30000 }),
-        downloadButton.click()
+        downloadButton.click(),
       ]);
 
       // Save with custom filename
@@ -603,7 +638,6 @@ class NotebookLMAutomation {
       await download.saveAs(filePath);
 
       return filePath;
-
     } catch (error) {
       throw new Error(`Failed to download audio: ${error.message}`);
     }

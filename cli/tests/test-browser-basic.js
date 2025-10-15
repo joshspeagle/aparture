@@ -24,7 +24,7 @@ const TEST_CONFIG = {
   screenshotPath: path.join(__dirname, '../reports/test-screenshots/basic-nav.png'),
   expectedTitle: 'aparture',
   passwordPromptSelector: 'input[type="password"]',
-  headless: true // Set to false for debugging
+  headless: true, // Set to false for debugging
 };
 
 /**
@@ -93,12 +93,10 @@ async function runTest() {
     console.log('  - Basic page elements are present');
     console.log('  - Ready for Phase 2 (authentication)');
     console.log('');
-
   } catch (error) {
     console.error('\n✗ Test failed:', error.message);
     console.error('');
     process.exit(1);
-
   } finally {
     // Cleanup
     console.log('Cleaning up...');

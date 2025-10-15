@@ -33,7 +33,7 @@ const CONFIG = {
   serverPort: 3000,
   headless: false, // Always visible for setup
   envFile: path.join(__dirname, '../.env.local'),
-  setupTimeout: 43200000 // 12 hours - user can exit anytime with Ctrl+C
+  setupTimeout: 43200000, // 12 hours - user can exit anytime with Ctrl+C
 };
 
 /**
@@ -80,7 +80,7 @@ async function runSetup() {
     console.log('  • Set batch sizes and score thresholds');
     console.log('  • Configure NotebookLM duration and model');
     console.log('  • Optionally test with "Mock Dry Run" or "Minimal API Test"\n');
-    console.log('Press Ctrl+C when you\'re done (your settings are auto-saved).\n');
+    console.log("Press Ctrl+C when you're done (your settings are auto-saved).\n");
     console.log('='.repeat(70) + '\n');
 
     // Step 1: Get password
@@ -96,7 +96,7 @@ async function runSetup() {
     // Step 3: Launch browser with persistent context
     console.log('\nStep 3: Launching browser...');
     await browser.launch(CONFIG.headless, {
-      userDataDir: path.join(process.cwd(), 'temp', 'browser-profile')
+      userDataDir: path.join(process.cwd(), 'temp', 'browser-profile'),
     });
     log('Browser launched with persistent profile');
 
@@ -116,7 +116,7 @@ async function runSetup() {
             delete parsed.password;
             localStorage.setItem('arxivAnalyzerState', JSON.stringify(parsed));
           }
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
       }
@@ -167,7 +167,6 @@ async function runSetup() {
         resolve();
       }, CONFIG.setupTimeout);
     });
-
   } catch (error) {
     console.error('\n✗ Setup failed:', error.message);
     if (error.stack) {
@@ -182,7 +181,7 @@ async function runSetup() {
       try {
         await browser.close();
         log('Browser closed');
-      } catch (err) {
+      } catch {
         console.log('  (Browser already closed)');
       }
     }

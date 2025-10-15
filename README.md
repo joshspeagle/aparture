@@ -1,6 +1,6 @@
 # Aparture
 
-*Bringing the arXiv into focus.*
+_Bringing the arXiv into focus._
 
 `aparture` is multi-stage research paper discovery and analysis tool that uses large language models (LLMs) to help search through arXiv to find the preprints that matter for your particular research interests.
 
@@ -163,6 +163,7 @@ This app includes password protection to prevent unauthorized use of your API ke
 
 1. Complete steps 1-2 from "Setup Instructions" above (install dependencies and set up .env.local)
 2. Install Playwright browsers (first time only):
+
    ```bash
    npx playwright install chromium
    ```
@@ -170,9 +171,11 @@ This app includes password protection to prevent unauthorized use of your API ke
 ### First-Time Setup
 
 1. **Configure Your Analysis Settings**
+
    ```bash
    npm run setup
    ```
+
    This opens an interactive browser UI where you:
    - Select arXiv categories to monitor
    - Choose AI models for each processing stage
@@ -188,13 +191,13 @@ This app includes password protection to prevent unauthorized use of your API ke
 
 You can use the setup browser to adjust other settings at any time and to execute "dry run" tests as well as "minimal API" tests. Alternatively, you can also do this directly from the command line via:
 
-   ```bash
-   # Test with mock data (fast, no API costs)
-   npm run test:dryrun
+```bash
+# Test with mock data (fast, no API costs)
+npm run test:dryrun
 
-   # Or test with 3 real papers (minimal cost)
-   npm run test:minimal
-   ```
+# Or test with 3 real papers (minimal cost)
+npm run test:minimal
+```
 
 ### Running Your First Analysis
 
@@ -203,6 +206,7 @@ npm run analyze
 ```
 
 This command will:
+
 - Start the Next.js server automatically
 - Run the complete analysis workflow (30-90 minutes) and download the report
 - Generate a NotebookLM document and download it
@@ -220,9 +224,19 @@ This command will:
 After initial setup, running analyses is simple:
 
 ```bash
-npm run analyze                                     # Full workflow (recommended)
-npm run analyze --skip-podcast --skip-notebooklm    # Skip all NotebookLM-related features
+# Full workflow (report + document + podcast)
+npm run analyze
+
+# Skip specific stages
+npm run analyze --skip-notebooklm    # Skip NotebookLM document generation
+npm run analyze --skip-podcast       # Generate document but skip podcast
+npm run analyze --skip-notebooklm --skip-podcast  # Report only
+
+# Generate podcast from existing files (skips analysis)
+npm run analyze --podcast-only
 ```
+
+The `--podcast-only` flag is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date and uploads them to NotebookLM for podcast generation.
 
 All outputs are saved to `reports/` with dated filenames.
 

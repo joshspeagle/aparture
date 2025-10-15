@@ -41,11 +41,12 @@ async function parseNotebookLMPrompts() {
 
     // Verify we found all prompts
     if (Object.keys(prompts).length !== 5) {
-      console.warn(`Warning: Only found ${Object.keys(prompts).length}/5 prompts in NOTEBOOKLM_PROMPTS.md`);
+      console.warn(
+        `Warning: Only found ${Object.keys(prompts).length}/5 prompts in NOTEBOOKLM_PROMPTS.md`
+      );
     }
 
     return prompts;
-
   } catch (error) {
     throw new Error(`Failed to parse NOTEBOOKLM_PROMPTS.md: ${error.message}`);
   }
@@ -128,5 +129,5 @@ module.exports = {
   extractDurationFromFilename,
   getPromptForFile,
   getAllPrompts,
-  extractFocusText
+  extractFocusText,
 };

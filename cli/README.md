@@ -36,6 +36,7 @@ npm run setup
 ```
 
 Interactive configuration UI for:
+
 - ArXiv categories to search
 - AI models for each stage
 - Score thresholds and batch sizes
@@ -58,7 +59,12 @@ npm run analyze --skip-podcast
 
 # Just the report (no NotebookLM features)
 npm run analyze --skip-notebooklm --skip-podcast
+
+# Generate podcast from existing files (skips analysis)
+npm run analyze --podcast-only
 ```
+
+The `--podcast-only` flag is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date prefix and skips directly to the podcast generation workflow.
 
 ### Testing
 
@@ -213,11 +219,13 @@ Cleared from memory after each run for security.
 ### Google NotebookLM Authentication
 
 **First Run (Interactive)**:
+
 1. Browser window opens automatically
 2. Complete Google OAuth login
 3. Session cached for future runs
 
 **Subsequent Runs (Automatic)**:
+
 - Uses cached session from `temp/notebooklm-profile/`
 - No manual interaction needed
 
@@ -266,6 +274,7 @@ All outputs saved to `reports/` directory:
 
 **Problem**: Server fails to start or times out
 **Solution**:
+
 ```bash
 # Check if port 3000 is already in use
 lsof -i :3000
@@ -281,12 +290,14 @@ PORT=3001 npm run analyze
 
 **Problem**: Password authentication fails
 **Solution**:
+
 - Verify `ACCESS_PASSWORD` in `.env.local`
 - Check browser console for errors
 - Screenshot saved to `reports/screenshots/` for debugging
 
 **Problem**: Google authentication fails
 **Solution**:
+
 - Clear cached profile: `rm -rf temp/notebooklm-profile/`
 - Run again and complete OAuth flow
 - Ensure you're using a Google account with NotebookLM access
@@ -295,12 +306,14 @@ PORT=3001 npm run analyze
 
 **Problem**: Audio Overview button stays disabled
 **Solution**:
+
 - CLI automatically refreshes page every 15 seconds
 - Wait up to 2 minutes for source processing
 - If still disabled, check screenshot in `reports/screenshots/notebooklm-error.png`
 
 **Problem**: Podcast generation times out
 **Solution**:
+
 - Default timeout is 30 minutes
 - Generation typically takes 10-20 minutes
 - If timeout occurs, podcast may still be available in NotebookLM web interface
@@ -310,6 +323,7 @@ PORT=3001 npm run analyze
 
 **Problem**: Browser closes prematurely
 **Solution**:
+
 - CLI uses visible browser windows (not headless) for monitoring
 - If window closes unexpectedly, check console output for errors
 - Screenshots captured before closure available in `reports/screenshots/`
@@ -319,6 +333,7 @@ PORT=3001 npm run analyze
 ### Custom Configuration
 
 Edit settings via `npm run setup` or modify directly in browser:
+
 1. Run `npm run dev`
 2. Navigate to http://localhost:3000
 3. Enter password
@@ -336,6 +351,9 @@ npm run analyze --skip-notebooklm --skip-podcast
 
 # Generate document but manual podcast creation
 npm run analyze --skip-podcast
+
+# Generate podcast from existing report and NotebookLM document
+npm run analyze --podcast-only
 
 # Test pipeline without full analysis
 npm run test:dryrun

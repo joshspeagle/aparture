@@ -25,7 +25,7 @@ const TEST_CONFIG = {
   downloadDir: path.join(__dirname, '../reports'),
   headless: false, // Set to false for visibility during testing
   envFile: path.join(__dirname, '../.env.local'),
-  dryRunTimeout: 120000 // 2 minutes (dry runs are usually fast)
+  dryRunTimeout: 120000, // 2 minutes (dry runs are usually fast)
 };
 
 /**
@@ -63,15 +63,15 @@ async function verifyReport(filePath) {
     hasTitle: content.includes('# arXiv Analysis Report') || content.includes('arXiv'),
     hasMetadata: content.includes('Generated') || content.includes('TEST MODE'),
     hasPapers: content.includes('Paper') || content.includes('Abstract'),
-    hasContent: content.length > 1000 // Should be substantial
+    hasContent: content.length > 1000, // Should be substantial
   };
 
-  const allPassed = Object.values(checks).every(v => v);
+  const allPassed = Object.values(checks).every((v) => v);
 
   return {
     passed: allPassed,
     checks,
-    size: content.length
+    size: content.length,
   };
 }
 
@@ -110,10 +110,9 @@ async function runTest() {
     logTest('Authenticated successfully');
 
     // Take screenshot of main UI
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'dryrun-ready.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'dryrun-ready.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: dryrun-ready.png');
 
     // Step 5: Expand System Tests section
@@ -122,10 +121,9 @@ async function runTest() {
     logTest('System Tests section expanded');
 
     // Take screenshot showing test buttons
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'dryrun-tests-visible.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'dryrun-tests-visible.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: dryrun-tests-visible.png');
 
     // Step 6: Start dry run
@@ -137,10 +135,9 @@ async function runTest() {
     await browser.getPage().waitForTimeout(2000);
 
     // Take screenshot of test in progress
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'dryrun-in-progress.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'dryrun-in-progress.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: dryrun-in-progress.png');
 
     // Step 7: Wait for completion with progress updates
@@ -169,7 +166,7 @@ async function runTest() {
     const pollInterval = 3000; // Check every 3 seconds
     let completed = false;
 
-    while (!completed && (Date.now() - startTime < TEST_CONFIG.dryRunTimeout)) {
+    while (!completed && Date.now() - startTime < TEST_CONFIG.dryRunTimeout) {
       // Check for "Run Again" button (completion indicator)
       const hasRunAgain = await browser.exists('button:has-text("Run Again")');
       if (hasRunAgain) {
@@ -184,7 +181,7 @@ async function runTest() {
           console.log(`  Current stage: ${stage}`);
           lastStage = stage;
         }
-      } catch (err) {
+      } catch {
         // Ignore errors getting stage
       }
 
@@ -206,10 +203,9 @@ async function runTest() {
     }
 
     // Take screenshot of completion
-    await browser.takeScreenshot(
-      path.join(TEST_CONFIG.screenshotDir, 'dryrun-complete.png'),
-      { fullPage: true }
-    );
+    await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'dryrun-complete.png'), {
+      fullPage: true,
+    });
     logTest('Screenshot captured: dryrun-complete.png');
 
     // Step 8: Check if report is available (manual download button)
@@ -238,7 +234,9 @@ async function runTest() {
       console.log(`    - Has title: ${verification.checks.hasTitle}`);
       console.log(`    - Has metadata: ${verification.checks.hasMetadata}`);
       console.log(`    - Has papers: ${verification.checks.hasPapers}`);
-      console.log(`    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`);
+      console.log(
+        `    - Has content: ${verification.checks.hasContent} (${verification.size} bytes)`
+      );
       throw new Error('Report verification failed');
     }
 
@@ -255,24 +253,21 @@ async function runTest() {
     console.log('  - Report generation and download');
     console.log('  - Ready for Phase 4 (minimal API test)');
     console.log('');
-
   } catch (error) {
     console.error('\n✗ Test failed:', error.message);
 
     // Take error screenshot
     try {
-      await browser.takeScreenshot(
-        path.join(TEST_CONFIG.screenshotDir, 'dryrun-error.png'),
-        { fullPage: true }
-      );
+      await browser.takeScreenshot(path.join(TEST_CONFIG.screenshotDir, 'dryrun-error.png'), {
+        fullPage: true,
+      });
       console.error('Error screenshot saved: dryrun-error.png');
-    } catch (screenshotError) {
+    } catch {
       // Ignore screenshot errors
     }
 
     console.error('');
     process.exit(1);
-
   } finally {
     // Cleanup
     console.log('Cleaning up...');
