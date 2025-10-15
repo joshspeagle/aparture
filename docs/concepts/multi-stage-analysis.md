@@ -62,7 +62,7 @@ Aparture uses a progressive filtering approach with multiple stages, each adding
 
 - **Recommended:** Claude Haiku 3.5 (fast, accurate)
 - **Alternative:** Gemini Flash-Lite (cheapest)
-- **Avoid:** Opus/GPT-5 Standard (overkill)
+- **Avoid:** Opus/GPT-5 (overkill)
 
 **Prompt structure:**
 
@@ -223,7 +223,7 @@ Post-processing asks the model: "Given all these papers together, are the scores
 
 - **Budget:** Claude Sonnet 4.5 ($2.50)
 - **Recommended:** Claude Opus 4.1 ($4.00)
-- **Alternative:** GPT-5 Standard ($3.50)
+- **Alternative:** GPT-5 ($3.50)
 
 **Prompt structure:**
 

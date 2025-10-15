@@ -32,14 +32,14 @@ Aparture supports models from three providers:
 - **Context**: 200K tokens
 - **Vision**: Basic
 
-### OpenAI (GPT)
+### OpenAI (ChatGPT)
 
-**GPT-5 Standard** - High quality
+**GPT-5** - High quality
 
 - **Best for**: Any stage, comprehensive analysis
 - **Speed**: Medium
 - **Cost**: High
-- **Context**: 128K tokens
+- **Context**: 272K tokens
 - **Vision**: Excellent
 
 **GPT-5 Mini** - Balanced
@@ -47,7 +47,7 @@ Aparture supports models from three providers:
 - **Best for**: Abstract scoring, moderate complexity
 - **Speed**: Fast
 - **Cost**: Medium
-- **Context**: 128K tokens
+- **Context**: 272K tokens
 - **Vision**: Good
 
 **GPT-5 Nano** - Efficient
@@ -55,7 +55,7 @@ Aparture supports models from three providers:
 - **Best for**: Quick filtering, simple tasks
 - **Speed**: Very fast
 - **Cost**: Low
-- **Context**: 128K tokens
+- **Context**: 272K tokens
 - **Vision**: Basic
 
 ### Google (Gemini)
@@ -228,7 +228,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 **Don't use:**
 
-- ❌ Opus/Standard - Overkill for simple task
+- ❌ Opus/GPT-5 - Overkill for simple task
 - ❌ Sonnet/GPT-5 Mini - Unnecessary cost
 
 **Why it matters:**
@@ -245,7 +245,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 1. **Claude Sonnet 4.5** - Best balance (recommended)
 2. **Claude Opus 4.1** - Highest quality
-3. **GPT-5 Standard** - Excellent alternative
+3. **GPT-5** - Excellent alternative
 
 **Good alternatives:**
 
@@ -269,7 +269,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 **Best models:**
 
 1. **Claude Opus 4.1** - Best vision + reasoning (recommended)
-2. **GPT-5 Standard** - Excellent alternative
+2. **GPT-5** - Excellent alternative
 3. **Gemini 2.5 Pro** - Good for long papers
 
 **Acceptable alternatives:**
@@ -365,13 +365,13 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 **Solutions:**
 
 1. **Enable Post-Processing** - Re-scores papers for consistency
-2. **Use higher-quality models** - Opus/Standard more consistent than Haiku/Nano
+2. **Use higher-quality models** - Opus/GPT-5 more consistent than Haiku/Nano
 3. **Smaller batches** - More API calls but better consistency
 
 **Model rankings** (consistency):
 
 1. Claude Opus 4.1 (most consistent)
-2. GPT-5 Standard
+2. GPT-5
 3. Claude Sonnet 4.5
 4. Gemini Pro
 5. Others (less consistent)
@@ -388,7 +388,7 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 **Model rankings** (justification quality):
 
 1. Claude Opus 4.1 (most detailed)
-2. GPT-5 Standard
+2. GPT-5
 3. Claude Sonnet 4.5
 4. Gemini Pro
 5. Others (more generic)
@@ -400,7 +400,7 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 **Vision rankings:**
 
 1. Claude Opus 4.1 (excellent)
-2. GPT-5 Standard (excellent)
+2. GPT-5 (excellent)
 3. Gemini Pro (very good)
 4. Claude Sonnet 4.5 (good)
 5. Others (basic)
@@ -499,7 +499,7 @@ Aparture gracefully handles missing API keys by showing only available models in
 
 **Best for**: PDF analysis, high-quality scoring
 
-### OpenAI (GPT)
+### OpenAI (ChatGPT)
 
 **Strengths:**
 

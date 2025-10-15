@@ -129,10 +129,10 @@ empirical results, or important theoretical contributions.
 - `"claude-opus-4.1"`
 - `"gpt-5-nano"`
 - `"gpt-5-mini"`
-- `"gpt-5-standard"`
-- `"gemini-flash-lite"` - Cheapest
-- `"gemini-flash"`
-- `"gemini-pro"`
+- `"gpt-5"`
+- `"gemini-2.5-flash-lite"` - Cheapest
+- `"gemini-2.5-flash"`
+- `"gemini-2.5-pro"`
 
 **Recommended:** `"claude-haiku-3.5"` (best speed/cost balance)
 
@@ -172,9 +172,9 @@ empirical results, or important theoretical contributions.
 
 **Recommended:**
 
-- Quality-focused: `"claude-opus-4.1"` or `"gpt-5-standard"`
+- Quality-focused: `"claude-opus-4.1"` or `"gpt-5"`
 - Balanced: `"claude-sonnet-4.5"` (recommended)
-- Budget: `"gemini-flash"`
+- Budget: `"gemini-2.5-flash"`
 
 **Default:** `"claude-sonnet-4.5"`
 
@@ -281,7 +281,7 @@ empirical results, or important theoretical contributions.
 **Recommended:**
 
 - Best quality: `"claude-opus-4.1"` (excellent vision)
-- Balanced: `"claude-sonnet-4.5"` or `"gpt-5-standard"`
+- Balanced: `"claude-sonnet-4.5"` or `"gpt-5"`
 - Budget: `"gpt-5-mini"`
 
 **Vision capability important:** Papers with figures, equations, diagrams

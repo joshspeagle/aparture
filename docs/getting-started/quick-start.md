@@ -110,7 +110,7 @@ Generate a podcast-ready document:
 - **Duration**: 15 minutes
 
 ::: warning API Costs
-This configuration will cost approximately $1-2 for ~30 papers. Adjust settings if concerned about costs.
+This configuration costs approximately $1-2 for ~30 papers (Quick Filter + Sonnet scoring + 10 Opus PDF analyses). Adjust settings if cost is a concern.
 :::
 
 ## Step 5: Start Analysis
@@ -247,8 +247,9 @@ See [CLI Automation Guide →](/user-guide/cli-automation)
 **If progress stops:**
 
 1. Check browser console (F12) for errors
-2. Refresh the page (progress preserved on server)
+2. Verify API keys are valid and have available credits
 3. Check API rate limits in provider dashboards
+4. Refresh the page if interface becomes unresponsive
 
 ### High Costs
 

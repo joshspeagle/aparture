@@ -7,6 +7,9 @@ export default defineConfig({
   // GitHub Pages deployment base path (set to '/' for custom domain)
   base: '/aparture/',
 
+  // Enable dark mode toggle
+  appearance: 'dark',
+
   ignoreDeadLinks: [
     // Ignore localhost URLs (examples in documentation)
     /^https?:\/\/localhost/

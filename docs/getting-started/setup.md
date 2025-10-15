@@ -47,19 +47,11 @@ You need at least one API key to use Aparture. Having multiple providers gives y
 4. Click "Create Key"
 5. Copy the key (starts with `sk-ant-`)
 
-**Pricing:**
+**Models available:** Claude Haiku 3.5, Sonnet 4.5, Opus 4.1
 
-- Haiku 3.5: $0.25/$1.25 per million tokens (input/output)
-- Sonnet 4.5: $3/$15 per million tokens
-- Opus 4.1: $15/$75 per million tokens
+See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 
-**Models enabled:**
-
-- `claude-haiku-3.5` - Fast and economical
-- `claude-sonnet-4.5` - Balanced quality and cost
-- `claude-opus-4.1` - Highest quality
-
-### OpenAI (GPT)
+### OpenAI (ChatGPT)
 
 **Get your key:**
 
@@ -69,20 +61,12 @@ You need at least one API key to use Aparture. Having multiple providers gives y
 4. Click "Create new secret key"
 5. Copy the key (starts with `sk-`)
 
-**Pricing:**
+**Models available:** GPT-5, Mini, Nano
 
-- GPT-5 Nano: ~$0.10/$0.50 per million tokens
-- GPT-5 Mini: ~$1/$5 per million tokens
-- GPT-5 Standard: ~$5/$20 per million tokens
-
-**Models enabled:**
-
-- `gpt-5-nano` - Fast and economical
-- `gpt-5-mini` - Balanced
-- `gpt-5-standard` - High quality
+See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 
 ::: tip Rate Limits
-OpenAI has tier-based rate limits. Start with Tier 1 (free) and upgrade as needed.
+OpenAI has tier-based rate limits. Start with Tier 1 and upgrade as needed.
 :::
 
 ### Google (Gemini)
@@ -94,17 +78,9 @@ OpenAI has tier-based rate limits. Start with Tier 1 (free) and upgrade as neede
 3. Click "Create API Key"
 4. Copy the key (starts with `AIzaSy`)
 
-**Pricing:**
+**Models available:** Gemini 2.5 Pro, Flash, Flash-Lite
 
-- Flash-Lite: $0.075/$0.30 per million tokens
-- Flash: $0.10/$0.40 per million tokens
-- Pro: $1.25/$5.00 per million tokens
-
-**Models enabled:**
-
-- `gemini-flash-lite` - Most economical
-- `gemini-flash` - Fast and efficient
-- `gemini-pro` - Premium quality
+See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 
 ::: tip Free Tier
 Google's Gemini models offer a generous free tier, making them great for getting started.
@@ -123,7 +99,7 @@ The `ACCESS_PASSWORD` protects your web interface from unauthorized access.
 **Example:**
 
 ```bash
-ACCESS_PASSWORD=MySecureP@ssw0rd2024
+ACCESS_PASSWORD=MySecureP@ssw0rd
 ```
 
 This password is required every time you access the web interface.
@@ -163,14 +139,16 @@ The application will show which models are available based on your configured AP
 
 ### Port Configuration
 
-Change the development server port in `package.json`:
+Change the development server port with an environment variable:
 
-```json
-{
-  "scripts": {
-    "dev": "next dev -p 3001"
-  }
-}
+```bash
+PORT=3001 npm run dev
+```
+
+Or add to `.env.local`:
+
+```bash
+PORT=3001
 ```
 
 ### Node Environment
@@ -231,12 +209,12 @@ Set up billing alerts in each provider:
 **Test directly:**
 
 ```bash
-# Test Claude key
+# Test Claude key (example using Haiku)
 curl https://api.anthropic.com/v1/messages \
   -H "x-api-key: $CLAUDE_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" \
-  -d '{"model": "claude-3-haiku-20240307", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
+  -d '{"model": "claude-3-5-haiku-20241022", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
 ```
 
 ### Environment Variables Not Loading
@@ -254,13 +232,14 @@ npm run dev
 - Must be in project root (same level as `package.json`)
 - File name is `.env.local` not `env.local`
 
-### Models Not Appearing
+### Models Not Appearing in Dropdowns
 
-If certain models don't appear in dropdowns:
+If certain provider's models don't appear:
 
-1. **Check API key** - Is it set in `.env.local`?
-2. **Restart server** - Environment changes need restart
-3. **Check console** - Look for API errors (F12 in browser)
+1. **Verify API key is set** - Check `.env.local` for the correct variable name
+2. **Restart development server** - Stop with Ctrl+C, then `npm run dev`
+3. **Check browser console** - Press F12 and look for API authentication errors
+4. **Verify account status** - Ensure your API account is active with available credits
 
 ## Next Steps
 

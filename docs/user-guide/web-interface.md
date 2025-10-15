@@ -78,12 +78,12 @@ Choose AI models for each processing stage:
 **Abstract Scoring** (Stage 2)
 
 - **Recommended**: Claude Sonnet 4.5 (balanced)
-- Alternative: GPT-5 Standard, Gemini Pro
+- Alternative: ChatGPT (o1/o3-class), Gemini Pro
 
 **PDF Analysis** (Stage 3)
 
 - **Recommended**: Claude Opus 4.1 (best quality)
-- Alternative: GPT-5 Standard (good, but less vision capability)
+- Alternative: ChatGPT (o1/o3-class) (good, but less vision capability)
 
 **NotebookLM Document**
 
@@ -274,9 +274,10 @@ Upload the NotebookLM document to [notebooklm.google.com](https://notebooklm.goo
 
 **Try:**
 
-- Refresh the page (state is preserved on server)
-- Check browser console for connection errors
-- Verify API keys are valid
+- Check browser console for errors (F12)
+- Verify API keys are valid and have available credits
+- Check API rate limits in provider dashboards
+- Refresh the page if interface becomes unresponsive (you'll need to restart analysis)
 
 ### Papers Not Loading
 

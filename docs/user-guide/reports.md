@@ -409,9 +409,9 @@ mv reports/2025-09-* reports/archive/
 
 **Better model selection:**
 
-- Use Opus/GPT-5 for scoring (higher quality)
+- Use Opus 4.1/GPT-5 for scoring (higher quality)
 - Enable post-processing for consistency
-- Use Haiku only for quick filter
+- Use Haiku/Nano only for quick filter
 
 **Better configuration:**
 

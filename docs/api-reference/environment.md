@@ -92,7 +92,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Purpose:** OpenAI API access
 
-**Description:** Enables GPT models (GPT-5 Standard, Mini, Nano)
+**Description:** Enables GPT models (GPT-5, Mini, Nano)
 
 **Type:** String (starts with `sk-`)
 
@@ -112,11 +112,11 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Pricing:**
 
-- GPT-5 Nano: ~$0.10/$0.50 per million tokens (estimated)
-- GPT-5 Mini: ~$1/$5 per million tokens (estimated)
-- GPT-5 Standard: ~$5/$20 per million tokens (estimated)
+- GPT-5 Nano: $0.05/$0.40 per million tokens (input/output)
+- GPT-5 Mini: $0.25/$2.00 per million tokens
+- GPT-5: $1.25/$10.00 per million tokens
 
-**Note:** GPT-5 pricing is illustrative. Adjust based on actual OpenAI pricing.
+**Context window:** 272K tokens (input), 128K tokens (output)
 
 **Rate limits:**
 
@@ -127,7 +127,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 - `gpt-5-nano` - Fast, cheap
 - `gpt-5-mini` - Balanced
-- `gpt-5-standard` - High quality
+- `gpt-5` - High quality
 
 ---
 
@@ -135,7 +135,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Purpose:** Google AI (Gemini) API access
 
-**Description:** Enables Gemini models (Pro, Flash, Flash-Lite)
+**Description:** Enables Gemini models (2.5 Pro, Flash, Flash-Lite)
 
 **Type:** String
 
@@ -154,9 +154,11 @@ GOOGLE_AI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Pricing:**
 
-- Flash-Lite: $0.075/$0.30 per million tokens
+- Flash-Lite: $0.10/$0.40 per million tokens (input/output)
 - Flash: $0.10/$0.40 per million tokens
-- Pro: $1.25/$5.00 per million tokens
+- Pro: $1.25/$10.00 per million tokens (≤200K), $2.50/$15.00 per million tokens (>200K)
+
+**Context window:** 1M tokens
 
 **Rate limits:**
 
@@ -165,9 +167,9 @@ GOOGLE_AI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Models enabled:**
 
-- `gemini-flash-lite` - Cheapest
-- `gemini-flash` - Fast, efficient
-- `gemini-pro` - Premium
+- `gemini-2.5-flash-lite` - Cheapest
+- `gemini-2.5-flash` - Fast, efficient
+- `gemini-2.5-pro` - Premium
 
 ::: tip Free Tier
 Google's Gemini models offer a generous free tier, making them great for getting started.

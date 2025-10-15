@@ -595,21 +595,19 @@ const browser = await playwright.chromium.launch({
 
 ### Custom Server Port
 
-Edit `package.json`:
+Set via environment variable in `.env.local`:
 
-```json
-{
-  "scripts": {
-    "dev": "next dev -p 3001"
-  }
-}
+```bash
+PORT=3001
 ```
 
-Update `cli/server-manager.js` to match:
+Or pass directly:
 
-```javascript
-const PORT = 3001;
+```bash
+PORT=3001 npm run analyze
 ```
+
+The CLI scripts will automatically use the PORT environment variable if set.
 
 ### Multiple Configurations
 

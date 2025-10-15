@@ -1,0 +1,63 @@
+/* Custom styling for Aparture documentation */
+
+/* arXiv red color (matching arxiv.org) */
+:root {
+  --arxiv-red: #b31b1b;
+}
+
+/* Remove all hamburger menu CSS - accept VitePress default behavior */
+/* The hamburger menu on narrower screens is standard responsive design */
+
+/* Increase Aparture title size */
+.VPHero .name {
+  font-size: 4.5rem !important;
+  line-height: 1.2;
+}
+
+/* Decrease tagline size slightly */
+.VPHero .text {
+  font-size: 2.2rem !important;
+  line-height: 1.3;
+}
+
+/* Styled text for homepage hero */
+.hero-name {
+  display: inline-block;
+}
+
+/* Highlight "ar" in Aparture with red color and subtle emphasis - matching arXiv color */
+.hero-name .ar-highlight {
+  color: #b31b1b !important;
+  font-weight: 700 !important;
+  position: relative;
+  padding-bottom: 2px;
+  border-bottom: 3px solid #b31b1b !important;
+}
+
+/* Multiple selectors to ensure VPHero doesn't override our red color */
+.VPHero .name .ar-highlight,
+.VPHero .name span.ar-highlight,
+.VPHero.has-image .name .ar-highlight,
+html .VPHero .name .hero-name .ar-highlight {
+  color: #b31b1b !important;
+  background: none !important;
+  background-clip: unset !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #b31b1b !important;
+}
+
+/* Style for "arXiv" in tagline */
+.tagline-text .arxiv-highlight {
+  color: var(--arxiv-red);
+  font-weight: 600;
+  position: relative;
+}
+
+/* Highlight "ar" within arXiv */
+.tagline-text .arxiv-ar-highlight {
+  color: var(--arxiv-red);
+  font-weight: 700;
+  position: relative;
+  padding-bottom: 1px;
+  border-bottom: 2px solid var(--arxiv-red);
+}

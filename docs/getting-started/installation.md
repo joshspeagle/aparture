@@ -1,6 +1,6 @@
 # Installation
 
-Learn how to install Aparture and its dependencies.
+Install Aparture and its dependencies to get started.
 
 ## Prerequisites
 
@@ -34,10 +34,11 @@ npm install
 
 This will install all required packages including:
 
-- Next.js 14
-- React 18
+- Next.js 14 (web framework)
+- React 18 (UI library)
 - Lucide React (icons)
-- CLI dependencies (chalk, ora, prompts, commander)
+- Playwright (browser automation)
+- CLI utilities (progress bars, prompts, command parsing)
 
 ### 3. Install Playwright (Optional)
 
@@ -161,5 +162,5 @@ npm install
 ```
 
 ::: warning Breaking Changes
-Check the [changelog](https://github.com/joshspeagle/aparture/blob/main/CHANGELOG.md) for breaking changes before updating.
+Check the [GitHub releases](https://github.com/joshspeagle/aparture/releases) for breaking changes before updating.
 :::
