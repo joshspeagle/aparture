@@ -12,6 +12,13 @@ export default defineConfig({
     /^https?:\/\/localhost/
   ],
 
+  // Vite configuration to prevent loading parent PostCSS config
+  vite: {
+    css: {
+      postcss: null
+    }
+  },
+
   themeConfig: {
     logo: '/logo.svg',
 
