@@ -17,6 +17,11 @@ export default [
       'reports/**',
       'temp/**',
       'coverage/**',
+      // VitePress generated files
+      'docs/.vitepress/cache/**',
+      'docs/.vitepress/dist/**',
+      'docs/.vitepress/.temp/**',
+      'docs/node_modules/**',
     ],
   },
 
