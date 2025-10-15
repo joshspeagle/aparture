@@ -35,6 +35,36 @@ The package currently supports the following APIs:
 - **OpenAI**: GPT-5, GPT-5 Mini, GPT-5 Nano
 - **Google**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite
 
+## Documentation
+
+📚 **[View Documentation](https://joshspeagle.github.io/aparture/)** (deployed automatically on every push)
+
+Full documentation is also available in the `docs/` directory:
+
+- **[Getting Started](docs/getting-started/installation.md)** - Installation, setup, and quick start guide
+- **[User Guide](docs/user-guide/web-interface.md)** - Web interface, CLI automation, testing, and reports
+- **[Concepts](docs/concepts/multi-stage-analysis.md)** - Multi-stage analysis, arXiv categories, model selection, NotebookLM
+- **[API Reference](docs/api-reference/commands.md)** - CLI commands, configuration, environment variables
+
+### Running Documentation Locally
+
+```bash
+# Start documentation dev server
+npm run docs:dev
+
+# Build static documentation site
+npm run docs:build
+
+# Preview built documentation
+npm run docs:preview
+```
+
+The documentation site will be available at [http://localhost:5173](http://localhost:5173).
+
+### Deploying Documentation
+
+Documentation is automatically built and deployed to GitHub Pages on every push to `main` that modifies files in the `docs/` directory. The GitHub Actions workflow is defined in [`.github/workflows/deploy-docs.yml`](.github/workflows/deploy-docs.yml).
+
 ## Setup Instructions
 
 ### 1. Install Dependencies
