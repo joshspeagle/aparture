@@ -17,7 +17,7 @@ For automated daily runs, see [CLI Automation](/user-guide/cli-automation).
 
 When you first visit the application, you'll be prompted for a password.
 
-```env
+```bash
 ACCESS_PASSWORD=your-secure-password-here
 ```
 

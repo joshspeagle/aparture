@@ -28,7 +28,7 @@ Never commit `.env.local` to version control. It contains sensitive API keys and
 
 **Example:**
 
-```env
+```bash
 ACCESS_PASSWORD=your-secure-password-here
 ```
 
@@ -57,7 +57,7 @@ You must provide **at least one** API key. Providing multiple gives you flexibil
 
 **Example:**
 
-```env
+```bash
 CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -98,7 +98,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Example:**
 
-```env
+```bash
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -141,7 +141,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Example:**
 
-```env
+```bash
 GOOGLE_AI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -193,7 +193,7 @@ Google's Gemini models offer a generous free tier, making them great for getting
 
 **Example:**
 
-```env
+```bash
 NODE_ENV=production
 ```
 
@@ -218,7 +218,7 @@ NODE_ENV=production
 
 **Example:**
 
-```env
+```bash
 PORT=3001
 ```
 
@@ -242,7 +242,7 @@ PORT=3001
 
 **Example:**
 
-```env
+```bash
 VERCEL_URL=aparture.vercel.app
 ```
 
@@ -254,7 +254,7 @@ VERCEL_URL=aparture.vercel.app
 
 Complete example `.env.local`:
 
-```env
+```bash
 # Application Security
 ACCESS_PASSWORD=your-secure-password-here
 

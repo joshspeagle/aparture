@@ -19,7 +19,7 @@ type nul > .env.local  # Windows
 
 Add the following to `.env.local`:
 
-```env
+```bash
 # Application Password (required)
 ACCESS_PASSWORD=your-secure-password-here
 
@@ -122,7 +122,7 @@ The `ACCESS_PASSWORD` protects your web interface from unauthorized access.
 
 **Example:**
 
-```env
+```bash
 ACCESS_PASSWORD=MySecureP@ssw0rd2024
 ```
 
@@ -177,7 +177,7 @@ Change the development server port in `package.json`:
 
 Set the environment mode:
 
-```env
+```bash
 NODE_ENV=development  # or production
 ```
 
