@@ -51,20 +51,13 @@ All settings persist in browser localStorage for subsequent runs.
 # Full workflow: analysis + document + podcast
 npm run analyze
 
-# Skip NotebookLM document generation
-npm run analyze --skip-notebooklm
-
-# Generate document but skip podcast
-npm run analyze --skip-podcast
-
-# Just the report (no NotebookLM features)
-npm run analyze --skip-notebooklm --skip-podcast
-
-# Generate podcast from existing files (skips analysis)
-npm run analyze --podcast-only
+# Specific workflows
+npm run analyze:report     # Report only (skip NotebookLM features)
+npm run analyze:document   # Report + NotebookLM document (skip podcast)
+npm run analyze:podcast    # Podcast only (skip analysis, use existing files)
 ```
 
-The `--podcast-only` flag is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date prefix and skips directly to the podcast generation workflow.
+The `analyze:podcast` command is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date prefix and skips directly to the podcast generation workflow.
 
 ### Testing
 
@@ -346,14 +339,10 @@ Note that this must be the same browser instance (default: Chromium) or else the
 ### Selective Execution
 
 ```bash
-# Just generate report (no NotebookLM)
-npm run analyze --skip-notebooklm --skip-podcast
-
-# Generate document but manual podcast creation
-npm run analyze --skip-podcast
-
-# Generate podcast from existing report and NotebookLM document
-npm run analyze --podcast-only
+# Specific workflows
+npm run analyze:report     # Just generate report (no NotebookLM)
+npm run analyze:document   # Generate document but skip podcast
+npm run analyze:podcast    # Podcast from existing files
 
 # Test pipeline without full analysis
 npm run test:dryrun

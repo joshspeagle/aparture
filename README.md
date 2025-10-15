@@ -227,16 +227,13 @@ After initial setup, running analyses is simple:
 # Full workflow (report + document + podcast)
 npm run analyze
 
-# Skip specific stages
-npm run analyze --skip-notebooklm    # Skip NotebookLM document generation
-npm run analyze --skip-podcast       # Generate document but skip podcast
-npm run analyze --skip-notebooklm --skip-podcast  # Report only
-
-# Generate podcast from existing files (skips analysis)
-npm run analyze --podcast-only
+# Specific workflows
+npm run analyze:report     # Report only (skip NotebookLM features)
+npm run analyze:document   # Report + NotebookLM document (skip podcast)
+npm run analyze:podcast    # Podcast only (skip analysis, use existing files)
 ```
 
-The `--podcast-only` flag is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date and uploads them to NotebookLM for podcast generation.
+The `analyze:podcast` command is useful when you already have a report and NotebookLM document from a previous run and just want to generate a new podcast. It automatically finds the most recent files in `reports/` by date and uploads them to NotebookLM for podcast generation.
 
 All outputs are saved to `reports/` with dated filenames.
 

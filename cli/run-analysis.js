@@ -16,14 +16,13 @@
  * - Verifying complete analysis results
  *
  * Setup (first time):
- *   npm run setup                       # Interactive configuration UI
+ *   npm run setup              # Interactive configuration UI
  *
  * Usage:
- *   npm run analyze                     # Full workflow: report + document + podcast
- *   npm run analyze --skip-notebooklm   # Skip NotebookLM document generation
- *   npm run analyze --skip-podcast      # Generate document but skip podcast
- *   npm run analyze --skip-notebooklm --skip-podcast  # Report only
- *   npm run analyze --podcast-only      # Skip analysis, use existing files for podcast
+ *   npm run analyze            # Full workflow: report + document + podcast
+ *   npm run analyze:report     # Report only (skip NotebookLM features)
+ *   npm run analyze:document   # Report + NotebookLM document (skip podcast)
+ *   npm run analyze:podcast    # Podcast only (skip analysis, use existing files)
  *
  * Configuration:
  *   - First run "npm run setup" to configure all settings via UI
