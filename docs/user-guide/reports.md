@@ -66,7 +66,7 @@ The analysis report follows a consistent structure:
 ## Configuration
 
 - **Categories**: cs.LG, cs.AI, stat.ML (47 papers)
-- **Quick Filter**: Enabled (Haiku 3.5)
+- **Quick Filter**: Enabled (Haiku 4.5)
 - **Abstract Scoring**: Enabled (Sonnet 4.5)
 - **PDF Analysis**: Top 20 papers (Opus 4.1)
 ```
@@ -117,7 +117,7 @@ Each processing stage gets a dedicated section:
 ```markdown
 ## Stage 1: Quick Filter
 
-**Model**: Claude Haiku 3.5
+**Model**: Claude Haiku 4.5
 **Duration**: 2 minutes 34 seconds
 **Cost**: $0.08
 
@@ -246,7 +246,7 @@ Includes:
 
 **Model Breakdown:**
 
-- Quick Filter (Haiku 3.5): $0.08
+- Quick Filter (Haiku 4.5): $0.08
 - Abstract Scoring (Sonnet 4.5): $1.45
 - PDF Analysis (Opus 4.1): $3.20
 

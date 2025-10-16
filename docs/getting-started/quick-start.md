@@ -84,7 +84,7 @@ I am interested in:
 Enable quick filtering for faster, cheaper analysis:
 
 - **Quick Filter**: ✅ Enable
-- **Model**: Claude Haiku 3.5 (fast and cheap)
+- **Model**: Claude Haiku 4.5 (fast and cheap)
 - **Threshold**: MAYBE (balanced)
 
 ### Abstract Scoring

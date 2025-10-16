@@ -60,7 +60,7 @@ Aparture uses a progressive filtering approach with multiple stages, each adding
 
 **Models:**
 
-- **Recommended:** Claude Haiku 3.5 (fast, accurate)
+- **Recommended:** Claude Haiku 4.5 (fast, accurate)
 - **Alternative:** Gemini Flash-Lite (cheapest)
 - **Avoid:** Opus/GPT-5 (overkill)
 

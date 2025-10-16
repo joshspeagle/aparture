@@ -24,13 +24,13 @@ Aparture supports models from three providers:
 - **Context**: 200K tokens
 - **Vision**: Good
 
-**Claude Haiku 3.5** - Fast & cheap
+**Claude Haiku 4.5** - Fast, intelligent & cheap
 
-- **Best for**: Quick filtering, batch processing
+- **Best for**: Quick filtering, batch processing, coding
 - **Speed**: Fast
 - **Cost**: Low
-- **Context**: 200K tokens
-- **Vision**: Basic
+- **Context**: 200K tokens (1M available on Developer Platform)
+- **Vision**: Good
 
 ### OpenAI (ChatGPT)
 
@@ -95,7 +95,7 @@ All models have sufficient context for Aparture's needs. Paper abstracts are typ
 **Goal**: Minimize costs while maintaining acceptable quality
 
 ```
-Quick Filter: Claude Haiku 3.5
+Quick Filter: Claude Haiku 4.5
 Abstract Scoring: Gemini Flash
 PDF Analysis: Claude Sonnet 4.5
 NotebookLM: Claude Opus 4.1 (fixed)
@@ -126,7 +126,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 **Goal**: Best quality-to-cost ratio
 
 ```
-Quick Filter: Claude Haiku 3.5
+Quick Filter: Claude Haiku 4.5
 Abstract Scoring: Claude Sonnet 4.5
 PDF Analysis: Claude Opus 4.1
 NotebookLM: Claude Opus 4.1 (fixed)
@@ -222,7 +222,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 **Best models:**
 
-1. **Claude Haiku 3.5** - Best balance of speed and accuracy
+1. **Claude Haiku 4.5** - Best balance of speed and accuracy
 2. **Gemini Flash-Lite** - Fastest, cheapest
 3. **GPT-5 Nano** - Good alternative
 

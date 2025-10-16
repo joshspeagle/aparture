@@ -22,7 +22,7 @@ The configuration object contains all analysis settings:
   "selectedCategories": ["cs.LG", "cs.AI", "stat.ML"],
   "researchCriteria": "I am interested in...",
   "quickFilterEnabled": true,
-  "quickFilterModel": "claude-haiku-3.5",
+  "quickFilterModel": "claude-haiku-4.5",
   "quickFilterThreshold": "maybe",
   "abstractScoringModel": "claude-sonnet-4.5",
   "scoringBatchSize": 10,
@@ -124,7 +124,7 @@ empirical results, or important theoretical contributions.
 
 **Valid values:**
 
-- `"claude-haiku-3.5"` - Recommended
+- `"claude-haiku-4.5"` - Recommended
 - `"claude-sonnet-4.5"`
 - `"claude-opus-4.1"`
 - `"gpt-5-nano"`
@@ -134,9 +134,9 @@ empirical results, or important theoretical contributions.
 - `"gemini-2.5-flash"`
 - `"gemini-2.5-pro"`
 
-**Recommended:** `"claude-haiku-3.5"` (best speed/cost balance)
+**Recommended:** `"claude-haiku-4.5"` (best speed/cost balance)
 
-**Default:** `"claude-haiku-3.5"`
+**Default:** `"claude-haiku-4.5"`
 
 ---
 
@@ -359,7 +359,7 @@ empirical results, or important theoretical contributions.
 ```json
 {
   "quickFilterEnabled": true,
-  "quickFilterModel": "claude-haiku-3.5",
+  "quickFilterModel": "claude-haiku-4.5",
   "abstractScoringModel": "gemini-flash",
   "pdfAnalysisModel": "claude-sonnet-4.5",
   "maxPapersForPdfAnalysis": 10,
@@ -380,7 +380,7 @@ empirical results, or important theoretical contributions.
 ```json
 {
   "quickFilterEnabled": true,
-  "quickFilterModel": "claude-haiku-3.5",
+  "quickFilterModel": "claude-haiku-4.5",
   "abstractScoringModel": "claude-sonnet-4.5",
   "pdfAnalysisModel": "claude-opus-4.1",
   "maxPapersForPdfAnalysis": 20,

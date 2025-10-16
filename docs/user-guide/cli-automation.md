@@ -206,7 +206,7 @@ Uses your `ACCESS_PASSWORD` from `.env.local`:
 ✓ Loading saved configuration...
 ✓ Configuration verified:
   - Categories: cs.LG, cs.AI, stat.ML (47 papers expected)
-  - Quick Filter: Enabled (Haiku 3.5)
+  - Quick Filter: Enabled (Haiku 4.5)
   - Abstract Scoring: Sonnet 4.5
   - PDF Analysis: Opus 4.1 (20 papers max)
   - NotebookLM: Enabled (15 min duration)

@@ -47,7 +47,7 @@ You need at least one API key to use Aparture. Having multiple providers gives y
 4. Click "Create Key"
 5. Copy the key (starts with `sk-ant-`)
 
-**Models available:** Claude Haiku 3.5, Sonnet 4.5, Opus 4.1
+**Models available:** Claude Haiku 4.5, Sonnet 4.5, Opus 4.1
 
 See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 
@@ -214,7 +214,7 @@ curl https://api.anthropic.com/v1/messages \
   -H "x-api-key: $CLAUDE_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" \
-  -d '{"model": "claude-3-5-haiku-20241022", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
+  -d '{"model": "claude-haiku-4-5-20251001", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
 ```
 
 ### Environment Variables Not Loading

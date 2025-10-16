@@ -51,7 +51,7 @@ You must provide **at least one** API key. Providing multiple gives you flexibil
 
 **Purpose:** Anthropic Claude API access
 
-**Description:** Enables Claude models (Haiku 3.5, Sonnet 4.5, Opus 4.1)
+**Description:** Enables Claude models (Haiku 4.5, Sonnet 4.5, Opus 4.1)
 
 **Type:** String (starts with `sk-ant-`)
 
@@ -71,7 +71,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Pricing:**
 
-- Haiku 3.5: $0.25/$1.25 per million tokens (input/output)
+- Haiku 4.5: $1.00/$5.00 per million tokens (input/output)
 - Sonnet 4.5: $3/$15 per million tokens
 - Opus 4.1: $15/$75 per million tokens
 
@@ -82,7 +82,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Models enabled:**
 
-- `claude-haiku-3.5` - Fast, cheap
+- `claude-haiku-4.5` - Fast, intelligent, cheap
 - `claude-sonnet-4.5` - Balanced
 - `claude-opus-4.1` - Best quality
 

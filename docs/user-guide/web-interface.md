@@ -72,7 +72,7 @@ Choose AI models for each processing stage:
 
 **Quick Filter** (Stage 1)
 
-- **Recommended**: Claude Haiku 3.5 (fast, cheap)
+- **Recommended**: Claude Haiku 4.5 (fast, cheap)
 - Alternative: Gemini Flash-Lite (similar performance)
 
 **Abstract Scoring** (Stage 2)

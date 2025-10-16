@@ -247,7 +247,7 @@ curl https://api.anthropic.com/v1/messages \
   -H "x-api-key: $CLAUDE_API_KEY" \
   -H "anthropic-version: 2023-06-01" \
   -H "content-type: application/json" \
-  -d '{"model": "claude-3-5-haiku-20241022", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
+  -d '{"model": "claude-haiku-4-5-20251001", "max_tokens": 10, "messages": [{"role": "user", "content": "Hi"}]}'
 
 # Test OpenAI
 curl https://api.openai.com/v1/chat/completions \

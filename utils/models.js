@@ -12,8 +12,8 @@ const MODEL_REGISTRY = {
     apiId: 'claude-sonnet-4-5-20250929',
     provider: 'Anthropic',
   },
-  'claude-haiku-3.5': {
-    apiId: 'claude-3-5-haiku-20241022',
+  'claude-haiku-4.5': {
+    apiId: 'claude-haiku-4-5-20251001',
     provider: 'Anthropic',
   },
   'gpt-5': {
@@ -64,12 +64,12 @@ const AVAILABLE_MODELS = [
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
-    id: 'claude-haiku-3.5',
-    name: 'Claude Haiku 3.5',
+    id: 'claude-haiku-4.5',
+    name: 'Claude Haiku 4.5',
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: true,
-    description: 'Fast and cost-effective',
+    description: 'Fast, cost-effective, and intelligent',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
 
