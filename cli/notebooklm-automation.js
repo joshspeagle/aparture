@@ -564,7 +564,60 @@ class NotebookLMAutomation {
     console.log('  Waiting for audio generation to complete (typically 10-20 minutes)...');
 
     while (Date.now() - startTime < timeout) {
-      // Check for download button or "Ready" indicator
+      // STRATEGY 1: Check for kebab menu (three-dot menu) on Audio Overview card
+      // The Download option is hidden inside this menu, so we need to:
+      // 1. Find the kebab menu button
+      // 2. Click it to open menu
+      // 3. Check if "Download" option is visible
+      // 4. Close menu if found (completion detected)
+
+      const menuButtons = await this.page.$$('[aria-label*="More"]');
+      let completionDetected = false;
+
+      for (const menuButton of menuButtons) {
+        const isVisible = await menuButton.isVisible().catch(() => false);
+        if (!isVisible) continue;
+
+        // Try to open this menu
+        try {
+          await menuButton.click();
+          await this.page.waitForTimeout(500); // Wait for menu to appear
+
+          // Check if Download option is visible in menu
+          const downloadOption = await this.page.$('text="Download"');
+          if (downloadOption) {
+            const downloadVisible = await downloadOption.isVisible().catch(() => false);
+            if (downloadVisible) {
+              // Found it! Audio generation is complete
+              completionDetected = true;
+
+              // Close menu by clicking elsewhere (click on body or press ESC)
+              await this.page.keyboard.press('Escape');
+              await this.page.waitForTimeout(500);
+
+              break;
+            }
+          }
+
+          // Close menu if it's not the right one
+          await this.page.keyboard.press('Escape');
+          await this.page.waitForTimeout(300);
+        } catch (err) {
+          // Failed to open menu or check - continue to next
+          console.log(`  Debug: Menu check failed: ${err.message}`);
+          continue;
+        }
+      }
+
+      if (completionDetected) {
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        console.log(
+          `  ✓ Audio generation completed in ${Math.floor(duration / 60)}m ${duration % 60}s`
+        );
+        return true;
+      }
+
+      // STRATEGY 2 (Fallback): Look for direct download button (in case UI changed)
       let isComplete = await this.page.$('button:has-text("Download")');
       if (!isComplete) {
         isComplete = await this.page.$('[aria-label*="Download"]');
