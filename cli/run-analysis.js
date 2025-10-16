@@ -473,7 +473,7 @@ async function runAnalysis() {
     await browser.waitForFullAnalysisComplete({
       timeout: CONFIG.fullAnalysisTimeout,
       pollInterval: CONFIG.pollInterval,
-      verbose: false, // We'll handle our own logging
+      verbose: true, // Enable verbose logging to see completion detection
       onProgress: (update) => {
         if (update.type === 'stage_change') {
           // Record timing for previous stage

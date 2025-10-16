@@ -748,63 +748,90 @@ class BrowserAutomation {
     // Get stage - look for stage indicator in UI
     let stage = 'unknown';
     try {
-      // Try to extract stage from the processing section
-      // The UI shows stages like "fetching", "Filtering", "initial-scoring", etc.
-      const stageText = await this.page.evaluate(() => {
-        // Look for progress section text patterns
-        const progressSection = document.body.innerText;
-
-        // Match common stage patterns (ORDER MATTERS - check PDF analysis BEFORE 'Download Report')
-        if (
-          progressSection.includes('Fetching papers') ||
-          progressSection.includes('Fetching category')
-        ) {
-          return 'fetching';
-        } else if (progressSection.includes('Filtering')) {
-          return 'filtering';
-        } else if (
-          progressSection.includes('Scoring') ||
-          progressSection.includes('initial-scoring')
-        ) {
-          return 'scoring';
-        } else if (progressSection.includes('Post-Processing')) {
-          return 'post-processing';
+      // STRATEGY 1: Try to read the "Current Stage:" UI element directly
+      // This is the most reliable approach as it reads the actual stage indicator
+      const currentStageText = await this.page.evaluate(() => {
+        // Find the "Current Stage:" label and read the adjacent text
+        const allText = document.body.innerText;
+        const match = allText.match(/Current Stage:\s*\n?\s*(\w+(?:\s+\w+)?)/i);
+        if (match) {
+          return match[1].trim().toLowerCase();
         }
-        // Check for PDF analysis stage - MUST come before 'complete' check
-        // UI shows: "Analyzing PDFs" (plural), "Analyzing paper" (singular during processing)
-        // Also check for progress like "Analyzing paper 3 of 20"
-        else if (
-          progressSection.includes('Analyzing PDF') ||
-          progressSection.includes('deep-analysis') ||
-          progressSection.includes('Analyzing paper') ||
-          /Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)
-        ) {
-          return 'pdf-analysis';
-        }
-        // Mark complete if:
-        // 1. Download Report section is present AND Completed timestamp shown, OR
-        // 2. Download Report button visible and no processing indicators (Pause/Resume buttons)
-        else if (progressSection.includes('Download Report')) {
-          // If we see "Completed:" timestamp, definitely done
-          if (progressSection.includes('Completed:')) {
-            return 'complete';
-          }
-          // Otherwise, check if still processing
-          // If Pause/Resume/Abort buttons are gone and report is available, likely complete
-          const hasProcessingButtons =
-            progressSection.includes('Pause') ||
-            progressSection.includes('Resume') ||
-            progressSection.includes('Abort');
-          if (!hasProcessingButtons) {
-            return 'complete';
-          }
-        }
-
-        return 'processing';
+        return null;
       });
 
-      if (stageText) {
-        stage = stageText;
+      if (currentStageText) {
+        stage = currentStageText;
+      } else {
+        // STRATEGY 2: Fallback to heuristic detection
+        // Only look at visible progress indicators, not historical logs
+        const stageText = await this.page.evaluate(() => {
+          // Get text from the Progress section only (excludes logs panel)
+          // Look for the Progress header and extract content from that section
+          const progressHeader = Array.from(document.querySelectorAll('h2, h3, div')).find(
+            (el) => el.textContent.includes('Progress') && !el.textContent.includes('hide')
+          );
+
+          if (!progressHeader) {
+            // Fallback: use all page text but be more careful
+            const allText = document.body.innerText;
+
+            // Check for completion FIRST (highest priority)
+            if (allText.includes('Download Report') && allText.includes('Completed:')) {
+              return 'complete';
+            }
+
+            // Then check for active processing stages
+            if (allText.includes('Fetching papers') || allText.includes('Fetching category')) {
+              return 'fetching';
+            } else if (allText.includes('Filtering')) {
+              return 'filtering';
+            } else if (allText.includes('Scoring') || allText.includes('initial-scoring')) {
+              return 'scoring';
+            } else if (allText.includes('Post-Processing')) {
+              return 'post-processing';
+            }
+            // Only match pdf-analysis if we see current progress indicators (not old logs)
+            else if (/Analyzing\s+\d+\s+of\s+\d+/.test(allText)) {
+              return 'pdf-analysis';
+            }
+
+            return 'processing';
+          }
+
+          // Get text from Progress section and nearby content
+          const progressSection = progressHeader.parentElement?.innerText || '';
+
+          // Check completion first
+          if (
+            progressSection.includes('Download Report') &&
+            progressSection.includes('Completed:')
+          ) {
+            return 'complete';
+          }
+
+          // Check other stages
+          if (
+            progressSection.includes('Fetching papers') ||
+            progressSection.includes('Fetching category')
+          ) {
+            return 'fetching';
+          } else if (progressSection.includes('Filtering')) {
+            return 'filtering';
+          } else if (progressSection.includes('Scoring')) {
+            return 'scoring';
+          } else if (progressSection.includes('Post-Processing')) {
+            return 'post-processing';
+          } else if (/Analyzing\s+\d+\s+of\s+\d+/.test(progressSection)) {
+            return 'pdf-analysis';
+          }
+
+          return 'processing';
+        });
+
+        if (stageText) {
+          stage = stageText;
+        }
       }
     } catch {
       // Ignore errors, keep 'unknown'
@@ -918,25 +945,52 @@ class BrowserAutomation {
       // The analysis is done when:
       // 1. Report is available for download AND
       // 2. No processing buttons (Pause/Resume) are visible AND
-      // 3. Stage is marked as 'complete' (not 'pdf-analysis', 'filtering', etc.)
+      // 3. EITHER stage is 'complete' OR we see clear completion indicators
       const reportAvailable = await this.isReportAvailable();
       const stillProcessing =
         (await this.exists('button:has-text("Pause")')) ||
         (await this.exists('button:has-text("Resume")'));
 
-      if (reportAvailable && !stillProcessing && progress.stage === 'complete') {
+      // Additional check: Look for "Completed:" timestamp which is the most reliable completion indicator
+      const hasCompletedTimestamp = await this.page.evaluate(() => {
+        return document.body.innerText.includes('Completed:');
+      });
+
+      // Check for "Current Stage: Complete" text explicitly
+      const currentStageComplete = await this.page.evaluate(() => {
+        const text = document.body.innerText;
+        return /Current Stage:\s*\n?\s*Complete/i.test(text);
+      });
+
+      // Consider complete if EITHER:
+      // - Stage detected as 'complete', OR
+      // - Has "Completed:" timestamp AND report available, OR
+      // - "Current Stage: Complete" visible
+      const isComplete =
+        progress.stage === 'complete' || hasCompletedTimestamp || currentStageComplete;
+
+      if (reportAvailable && !stillProcessing && isComplete) {
+        if (verbose) {
+          console.log(
+            `  Completion detected: stage=${progress.stage}, hasTimestamp=${hasCompletedTimestamp}, currentStageComplete=${currentStageComplete}`
+          );
+        }
+
         // Found completion conditions - wait a moment to ensure it's stable
         await this.page.waitForTimeout(3000);
 
         // Verify completion is still true (not transitioning to another stage)
-        const progress2 = await this.getCurrentProgress();
         const reportStillAvailable = await this.isReportAvailable();
         const stillNotProcessing = !(
           (await this.exists('button:has-text("Pause")')) ||
           (await this.exists('button:has-text("Resume")'))
         );
 
-        if (reportStillAvailable && stillNotProcessing && progress2.stage === 'complete') {
+        const hasCompletedTimestamp2 = await this.page.evaluate(() => {
+          return document.body.innerText.includes('Completed:');
+        });
+
+        if (reportStillAvailable && stillNotProcessing && hasCompletedTimestamp2) {
           // Analysis is truly complete!
           if (lastStage && lastStage !== 'complete') {
             const stageDuration = Date.now() - stageStartTime;
