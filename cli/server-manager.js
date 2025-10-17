@@ -219,23 +219,53 @@ class ServerManager {
       console.log('Stopping dev server...');
 
       return new Promise((resolve) => {
-        this.serverProcess.on('exit', () => {
-          console.log('✓ Server stopped');
-          this.serverProcess = null;
-          resolve();
-        });
+        let resolved = false;
 
-        // Kill the process
-        this.serverProcess.kill('SIGTERM');
-
-        // Force kill after 5 seconds if not stopped
-        setTimeout(() => {
-          if (this.serverProcess) {
-            this.serverProcess.kill('SIGKILL');
+        const cleanup = () => {
+          if (!resolved) {
+            resolved = true;
+            console.log('✓ Server stopped');
             this.serverProcess = null;
             resolve();
           }
-        }, 5000);
+        };
+
+        this.serverProcess.on('exit', cleanup);
+
+        // On Windows with shell:true, we need to kill the entire process tree
+        const isWindows = process.platform === 'win32';
+
+        if (isWindows) {
+          // Use taskkill to kill the entire process tree on Windows
+          const { spawn } = require('child_process');
+          const killer = spawn('taskkill', ['/pid', this.serverProcess.pid, '/f', '/t'], {
+            shell: true,
+          });
+
+          killer.on('close', () => {
+            cleanup();
+          });
+
+          killer.on('error', () => {
+            // Fallback to direct kill if taskkill fails
+            this.serverProcess.kill('SIGKILL');
+            cleanup();
+          });
+
+          // Force cleanup after 5 seconds if still not stopped
+          setTimeout(cleanup, 5000);
+        } else {
+          // Unix-like systems: try SIGTERM first
+          this.serverProcess.kill('SIGTERM');
+
+          // Force kill after 5 seconds if not stopped
+          setTimeout(() => {
+            if (this.serverProcess && !resolved) {
+              this.serverProcess.kill('SIGKILL');
+              cleanup();
+            }
+          }, 5000);
+        }
       });
     }
   }

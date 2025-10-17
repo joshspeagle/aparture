@@ -36,6 +36,7 @@ class NotebookLMAutomation {
       headless,
       viewport: { width: 1280, height: 1024 }, // Taller viewport for dialogs
       acceptDownloads: true,
+      downloadsPath: path.join(process.cwd(), 'reports'), // Explicit downloads path
       // Add arguments to bypass Google's bot detection
       args: [
         '--disable-blink-features=AutomationControlled', // Hide automation indicators
@@ -219,6 +220,16 @@ class NotebookLMAutomation {
     }
 
     try {
+      // Log the files being uploaded for debugging
+      const path = require('path');
+      console.log(`  Report file: ${path.basename(reportPath)}`);
+      console.log(`  NotebookLM document: ${path.basename(notebooklmDocPath)}`);
+
+      // Verify files are different
+      if (reportPath === notebooklmDocPath) {
+        throw new Error('Error: reportPath and notebooklmDocPath are the same file!');
+      }
+
       // NotebookLM automatically opens "Add sources" modal after creating notebook
       // Wait for the modal to be visible
       await this.page.waitForTimeout(3000);
@@ -237,6 +248,7 @@ class NotebookLMAutomation {
       ]);
 
       // Set the files
+      console.log('  Uploading 2 files to NotebookLM...');
       await fileChooser.setFiles([reportPath, notebooklmDocPath]);
 
       // Wait for uploads to complete
@@ -721,13 +733,26 @@ class NotebookLMAutomation {
       ]);
 
       console.log('  ✓ Download event triggered');
-      console.log(`  Saving file as: ${fileName}...`);
+      console.log(`  Suggested filename from browser: ${download.suggestedFilename()}`);
+      console.log(`  Target download path: ${downloadPath}`);
+      console.log(`  Target filename: ${fileName}`);
 
       // Save with custom filename
       const filePath = path.join(downloadPath, fileName);
+      console.log(`  Full target path: ${filePath}`);
+
       await download.saveAs(filePath);
 
-      console.log(`  ✓ File saved successfully`);
+      console.log(`  ✓ File saved successfully to: ${filePath}`);
+
+      // Verify file exists
+      const fs = require('fs').promises;
+      try {
+        await fs.access(filePath);
+        console.log(`  ✓ Verified file exists at target location`);
+      } catch (err) {
+        console.log(`  ⚠ Warning: Could not verify file at ${filePath}: ${err.message}`);
+      }
 
       return filePath;
     } catch (error) {
