@@ -592,7 +592,8 @@ class NotebookLMAutomation {
 
         // Try to open this menu
         try {
-          await menuButton.click();
+          // Use force click to bypass tooltip interference
+          await menuButton.click({ force: true });
           await this.page.waitForTimeout(500); // Wait for menu to appear
 
           // Check if Download option is visible in menu
@@ -615,8 +616,11 @@ class NotebookLMAutomation {
           await this.page.keyboard.press('Escape');
           await this.page.waitForTimeout(300);
         } catch (err) {
-          // Failed to open menu or check - continue to next
-          console.log(`  Debug: Menu check failed: ${err.message}`);
+          // Failed to open menu or check - this is expected for some menus
+          // Only log if it's not a common tooltip error
+          if (!err.message.includes('tooltip') && !err.message.includes('intercepts pointer')) {
+            // Uncomment for debugging: console.log(`  Debug: Menu check failed: ${err.message}`);
+          }
           continue;
         }
       }
@@ -686,41 +690,66 @@ class NotebookLMAutomation {
     try {
       console.log('  Looking for Audio Overview three-dot menu...');
 
-      // The download is in a menu accessed via three-dot button on the Audio Overview card
-      // Look for all buttons with "More" or "menu" aria-labels in the Studio panel
+      // Strategy: Try all kebab menus until we find one with Download option
+      // The Audio Overview menu is usually one of the last ones on the page
       const menuButtons = await this.page.$$('[aria-label*="More"]');
 
-      let menuButton = null;
-      for (const btn of menuButtons) {
+      console.log(`  Found ${menuButtons.length} menu buttons, checking each...`);
+
+      let downloadOption = null;
+      let menuOpened = false;
+
+      // Try each menu button, starting from the end (Audio Overview is usually last)
+      for (let i = menuButtons.length - 1; i >= 0; i--) {
+        const btn = menuButtons[i];
         const isVisible = await btn.isVisible().catch(() => false);
-        if (isVisible) {
-          menuButton = btn;
-          break;
+
+        if (!isVisible) {
+          console.log(`    Menu ${i + 1}: Not visible, skipping`);
+          continue;
+        }
+
+        try {
+          console.log(`    Checking menu ${i + 1} of ${menuButtons.length}...`);
+
+          // Click menu with force to bypass any tooltips
+          await btn.click({ force: true });
+          await this.page.waitForTimeout(500); // Wait for menu to appear
+          menuOpened = true;
+
+          // Check if this menu has Download option
+          downloadOption = await this.page.$('text="Download"');
+
+          if (downloadOption) {
+            const downloadVisible = await downloadOption.isVisible().catch(() => false);
+            if (downloadVisible) {
+              console.log(`  ✓ Found Download option in menu ${i + 1}!`);
+              break; // Found the right menu!
+            }
+          }
+
+          // Not the right menu, close it and try next
+          await this.page.keyboard.press('Escape');
+          await this.page.waitForTimeout(300);
+          downloadOption = null;
+          menuOpened = false;
+        } catch (err) {
+          console.log(`    Menu ${i + 1} error: ${err.message.substring(0, 50)}...`);
+
+          // Try to close menu if it's open
+          if (menuOpened) {
+            await this.page.keyboard.press('Escape');
+            await this.page.waitForTimeout(300);
+            menuOpened = false;
+          }
         }
       }
-
-      if (!menuButton) {
-        await this.takeScreenshot(
-          path.join(process.cwd(), 'reports', 'screenshots', 'menu-button-not-found.png')
-        );
-        throw new Error('Could not find three-dot menu button on Audio Overview card');
-      }
-
-      console.log('  ✓ Found three-dot menu button');
-      console.log('  Clicking menu button...');
-      await menuButton.click();
-      await this.page.waitForTimeout(500); // Wait for menu to appear
-
-      console.log('  Looking for Download option in menu...');
-
-      // Find and click Download option from the menu
-      const downloadOption = await this.page.$('text="Download"');
 
       if (!downloadOption) {
         await this.takeScreenshot(
           path.join(process.cwd(), 'reports', 'screenshots', 'download-option-not-found.png')
         );
-        throw new Error('Could not find Download option in menu');
+        throw new Error('Could not find Download option in any menu');
       }
 
       console.log('  ✓ Found Download option');

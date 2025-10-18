@@ -649,6 +649,15 @@ async function runAnalysis() {
 
         // Upload files
         console.log('  Uploading report and NotebookLM document...');
+        console.log(`    Report (downloadedFile): ${path.basename(downloadedFile)}`);
+        console.log(`    NotebookLM doc (notebookLMFile): ${path.basename(notebookLMFile)}`);
+
+        // Verify files are different before uploading
+        if (downloadedFile === notebookLMFile) {
+          console.log('  ERROR: Both files are the same! This is a bug.');
+          throw new Error('downloadedFile and notebookLMFile are the same path');
+        }
+
         await notebookLM.uploadFiles(downloadedFile, notebookLMFile);
         log('Files uploaded successfully');
 
