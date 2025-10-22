@@ -428,22 +428,28 @@ async function runAnalysis() {
     });
     log('Screenshot captured: full-ready.png');
 
-    // Step 6: Set up automatic download handling
+    // Step 6: Set up automatic download handling for the report
     console.log('\nStep 6: Setting up download monitoring...');
     let autoDownloadCaptured = false;
 
-    browser.getPage().on('download', async (download) => {
+    const downloadHandler = async (download) => {
       try {
         const fileName = download.suggestedFilename();
-        const filePath = `${CONFIG.downloadDir}/${fileName}`;
+        const filePath = path.join(CONFIG.downloadDir, fileName);
         await download.saveAs(filePath);
         console.log(`\n  📥 Automatic download captured: ${fileName}`);
         downloadedFile = filePath;
         autoDownloadCaptured = true;
+
+        // Remove handler after first download to prevent it from capturing NotebookLM document
+        browser.getPage().removeListener('download', downloadHandler);
+        console.log('  Download handler removed (will not interfere with NotebookLM download)');
       } catch (_err) {
         console.log(`  Note: Automatic download encountered issue: ${_err.message}`);
       }
-    });
+    };
+
+    browser.getPage().on('download', downloadHandler);
     log('Download monitoring active');
 
     // Step 7: Start full analysis
