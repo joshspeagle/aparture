@@ -78,7 +78,7 @@ aparture/
 ├── cli/                # CLI tools and automation
 ├── utils/              # Utility functions
 ├── styles/             # Global styles
-├── public/             # Static assets
+├── docs/               # VitePress documentation
 ├── temp/               # Temporary files (Playwright profiles, PDFs)
 ├── reports/            # Generated analysis reports
 ├── package.json        # Dependencies and scripts

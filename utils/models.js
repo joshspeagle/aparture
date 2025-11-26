@@ -4,8 +4,8 @@
 // Model registry with actual API model IDs
 const MODEL_REGISTRY = {
   // User-facing ID -> Actual API model ID mapping
-  'claude-opus-4.1': {
-    apiId: 'claude-opus-4-1-20250805',
+  'claude-opus-4.5': {
+    apiId: 'claude-opus-4-5-20251101',
     provider: 'Anthropic',
   },
   'claude-sonnet-4.5': {
@@ -28,6 +28,10 @@ const MODEL_REGISTRY = {
     apiId: 'gpt-5-nano',
     provider: 'OpenAI',
   },
+  'gemini-3-pro': {
+    apiId: 'gemini-3-pro-preview',
+    provider: 'Google',
+  },
   'gemini-2.5-pro': {
     apiId: 'gemini-2.5-pro',
     provider: 'Google',
@@ -46,12 +50,12 @@ const MODEL_REGISTRY = {
 const AVAILABLE_MODELS = [
   // Anthropic Models
   {
-    id: 'claude-opus-4.1',
-    name: 'Claude Opus 4.1',
+    id: 'claude-opus-4.5',
+    name: 'Claude Opus 4.5',
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: false, // Too expensive for simple filtering
-    description: 'Highest accuracy, best for complex analysis',
+    description: 'Most powerful, best for complex analysis',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
@@ -104,12 +108,21 @@ const AVAILABLE_MODELS = [
 
   // Google Models
   {
+    id: 'gemini-3-pro',
+    name: 'Gemini 3 Pro (Preview)',
+    provider: 'Google',
+    supportsPDF: true,
+    supportsQuickFilter: false,
+    description: 'Most powerful, best for complex analysis',
+    apiKeyEnv: 'GOOGLE_AI_API_KEY',
+  },
+  {
     id: 'gemini-2.5-pro',
     name: 'Gemini 2.5 Pro',
     provider: 'Google',
     supportsPDF: true,
     supportsQuickFilter: false,
-    description: 'Highest accuracy, best for complex analysis',
+    description: 'High accuracy, stable release',
     apiKeyEnv: 'GOOGLE_AI_API_KEY',
   },
   {
@@ -153,7 +166,7 @@ const getModelsByProvider = (provider) => {
 const DEFAULT_MODELS = {
   filterModel: 'gemini-2.5-flash-lite',
   scoringModel: 'gemini-2.5-flash',
-  pdfModel: 'gemini-2.5-pro',
+  pdfModel: 'gemini-3-pro',
 };
 
 // Model presets for different use cases
@@ -166,18 +179,18 @@ const MODEL_PRESETS = {
   balanced: {
     filterModel: 'gemini-2.5-flash-lite',
     scoringModel: 'gemini-2.5-flash',
-    pdfModel: 'gemini-2.5-pro',
+    pdfModel: 'gemini-3-pro',
   },
   quality: {
     filterModel: 'gpt-5-nano',
     scoringModel: 'claude-sonnet-4.5',
-    pdfModel: 'claude-opus-4.1',
+    pdfModel: 'claude-opus-4.5',
   },
   'google-free': {
     // For Google's free tier
     filterModel: 'gemini-2.5-flash-lite',
     scoringModel: 'gemini-2.5-flash',
-    pdfModel: 'gemini-2.5-pro',
+    pdfModel: 'gemini-3-pro',
   },
 };
 

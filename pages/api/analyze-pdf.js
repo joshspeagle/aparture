@@ -61,7 +61,7 @@ async function downloadPDFWithPlaywright(pdfUrl) {
     await page.goto(absUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Get the PDF URL and fetch it with browser context (includes cookies/session)
-    const fullPdfUrl = `https://arxiv.org/pdf/${arxivId}.pdf`;
+    const fullPdfUrl = `https://export.arxiv.org/pdf/${arxivId}.pdf`;
     console.log(`Fetching PDF via browser context: ${fullPdfUrl}`);
 
     const response = await context.request.get(fullPdfUrl);

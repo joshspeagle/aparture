@@ -302,7 +302,7 @@ const DEFAULT_CONFIG = {
   postProcessingCount: 50, // Number of top papers to post-process
   postProcessingBatchSize: 5, // Batch size for post-processing
   postProcessingModel: 'gemini-2.5-flash', // Model for post-processing (defaults to scoringModel)
-  pdfModel: 'gemini-2.5-pro', // RENAMED from deepAnalysisModel
+  pdfModel: 'gemini-3-pro', // RENAMED from deepAnalysisModel
   maxAbstractDisplay: 500,
 };
 
@@ -1498,7 +1498,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
   // Build arXiv query string (following Python implementation pattern)
   const buildArxivQuery = (category, startDate, endDate) => {
     // Use submittedDate with wildcards like the Python version
-    const dateQuery = `submittedDate:[${startDate}* TO ${endDate}*]`;
+    const dateQuery = `submittedDate:[${startDate} TO ${endDate}]`;
     const categoryQuery = `cat:${category}`;
 
     // Combine with proper parentheses like Python version
@@ -1512,30 +1512,25 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
       throw new Error('Operation aborted');
     }
 
-    // Build URL with proper encoding
-    const params = new URLSearchParams({
-      search_query: query,
-      start: 0,
-      max_results: maxResults,
-      sortBy: 'submittedDate',
-      sortOrder: 'descending',
-    });
-
-    const url = `https://export.arxiv.org/api/query?${params.toString()}`;
-
     console.log(`  Query: ${query}`);
-    console.log(`  URL length: ${url.length} chars`);
 
-    // Use abort controller signal in fetch
-    const response = await fetch(url, {
+    // Use server-side proxy to avoid CORS issues
+    const response = await fetch('/api/fetch-arxiv', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, maxResults }),
       signal: abortControllerRef.current?.signal,
     });
 
     if (!response.ok) {
-      throw new Error(`arXiv API HTTP error: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `arXiv API HTTP error: ${response.status}`);
     }
 
-    const text = await response.text();
+    const data = await response.json();
+    const text = data.xml;
     console.log(`  Response length: ${text.length} chars`);
 
     const parser = new DOMParser();
@@ -1581,7 +1576,10 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
   const parseArxivEntry = (entry, fetchedCategory) => {
     const getId = (entry) => {
       const id = entry.getElementsByTagName('id')[0]?.textContent;
-      return id ? id.split('/abs/')[1] : '';
+      let extractedId = id ? id.split('/abs/')[1] : '';
+      // Strip any trailing .pdf or version numbers (e.g., v1, v2)
+      extractedId = extractedId.replace(/\.pdf$/, '').replace(/v\d+$/, '');
+      return extractedId;
     };
 
     const getAuthors = (entry) => {
@@ -1610,7 +1608,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
       published: entry.getElementsByTagName('published')[0]?.textContent || '',
       updated: entry.getElementsByTagName('updated')[0]?.textContent || '',
       categories: getCategories(entry),
-      pdfUrl: `https://arxiv.org/pdf/${getId(entry)}.pdf`,
+      pdfUrl: `https://export.arxiv.org/pdf/${getId(entry)}.pdf`,
       fetchedCategory: fetchedCategory,
     };
   };
