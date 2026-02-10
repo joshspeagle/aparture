@@ -390,7 +390,7 @@ async function runAnalysis() {
     // Step 2: Ensure server is running
     console.log('\nStep 2: Checking server status...');
     const serverInfo = await server.ensure();
-    serverStartedByTest = serverInfo.started === true;
+    serverStartedByTest = !serverInfo.alreadyRunning; // Track if WE started it (so we stop it on cleanup)
     log(`Server running at ${server.getBaseUrl()}`);
 
     // Step 3: Launch browser

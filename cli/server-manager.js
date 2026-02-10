@@ -28,7 +28,7 @@ class ServerManager {
     try {
       const fetch = await this.ensureFetch();
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 2000);
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(`http://localhost:${port}`, {
         signal: controller.signal,
@@ -152,21 +152,25 @@ class ServerManager {
       // Wait for server to be ready
       const checkReady = async () => {
         let attempts = 0;
-        const maxAttempts = 60; // 60 seconds to allow for compilation (20s+ seen in practice)
+        const maxAttempts = 120; // 120 seconds to allow for SWC download + compilation
 
         while (attempts < maxAttempts) {
-          // Check if server has started
+          // Once the server process has indicated it's starting, try HTTP checks
           if (serverStarted) {
-            // If compilation is complete, wait a bit then check if server responds
-            if (compilationComplete && !checkedAfterCompilation) {
-              // Wait 5 seconds after compilation for first request to complete (can take 13-15s)
-              console.log('  Waiting for initial page load...');
-              checkedAfterCompilation = true;
-              await sleep(5000);
+            // Try HTTP check every 5 seconds (first at ~5s, then 10s, 15s, etc.)
+            if (attempts > 0 && attempts % 5 === 0) {
+              if (await this.isServerRunning()) {
+                console.log(`✓ Server ready at ${this.baseUrl}`);
+                resolve({ started: true, url: this.baseUrl, process: this.serverProcess });
+                return;
+              }
             }
 
-            // After waiting post-compilation, check repeatedly if server responds
-            if (checkedAfterCompilation) {
+            // Also check immediately after compilation is detected
+            if (compilationComplete && !checkedAfterCompilation) {
+              checkedAfterCompilation = true;
+              // Wait briefly for first request to settle
+              await sleep(2000);
               if (await this.isServerRunning()) {
                 console.log(`✓ Server ready at ${this.baseUrl}`);
                 resolve({ started: true, url: this.baseUrl, process: this.serverProcess });
@@ -188,6 +192,13 @@ class ServerManager {
           console.log(`✓ Server running at ${this.baseUrl} (detected after extended wait)`);
           resolve({ started: true, url: this.baseUrl, process: this.serverProcess });
         } else {
+          // Kill the orphaned server process before rejecting
+          console.log('  Killing server process after failed startup...');
+          try {
+            await this.stop();
+          } catch {
+            // Ignore stop errors during cleanup
+          }
           reject(
             new Error(
               `Server failed to start within ${maxAttempts} seconds.\nLast output:\n${output.slice(-1000)}`
