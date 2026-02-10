@@ -426,4 +426,4 @@ MIT - See main LICENSE file
 
 ## Acknowledgements
 
-CLI automation created in collaboration with Claude Sonnet 4.5 and Claude Opus 4.1.
+CLI automation created in collaboration with Claude Sonnet 4.5 and Claude Opus 4.1/4.5/4.6.

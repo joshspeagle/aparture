@@ -4,8 +4,8 @@
 // Model registry with actual API model IDs
 const MODEL_REGISTRY = {
   // User-facing ID -> Actual API model ID mapping
-  'claude-opus-4.5': {
-    apiId: 'claude-opus-4-5-20251101',
+  'claude-opus-4.6': {
+    apiId: 'claude-opus-4-6-20260205',
     provider: 'Anthropic',
   },
   'claude-sonnet-4.5': {
@@ -16,8 +16,8 @@ const MODEL_REGISTRY = {
     apiId: 'claude-haiku-4-5-20251001',
     provider: 'Anthropic',
   },
-  'gpt-5': {
-    apiId: 'gpt-5',
+  'gpt-5.2': {
+    apiId: 'gpt-5.2',
     provider: 'OpenAI',
   },
   'gpt-5-mini': {
@@ -30,6 +30,10 @@ const MODEL_REGISTRY = {
   },
   'gemini-3-pro': {
     apiId: 'gemini-3-pro-preview',
+    provider: 'Google',
+  },
+  'gemini-3-flash': {
+    apiId: 'gemini-3-flash-preview',
     provider: 'Google',
   },
   'gemini-2.5-pro': {
@@ -50,12 +54,12 @@ const MODEL_REGISTRY = {
 const AVAILABLE_MODELS = [
   // Anthropic Models
   {
-    id: 'claude-opus-4.5',
-    name: 'Claude Opus 4.5',
+    id: 'claude-opus-4.6',
+    name: 'Claude Opus 4.6',
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: false, // Too expensive for simple filtering
-    description: 'Most powerful, best for complex analysis',
+    description: 'Most powerful, best for complex analysis and agentic tasks',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
@@ -79,8 +83,8 @@ const AVAILABLE_MODELS = [
 
   // OpenAI Models
   {
-    id: 'gpt-5',
-    name: 'OpenAI GPT-5',
+    id: 'gpt-5.2',
+    name: 'OpenAI GPT-5.2',
     provider: 'OpenAI',
     supportsPDF: true,
     supportsQuickFilter: false, // Too expensive for simple filtering
@@ -113,7 +117,16 @@ const AVAILABLE_MODELS = [
     provider: 'Google',
     supportsPDF: true,
     supportsQuickFilter: false,
-    description: 'Most powerful, best for complex analysis',
+    description: 'Most powerful Google model, best for complex analysis',
+    apiKeyEnv: 'GOOGLE_AI_API_KEY',
+  },
+  {
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash (Preview)',
+    provider: 'Google',
+    supportsPDF: true,
+    supportsQuickFilter: true,
+    description: 'Pro-level intelligence at Flash speed and pricing',
     apiKeyEnv: 'GOOGLE_AI_API_KEY',
   },
   {
@@ -164,8 +177,8 @@ const getModelsByProvider = (provider) => {
 
 // Default model configuration
 const DEFAULT_MODELS = {
-  filterModel: 'gemini-2.5-flash-lite',
-  scoringModel: 'gemini-2.5-flash',
+  filterModel: 'gemini-3-flash',
+  scoringModel: 'gemini-3-flash',
   pdfModel: 'gemini-3-pro',
 };
 
@@ -177,20 +190,20 @@ const MODEL_PRESETS = {
     pdfModel: 'gemini-2.5-flash',
   },
   balanced: {
-    filterModel: 'gemini-2.5-flash-lite',
-    scoringModel: 'gemini-2.5-flash',
+    filterModel: 'gemini-3-flash',
+    scoringModel: 'gemini-3-flash',
     pdfModel: 'gemini-3-pro',
   },
   quality: {
     filterModel: 'gpt-5-nano',
     scoringModel: 'claude-sonnet-4.5',
-    pdfModel: 'claude-opus-4.5',
+    pdfModel: 'claude-opus-4.6',
   },
   'google-free': {
     // For Google's free tier
-    filterModel: 'gemini-2.5-flash-lite',
-    scoringModel: 'gemini-2.5-flash',
-    pdfModel: 'gemini-3-pro',
+    filterModel: 'gemini-3-flash',
+    scoringModel: 'gemini-3-flash',
+    pdfModel: 'gemini-2.5-pro',
   },
 };
 

@@ -47,9 +47,9 @@ npm run docs:preview  # Preview built site
 
 ## Supported Models
 
-- **Anthropic**: Claude Opus 4.1, Claude Sonnet 4.5, Claude Haiku 4.5
-- **OpenAI**: GPT-5, GPT-5 Mini, GPT-5 Nano
-- **Google**: Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite
+- **Anthropic**: Claude Opus 4.6, Claude Sonnet 4.5, Claude Haiku 4.5
+- **OpenAI**: GPT-5.2, GPT-5 Mini, GPT-5 Nano
+- **Google**: Gemini 3 Pro, Gemini 3 Flash, Gemini 2.5 Pro, Gemini 2.5 Flash, Gemini 2.5 Flash-Lite
 
 ## Quick Start
 
@@ -246,7 +246,7 @@ MIT
 
 ## Acknowledgements
 
-Created in collaboration with Claude Sonnet 4/4.5 and Claude Opus 4.1.
+Created in collaboration with Claude Sonnet 4/4.5 and Claude Opus 4.1/4.5/4.6.
 
 ---
 

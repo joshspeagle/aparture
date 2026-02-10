@@ -68,7 +68,7 @@ The analysis report follows a consistent structure:
 - **Categories**: cs.LG, cs.AI, stat.ML (47 papers)
 - **Quick Filter**: Enabled (Haiku 4.5)
 - **Abstract Scoring**: Enabled (Sonnet 4.5)
-- **PDF Analysis**: Top 20 papers (Opus 4.1)
+- **PDF Analysis**: Top 20 papers (Opus 4.6)
 ```
 
 Key information:
@@ -159,7 +159,7 @@ Provides scoring overview and statistics.
 ```markdown
 ## Stage 3: PDF Analysis
 
-**Model**: Claude Opus 4.1
+**Model**: Claude Opus 4.6
 **Duration**: 28 minutes 15 seconds
 **Cost**: $3.20
 
@@ -248,7 +248,7 @@ Includes:
 
 - Quick Filter (Haiku 4.5): $0.08
 - Abstract Scoring (Sonnet 4.5): $1.45
-- PDF Analysis (Opus 4.1): $3.20
+- PDF Analysis (Opus 4.6): $3.20
 
 ---
 
@@ -409,7 +409,7 @@ mv reports/2025-09-* reports/archive/
 
 **Better model selection:**
 
-- Use Opus 4.1/GPT-5 for scoring (higher quality)
+- Use Opus 4.6/GPT-5.2 for scoring (higher quality)
 - Enable post-processing for consistency
 - Use Haiku/Nano only for quick filter
 

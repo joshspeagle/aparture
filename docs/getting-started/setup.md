@@ -47,7 +47,7 @@ You need at least one API key to use Aparture. Having multiple providers gives y
 4. Click "Create Key"
 5. Copy the key (starts with `sk-ant-`)
 
-**Models available:** Claude Haiku 4.5, Sonnet 4.5, Opus 4.1
+**Models available:** Claude Opus 4.6, Sonnet 4.5, Haiku 4.5
 
 See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 
@@ -61,7 +61,7 @@ See [Model Selection →](/concepts/model-selection) for detailed pricing and co
 4. Click "Create new secret key"
 5. Copy the key (starts with `sk-`)
 
-**Models available:** GPT-5, Mini, Nano
+**Models available:** GPT-5.2, Mini, Nano
 
 See [Model Selection →](/concepts/model-selection) for detailed pricing and comparisons.
 

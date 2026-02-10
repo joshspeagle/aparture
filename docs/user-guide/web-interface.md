@@ -82,12 +82,12 @@ Choose AI models for each processing stage:
 
 **PDF Analysis** (Stage 3)
 
-- **Recommended**: Claude Opus 4.1 (best quality)
+- **Recommended**: Claude Opus 4.6 (best quality)
 - Alternative: ChatGPT (o1/o3-class) (good, but less vision capability)
 
 **NotebookLM Document**
 
-- **Fixed**: Claude Opus 4.1 (required for quality)
+- **Fixed**: Claude Opus 4.6 (required for quality)
 
 See [Model Selection](/concepts/model-selection) for detailed comparisons.
 

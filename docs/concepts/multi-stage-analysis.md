@@ -62,7 +62,7 @@ Aparture uses a progressive filtering approach with multiple stages, each adding
 
 - **Recommended:** Claude Haiku 4.5 (fast, accurate)
 - **Alternative:** Gemini Flash-Lite (cheapest)
-- **Avoid:** Opus/GPT-5 (overkill)
+- **Avoid:** Opus/GPT-5.2 (overkill)
 
 **Prompt structure:**
 
@@ -112,7 +112,7 @@ If you have narrow, focused categories (<20 papers/day), skip this stage and go 
 
 - **Budget:** Gemini Flash ($0.50)
 - **Recommended:** Claude Sonnet 4.5 ($1.20)
-- **Premium:** Claude Opus 4.1 ($2.50)
+- **Premium:** Claude Opus 4.6 ($2.50)
 
 **Prompt structure:**
 
@@ -222,8 +222,8 @@ Post-processing asks the model: "Given all these papers together, are the scores
 **Models:**
 
 - **Budget:** Claude Sonnet 4.5 ($2.50)
-- **Recommended:** Claude Opus 4.1 ($4.00)
-- **Alternative:** GPT-5 ($3.50)
+- **Recommended:** Claude Opus 4.6 ($4.00)
+- **Alternative:** GPT-5.2 ($3.50)
 
 **Prompt structure:**
 
@@ -298,7 +298,7 @@ Provide comprehensive analysis:
 
 **Duration:** 1-3 minutes
 
-**Cost:** $0.20-0.50 (uses Claude Opus 4.1)
+**Cost:** $0.20-0.50 (uses Claude Opus 4.6)
 
 **Output:** `YYYY-MM-DD_notebooklm_XXmin.md`
 
@@ -312,8 +312,8 @@ Provide comprehensive analysis:
 | Quick Filter     | Haiku 3.5  | $0.05     | 1%         |
 | Abstract Scoring | Sonnet 4.5 | $0.60     | 15%        |
 | Post-Processing  | Skip       | $0.00     | 0%         |
-| PDF Analysis     | Opus 4.1   | $3.00     | 76%        |
-| NotebookLM       | Opus 4.1   | $0.30     | 8%         |
+| PDF Analysis     | Opus 4.6   | $3.00     | 76%        |
+| NotebookLM       | Opus 4.6   | $0.30     | 8%         |
 | **Total**        |            | **$3.95** | **100%**   |
 
 **Key insight:** PDF analysis dominates cost, so limiting the number of PDFs analyzed is the most effective cost control.
@@ -468,7 +468,7 @@ Run abstract scoring twice:
 Use multiple models:
 
 1. Score with Sonnet
-2. Score with GPT-5
+2. Score with GPT-5.2
 3. Score with Gemini
 4. Average or vote
 

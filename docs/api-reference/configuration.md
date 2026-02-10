@@ -29,7 +29,7 @@ The configuration object contains all analysis settings:
   "postProcessingEnabled": false,
   "postProcessingModel": "claude-sonnet-4.5",
   "minScoreThreshold": 5.0,
-  "pdfAnalysisModel": "claude-opus-4.1",
+  "pdfAnalysisModel": "claude-opus-4.6",
   "maxPapersForPdfAnalysis": 20,
   "generateNotebookLM": true,
   "notebookLMDuration": 15
@@ -126,10 +126,12 @@ empirical results, or important theoretical contributions.
 
 - `"claude-haiku-4.5"` - Recommended
 - `"claude-sonnet-4.5"`
-- `"claude-opus-4.1"`
+- `"claude-opus-4.6"`
 - `"gpt-5-nano"`
 - `"gpt-5-mini"`
-- `"gpt-5"`
+- `"gpt-5.2"`
+- `"gemini-3-flash"` - Pro-level at Flash pricing (Preview)
+- `"gemini-3-pro"` - Most powerful Google model (Preview)
 - `"gemini-2.5-flash-lite"` - Cheapest
 - `"gemini-2.5-flash"`
 - `"gemini-2.5-pro"`
@@ -172,9 +174,9 @@ empirical results, or important theoretical contributions.
 
 **Recommended:**
 
-- Quality-focused: `"claude-opus-4.1"` or `"gpt-5"`
+- Quality-focused: `"claude-opus-4.6"` or `"gpt-5.2"`
 - Balanced: `"claude-sonnet-4.5"` (recommended)
-- Budget: `"gemini-2.5-flash"`
+- Budget: `"gemini-3-flash"`
 
 **Default:** `"claude-sonnet-4.5"`
 
@@ -280,13 +282,13 @@ empirical results, or important theoretical contributions.
 
 **Recommended:**
 
-- Best quality: `"claude-opus-4.1"` (excellent vision)
-- Balanced: `"claude-sonnet-4.5"` or `"gpt-5"`
+- Best quality: `"claude-opus-4.6"` (excellent vision)
+- Balanced: `"claude-sonnet-4.5"` or `"gpt-5.2"`
 - Budget: `"gpt-5-mini"`
 
 **Vision capability important:** Papers with figures, equations, diagrams
 
-**Default:** `"claude-opus-4.1"`
+**Default:** `"claude-opus-4.6"`
 
 ---
 
@@ -324,7 +326,7 @@ empirical results, or important theoretical contributions.
 - `true` - Create podcast-ready document
 - `false` - Skip NotebookLM generation
 
-**Cost impact:** ~$0.20-0.50 per document (uses Claude Opus 4.1)
+**Cost impact:** ~$0.20-0.50 per document
 
 **Time impact:** ~1-3 minutes
 
@@ -382,7 +384,7 @@ empirical results, or important theoretical contributions.
   "quickFilterEnabled": true,
   "quickFilterModel": "claude-haiku-4.5",
   "abstractScoringModel": "claude-sonnet-4.5",
-  "pdfAnalysisModel": "claude-opus-4.1",
+  "pdfAnalysisModel": "claude-opus-4.6",
   "maxPapersForPdfAnalysis": 20,
   "scoringBatchSize": 10,
   "postProcessingEnabled": false,
@@ -402,12 +404,12 @@ empirical results, or important theoretical contributions.
 {
   "quickFilterEnabled": true,
   "quickFilterModel": "claude-sonnet-4.5",
-  "abstractScoringModel": "claude-opus-4.1",
-  "pdfAnalysisModel": "claude-opus-4.1",
+  "abstractScoringModel": "claude-opus-4.6",
+  "pdfAnalysisModel": "claude-opus-4.6",
   "maxPapersForPdfAnalysis": 30,
   "scoringBatchSize": 5,
   "postProcessingEnabled": true,
-  "postProcessingModel": "claude-opus-4.1",
+  "postProcessingModel": "claude-opus-4.6",
   "minScoreThreshold": 4.0,
   "generateNotebookLM": true,
   "notebookLMDuration": 20

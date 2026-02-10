@@ -8,12 +8,12 @@ Aparture supports models from three providers:
 
 ### Anthropic (Claude)
 
-**Claude Opus 4.1** - Most capable
+**Claude Opus 4.6** - Most capable
 
-- **Best for**: PDF analysis, complex reasoning
+- **Best for**: PDF analysis, complex reasoning, agentic tasks
 - **Speed**: Slow
 - **Cost**: Highest
-- **Context**: 200K tokens
+- **Context**: 200K tokens (1M beta)
 - **Vision**: Excellent
 
 **Claude Sonnet 4.5** - Balanced
@@ -29,17 +29,17 @@ Aparture supports models from three providers:
 - **Best for**: Quick filtering, batch processing, coding
 - **Speed**: Fast
 - **Cost**: Low
-- **Context**: 200K tokens (1M available on Developer Platform)
+- **Context**: 200K tokens
 - **Vision**: Good
 
 ### OpenAI (ChatGPT)
 
-**GPT-5** - High quality
+**GPT-5.2** - High quality
 
 - **Best for**: Any stage, comprehensive analysis
 - **Speed**: Medium
 - **Cost**: High
-- **Context**: 272K tokens
+- **Context**: 400K tokens
 - **Vision**: Excellent
 
 **GPT-5 Mini** - Balanced
@@ -47,7 +47,7 @@ Aparture supports models from three providers:
 - **Best for**: Abstract scoring, moderate complexity
 - **Speed**: Fast
 - **Cost**: Medium
-- **Context**: 272K tokens
+- **Context**: 400K tokens
 - **Vision**: Good
 
 **GPT-5 Nano** - Efficient
@@ -55,12 +55,28 @@ Aparture supports models from three providers:
 - **Best for**: Quick filtering, simple tasks
 - **Speed**: Very fast
 - **Cost**: Low
-- **Context**: 272K tokens
+- **Context**: 400K tokens
 - **Vision**: Basic
 
 ### Google (Gemini)
 
-**Gemini 2.5 Pro** - Premium
+**Gemini 3 Pro (Preview)** - Most powerful
+
+- **Best for**: Complex analysis, deep reasoning
+- **Speed**: Medium
+- **Cost**: High
+- **Context**: 1M tokens
+- **Vision**: Excellent
+
+**Gemini 3 Flash (Preview)** - Pro-level at Flash pricing
+
+- **Best for**: Filtering, scoring, general use
+- **Speed**: Fast
+- **Cost**: Medium-low
+- **Context**: 1M tokens
+- **Vision**: Good
+
+**Gemini 2.5 Pro** - Premium (Stable)
 
 - **Best for**: Complex analysis, reasoning
 - **Speed**: Medium
@@ -68,15 +84,15 @@ Aparture supports models from three providers:
 - **Context**: 1M tokens
 - **Vision**: Excellent
 
-**Gemini 2.5 Flash** - Efficient
+**Gemini 2.5 Flash** - Efficient (Stable)
 
 - **Best for**: Most stages, good balance
 - **Speed**: Fast
-- **Cost**: Medium
+- **Cost**: Low
 - **Context**: 1M tokens
 - **Vision**: Good
 
-**Gemini 2.5 Flash-Lite** - Budget
+**Gemini 2.5 Flash-Lite** - Budget (Stable)
 
 - **Best for**: Quick filtering, high volume
 - **Speed**: Very fast
@@ -98,7 +114,7 @@ All models have sufficient context for Aparture's needs. Paper abstracts are typ
 Quick Filter: Claude Haiku 4.5
 Abstract Scoring: Gemini Flash
 PDF Analysis: Claude Sonnet 4.5
-NotebookLM: Claude Opus 4.1 (fixed)
+NotebookLM: Claude Opus 4.6 (fixed)
 ```
 
 **Daily cost** (30 papers, 10 PDFs):
@@ -128,8 +144,8 @@ NotebookLM: Claude Opus 4.1 (fixed)
 ```
 Quick Filter: Claude Haiku 4.5
 Abstract Scoring: Claude Sonnet 4.5
-PDF Analysis: Claude Opus 4.1
-NotebookLM: Claude Opus 4.1 (fixed)
+PDF Analysis: Claude Opus 4.6
+NotebookLM: Claude Opus 4.6 (fixed)
 ```
 
 **Daily cost** (30 papers, 10 PDFs):
@@ -157,9 +173,9 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 ```
 Quick Filter: Claude Sonnet 4.5
-Abstract Scoring: Claude Opus 4.1
-PDF Analysis: Claude Opus 4.1
-NotebookLM: Claude Opus 4.1 (fixed)
+Abstract Scoring: Claude Opus 4.6
+PDF Analysis: Claude Opus 4.6
+NotebookLM: Claude Opus 4.6 (fixed)
 ```
 
 **Daily cost** (30 papers, 10 PDFs):
@@ -190,7 +206,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 Quick Filter: Gemini Flash-Lite
 Abstract Scoring: Gemini Flash
 PDF Analysis: GPT-5 Mini
-NotebookLM: Claude Opus 4.1 (fixed)
+NotebookLM: Claude Opus 4.6 (fixed)
 ```
 
 **Daily cost** (30 papers, 10 PDFs):
@@ -228,7 +244,7 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 **Don't use:**
 
-- ❌ Opus/GPT-5 - Overkill for simple task
+- ❌ Opus/GPT-5.2 - Overkill for simple task
 - ❌ Sonnet/GPT-5 Mini - Unnecessary cost
 
 **Why it matters:**
@@ -244,8 +260,8 @@ NotebookLM: Claude Opus 4.1 (fixed)
 **Best models:**
 
 1. **Claude Sonnet 4.5** - Best balance (recommended)
-2. **Claude Opus 4.1** - Highest quality
-3. **GPT-5** - Excellent alternative
+2. **Claude Opus 4.6** - Highest quality
+3. **GPT-5.2** - Excellent alternative
 
 **Good alternatives:**
 
@@ -268,9 +284,9 @@ NotebookLM: Claude Opus 4.1 (fixed)
 
 **Best models:**
 
-1. **Claude Opus 4.1** - Best vision + reasoning (recommended)
-2. **GPT-5** - Excellent alternative
-3. **Gemini 2.5 Pro** - Good for long papers
+1. **Claude Opus 4.6** - Best vision + reasoning (recommended)
+2. **GPT-5.2** - Excellent alternative
+3. **Gemini 3 Pro** - Good for long papers
 
 **Acceptable alternatives:**
 
@@ -294,13 +310,13 @@ NotebookLM: Claude Opus 4.1 (fixed)
 **Best models:**
 
 - Same as Abstract Scoring
-- **Recommended**: Claude Sonnet 4.5 or Opus 4.1
+- **Recommended**: Claude Sonnet 4.5 or Opus 4.6
 
 **Note**: This stage compares papers side-by-side, so use a high-quality model.
 
 ### NotebookLM Document Generation
 
-**Fixed**: Claude Opus 4.1
+**Fixed**: Claude Opus 4.6
 
 This stage requires the highest quality model to create well-structured, podcast-optimized documents. The model is not configurable.
 
@@ -365,13 +381,13 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 **Solutions:**
 
 1. **Enable Post-Processing** - Re-scores papers for consistency
-2. **Use higher-quality models** - Opus/GPT-5 more consistent than Haiku/Nano
+2. **Use higher-quality models** - Opus/GPT-5.2 more consistent than Haiku/Nano
 3. **Smaller batches** - More API calls but better consistency
 
 **Model rankings** (consistency):
 
-1. Claude Opus 4.1 (most consistent)
-2. GPT-5
+1. Claude Opus 4.6 (most consistent)
+2. GPT-5.2
 3. Claude Sonnet 4.5
 4. Gemini Pro
 5. Others (less consistent)
@@ -387,8 +403,8 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 
 **Model rankings** (justification quality):
 
-1. Claude Opus 4.1 (most detailed)
-2. GPT-5
+1. Claude Opus 4.6 (most detailed)
+2. GPT-5.2
 3. Claude Sonnet 4.5
 4. Gemini Pro
 5. Others (more generic)
@@ -399,8 +415,8 @@ Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filteri
 
 **Vision rankings:**
 
-1. Claude Opus 4.1 (excellent)
-2. GPT-5 (excellent)
+1. Claude Opus 4.6 (excellent)
+2. GPT-5.2 (excellent)
 3. Gemini Pro (very good)
 4. Claude Sonnet 4.5 (good)
 5. Others (basic)
@@ -506,7 +522,7 @@ Aparture gracefully handles missing API keys by showing only available models in
 - Fast response times
 - Good quality across models
 - Reliable API
-- Strong vision (GPT-5)
+- Strong vision (GPT-5.2)
 
 **Weaknesses:**
 

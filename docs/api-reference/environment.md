@@ -51,7 +51,7 @@ You must provide **at least one** API key. Providing multiple gives you flexibil
 
 **Purpose:** Anthropic Claude API access
 
-**Description:** Enables Claude models (Haiku 4.5, Sonnet 4.5, Opus 4.1)
+**Description:** Enables Claude models (Opus 4.6, Sonnet 4.5, Haiku 4.5)
 
 **Type:** String (starts with `sk-ant-`)
 
@@ -73,7 +73,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 - Haiku 4.5: $1.00/$5.00 per million tokens (input/output)
 - Sonnet 4.5: $3/$15 per million tokens
-- Opus 4.1: $15/$75 per million tokens
+- Opus 4.6: $5/$25 per million tokens
 
 **Rate limits:**
 
@@ -82,9 +82,9 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Models enabled:**
 
-- `claude-haiku-4.5` - Fast, intelligent, cheap
+- `claude-opus-4.6` - Best quality
 - `claude-sonnet-4.5` - Balanced
-- `claude-opus-4.1` - Best quality
+- `claude-haiku-4.5` - Fast, intelligent, cheap
 
 ---
 
@@ -92,7 +92,7 @@ CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Purpose:** OpenAI API access
 
-**Description:** Enables GPT models (GPT-5, Mini, Nano)
+**Description:** Enables GPT models (GPT-5.2, Mini, Nano)
 
 **Type:** String (starts with `sk-`)
 
@@ -114,9 +114,9 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 - GPT-5 Nano: $0.05/$0.40 per million tokens (input/output)
 - GPT-5 Mini: $0.25/$2.00 per million tokens
-- GPT-5: $1.25/$10.00 per million tokens
+- GPT-5.2: $1.75/$14.00 per million tokens
 
-**Context window:** 272K tokens (input), 128K tokens (output)
+**Context window:** 400K tokens
 
 **Rate limits:**
 
@@ -125,9 +125,9 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Models enabled:**
 
-- `gpt-5-nano` - Fast, cheap
+- `gpt-5.2` - High quality
 - `gpt-5-mini` - Balanced
-- `gpt-5` - High quality
+- `gpt-5-nano` - Fast, cheap
 
 ---
 
@@ -135,7 +135,7 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Purpose:** Google AI (Gemini) API access
 
-**Description:** Enables Gemini models (2.5 Pro, Flash, Flash-Lite)
+**Description:** Enables Gemini models (3 Pro, 3 Flash, 2.5 Pro, 2.5 Flash, 2.5 Flash-Lite)
 
 **Type:** String
 
@@ -154,9 +154,11 @@ GOOGLE_AI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Pricing:**
 
-- Flash-Lite: $0.10/$0.40 per million tokens (input/output)
-- Flash: $0.10/$0.40 per million tokens
-- Pro: $1.25/$10.00 per million tokens (≤200K), $2.50/$15.00 per million tokens (>200K)
+- 3 Pro (Preview): $2.00/$12.00 per million tokens (input/output)
+- 3 Flash (Preview): $0.50/$3.00 per million tokens
+- 2.5 Pro: $1.25/$10.00 per million tokens (≤200K), $2.50/$15.00 (>200K)
+- 2.5 Flash: $0.30/$2.50 per million tokens
+- 2.5 Flash-Lite: $0.10/$0.40 per million tokens
 
 **Context window:** 1M tokens
 
@@ -167,9 +169,11 @@ GOOGLE_AI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 **Models enabled:**
 
-- `gemini-2.5-flash-lite` - Cheapest
-- `gemini-2.5-flash` - Fast, efficient
-- `gemini-2.5-pro` - Premium
+- `gemini-3-pro` - Most powerful (Preview)
+- `gemini-3-flash` - Pro-level at Flash pricing (Preview)
+- `gemini-2.5-pro` - Premium (Stable)
+- `gemini-2.5-flash` - Fast, efficient (Stable)
+- `gemini-2.5-flash-lite` - Cheapest (Stable)
 
 ::: tip Free Tier
 Google's Gemini models offer a generous free tier, making them great for getting started.

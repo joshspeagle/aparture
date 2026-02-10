@@ -418,7 +418,7 @@ Google provides:
 
 **NotebookLM document generation:**
 
-- Uses Claude Opus 4.1 (fixed)
+- Uses Claude Opus 4.6 (fixed)
 - Typical cost: $0.20-0.50 per document
 - Depends on paper count and detail level
 

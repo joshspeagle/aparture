@@ -99,7 +99,7 @@ Configure detailed scoring:
 
 Set how many papers to analyze deeply:
 
-- **Model**: Claude Opus 4.1 (best quality)
+- **Model**: Claude Opus 4.6 (best quality)
 - **Max Papers**: 10 (good for first run)
 
 ### Optional: NotebookLM

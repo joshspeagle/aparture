@@ -292,16 +292,16 @@ const DEFAULT_CONFIG = {
   maxRetries: 1,
   // Three-stage model configuration
   useQuickFilter: true, // NEW: Enable quick filtering stage (enabled by default)
-  filterModel: 'gemini-2.5-flash-lite', // NEW: Model for quick YES/NO/MAYBE filtering
-  filterBatchSize: 3, // NEW: Batch size for filtering
-  categoriesToScore: ['YES', 'MAYBE'], // NEW: Which filter categories proceed to scoring
-  scoringModel: 'gemini-2.5-flash', // RENAMED from screeningModel
+  filterModel: 'gemini-3-flash', // Model for quick YES/NO/MAYBE filtering
+  filterBatchSize: 3, // Batch size for filtering
+  categoriesToScore: ['YES', 'MAYBE'], // Which filter categories proceed to scoring
+  scoringModel: 'gemini-3-flash', // Model for abstract scoring
   scoringBatchSize: 3, // RENAMED from batchSize
   // Post-processing configuration
   enableScorePostProcessing: true, // Enable score post-processing
   postProcessingCount: 50, // Number of top papers to post-process
   postProcessingBatchSize: 5, // Batch size for post-processing
-  postProcessingModel: 'gemini-2.5-flash', // Model for post-processing (defaults to scoringModel)
+  postProcessingModel: 'gemini-3-flash', // Model for post-processing (defaults to scoringModel)
   pdfModel: 'gemini-3-pro', // RENAMED from deepAnalysisModel
   maxAbstractDisplay: 500,
 };
@@ -355,7 +355,7 @@ function ArxivAnalyzer() {
 
   // NotebookLM states
   const [podcastDuration, setPodcastDuration] = useState(20); // Default to 20 minutes
-  const [notebookLMModel, setNotebookLMModel] = useState('gemini-2.5-pro');
+  const [notebookLMModel, setNotebookLMModel] = useState('gemini-3-pro');
   const [notebookLMStatus, setNotebookLMStatus] = useState('');
   const [notebookLMContent, setNotebookLMContent] = useState(null);
   const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
@@ -407,7 +407,7 @@ function ArxivAnalyzer() {
             // Handle migration from old model names to new three-model setup
             if (parsed.config.screeningModel && !parsed.config.scoringModel) {
               // Migrate from two-model to three-model structure
-              parsed.config.filterModel = 'gemini-2.5-flash-lite';
+              parsed.config.filterModel = 'gemini-3-flash';
               parsed.config.scoringModel = parsed.config.screeningModel;
               parsed.config.pdfModel = parsed.config.deepAnalysisModel;
               parsed.config.filterBatchSize = 3;
@@ -419,8 +419,8 @@ function ArxivAnalyzer() {
             }
             // Handle even older single model setup
             if (parsed.config.selectedModel) {
-              parsed.config.filterModel = 'gemini-2.5-flash-lite';
-              parsed.config.scoringModel = 'gemini-2.5-flash';
+              parsed.config.filterModel = 'gemini-3-flash';
+              parsed.config.scoringModel = 'gemini-3-flash';
               parsed.config.pdfModel = parsed.config.selectedModel;
               delete parsed.config.selectedModel;
             }

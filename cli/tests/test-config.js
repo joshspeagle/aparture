@@ -16,8 +16,8 @@ async function testConfigManager() {
       categories: ['cs.AI', 'cs.CV'],
       scoringCriteria: 'Computer vision papers',
       daysBack: 14,
-      filterModel: 'claude-3.5-haiku',
-      scoringModel: 'claude-sonnet-4.5',
+      filterModel: 'gemini-3-flash',
+      scoringModel: 'gemini-3-flash',
     };
     await manager.save('test-config', testConfig);
     console.log('✓ Config saved successfully\n');

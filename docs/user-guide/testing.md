@@ -253,7 +253,7 @@ curl https://api.anthropic.com/v1/messages \
 curl https://api.openai.com/v1/chat/completions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-5", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 10}'
+  -d '{"model": "gpt-5.2", "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 10}'
 
 # Test Google
 curl "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=$GOOGLE_AI_API_KEY" \
