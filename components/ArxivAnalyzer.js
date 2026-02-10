@@ -292,7 +292,7 @@ const DEFAULT_CONFIG = {
   maxRetries: 1,
   // Three-stage model configuration
   useQuickFilter: true, // NEW: Enable quick filtering stage (enabled by default)
-  filterModel: 'gemini-3-flash', // Model for quick YES/NO/MAYBE filtering
+  filterModel: 'gemini-2.5-flash-lite', // Model for quick YES/NO/MAYBE filtering
   filterBatchSize: 3, // Batch size for filtering
   categoriesToScore: ['YES', 'MAYBE'], // Which filter categories proceed to scoring
   scoringModel: 'gemini-3-flash', // Model for abstract scoring
@@ -407,7 +407,7 @@ function ArxivAnalyzer() {
             // Handle migration from old model names to new three-model setup
             if (parsed.config.screeningModel && !parsed.config.scoringModel) {
               // Migrate from two-model to three-model structure
-              parsed.config.filterModel = 'gemini-3-flash';
+              parsed.config.filterModel = 'gemini-2.5-flash-lite';
               parsed.config.scoringModel = parsed.config.screeningModel;
               parsed.config.pdfModel = parsed.config.deepAnalysisModel;
               parsed.config.filterBatchSize = 3;
@@ -419,7 +419,7 @@ function ArxivAnalyzer() {
             }
             // Handle even older single model setup
             if (parsed.config.selectedModel) {
-              parsed.config.filterModel = 'gemini-3-flash';
+              parsed.config.filterModel = 'gemini-2.5-flash-lite';
               parsed.config.scoringModel = 'gemini-3-flash';
               parsed.config.pdfModel = parsed.config.selectedModel;
               delete parsed.config.selectedModel;

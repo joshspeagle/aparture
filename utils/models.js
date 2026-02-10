@@ -177,7 +177,7 @@ const getModelsByProvider = (provider) => {
 
 // Default model configuration
 const DEFAULT_MODELS = {
-  filterModel: 'gemini-3-flash',
+  filterModel: 'gemini-2.5-flash-lite',
   scoringModel: 'gemini-3-flash',
   pdfModel: 'gemini-3-pro',
 };
@@ -190,7 +190,7 @@ const MODEL_PRESETS = {
     pdfModel: 'gemini-2.5-flash',
   },
   balanced: {
-    filterModel: 'gemini-3-flash',
+    filterModel: 'gemini-2.5-flash-lite',
     scoringModel: 'gemini-3-flash',
     pdfModel: 'gemini-3-pro',
   },
@@ -201,7 +201,7 @@ const MODEL_PRESETS = {
   },
   'google-free': {
     // For Google's free tier
-    filterModel: 'gemini-3-flash',
+    filterModel: 'gemini-2.5-flash-lite',
     scoringModel: 'gemini-3-flash',
     pdfModel: 'gemini-2.5-pro',
   },
