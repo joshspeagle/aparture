@@ -25,7 +25,7 @@ function createMockReqRes(body) {
   return { req, res, getResponse: () => ({ statusCode, jsonBody }) };
 }
 
-const fixturesDir = path.resolve(__dirname, '../fixtures/llm');
+const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime');
 
 describe('analyze-pdf-quick API route (fixture mode)', () => {
   beforeAll(async () => {

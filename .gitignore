@@ -157,3 +157,6 @@ claude-code.json
 # Superpowers meta-docs (design spec, implementation plans, execution logs)
 # Kept locally for reference but not committed to the repo
 docs/superpowers/
+
+# Runtime-generated test fixtures (re-seeded on each test run via beforeAll)
+tests/fixtures/llm/runtime/
