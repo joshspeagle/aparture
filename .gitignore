@@ -153,3 +153,7 @@ reports/
 .claude-code/
 claude-code.json
 .claudecode*
+
+# Superpowers meta-docs (design spec, implementation plans, execution logs)
+# Kept locally for reference but not committed to the repo
+docs/superpowers/
