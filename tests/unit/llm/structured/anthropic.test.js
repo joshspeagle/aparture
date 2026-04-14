@@ -33,6 +33,15 @@ describe('buildAnthropicRequest', () => {
     });
     expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
   });
+
+  it('respects a custom maxTokens override', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-6',
+      prompt: 'Hi.',
+      maxTokens: 1024,
+    });
+    expect(req.body.max_tokens).toBe(1024);
+  });
 });
 
 describe('parseAnthropicResponse', () => {
@@ -56,5 +65,25 @@ describe('parseAnthropicResponse', () => {
     const result = parseAnthropicResponse(response);
     expect(result.structured).toEqual({ headline: 'Big news' });
     expect(result.tokensIn).toBe(20);
+  });
+
+  it('concatenates multiple text parts in order', () => {
+    const response = {
+      content: [
+        { type: 'text', text: 'Hello ' },
+        { type: 'text', text: 'world.' },
+      ],
+      usage: { input_tokens: 5, output_tokens: 2 },
+    };
+    const result = parseAnthropicResponse(response);
+    expect(result.text).toBe('Hello world.');
+  });
+
+  it('returns safe defaults for an empty response', () => {
+    const result = parseAnthropicResponse({});
+    expect(result.text).toBe('');
+    expect(result.tokensIn).toBe(0);
+    expect(result.tokensOut).toBe(0);
+    expect(result.structured).toBeUndefined();
   });
 });
