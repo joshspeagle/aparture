@@ -1,0 +1,46 @@
+{
+  "executiveSummary": "Today in ML, three threads pull on the same knot: interpretability is converging on attention-head-level analysis, a disagreement is emerging about whether heads are the right unit at all, and two papers offer competing ablation strategies.",
+  "themes": [
+    {
+      "title": "Interpretability converges on attention heads",
+      "argument": "Both papers analyze circuits at the attention-head level, using different ablation strategies but reaching compatible conclusions about head specialization.",
+      "paperIds": ["2504.01234", "2504.02345"]
+    }
+  ],
+  "papers": [
+    {
+      "arxivId": "2504.01234",
+      "title": "Circuit-level analysis of reasoning",
+      "score": 9.2,
+      "onelinePitch": "A mechanistic account of how attention heads compose into multi-step reasoning circuits.",
+      "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability.",
+      "figures": [],
+      "quickSummaryPath": "reports/2026-04-13/papers/2504.01234-quick.md",
+      "fullReportPath": "reports/2026-04-13/papers/2504.01234-full.md"
+    },
+    {
+      "arxivId": "2504.02345",
+      "title": "Head pruning ablations",
+      "score": 8.5,
+      "onelinePitch": "Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.",
+      "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity.",
+      "figures": [],
+      "quickSummaryPath": "reports/2026-04-13/papers/2504.02345-quick.md",
+      "fullReportPath": "reports/2026-04-13/papers/2504.02345-full.md"
+    }
+  ],
+  "debates": [
+    {
+      "title": "Are attention heads the right unit?",
+      "summary": "Smith argues attention-head-level analysis is sufficient; Chen counters that activation patches are more reliable.",
+      "paperIds": ["2504.01234", "2504.02345"],
+      "stance": "tension"
+    }
+  ],
+  "longitudinal": [],
+  "proactiveQuestions": [
+    {
+      "question": "You've starred 3 papers on normalizing flows this week. Should I weight flow-based methods higher in scoring, or is this a temporary interest?"
+    }
+  ]
+}
