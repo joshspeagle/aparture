@@ -18,9 +18,9 @@
   --aparture-question: #efe8d8;
 
   /* Typography */
-  --aparture-font-serif: var(--font-serif), Georgia, 'Times New Roman', serif;
-  --aparture-font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
-  --aparture-font-mono: var(--font-mono), ui-monospace, 'JetBrains Mono', monospace;
+  --aparture-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --aparture-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --aparture-font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* Type scale */
   --aparture-text-xs: 13px;
