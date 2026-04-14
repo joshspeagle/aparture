@@ -124,6 +124,14 @@ export default [
     },
   },
 
+  // Briefing components use destructured props without propTypes (modern React convention)
+  {
+    files: ['components/briefing/**/*.jsx', 'hooks/**/*.js'],
+    rules: {
+      'react/prop-types': 'off',
+    },
+  },
+
   // Apply Prettier config to disable conflicting rules (must be last)
   prettierConfig,
 ];
