@@ -524,18 +524,30 @@ The original draft of this spec committed to a single large "v1" that tried to s
 
 ### v2.1 (first priority post-Phase-2)
 
+- **Local model support** (Ollama, LM Studio, llama.cpp server, vLLM, etc.) — see the dedicated subsection below. **The provider abstraction landed in Phase 1 Batches 1 and 2 already makes this nearly free** because most local inference servers expose an OpenAI-compatible Chat Completions API.
 - **Figure extraction tier 2** (pdf.js region render from multimodal-model-returned bbox)
 - **Longitudinal connections that reach back further than 14 days**
 - **Profile distillation improvements** — the "distill my interests from recent feedback" workflow gets more sophisticated
 - **Cross-paper synthesis depth improvements** — learned from early v2 usage
 - **Richer audit view** — timelines, filter decisions, prompt diffs
 
+#### v2.1 detail: Local model support
+
+This was originally listed as a stretch goal under "Ollama integration." It has been promoted to v2.1 because the Phase 1 provider abstraction makes the implementation almost trivial:
+
+- **Both Ollama and LM Studio expose OpenAI-compatible `/v1/chat/completions` endpoints** out of the box. Ollama runs at `http://localhost:11434/v1/chat/completions`; LM Studio runs at `http://localhost:1234/v1/chat/completions`. llama.cpp's `server` binary, vLLM's OpenAI server, and most other local inference frontends do the same.
+- **The existing `lib/llm/structured/openai.js` module already implements this API.** No new structured-output module is needed.
+- **The implementation is small:** add a `local` (or `ollama`/`lmstudio`) entry to `lib/llm/providers.js` with a configurable `baseUrl` (default to LM Studio's port), add a branch to `lib/llm/callModel.js` that imports `openai.js` and skips the auth header (most local servers don't require one), and add a config setting for the local server URL.
+- **Implementation effort: ~30 minutes.** Target as a v2.1 task that lands shortly after Phase 2 ships.
+- **Why not Phase 1 or Phase 2:** because BYOK with frontier models is the priority for the initial product (synthesis quality is the moat — see §13's risks). Local models are a meaningful capability for users with strong local hardware but should not block the primary workflow on day one.
+- **Caveat:** local model output quality is meaningfully lower than frontier models (Claude Opus, Gemini 3 Pro, GPT-5.2) for the synthesis-stage workload specifically. The product will document this honestly: local models are a "I want privacy and zero LLM cost" path, not a "this gives you the same briefing quality" path.
+
 ### Stretch (post-v2.1)
 
 - **TTS dialogue podcast pipeline** (ElevenLabs or Google Chirp 3 if accessible) — replacing the NotebookLM manual bundle as a first-class audio output
 - **Rung 4 proactive learning** — model asks clarifying questions at moments of low confidence during a run, proactively proposes new categories to watch, hypothesizes sub-topics
 - **Multi-machine sync** — opt-in folder sync via iCloud/Dropbox/Syncthing, no central server
-- **Ollama integration** for local-model runs — deferred from the v1/v2 timeline because BYOK with frontier models is the priority per user decision
+- **Fully autonomous local-only mode** — Ollama/LM Studio as the _exclusive_ model path for users who want zero cloud calls, with synthesis prompt tuning specific to smaller models (this is a tuning-and-quality investment beyond just plumbing the connection, which v2.1 above handles)
 
 ### Explicitly out of scope (forever)
 
