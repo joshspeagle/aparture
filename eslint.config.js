@@ -101,7 +101,7 @@ export default [
 
   // Overrides for config files
   {
-    files: ['*.config.js'],
+    files: ['*.config.js', '*.config.mjs'],
     languageOptions: {
       globals: {
         module: 'readonly',
