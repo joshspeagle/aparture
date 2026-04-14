@@ -1,0 +1,5 @@
+{
+  "hash": "abc123def456",
+  "input": { "provider": "anthropic", "prompt": "hello" },
+  "response": { "text": "hi there", "tokensIn": 10, "tokensOut": 5 }
+}
