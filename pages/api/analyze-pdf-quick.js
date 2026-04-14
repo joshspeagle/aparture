@@ -8,11 +8,32 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { paper, fullReport, provider, model, apiKey, callModelMode } = req.body ?? {};
+  const {
+    paper,
+    fullReport,
+    provider,
+    model,
+    apiKey: clientApiKey,
+    password,
+    callModelMode,
+  } = req.body ?? {};
+
+  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
+  let apiKey = clientApiKey;
+  if (!apiKey && password) {
+    if (password !== process.env.ACCESS_PASSWORD) {
+      res.status(401).json({ error: 'invalid password' });
+      return;
+    }
+    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
+    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
+    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  }
 
   if (!paper?.arxivId || !fullReport || !provider || !model || !apiKey) {
     res.status(400).json({
-      error: 'missing required fields: paper.arxivId, fullReport, provider, model, apiKey',
+      error:
+        'missing required fields: paper.arxivId, fullReport, provider, model, and either apiKey or password',
     });
     return;
   }

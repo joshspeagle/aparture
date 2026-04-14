@@ -19,15 +19,30 @@ export default async function handler(req, res) {
     history,
     provider,
     model,
-    apiKey,
+    apiKey: clientApiKey,
+    password,
     budgetThresholds,
     allowOverBudget = false,
     callModelMode,
   } = req.body ?? {};
 
+  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
+  let apiKey = clientApiKey;
+  if (!apiKey && password) {
+    if (password !== process.env.ACCESS_PASSWORD) {
+      res.status(401).json({ error: 'invalid password' });
+      return;
+    }
+    // Pick the env key for the requested provider
+    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
+    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
+    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  }
+
   if (!profile || !Array.isArray(papers) || !provider || !model || !apiKey) {
     res.status(400).json({
-      error: 'missing required fields: profile, papers[], provider, model, apiKey',
+      error:
+        'missing required fields: profile, papers[], provider, model, and either apiKey or password',
     });
     return;
   }

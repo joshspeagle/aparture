@@ -19,8 +19,11 @@ import {
 } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AVAILABLE_MODELS } from '../utils/models';
+import { AVAILABLE_MODELS, MODEL_REGISTRY } from '../utils/models';
 import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
+import BriefingView from './briefing/BriefingView.jsx';
+import { useProfile } from '../hooks/useProfile.js';
+import { useBriefing } from '../hooks/useBriefing.js';
 
 // Distribution that uses the full 0-10 range with decimals
 const generateRealisticScore = () => {
@@ -361,6 +364,14 @@ function ArxivAnalyzer() {
   const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
   const [enableHallucinationCheck, setEnableHallucinationCheck] = useState(true);
   const [hallucinationWarning, setHallucinationWarning] = useState(null);
+
+  // Briefing (Phase 1) state
+  const [profile, setProfile] = useProfile();
+  const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
+  const [synthesizing, setSynthesizing] = useState(false);
+  const [synthesisError, setSynthesisError] = useState(null);
+  const [quickSummariesById, setQuickSummariesById] = useState({});
+  const [fullReportsById, setFullReportsById] = useState({});
 
   const abortControllerRef = useRef(null);
   const pauseRef = useRef(false);
@@ -2947,6 +2958,93 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     URL.revokeObjectURL(url);
   };
 
+  // Generate Briefing (Phase 1)
+  const handleGenerateBriefing = async () => {
+    setSynthesizing(true);
+    setSynthesisError(null);
+    try {
+      const finalRanking = results?.finalRanking ?? [];
+      if (finalRanking.length === 0) {
+        throw new Error('No final-ranking papers available to synthesize.');
+      }
+
+      // Determine provider from pdfModel via MODEL_REGISTRY
+      // MODEL_REGISTRY providers are capitalized ('Anthropic', 'Google', 'OpenAI');
+      // synthesize.js expects lowercase ('anthropic', 'google', 'openai')
+      const modelId = config?.pdfModel ?? 'gemini-3-pro';
+      const modelCfg = MODEL_REGISTRY[modelId];
+      const rawProvider = modelCfg?.provider ?? 'Google';
+      const provider = rawProvider.toLowerCase();
+
+      // Map finalRanking into the shape expected by synthesize
+      const papers = finalRanking.map((p) => ({
+        arxivId: p.arxivId ?? p.id,
+        title: p.title,
+        abstract: p.abstract ?? '',
+        score: p.score ?? p.finalScore ?? 0,
+        scoringJustification: p.justification ?? p.relevanceAssessment ?? '',
+        fullReport: p.detailedSummary ?? p.pdfAnalysis?.summary ?? p.analysis ?? '',
+      }));
+
+      // Generate quick summaries for papers that have a full report
+      const quickById = {};
+      const fullById = {};
+      for (const p of papers) {
+        fullById[p.arxivId] = p.fullReport;
+        if (p.fullReport) {
+          const quickRes = await fetch('/api/analyze-pdf-quick', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              paper: p,
+              fullReport: p.fullReport,
+              provider,
+              model: modelId,
+              password,
+            }),
+          });
+          if (quickRes.ok) {
+            const quickJson = await quickRes.json();
+            quickById[p.arxivId] = quickJson.quickSummary;
+          }
+        }
+      }
+      setQuickSummariesById(quickById);
+      setFullReportsById(fullById);
+
+      // Build history for longitudinal connections
+      const history = briefingHistory.map((h) => ({
+        date: h.date,
+        paperIds: (h.briefing.papers ?? []).map((pp) => pp.arxivId),
+      }));
+
+      // Call the synthesis route
+      const synthRes = await fetch('/api/synthesize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          profile,
+          papers,
+          history,
+          provider,
+          model: modelId,
+          password,
+        }),
+      });
+      const synthJson = await synthRes.json();
+      if (!synthRes.ok) {
+        throw new Error(synthJson.error ?? 'synthesis failed');
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      saveBriefing(today, synthJson.briefing);
+    } catch (err) {
+      setSynthesisError(String(err?.message ?? err));
+    } finally {
+      setSynthesizing(false);
+    }
+  };
+
   // Get stage display name
   const getStageDisplay = () => {
     const stages = {
@@ -3314,6 +3412,30 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   accuracy.
                 </p>
               </div>
+            </div>
+
+            {/* Research Profile for Briefing Synthesis (Phase 1) */}
+            <div>
+              <label
+                htmlFor="aparture-profile"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Research Profile (for Briefing Synthesis)
+              </label>
+              <p className="text-xs text-gray-400 mb-2">
+                Describe your research in prose. Every synthesis call will be grounded in this text.
+                This is the Phase 1 equivalent of a <code>profile.md</code> file — Phase 2 will move
+                it to disk.
+              </p>
+              <textarea
+                id="aparture-profile"
+                value={profile}
+                onChange={(e) => setProfile(e.target.value)}
+                rows={6}
+                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white resize-y"
+                placeholder="Describe your research interests in plain prose…"
+                disabled={processing.isRunning}
+              />
             </div>
 
             <div>
@@ -4193,6 +4315,51 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* Generate Briefing (Phase 1) */}
+        {results?.finalRanking?.length > 0 && (
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+            <div className="flex items-center mb-3">
+              <h2 className="text-xl font-semibold">Briefing (Phase 1)</h2>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Generate a synthesized briefing from the final-ranking papers above. The briefing is
+              the new output format for Phase 1 — the existing markdown report is still available
+              unchanged below.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateBriefing}
+              disabled={synthesizing || processing.isRunning}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {synthesizing ? 'Generating…' : '→ Generate Briefing'}
+            </button>
+            {synthesisError && <p className="mt-2 text-sm text-red-400">Error: {synthesisError}</p>}
+          </div>
+        )}
+
+        {currentBriefing && (
+          <div className="mb-6">
+            <BriefingView
+              briefing={currentBriefing.briefing}
+              date={new Date(currentBriefing.date).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+              papersScreened={results?.allPapers?.length ?? 0}
+              quickSummariesById={quickSummariesById}
+              fullReportsById={fullReportsById}
+              onStar={(id) => console.log('star', id)}
+              onDismiss={(id) => console.log('dismiss', id)}
+              onSkipQuestion={() => console.log('skip question')}
+              onPreviewProfileUpdate={(answer) =>
+                console.log('Phase 2 will show a diff. Phase 1 captures the answer:', answer)
+              }
+            />
           </div>
         )}
 
