@@ -3,15 +3,15 @@ import { buildOpenAIRequest, parseOpenAIResponse } from '../../../../lib/llm/str
 
 describe('buildOpenAIRequest', () => {
   it('builds a plain text request', () => {
-    const req = buildOpenAIRequest({ model: 'gpt-5.2', prompt: 'Say hi.' });
-    expect(req.body.model).toBe('gpt-5.2');
+    const req = buildOpenAIRequest({ model: 'gpt-5.4', prompt: 'Say hi.' });
+    expect(req.body.model).toBe('gpt-5.4');
     expect(req.body.messages).toEqual([{ role: 'user', content: 'Say hi.' }]);
     expect(req.body.response_format).toBeUndefined();
   });
 
   it('adds a strict json_schema response_format when structuredOutput is provided', () => {
     const req = buildOpenAIRequest({
-      model: 'gpt-5.2',
+      model: 'gpt-5.4',
       prompt: 'Summarize.',
       structuredOutput: {
         name: 'summary',

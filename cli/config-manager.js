@@ -16,8 +16,8 @@ const DEFAULT_CONFIG = {
   filterModel: 'gemini-2.5-flash-lite',
   scoringModel: 'gemini-3-flash',
   postProcessingModel: 'gemini-3-flash',
-  pdfModel: 'gemini-3-pro',
-  notebookLMModel: 'gemini-3-pro',
+  pdfModel: 'gemini-3.1-pro',
+  notebookLMModel: 'gemini-3.1-pro',
 
   // Processing options
   enableQuickFilter: true,

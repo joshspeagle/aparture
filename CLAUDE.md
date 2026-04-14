@@ -336,30 +336,43 @@ The documentation is built with VitePress and includes:
 
 **Always refer to `utils/models.js` for accurate model information.**
 
-Current models (as of February 2026):
+Current models (as of April 2026). The user-facing ID (left) is what goes into `MODEL_REGISTRY` and the UI; the API ID (right) is what gets sent to the provider.
 
-**Anthropic:**
+**Anthropic — current:**
 
-- Claude Opus 4.6: `claude-opus-4-6-20260205`
-- Claude Sonnet 4.5: `claude-sonnet-4-5-20250929`
-- Claude Haiku 4.5: `claude-haiku-4-5-20251001`
+- Claude Opus 4.6: `claude-opus-4.6` → `claude-opus-4-6` (1M context, $5/$25 per MTok)
+- Claude Sonnet 4.6: `claude-sonnet-4.6` → `claude-sonnet-4-6` (1M context, $3/$15 per MTok)
+- Claude Haiku 4.5: `claude-haiku-4.5` → `claude-haiku-4-5` (200k context, $1/$5 per MTok)
 
-**OpenAI:**
+**Anthropic — legacy (still available):**
 
-- GPT-5.2: `gpt-5.2`
-- GPT-5 Mini: `gpt-5-mini`
-- GPT-5 Nano: `gpt-5-nano`
+- Claude Opus 4.5: `claude-opus-4.5` → `claude-opus-4-5`
+- Claude Opus 4.1: `claude-opus-4.1` → `claude-opus-4-1`
+- Claude Sonnet 4.5: `claude-sonnet-4.5` → `claude-sonnet-4-5`
+- Claude Haiku 3.5: `claude-haiku-3.5` → `claude-3-5-haiku-20241022`
 
-**Google:**
+**OpenAI (GPT-5.4 family):**
 
-- Gemini 3 Pro (Preview): `gemini-3-pro-preview`
-- Gemini 3 Flash (Preview): `gemini-3-flash-preview`
+- GPT-5.4: `gpt-5.4` (1M context)
+- GPT-5.4 Mini: `gpt-5.4-mini` (400k context)
+- GPT-5.4 Nano: `gpt-5.4-nano` (400k context)
+
+**Google — Gemini 3.x previews:**
+
+- Gemini 3.1 Pro (Preview): `gemini-3.1-pro` → `gemini-3.1-pro-preview`
+- Gemini 3 Flash (Preview): `gemini-3-flash` → `gemini-3-flash-preview`
+- Gemini 3.1 Flash-Lite (Preview): `gemini-3.1-flash-lite` → `gemini-3.1-flash-lite-preview`
+
+**Google — Gemini 2.5 stable:**
+
 - Gemini 2.5 Pro: `gemini-2.5-pro`
 - Gemini 2.5 Flash: `gemini-2.5-flash`
 - Gemini 2.5 Flash-Lite: `gemini-2.5-flash-lite`
 
+**Not currently in the registry:** OpenAI o-series (`o3`, `o4-mini`, etc.) and xAI Grok. Adding Grok would require a new `lib/llm/structured/xai.js` adapter because xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
+
 When updating documentation or code, verify current model names and pricing via:
 
-- Anthropic: https://docs.anthropic.com/en/docs/about-claude/models
-- OpenAI: https://platform.openai.com/docs/models
+- Anthropic: https://platform.claude.com/docs/en/docs/about-claude/models
+- OpenAI: https://developers.openai.com/api/docs/models
 - Google: https://ai.google.dev/gemini-api/docs/models

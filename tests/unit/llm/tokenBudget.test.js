@@ -3,7 +3,7 @@ import { estimateTokens, budgetPreflight } from '../../../lib/llm/tokenBudget.js
 
 describe('estimateTokens', () => {
   it('uses tiktoken for OpenAI', () => {
-    const n = estimateTokens({ provider: 'openai', model: 'gpt-5.2', text: 'hello world' });
+    const n = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text: 'hello world' });
     expect(n).toBeGreaterThan(0);
     expect(n).toBeLessThan(10);
   });

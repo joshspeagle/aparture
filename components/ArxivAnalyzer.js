@@ -305,7 +305,7 @@ const DEFAULT_CONFIG = {
   postProcessingCount: 50, // Number of top papers to post-process
   postProcessingBatchSize: 5, // Batch size for post-processing
   postProcessingModel: 'gemini-3-flash', // Model for post-processing (defaults to scoringModel)
-  pdfModel: 'gemini-3-pro', // RENAMED from deepAnalysisModel
+  pdfModel: 'gemini-3.1-pro', // RENAMED from deepAnalysisModel
   maxAbstractDisplay: 500,
 };
 
@@ -358,7 +358,7 @@ function ArxivAnalyzer() {
 
   // NotebookLM states
   const [podcastDuration, setPodcastDuration] = useState(20); // Default to 20 minutes
-  const [notebookLMModel, setNotebookLMModel] = useState('gemini-3-pro');
+  const [notebookLMModel, setNotebookLMModel] = useState('gemini-3.1-pro');
   const [notebookLMStatus, setNotebookLMStatus] = useState('');
   const [notebookLMContent, setNotebookLMContent] = useState(null);
   const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
@@ -2971,7 +2971,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
       // Determine provider from pdfModel via MODEL_REGISTRY
       // MODEL_REGISTRY providers are capitalized ('Anthropic', 'Google', 'OpenAI');
       // synthesize.js expects lowercase ('anthropic', 'google', 'openai')
-      const modelId = config?.pdfModel ?? 'gemini-3-pro';
+      const modelId = config?.pdfModel ?? 'gemini-3.1-pro';
       const modelCfg = MODEL_REGISTRY[modelId];
       const rawProvider = modelCfg?.provider ?? 'Google';
       const provider = rawProvider.toLowerCase();
