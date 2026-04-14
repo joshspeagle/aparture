@@ -1,0 +1,5 @@
+{
+  "hash": "78b26a32e1d4ee29a401271afcc50edc",
+  "input": { "provider": "anthropic", "model": "test-model", "prompt": "hi" },
+  "response": { "text": "hello from fixture", "tokensIn": 5, "tokensOut": 4 }
+}
