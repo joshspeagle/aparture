@@ -1,0 +1,191 @@
+{
+  "hash": "cb5c35a993be5903d06baf2e65a99d92",
+  "input": {
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "prompt": "SYNTHESIS_PROMPT_FIXTURE",
+    "apiKey": "test-key",
+    "structuredOutput": {
+      "name": "briefing",
+      "description": "Aparture daily research briefing",
+      "schema": {
+        "type": "object",
+        "required": ["executiveSummary", "themes", "papers"],
+        "properties": {
+          "executiveSummary": {
+            "type": "string"
+          },
+          "themes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["title", "argument", "paperIds"],
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "argument": {
+                  "type": "string"
+                },
+                "paperIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "papers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["arxivId", "title", "score", "onelinePitch", "whyMatters"],
+              "properties": {
+                "arxivId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "onelinePitch": {
+                  "type": "string"
+                },
+                "whyMatters": {
+                  "type": "string"
+                },
+                "figures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "caption": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "page": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                },
+                "quickSummaryPath": {
+                  "type": "string"
+                },
+                "fullReportPath": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "debates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["title", "summary", "paperIds"],
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "paperIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "stance": {
+                  "type": "string",
+                  "enum": ["tension", "builds-on", "compromise"]
+                }
+              }
+            }
+          },
+          "longitudinal": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["summary", "todayPaperId", "pastPaperId", "pastDate"],
+              "properties": {
+                "summary": {
+                  "type": "string"
+                },
+                "todayPaperId": {
+                  "type": "string"
+                },
+                "pastPaperId": {
+                  "type": "string"
+                },
+                "pastDate": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "proactiveQuestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["question"],
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "proposedMemoryPatch": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "text": "",
+    "structured": {
+      "executiveSummary": "Today in ML, three threads pull on the same knot: interpretability methods are converging on attention-head-level analysis, a new debate is emerging about whether heads are the right unit at all, and two papers offer competing ablation strategies.",
+      "themes": [
+        {
+          "title": "Interpretability converges on attention heads",
+          "argument": "Both papers analyze circuits at the attention-head level, using different ablation strategies but reaching compatible conclusions about head specialization.",
+          "paperIds": ["2504.01234", "2504.02345"]
+        }
+      ],
+      "papers": [
+        {
+          "arxivId": "2504.01234",
+          "title": "Circuit-level analysis of reasoning",
+          "score": 9.2,
+          "onelinePitch": "A mechanistic account of how attention heads compose into multi-step reasoning circuits.",
+          "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability of large language models.",
+          "figures": [],
+          "quickSummaryPath": "reports/2026-04-13/papers/2504.01234-quick.md",
+          "fullReportPath": "reports/2026-04-13/papers/2504.01234-full.md"
+        },
+        {
+          "arxivId": "2504.02345",
+          "title": "Head pruning ablations",
+          "score": 8.5,
+          "onelinePitch": "Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.",
+          "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity.",
+          "figures": [],
+          "quickSummaryPath": "reports/2026-04-13/papers/2504.02345-quick.md",
+          "fullReportPath": "reports/2026-04-13/papers/2504.02345-full.md"
+        }
+      ],
+      "debates": [],
+      "longitudinal": [],
+      "proactiveQuestions": []
+    },
+    "tokensIn": 100,
+    "tokensOut": 200
+  }
+}

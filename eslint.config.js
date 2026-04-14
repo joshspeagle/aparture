@@ -111,6 +111,19 @@ export default [
     },
   },
 
+  // Overrides for .mjs scripts (fixture generators, etc.)
+  {
+    files: ['**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+
   // Apply Prettier config to disable conflicting rules (must be last)
   prettierConfig,
 ];
