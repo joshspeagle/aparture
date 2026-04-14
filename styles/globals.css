@@ -29,3 +29,5 @@ a {
 * {
   box-sizing: border-box;
 }
+
+@import './briefing.css';
