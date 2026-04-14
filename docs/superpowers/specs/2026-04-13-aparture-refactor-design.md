@@ -10,7 +10,7 @@
 
 **Aparture** _(aperture + arXiv)_ is a local-first research companion that brings the day's new papers into focus for working researchers. Each day, it opens the aperture wide across the user's areas of interest, narrows stage by stage through a multi-model pipeline, and ends with a substantive multimodal close-read of the papers that matter. It learns the user's interests over time — through votes, comments, and proactive check-ins — and every prompt, rule, and memory it keeps is a plain file on the user's machine. It never stores user data on anyone's servers, never charges, and works with the user's own API keys.
 
-**Tagline:** _Bringing the arXiv into focus. A daily brief on the papers worth your two hours — and why._
+**Tagline:** _Bringing the arXiv into focus._
 
 **What Aparture is:** a daily research triage engine. It takes today's arXiv output in the user's fields, runs a multi-stage focusing pipeline against the user's written interests, produces a cross-paper briefing grounded in the user's history, and tells the user what's worth their attention — with an argued per-paper justification for every pick.
 
