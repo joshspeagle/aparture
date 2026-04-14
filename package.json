@@ -13,6 +13,9 @@
     "analyze:report": "node cli/run-analysis.js --skip-notebooklm --skip-podcast",
     "analyze:document": "node cli/run-analysis.js --skip-podcast",
     "analyze:podcast": "node cli/run-analysis.js --podcast-only",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:minimal": "node cli/tests/test-browser-minimal.js",
     "test:dryrun": "node cli/tests/test-browser-dryrun.js",
     "test:notebooklm": "node cli/tests/test-notebooklm.js",
@@ -44,16 +47,22 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.0",
     "husky": "^9.1.7",
+    "jsdom": "^29.0.2",
     "lint-staged": "^16.2.4",
     "playwright": "^1.56.0",
     "postcss": "^8.4.0",
     "prettier": "^3.6.2",
-    "tailwindcss": "^3.4.0"
+    "tailwindcss": "^3.4.0",
+    "vitest": "^4.1.4"
   }
 }
