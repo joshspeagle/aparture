@@ -2989,25 +2989,40 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
       // Generate quick summaries for papers that have a full report
       const quickById = {};
       const fullById = {};
+
+      // Populate fullById synchronously first (no network calls)
       for (const p of papers) {
         fullById[p.arxivId] = p.fullReport;
-        if (p.fullReport) {
-          const quickRes = await fetch('/api/analyze-pdf-quick', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              paper: p,
-              fullReport: p.fullReport,
-              provider,
-              model: modelId,
-              password,
-            }),
-          });
-          if (quickRes.ok) {
-            const quickJson = await quickRes.json();
-            quickById[p.arxivId] = quickJson.quickSummary;
-          }
-        }
+      }
+
+      // Generate quick summaries in parallel chunks of 5 to limit concurrency
+      const CONCURRENCY = 5;
+      const papersWithReports = papers.filter((p) => p.fullReport);
+      for (let i = 0; i < papersWithReports.length; i += CONCURRENCY) {
+        const chunk = papersWithReports.slice(i, i + CONCURRENCY);
+        await Promise.all(
+          chunk.map(async (p) => {
+            try {
+              const quickRes = await fetch('/api/analyze-pdf-quick', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  paper: p,
+                  fullReport: p.fullReport,
+                  provider,
+                  model: modelId,
+                  password,
+                }),
+              });
+              if (quickRes.ok) {
+                const quickJson = await quickRes.json();
+                quickById[p.arxivId] = quickJson.quickSummary;
+              }
+            } catch {
+              // If a single paper fails, continue with the rest — don't abort the batch
+            }
+          })
+        );
       }
       setQuickSummariesById(quickById);
       setFullReportsById(fullById);
