@@ -147,8 +147,7 @@ config.local.json
 # Reports
 reports/
 
-# Claude Code related files
-CLAUDE.md
+# Claude Code related files (CLAUDE.md is tracked and shared; local Claude state is not)
 .claude/
 *.claude
 .claude-code/
