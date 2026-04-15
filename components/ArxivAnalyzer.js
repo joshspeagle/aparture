@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AVAILABLE_MODELS, MODEL_REGISTRY } from '../utils/models';
 import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
 import BriefingView from './briefing/BriefingView.jsx';
+import FeedbackPanel from './feedback/FeedbackPanel.jsx';
 import YourProfile from './profile/YourProfile.jsx';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
@@ -3079,6 +3080,31 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
 
       const today = new Date().toISOString().slice(0, 10);
       saveBriefing(today, synthJson.briefing);
+
+      // Cache the last analysis run for PreviewPanel (Phase 1.5).
+      // Both finalRanking (local const above) and quickById are fully populated
+      // here, so this is the safest place to snapshot the run for the preview
+      // feature that Task 33 will build on.
+      try {
+        const cachedPapers = finalRanking.map((p) => {
+          const arxivId = p.arxivId ?? p.id;
+          return {
+            arxivId,
+            title: p.title,
+            abstract: p.abstract ?? '',
+            score: p.score ?? p.finalScore ?? 0,
+            scoringJustification: p.justification ?? p.relevanceAssessment ?? '',
+            fullReport: p.detailedSummary ?? p.pdfAnalysis?.summary ?? p.analysis ?? '',
+            quickSummary: quickById?.[arxivId] ?? '',
+          };
+        });
+        window.localStorage.setItem(
+          'aparture-last-analysis-run',
+          JSON.stringify({ papers: cachedPapers, timestamp: Date.now() })
+        );
+      } catch (e) {
+        console.warn('[Phase 1.5] Failed to cache last analysis run for preview:', e);
+      }
     } catch (err) {
       setSynthesisError(String(err?.message ?? err));
     } finally {
@@ -4405,15 +4431,48 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 day: 'numeric',
                 year: 'numeric',
               })}
+              briefingDate={currentBriefing.date ?? new Date().toISOString().slice(0, 10)}
               papersScreened={results?.allPapers?.length ?? 0}
               quickSummariesById={quickSummariesById}
               fullReportsById={fullReportsById}
-              onStar={(id) => console.log('star', id)}
-              onDismiss={(id) => console.log('dismiss', id)}
+              feedbackEvents={feedback.events}
+              onStar={feedback.addStar}
+              onDismiss={feedback.addDismiss}
+              onAddComment={(arxivId, text) => {
+                const paper = currentBriefing.briefing.papers.find((p) => p.arxivId === arxivId);
+                if (!paper) return;
+                feedback.addPaperComment(
+                  {
+                    arxivId,
+                    paperTitle: paper.title,
+                    quickSummary: paper.quickSummary,
+                    score: paper.score,
+                    briefingDate: currentBriefing.date ?? new Date().toISOString().slice(0, 10),
+                  },
+                  text
+                );
+              }}
               onSkipQuestion={() => console.log('skip question')}
               onPreviewProfileUpdate={(answer) =>
                 console.log('Phase 2 will show a diff. Phase 1 captures the answer:', answer)
               }
+            />
+          </div>
+        )}
+
+        {currentBriefing && (
+          <div id="feedback-panel" className="mb-6">
+            <FeedbackPanel
+              events={feedback.events}
+              cutoff={profile?.lastFeedbackCutoff ?? 0}
+              onAddGeneralComment={(text) => {
+                const today = new Date().toISOString().slice(0, 10);
+                feedback.addGeneralComment(text, today);
+              }}
+              onSuggestClick={() => {
+                // Task 33: wire to setShowSuggestDialog(true)
+                console.log('[Phase 1.5] FeedbackPanel suggest clicked — Task 33 will wire this');
+              }}
             />
           </div>
         )}
