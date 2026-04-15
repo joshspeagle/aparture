@@ -6,7 +6,6 @@ import ThemeSection from './ThemeSection.jsx';
 import PaperCard from './PaperCard.jsx';
 import DebateBlock from './DebateBlock.jsx';
 import LongitudinalBlock from './LongitudinalBlock.jsx';
-import ProactiveQuestionPanel from './ProactiveQuestionPanel.jsx';
 import QuickSummaryInline from './QuickSummaryInline.jsx';
 import FullReportSidePanel from './FullReportSidePanel.jsx';
 
@@ -31,19 +30,25 @@ function estimateReadingTime(briefing) {
 export default function BriefingView({
   briefing,
   date,
+  briefingDate,
   papersScreened = 0,
   quickSummariesById = {},
   fullReportsById = {},
+  feedbackEvents,
   onStar,
   onDismiss,
-  onSkipQuestion,
-  onPreviewProfileUpdate,
+  onAddComment,
 }) {
   const [openQuickId, setOpenQuickId] = useState(null);
   const [openFullId, setOpenFullId] = useState(null);
 
   const papersById = Object.fromEntries((briefing.papers ?? []).map((p) => [p.arxivId, p]));
   const readingTimeMinutes = estimateReadingTime(briefing);
+
+  const isStarred = (arxivId) =>
+    feedbackEvents?.some((e) => e.type === 'star' && e.arxivId === arxivId) ?? false;
+  const isDismissed = (arxivId) =>
+    feedbackEvents?.some((e) => e.type === 'dismiss' && e.arxivId === arxivId) ?? false;
 
   return (
     <BriefingProse>
@@ -69,8 +74,12 @@ export default function BriefingView({
               <div key={id}>
                 <PaperCard
                   paper={paper}
+                  starred={isStarred(paper.arxivId)}
+                  dismissed={isDismissed(paper.arxivId)}
+                  briefingDate={briefingDate}
                   onStar={onStar}
                   onDismiss={onDismiss}
+                  onAddComment={onAddComment}
                   onOpenQuickSummary={(pid) => setOpenQuickId(pid === openQuickId ? null : pid)}
                   onOpenFullReport={(pid) => setOpenFullId(pid)}
                 />
@@ -100,15 +109,6 @@ export default function BriefingView({
           todayPaperId={conn.todayPaperId}
           pastPaperId={conn.pastPaperId}
           pastDate={conn.pastDate}
-        />
-      ))}
-
-      {(briefing.proactiveQuestions ?? []).map((q, idx) => (
-        <ProactiveQuestionPanel
-          key={`q-${idx}`}
-          question={q.question}
-          onSkip={onSkipQuestion}
-          onPreview={onPreviewProfileUpdate}
         />
       ))}
 
