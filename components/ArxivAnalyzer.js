@@ -24,6 +24,8 @@ import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
 import BriefingView from './briefing/BriefingView.jsx';
 import FeedbackPanel from './feedback/FeedbackPanel.jsx';
 import YourProfile from './profile/YourProfile.jsx';
+import SuggestDialog from './profile/SuggestDialog.jsx';
+import PreviewPanel from './profile/PreviewPanel.jsx';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
 import { useFeedback } from '../hooks/useFeedback.js';
@@ -321,6 +323,8 @@ function ArxivAnalyzer() {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showSuggestDialog, setShowSuggestDialog] = useState(false);
+  const [showPreviewPanel, setShowPreviewPanel] = useState(false);
   const [processing, setProcessing] = useState({
     stage: 'idle',
     progress: { current: 0, total: 0 },
@@ -373,7 +377,6 @@ function ArxivAnalyzer() {
   const {
     profile,
     updateProfile,
-    // eslint-disable-next-line no-unused-vars -- wired into <SuggestDialog/> in Task 33
     saveSuggested,
     revertToRevision,
     migrationNotice,
@@ -3284,16 +3287,25 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             const el = document.getElementById('feedback-panel');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
-          onPreviewClick={() => {
-            // Task 33: wire to setShowPreviewPanel(true)
-            console.log('[Phase 1.5] Preview clicked — Task 33 will wire this');
-          }}
-          onSuggestClick={() => {
-            // Task 33: wire to setShowSuggestDialog(true)
-            console.log('[Phase 1.5] Suggest clicked — Task 33 will wire this');
-          }}
+          onPreviewClick={() => setShowPreviewPanel((v) => !v)}
+          onSuggestClick={() => setShowSuggestDialog(true)}
           disabled={processing?.isRunning ?? false}
         />
+
+        {showPreviewPanel && (
+          <div className="mt-4">
+            <PreviewPanel
+              editedProfile={profile?.content ?? ''}
+              models={{
+                filter: config.filterModel,
+                scoring: config.scoringModel,
+                briefing: config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro',
+              }}
+              password={password}
+              onClose={() => setShowPreviewPanel(false)}
+            />
+          </div>
+        )}
 
         {/* Configuration Panel */}
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
@@ -4469,10 +4481,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 const today = new Date().toISOString().slice(0, 10);
                 feedback.addGeneralComment(text, today);
               }}
-              onSuggestClick={() => {
-                // Task 33: wire to setShowSuggestDialog(true)
-                console.log('[Phase 1.5] FeedbackPanel suggest clicked — Task 33 will wire this');
-              }}
+              onSuggestClick={() => setShowSuggestDialog(true)}
             />
           </div>
         )}
@@ -4643,6 +4652,23 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             </div>
           </div>
         )}
+
+        <SuggestDialog
+          isOpen={showSuggestDialog}
+          onClose={() => setShowSuggestDialog(false)}
+          profile={profile?.content ?? ''}
+          newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
+          cap={{ commentCap: 30 }}
+          briefingModel={config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro'}
+          provider={(
+            MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
+          ).toLowerCase()}
+          password={password}
+          onAccept={(revisedProfile, rationale, newCutoff) => {
+            saveSuggested(revisedProfile, newCutoff, rationale);
+            setShowSuggestDialog(false);
+          }}
+        />
       </div>
     </div>
   );
