@@ -22,8 +22,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AVAILABLE_MODELS, MODEL_REGISTRY } from '../utils/models';
 import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
 import BriefingView from './briefing/BriefingView.jsx';
+import YourProfile from './profile/YourProfile.jsx';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
+import { useFeedback } from '../hooks/useFeedback.js';
 
 // Distribution that uses the full 0-10 range with decimals
 const generateRealisticScore = () => {
@@ -369,18 +371,16 @@ function ArxivAnalyzer() {
   // Briefing (Phase 1) state
   const {
     profile,
-    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
     updateProfile,
-    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    // eslint-disable-next-line no-unused-vars -- wired into <SuggestDialog/> in Task 33
     saveSuggested,
-    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
     revertToRevision,
-    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
     migrationNotice,
-    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
     dismissMigrationNotice,
   } = useProfile({ scoringCriteria: config.scoringCriteria });
   const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
+  const feedback = useFeedback();
+  const newInteractionCount = feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0).length;
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthesisError, setSynthesisError] = useState(null);
   const [quickSummariesById, setQuickSummariesById] = useState({});
@@ -3245,6 +3245,29 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             Logout
           </button>
         </div>
+
+        {/* Your Profile Panel (Phase 1.5) */}
+        <YourProfile
+          profile={profile}
+          updateProfile={updateProfile}
+          migrationNotice={migrationNotice}
+          dismissMigrationNotice={dismissMigrationNotice}
+          revertToRevision={revertToRevision}
+          newInteractionCount={newInteractionCount}
+          onScrollToFeedback={() => {
+            const el = document.getElementById('feedback-panel');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          onPreviewClick={() => {
+            // Task 33: wire to setShowPreviewPanel(true)
+            console.log('[Phase 1.5] Preview clicked — Task 33 will wire this');
+          }}
+          onSuggestClick={() => {
+            // Task 33: wire to setShowSuggestDialog(true)
+            console.log('[Phase 1.5] Suggest clicked — Task 33 will wire this');
+          }}
+          disabled={processing?.isRunning ?? false}
+        />
 
         {/* Configuration Panel */}
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
