@@ -605,7 +605,29 @@ function getContentDepth(targetDuration) {
 }
 
 // Generate clean prompt (less constrained, more natural)
-function generateCleanPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth) {
+function renderBriefingContext(briefing) {
+  if (!briefing) return '';
+  const themes = Array.isArray(briefing.themes)
+    ? briefing.themes
+        .map((t, i) => `  ${i + 1}. ${t.title ?? ''}${t.summary ? ` — ${t.summary}` : ''}`)
+        .join('\n')
+    : '';
+  return `
+EDITORIAL CONTEXT (from briefing already prepared for this researcher):
+${briefing.executiveSummary ?? ''}
+${themes ? `\nBriefing themes:\n${themes}` : ''}
+
+Use this editorial framing to shape emphasis and narrative flow. Do NOT copy it verbatim; do NOT treat it as an additional source. It is a hint for how this researcher is reading these papers.
+`;
+}
+
+function generateCleanPrompt(
+  relevantPapers,
+  scoringCriteria,
+  targetDuration,
+  contentDepth,
+  briefing
+) {
   return `You are preparing a discussion guide for NotebookLM using these ${relevantPapers.length} papers:
 
 ${relevantPapers.map((p, i) => `[P${i + 1}] "${p.title}"`).join('\n')}
@@ -614,6 +636,7 @@ CONSTRAINT: Reference papers using [P#] notation only. If papers don't match the
 
 RESEARCH CONTEXT:
 ${scoringCriteria}
+${renderBriefingContext(briefing)}
 
 DETAILED PAPER INFORMATION:
 ${relevantPapers
@@ -643,7 +666,13 @@ Structure your response with proper markdown headers and clear organization. Foc
 }
 
 // Generate strict prompt (heavily constrained to prevent hallucination)
-function generateStrictPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth) {
+function generateStrictPrompt(
+  relevantPapers,
+  scoringCriteria,
+  targetDuration,
+  contentDepth,
+  briefing
+) {
   const prompt = `You are preparing a discussion guide for NotebookLM. NotebookLM will use this guide along with the full analysis report to generate an expert-level technical podcast discussion (approximately ${targetDuration} minutes).
 
 ⚠️ CRITICAL ANTI-HALLUCINATION PROTOCOL ⚠️
@@ -671,7 +700,7 @@ CONFIRM: You will discuss ONLY these ${relevantPapers.length} papers listed abov
 
 RESEARCH CONTEXT:
 ${scoringCriteria}
-
+${renderBriefingContext(briefing)}
 DETAILED PAPER INFORMATION:
 ${relevantPapers
   .map(
@@ -859,6 +888,7 @@ export default async function handler(req, res) {
     model = 'gemini-2.5-pro',
     password,
     enableHallucinationCheck = true,
+    briefing = null,
   } = req.body;
 
   // Check password
@@ -892,7 +922,13 @@ export default async function handler(req, res) {
     }
 
     // Start with clean prompt by default
-    let prompt = generateCleanPrompt(relevantPapers, scoringCriteria, targetDuration, contentDepth);
+    let prompt = generateCleanPrompt(
+      relevantPapers,
+      scoringCriteria,
+      targetDuration,
+      contentDepth,
+      briefing
+    );
     let useStrictMode = false;
     let hallucinationDetected = false;
     let hallucinationIssues = [];
@@ -966,7 +1002,8 @@ export default async function handler(req, res) {
           relevantPapers,
           scoringCriteria,
           targetDuration,
-          contentDepth
+          contentDepth,
+          briefing
         );
         responseText = await callAIModel(model, prompt);
 

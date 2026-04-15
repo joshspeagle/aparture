@@ -3041,6 +3041,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             model: notebookLMModel,
             password,
             enableHallucinationCheck,
+            briefing: currentBriefing?.briefing ?? null,
           }),
         });
 
