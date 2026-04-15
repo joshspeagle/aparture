@@ -367,7 +367,19 @@ function ArxivAnalyzer() {
   const [hallucinationWarning, setHallucinationWarning] = useState(null);
 
   // Briefing (Phase 1) state
-  const [profile, setProfile] = useProfile();
+  const {
+    profile,
+    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    updateProfile,
+    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    saveSuggested,
+    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    revertToRevision,
+    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    migrationNotice,
+    // eslint-disable-next-line no-unused-vars -- wired into <YourProfile/> in Task 31
+    dismissMigrationNotice,
+  } = useProfile({ scoringCriteria: config.scoringCriteria });
   const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthesisError, setSynthesisError] = useState(null);
@@ -1725,7 +1737,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
           const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
             const requestBody = {
               papers: batch.map((p) => ({ title: p.title, id: p.id, abstract: p.abstract })),
-              scoringCriteria: config.scoringCriteria,
+              scoringCriteria: profile.content,
               password: password,
               model: config.filterModel,
             };
@@ -1921,7 +1933,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
           const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
             const requestBody = {
               papers: batch,
-              scoringCriteria: config.scoringCriteria,
+              scoringCriteria: profile.content,
               password: password,
               model: config.scoringModel,
             };
@@ -2183,7 +2195,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
                 initialScore: p.initialScore,
                 initialJustification: p.initialJustification,
               })),
-              scoringCriteria: config.scoringCriteria,
+              scoringCriteria: profile.content,
               password: password,
               model: config.postProcessingModel || config.scoringModel,
             };
@@ -2366,7 +2378,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
           const makeAPICall = async (correctionPrompt = null, isCorrection = false) => {
             const requestBody = {
               pdfUrl: paper.pdfUrl,
-              scoringCriteria: config.scoringCriteria,
+              scoringCriteria: profile.content,
               originalScore: paper.relevanceScore,
               originalJustification: paper.scoreJustification,
               password: password,
@@ -2904,7 +2916,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
               ...paper,
               pdfAnalysis: paper.pdfAnalysis || null,
             })),
-            scoringCriteria: config.scoringCriteria,
+            scoringCriteria: profile.content,
             targetDuration: podcastDuration,
             model: notebookLMModel,
             password,
@@ -3052,7 +3064,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          profile,
+          profile: profile.content,
           papers,
           history,
           provider,
@@ -3471,45 +3483,6 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   accuracy.
                 </p>
               </div>
-            </div>
-
-            {/* Research Profile for Briefing Synthesis (Phase 1) */}
-            <div>
-              <label
-                htmlFor="aparture-profile"
-                className="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Research Profile (for Briefing Synthesis)
-              </label>
-              <p className="text-xs text-gray-400 mb-2">
-                Describe your research in prose. Every synthesis call will be grounded in this text.
-                This is the Phase 1 equivalent of a <code>profile.md</code> file — Phase 2 will move
-                it to disk.
-              </p>
-              <textarea
-                id="aparture-profile"
-                value={profile}
-                onChange={(e) => setProfile(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white resize-y"
-                placeholder="Describe your research interests in plain prose…"
-                disabled={processing.isRunning}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Scoring Criteria (Research Interests)
-              </label>
-              <textarea
-                value={config.scoringCriteria}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, scoringCriteria: e.target.value }))
-                }
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white h-32 resize-none"
-                placeholder="Describe your research interests..."
-                disabled={processing.isRunning}
-              />
             </div>
 
             {/* Advanced Options */}
