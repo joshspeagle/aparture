@@ -3,6 +3,7 @@ const TYPE_OPTIONS = [
   { value: 'stars', label: '★ Stars' },
   { value: 'dismisses', label: '⊘ Dismisses' },
   { value: 'comments', label: '💬 Comments' },
+  { value: 'overrides', label: '⇄ Overrides' },
 ];
 
 const DATE_OPTIONS = [

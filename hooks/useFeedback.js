@@ -117,6 +117,30 @@ export function useFeedback() {
     });
   }, []);
 
+  // Phase 1.5.1 B3: filter-override events record when the user manually
+  // changed a paper's filter verdict before scoring. The suggest-profile
+  // flow uses these as a signal that the profile may be too narrow or too
+  // broad for the filter stage.
+  const addFilterOverride = useCallback((paper) => {
+    setEvents((prev) => {
+      const event = {
+        id: makeId(),
+        type: 'filter-override',
+        arxivId: paper.arxivId,
+        paperTitle: paper.paperTitle,
+        summary: paper.summary ?? '',
+        justification: paper.justification ?? '',
+        originalVerdict: paper.originalVerdict,
+        newVerdict: paper.newVerdict,
+        timestamp: Date.now(),
+        briefingDate: paper.briefingDate,
+      };
+      const next = [...prev, event];
+      persist(next);
+      return next;
+    });
+  }, []);
+
   const getNewSince = useCallback((cutoff) => events.filter((e) => e.timestamp > cutoff), [events]);
 
   const markIncorporated = useCallback(() => {
@@ -129,6 +153,7 @@ export function useFeedback() {
     addDismiss,
     addPaperComment,
     addGeneralComment,
+    addFilterOverride,
     getNewSince,
     markIncorporated,
   };

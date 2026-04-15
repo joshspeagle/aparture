@@ -187,6 +187,12 @@ function validateFilterResponse(responseText, expectedCount) {
       if (!validVerdicts.includes(item.verdict)) {
         errors.push(`Item ${index}: verdict must be YES, NO, or MAYBE (got: ${item.verdict})`);
       }
+      if (typeof item.summary !== 'string' || item.summary.trim().length === 0) {
+        errors.push(`Item ${index}: summary must be a non-empty string`);
+      }
+      if (typeof item.justification !== 'string' || item.justification.trim().length === 0) {
+        errors.push(`Item ${index}: justification must be a non-empty string`);
+      }
     });
 
     return { isValid: errors.length === 0, errors };
@@ -219,8 +225,10 @@ export default async function handler(req, res) {
 Research Interests:
 ${scoringCriteria}
 
-For each paper below, determine if it is potentially relevant to the research interests specified above.
-Respond with ONLY: YES (clearly relevant), NO (clearly not relevant), or MAYBE (possibly relevant, needs closer look).
+For each paper below, produce three things:
+1. A one-sentence SUMMARY of what the paper is actually about, so the user can tell at a glance whether the model understood it correctly.
+2. A VERDICT: YES (clearly relevant), NO (clearly not relevant), or MAYBE (possibly relevant, needs closer look).
+3. A one-sentence JUSTIFICATION explaining the verdict with reference to the research interests above. Be specific — "aligns with mechanistic interpretability" is better than "relevant".
 
 Papers to screen:
 ${papers
@@ -234,23 +242,30 @@ Abstract: ${p.abstract || 'No abstract available'}`
 FILTERING GUIDANCE:
 - YES: Papers that clearly align with the specified research interests
 - NO: Papers clearly outside the research areas or using fundamentally different approaches
-- MAYBE: Papers with potential relevance that need deeper review (borderline cases)
-- Focus on the specific criteria provided, not general AI/ML relevance
-- Consider interdisciplinary connections only if they relate to the stated interests
+- MAYBE: Papers with potential relevance that need deeper review (borderline cases). **Prefer MAYBE over NO when the abstract is ambiguous** — dismissed papers are expensive to recover, so err on the side of passing through borderline cases. Reserve NO for clear mismatches.
+- Focus on the specific criteria provided, not general AI/ML relevance.
+- Consider interdisciplinary connections only if they relate to the stated interests.
+- Ground every justification in the paper's abstract, not in guesses about what the title implies.
 
 Respond ONLY with a valid JSON array in this exact format:
 [
   {
     "paperIndex": 1,
-    "verdict": "YES"
+    "verdict": "YES",
+    "summary": "One-sentence summary of what Paper 1 is about.",
+    "justification": "One-sentence reason for the verdict, citing the research interests."
   },
   {
     "paperIndex": 2,
-    "verdict": "NO"
+    "verdict": "NO",
+    "summary": "One-sentence summary of what Paper 2 is about.",
+    "justification": "One-sentence reason for the verdict."
   },
   {
     "paperIndex": 3,
-    "verdict": "MAYBE"
+    "verdict": "MAYBE",
+    "summary": "One-sentence summary of what Paper 3 is about.",
+    "justification": "One-sentence reason for the verdict."
   }
 ]
 
@@ -280,13 +295,15 @@ Original response:
 ${cleanedText}
 
 Please provide a corrected response with exactly ${papers.length} filter verdicts.
-Each item must have: paperIndex (number), verdict ("YES", "NO", or "MAYBE").
+Each item must have: paperIndex (number), verdict ("YES", "NO", or "MAYBE"), summary (non-empty string), justification (non-empty string).
 
 Your entire response MUST ONLY be a valid JSON array in this exact format:
 [
   {
     "paperIndex": 1,
-    "verdict": "YES"
+    "verdict": "YES",
+    "summary": "One-sentence summary of what the paper is about.",
+    "justification": "One-sentence reason for the verdict."
   }
 ]`;
 

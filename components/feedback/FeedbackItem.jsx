@@ -13,6 +13,8 @@ function borderClass(type) {
       return 'border-l-purple-500';
     case 'general-comment':
       return 'border-l-blue-500';
+    case 'filter-override':
+      return 'border-l-orange-500';
     default:
       return 'border-l-slate-700';
   }
@@ -28,6 +30,8 @@ function iconFor(type) {
       return '💬';
     case 'general-comment':
       return '💭';
+    case 'filter-override':
+      return '⇄';
     default:
       return '·';
   }
@@ -37,6 +41,9 @@ function labelFor(event) {
   const icon = iconFor(event.type);
   if (event.type === 'general-comment') {
     return `${icon} general comment`;
+  }
+  if (event.type === 'filter-override') {
+    return `${icon} filter override on ${event.paperTitle ?? event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
   }
   const title = event.paperTitle ?? event.arxivId ?? 'paper';
   return `${icon} ${event.type} on ${title} (${event.arxivId})`;
@@ -52,6 +59,8 @@ function metaLabel(type) {
       return 'comment';
     case 'general-comment':
       return 'general';
+    case 'filter-override':
+      return 'filter override';
     default:
       return type;
   }
@@ -63,6 +72,7 @@ export default function FeedbackItem({ event }) {
   const date = formatDate(event.timestamp);
   const isGeneral = event.type === 'general-comment';
   const isPaperComment = event.type === 'paper-comment';
+  const isFilterOverride = event.type === 'filter-override';
 
   return (
     <article
@@ -77,6 +87,27 @@ export default function FeedbackItem({ event }) {
             </span>
             {event.text}
           </p>
+          <p className="mt-1 text-[10px] text-slate-500">
+            {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
+          </p>
+        </div>
+      ) : isFilterOverride ? (
+        <div>
+          <p className="text-sm text-slate-200">
+            <span className="mr-1" aria-hidden>
+              {icon}
+            </span>
+            {event.paperTitle ?? event.arxivId}
+            <span className="ml-2 text-xs text-slate-500">{event.arxivId}</span>
+          </p>
+          <p className="mt-1 text-xs text-orange-400">
+            filter said <span className="font-medium">{event.originalVerdict}</span>, user changed
+            to <span className="font-medium">{event.newVerdict}</span>
+          </p>
+          {event.summary && <p className="mt-1 text-xs italic text-slate-400">{event.summary}</p>}
+          {event.justification && (
+            <p className="mt-0.5 text-xs text-slate-500">{event.justification}</p>
+          )}
           <p className="mt-1 text-[10px] text-slate-500">
             {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
           </p>

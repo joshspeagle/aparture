@@ -8,6 +8,7 @@ export function filterEvents(events, filters, { now = Date.now(), cutoff = 0 } =
     if (filters.type === 'dismisses' && e.type !== 'dismiss') return false;
     if (filters.type === 'comments' && !['paper-comment', 'general-comment'].includes(e.type))
       return false;
+    if (filters.type === 'overrides' && e.type !== 'filter-override') return false;
     if (filters.dateRange && filters.dateRange !== 'all') {
       const days = parseInt(filters.dateRange, 10);
       if (Number.isFinite(days)) {

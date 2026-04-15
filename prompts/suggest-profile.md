@@ -16,7 +16,7 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
 
 1. **Preserve the user's voice.** Do not impose a different editorial style or rewrite sections that don't need to change. The user wrote their profile intentionally; your job is to adjust, not replace.
 
-2. **Weight signals by importance.** Stars and dismisses are the strongest signals — explicit up/down votes on whole papers. Per-paper comments add nuance. General comments inform overall framing.
+2. **Weight signals by importance.** Stars and dismisses are the strongest signals — explicit up/down votes on whole papers. Per-paper comments add nuance. General comments inform overall framing. Filter overrides (when present) mean the user disagreed with the Stage 1 triage — if they are frequent or all in one direction (e.g., the user keeps flipping NO → YES on a specific topic), it suggests the profile may be too narrow for the filter stage and should be broadened in that area.
 
 3. **Make small, specific changes.** An addition should be a sentence or phrase, not a paragraph. Prefer "added bullet about mechanistic interpretability" over "rewrote the Methods section."
 

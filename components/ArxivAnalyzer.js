@@ -1904,6 +1904,11 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
           if (paperIdx >= 0 && paperIdx < batch.length) {
             const paper = batch[paperIdx];
             paper.filterVerdict = verdict.verdict;
+            // Phase 1.5.1: capture the original verdict + the model's summary
+            // and justification so the UI can show them and track user overrides.
+            paper.originalVerdict = verdict.verdict;
+            paper.filterSummary = verdict.summary ?? '';
+            paper.filterJustification = verdict.justification ?? '';
 
             // Update live results
             if (verdict.verdict === 'YES') {
@@ -1962,6 +1967,37 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
   // Score abstracts using chosen API (or mock for dry run)
   const scoreAbstracts = async (papers, isDryRun = false) => {
+    // Phase 1.5.1 B3: record filter-override events for any papers whose
+    // verdict was changed by the user before scoring started. Compare the
+    // current filterResults buckets against each paper's originalVerdict
+    // (captured at filter time). One filter-override event per changed
+    // paper.
+    try {
+      const allBuckets = [
+        { bucket: 'YES', papers: filterResults.yes },
+        { bucket: 'MAYBE', papers: filterResults.maybe },
+        { bucket: 'NO', papers: filterResults.no },
+      ];
+      const today = new Date().toISOString().slice(0, 10);
+      for (const { bucket: currentVerdict, papers: bucketPapers } of allBuckets) {
+        for (const paper of bucketPapers) {
+          if (paper.originalVerdict && paper.originalVerdict !== currentVerdict) {
+            feedback.addFilterOverride({
+              arxivId: paper.arxivId ?? paper.id,
+              paperTitle: paper.title,
+              summary: paper.filterSummary ?? '',
+              justification: paper.filterJustification ?? '',
+              originalVerdict: paper.originalVerdict,
+              newVerdict: currentVerdict,
+              briefingDate: today,
+            });
+          }
+        }
+      }
+    } catch (overrideErr) {
+      console.warn('[Phase 1.5.1] Failed to record filter overrides:', overrideErr);
+    }
+
     setProcessing((prev) => ({
       ...prev,
       stage: 'initial-scoring',
@@ -3069,6 +3105,33 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
   };
 
   // Generate Briefing (Phase 1)
+  // Phase 1.5.1 B3: click-cycle verdict override. Moves a paper between
+  // filterResults buckets (yes/maybe/no) when the user clicks its verdict pill.
+  // The paper's originalVerdict is preserved (captured at filter time) so that
+  // when scoring runs we can diff current vs. original and record filter-override
+  // feedback events for any changed papers.
+  const VERDICT_CYCLE = { YES: 'MAYBE', MAYBE: 'NO', NO: 'YES' };
+  const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
+  const cycleFilterVerdict = useCallback(
+    (paperId, currentVerdict) => {
+      const nextVerdict = VERDICT_CYCLE[currentVerdict] ?? 'YES';
+      setFilterResults((prev) => {
+        const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
+        const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
+        if (!currentBucket || !nextBucket) return prev;
+        const paper = prev[currentBucket].find((p) => p.id === paperId);
+        if (!paper) return prev;
+        const updatedPaper = { ...paper, filterVerdict: nextVerdict };
+        return {
+          ...prev,
+          [currentBucket]: prev[currentBucket].filter((p) => p.id !== paperId),
+          [nextBucket]: [...prev[nextBucket], updatedPaper],
+        };
+      });
+    },
+    [VERDICT_CYCLE, BUCKET_BY_VERDICT]
+  );
+
   const handleGenerateBriefing = async () => {
     setSynthesizing(true);
     setSynthesisError(null);
@@ -4791,6 +4854,62 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   scoredPaperIds.has(p.id)
                 ).length;
 
+                // Helper: render a single filter result row with the Phase 1.5.1
+                // summary + justification + click-cycle override pill. Defined
+                // inline so it closes over cycleFilterVerdict and the verdict
+                // passed in.
+                const renderFilterRow = (paper, verdict, borderClass) => {
+                  const pillClass =
+                    verdict === 'YES'
+                      ? 'bg-green-900/40 text-green-300 border-green-700 hover:border-green-500'
+                      : verdict === 'MAYBE'
+                        ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700 hover:border-yellow-500'
+                        : 'bg-red-900/40 text-red-300 border-red-700 hover:border-red-500';
+                  const overridden = paper.originalVerdict && paper.originalVerdict !== verdict;
+                  return (
+                    <div
+                      key={paper.id}
+                      className={`bg-slate-800/50 rounded-lg p-3 border ${borderClass}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-white">{paper.title}</h4>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {paper.authors.length > 2
+                              ? `${paper.authors[0]} et al.`
+                              : paper.authors.join(', ')}
+                          </p>
+                          {paper.filterSummary && (
+                            <p className="text-xs text-slate-300 italic mt-2">
+                              {paper.filterSummary}
+                            </p>
+                          )}
+                          {paper.filterJustification && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              <span className="font-medium">Verdict reasoning:</span>{' '}
+                              {paper.filterJustification}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => cycleFilterVerdict(paper.id, verdict)}
+                          title={
+                            overridden
+                              ? `Filter originally said ${paper.originalVerdict}. Click to cycle.`
+                              : 'Click to override the filter verdict (cycles YES → MAYBE → NO)'
+                          }
+                          disabled={processing.isRunning}
+                          className={`shrink-0 px-2 py-1 text-[10px] uppercase tracking-wider rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${pillClass}`}
+                        >
+                          {verdict}
+                          {overridden && <span className="ml-1">⇄</span>}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                };
+
                 return (
                   <>
                     {/* YES papers (excluding scored ones) */}
@@ -4805,23 +4924,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                           )}
                         </h3>
                         <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
-                          {unscoredYes.map((paper) => (
-                            <div
-                              key={paper.id}
-                              className="bg-slate-800/50 rounded-lg p-3 border border-green-900/50"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-white">{paper.title}</h4>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {paper.authors.length > 2
-                                      ? `${paper.authors[0]} et al.`
-                                      : paper.authors.join(', ')}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                          {unscoredYes.map((paper) =>
+                            renderFilterRow(paper, 'YES', 'border-green-900/50')
+                          )}
                         </div>
                       </div>
                     )}
@@ -4838,23 +4943,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                           )}
                         </h3>
                         <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
-                          {unscoredMaybe.map((paper) => (
-                            <div
-                              key={paper.id}
-                              className="bg-slate-800/50 rounded-lg p-3 border border-yellow-900/50"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-white">{paper.title}</h4>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {paper.authors.length > 2
-                                      ? `${paper.authors[0]} et al.`
-                                      : paper.authors.join(', ')}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                          {unscoredMaybe.map((paper) =>
+                            renderFilterRow(paper, 'MAYBE', 'border-yellow-900/50')
+                          )}
                         </div>
                       </div>
                     )}
@@ -4866,23 +4957,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                           ✗ NO ({unscoredNo.length} filtered out)
                         </h3>
                         <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                          {unscoredNo.map((paper) => (
-                            <div
-                              key={paper.id}
-                              className="bg-slate-800/50 rounded-lg p-3 border border-red-900/50"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h4 className="text-sm font-medium text-white">{paper.title}</h4>
-                                  <p className="text-xs text-gray-400 mt-1">
-                                    {paper.authors.length > 2
-                                      ? `${paper.authors[0]} et al.`
-                                      : paper.authors.join(', ')}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                          {unscoredNo.map((paper) =>
+                            renderFilterRow(paper, 'NO', 'border-red-900/50')
+                          )}
                         </div>
                       </div>
                     )}
