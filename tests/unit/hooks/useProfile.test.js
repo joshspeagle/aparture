@@ -49,9 +49,11 @@ describe('useProfile', () => {
     act(() => {
       result.current.updateProfile('v2');
     });
-    const firstRevisionId = result.current.profile.revisions[1].createdAt;
+    // revisions[0] is the most recent revision, archived when v1 was overwritten
+    // by v2. Its content field holds 'v1' — the state we want to revert to.
+    const v1RevisionId = result.current.profile.revisions[0].createdAt;
     act(() => {
-      result.current.revertToRevision(firstRevisionId);
+      result.current.revertToRevision(v1RevisionId);
     });
     expect(result.current.profile.content).toBe('v1');
   });
