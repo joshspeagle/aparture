@@ -526,6 +526,20 @@ function ArxivAnalyzer() {
           }
         }
         if (parsed.results) setResults(parsed.results);
+        if (parsed.filterResults) {
+          // Restore persisted filter verdicts but reset transient progress
+          // fields so a refresh mid-run doesn't strand the UI in an
+          // "inProgress" state for a stage that is no longer running.
+          setFilterResults({
+            total: parsed.filterResults.total ?? 0,
+            yes: parsed.filterResults.yes ?? [],
+            maybe: parsed.filterResults.maybe ?? [],
+            no: parsed.filterResults.no ?? [],
+            inProgress: false,
+            currentBatch: 0,
+            totalBatches: 0,
+          });
+        }
         if (parsed.processingTiming) {
           const timing = { ...parsed.processingTiming };
           // Convert date strings back to Date objects
@@ -563,12 +577,26 @@ function ArxivAnalyzer() {
 
   // Save state to localStorage
   useEffect(() => {
-    if (results.allPapers.length > 0 || results.scoredPapers.length > 0 || password) {
+    const hasResults =
+      results.allPapers.length > 0 ||
+      results.scoredPapers.length > 0 ||
+      filterResults.yes.length > 0 ||
+      filterResults.maybe.length > 0 ||
+      filterResults.no.length > 0;
+    if (hasResults || password) {
       localStorage.setItem(
         'arxivAnalyzerState',
         JSON.stringify({
           config,
           results,
+          // Save only stable filter fields; transient progress fields are
+          // reset on load via the load effect.
+          filterResults: {
+            total: filterResults.total,
+            yes: filterResults.yes,
+            maybe: filterResults.maybe,
+            no: filterResults.no,
+          },
           processingTiming,
           testState,
           notebookLM: {
@@ -582,6 +610,7 @@ function ArxivAnalyzer() {
   }, [
     config,
     results,
+    filterResults,
     processingTiming,
     testState,
     podcastDuration,
