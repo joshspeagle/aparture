@@ -131,6 +131,7 @@ export default [
       'components/profile/**/*.jsx',
       'components/feedback/**/*.jsx',
       'hooks/**/*.js',
+      'tests/component/**/*.jsx',
     ],
     rules: {
       'react/prop-types': 'off',
