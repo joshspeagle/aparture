@@ -318,9 +318,61 @@ const DEFAULT_CONFIG = {
 // Available AI models
 // AVAILABLE_MODELS is now imported from utils/models.js
 
+// Phase 1.5: lazy-initialize the config state synchronously from localStorage so
+// hooks that depend on config values (notably useProfile, which reads
+// config.scoringCriteria for the Phase 1 → 1.5 migration) see the real persisted
+// values on first render, not the hardcoded DEFAULT_CONFIG.
+function readInitialConfig() {
+  if (typeof window === 'undefined') return DEFAULT_CONFIG;
+  try {
+    const savedState = window.localStorage.getItem('arxivAnalyzerState');
+    if (!savedState) return DEFAULT_CONFIG;
+    const parsed = JSON.parse(savedState);
+    if (!parsed?.config) return DEFAULT_CONFIG;
+
+    // Convert old categories string to selectedCategories array
+    if (parsed.config.categories && !parsed.config.selectedCategories) {
+      parsed.config.selectedCategories = parsed.config.categories
+        .split(',')
+        .map((c) => c.trim())
+        .filter((c) => c);
+      delete parsed.config.categories;
+    }
+
+    // Outdated config version → use fresh defaults
+    if (!parsed.config.version || parsed.config.version < DEFAULT_CONFIG.version) {
+      return DEFAULT_CONFIG;
+    }
+
+    // Migrate old two-model setup
+    if (parsed.config.screeningModel && !parsed.config.scoringModel) {
+      parsed.config.filterModel = 'gemini-2.5-flash-lite';
+      parsed.config.scoringModel = parsed.config.screeningModel;
+      parsed.config.pdfModel = parsed.config.deepAnalysisModel;
+      parsed.config.filterBatchSize = 3;
+      parsed.config.scoringBatchSize = parsed.config.batchSize || 3;
+      parsed.config.useQuickFilter = false;
+      parsed.config.categoriesToScore = ['YES', 'MAYBE'];
+      delete parsed.config.screeningModel;
+      delete parsed.config.deepAnalysisModel;
+    }
+    // Migrate even older single-model setup
+    if (parsed.config.selectedModel) {
+      parsed.config.filterModel = 'gemini-2.5-flash-lite';
+      parsed.config.scoringModel = 'gemini-3-flash';
+      parsed.config.pdfModel = parsed.config.selectedModel;
+      delete parsed.config.selectedModel;
+    }
+
+    return { ...DEFAULT_CONFIG, ...parsed.config };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}
+
 // Main Application Component
 function ArxivAnalyzer() {
-  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [config, setConfig] = useState(readInitialConfig);
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);

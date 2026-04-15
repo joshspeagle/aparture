@@ -17,7 +17,22 @@ function readInitialState(config) {
   const stored = window.localStorage.getItem(PROFILE_KEY);
   if (stored) {
     try {
-      return { profile: JSON.parse(stored), notice: null };
+      const parsed = JSON.parse(stored);
+
+      // Recovery path for an early Phase 1.5 bug where the migration ran
+      // against the hardcoded DEFAULT_CONFIG.scoringCriteria (because config
+      // state was not yet lazy-initialized from localStorage at the time
+      // useProfile first ran). Detect the signature: the user has never
+      // edited their profile (revisions empty) AND the stored content does
+      // not match the scoringCriteria the caller is currently passing AND
+      // the caller actually has a scoringCriteria value to migrate from.
+      const callerCriteria = (config?.scoringCriteria || '').trim();
+      if (parsed?.revisions?.length === 0 && callerCriteria && parsed.content !== callerCriteria) {
+        // Clear the corrupted key and re-run migration against the real config.
+        window.localStorage.removeItem(PROFILE_KEY);
+      } else {
+        return { profile: parsed, notice: null };
+      }
     } catch {
       // fall through to migration on parse failure
     }
