@@ -174,3 +174,67 @@
 .briefing-prose .block-question {
   background: var(--aparture-question);
 }
+
+.briefing-prose .paper-card .action-row button.active-star {
+  color: var(--aparture-accent);
+  font-weight: 600;
+}
+
+.briefing-prose .paper-card .action-row button.active-dismiss {
+  color: var(--aparture-mute);
+  text-decoration: line-through;
+}
+
+.briefing-prose .paper-card .comment-input {
+  margin-top: var(--aparture-space-3);
+  padding: var(--aparture-space-3);
+  background: var(--aparture-bg);
+  border-top: 1px solid var(--aparture-hairline);
+  border-radius: 0 0 4px 4px;
+}
+
+.briefing-prose .paper-card .comment-input textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: var(--aparture-space-2);
+  font-family: var(--aparture-font-sans);
+  font-size: var(--aparture-text-sm);
+  color: var(--aparture-ink);
+  border: 1px solid var(--aparture-hairline);
+  border-radius: 3px;
+  background: var(--aparture-surface);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.briefing-prose .paper-card .comment-input .comment-actions {
+  display: flex;
+  gap: var(--aparture-space-2);
+  justify-content: flex-end;
+  margin-top: var(--aparture-space-2);
+}
+
+.briefing-prose .paper-card .comment-input .comment-actions button {
+  padding: var(--aparture-space-1) var(--aparture-space-3);
+  font-family: var(--aparture-font-sans);
+  font-size: var(--aparture-text-xs);
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.briefing-prose .paper-card .comment-input .comment-actions button:first-child {
+  background: transparent;
+  border: 1px solid var(--aparture-hairline);
+  color: var(--aparture-mute);
+}
+
+.briefing-prose .paper-card .comment-input .comment-actions button:last-child {
+  background: var(--aparture-accent);
+  color: #fff;
+  border: 1px solid var(--aparture-accent);
+}
+
+.briefing-prose .paper-card .comment-input .comment-actions button:last-child:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
