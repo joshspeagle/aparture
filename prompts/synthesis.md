@@ -96,3 +96,11 @@ These are not chat messages. They are file editor proposals. Each question may i
 - `themes` is required and must contain at least one theme.
 - `papers` is required and must contain one entry per final-round paper from the input list.
 - Do not emit any field not defined in the schema.
+
+# Sourcing discipline
+
+- Every claim you make about a specific paper must be grounded in that paper's abstract, quickSummary, or fullReport as provided in the input. Do not invent findings, methodology details, author opinions, numbers, or conclusions that are not explicitly supported by the source material.
+- When you quote or paraphrase a paper's argument in `whyMatters`, `onelinePitch`, or a theme's `argument`, the paraphrase must be something the source text actually says — not a plausible-sounding extrapolation from the title.
+- If you are uncertain whether a claim is supported, omit it rather than state it. The briefing is better short and accurate than long and embellished.
+- Cross-paper claims in `themes.argument` and `debates.summary` must be supported by content in at least two of the cited papers. Do not synthesize a theme from what the paper titles suggest without checking the actual paper material.
+- This is a hard constraint. A later validation pass will audit the briefing against the source material; unsupported claims will be flagged.

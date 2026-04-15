@@ -25,6 +25,7 @@ export default async function handler(req, res) {
     budgetThresholds,
     allowOverBudget = false,
     callModelMode,
+    retryHint,
   } = req.body ?? {};
 
   // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
@@ -63,7 +64,13 @@ export default async function handler(req, res) {
       papers,
       history: history ?? [],
     });
-    const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? prompt;
+    // Phase 1.5.1: optional retry hint from the client-side hallucination
+    // check + retry flow. Appended to the prompt so the model knows this is
+    // a second attempt and needs to ground claims more carefully.
+    const promptWithHint = retryHint
+      ? `${prompt}\n\n# Retry hint from validator\n\n${retryHint}`
+      : prompt;
+    const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? promptWithHint;
 
     // Token budget pre-flight
     const estimatedTokens = estimateTokens({ provider, model: modelApiId, text: finalPrompt });

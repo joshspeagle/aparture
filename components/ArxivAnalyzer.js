@@ -313,6 +313,9 @@ const DEFAULT_CONFIG = {
   postProcessingModel: 'gemini-3-flash', // Model for post-processing (defaults to scoringModel)
   pdfModel: 'gemini-3.1-pro', // RENAMED from deepAnalysisModel
   briefingModel: 'gemini-3.1-pro', // Phase 1.5: synthesis + suggest-profile model
+  // Phase 1.5.1: hallucination check retry criteria for briefing generation
+  briefingRetryOnYes: true, // Auto-retry if check returns YES (definite hallucination)
+  briefingRetryOnMaybe: false, // Auto-retry if check returns MAYBE (possible hallucination)
   maxAbstractDisplay: 500,
 };
 
@@ -452,6 +455,9 @@ function ArxivAnalyzer() {
   }
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthesisError, setSynthesisError] = useState(null);
+  // Phase 1.5.1: hallucination check result + retry stage indicator
+  const [briefingCheckResult, setBriefingCheckResult] = useState(null);
+  const [briefingStage, setBriefingStage] = useState(null); // 'synthesizing' | 'checking' | 'retrying' | null
   const [quickSummariesById, setQuickSummariesById] = useState({});
   const [fullReportsById, setFullReportsById] = useState({});
 
@@ -3066,6 +3072,8 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
   const handleGenerateBriefing = async () => {
     setSynthesizing(true);
     setSynthesisError(null);
+    setBriefingCheckResult(null);
+    setBriefingStage('synthesizing');
     try {
       const finalRanking = results?.finalRanking ?? [];
       if (finalRanking.length === 0) {
@@ -3138,26 +3146,95 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         paperIds: (h.briefing.papers ?? []).map((pp) => pp.arxivId),
       }));
 
-      // Call the synthesis route
-      const synthRes = await fetch('/api/synthesize', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      // Helper: call the synthesis route once. Accepts an optional retry hint
+      // to append to the prompt when regenerating after a failed check.
+      const callSynthesize = async (retryHint = null) => {
+        const body = {
           profile: profile.content,
           papers,
           history,
           provider,
           model: modelId,
           password,
-        }),
-      });
-      const synthJson = await synthRes.json();
-      if (!synthRes.ok) {
-        throw new Error(synthJson.error ?? 'synthesis failed');
+        };
+        if (retryHint) body.retryHint = retryHint;
+        const res = await fetch('/api/synthesize', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? 'synthesis failed');
+        return json;
+      };
+
+      // Helper: call the hallucination check route with a generated briefing
+      // + the papers corpus (abstracts + quick summaries + full reports).
+      const callCheckBriefing = async (briefingObj) => {
+        const corpus = papers.map((p) => ({
+          arxivId: p.arxivId,
+          title: p.title,
+          abstract: p.abstract,
+          quickSummary: quickById[p.arxivId] ?? '',
+          fullReport: p.fullReport,
+        }));
+        const res = await fetch('/api/check-briefing', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            briefing: briefingObj,
+            papers: corpus,
+            provider,
+            model: modelId,
+            password,
+          }),
+        });
+        const json = await res.json();
+        // Check failure is non-fatal — we fall back to trusting the briefing.
+        if (!res.ok) {
+          console.warn('[Phase 1.5.1] Hallucination check failed:', json.error);
+          return null;
+        }
+        return json;
+      };
+
+      // First synthesis pass
+      const synthJson = await callSynthesize();
+      let finalBriefing = synthJson.briefing;
+      let finalCheck = null;
+      let retried = false;
+
+      // Hallucination check + optional retry
+      setBriefingStage('checking');
+      finalCheck = await callCheckBriefing(finalBriefing);
+
+      if (finalCheck) {
+        const shouldRetry =
+          (finalCheck.verdict === 'YES' && (config.briefingRetryOnYes ?? true)) ||
+          (finalCheck.verdict === 'MAYBE' && (config.briefingRetryOnMaybe ?? false));
+
+        if (shouldRetry) {
+          setBriefingStage('retrying');
+          const retryHint = `A hallucination check on your previous briefing returned ${finalCheck.verdict}. Reason: ${finalCheck.justification} Ground all claims strictly in the provided source material this time.`;
+          try {
+            const retryJson = await callSynthesize(retryHint);
+            finalBriefing = retryJson.briefing;
+            // Re-run the check on the retry so the badge reflects the final state
+            setBriefingStage('checking');
+            const recheck = await callCheckBriefing(finalBriefing);
+            if (recheck) finalCheck = recheck;
+            retried = true;
+          } catch (retryErr) {
+            console.warn('[Phase 1.5.1] Retry synthesis failed, keeping original:', retryErr);
+          }
+        }
       }
 
+      setBriefingCheckResult(finalCheck ? { ...finalCheck, retried } : null);
+      setBriefingStage(null);
+
       const today = new Date().toISOString().slice(0, 10);
-      saveBriefing(today, synthJson.briefing);
+      saveBriefing(today, finalBriefing);
 
       // Cache the last analysis run for PreviewPanel (Phase 1.5).
       // Both finalRanking (local const above) and quickById are fully populated
@@ -3187,6 +3264,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
       setSynthesisError(String(err?.message ?? err));
     } finally {
       setSynthesizing(false);
+      setBriefingStage(null);
     }
   };
 
@@ -3621,6 +3699,47 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   and more expensive models for analyzing PDFs to optimize cost while maintaining
                   accuracy.
                 </p>
+              </div>
+
+              {/* Briefing Hallucination Check — retry criteria */}
+              <div className="mt-4 p-3 bg-slate-800/40 border border-slate-700 rounded-lg">
+                <p className="text-xs font-medium text-gray-300 mb-2">
+                  Briefing hallucination check
+                </p>
+                <p className="text-xs text-gray-500 mb-3">
+                  After a briefing is generated, a second model call audits it for unsupported
+                  claims. If the check flags problems, the briefing is regenerated up to one
+                  additional time based on the criteria below.
+                </p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.briefingRetryOnYes ?? true}
+                      onChange={(e) =>
+                        setConfig((prev) => ({ ...prev, briefingRetryOnYes: e.target.checked }))
+                      }
+                      className="rounded border-gray-600 text-red-500 focus:ring-red-500"
+                      disabled={processing.isRunning}
+                    />
+                    Retry briefing if the check returns{' '}
+                    <span className="text-red-400 font-medium">YES</span> (definite hallucination)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.briefingRetryOnMaybe ?? false}
+                      onChange={(e) =>
+                        setConfig((prev) => ({ ...prev, briefingRetryOnMaybe: e.target.checked }))
+                      }
+                      className="rounded border-gray-600 text-red-500 focus:ring-red-500"
+                      disabled={processing.isRunning}
+                    />
+                    Retry briefing if the check returns{' '}
+                    <span className="text-yellow-400 font-medium">MAYBE</span> (possible
+                    hallucination)
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -4321,13 +4440,30 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         {/* Briefing — Phase 1.5 synthesized reading view */}
         {results?.finalRanking?.length > 0 && (
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-            <div className="flex items-center mb-4">
-              <Newspaper className="w-5 h-5 mr-2 text-red-400" />
-              <h2 className="text-xl font-semibold">Briefing</h2>
-              {testState.dryRunInProgress && (
-                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                  <TestTube className="w-3 h-3" />
-                  TEST MODE
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <Newspaper className="w-5 h-5 mr-2 text-red-400" />
+                <h2 className="text-xl font-semibold">Briefing</h2>
+                {testState.dryRunInProgress && (
+                  <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                    <TestTube className="w-3 h-3" />
+                    TEST MODE
+                  </span>
+                )}
+              </div>
+              {briefingCheckResult && (
+                <span
+                  title={briefingCheckResult.justification}
+                  className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 ${
+                    briefingCheckResult.verdict === 'NO'
+                      ? 'bg-green-900/30 text-green-400'
+                      : briefingCheckResult.verdict === 'MAYBE'
+                        ? 'bg-yellow-900/30 text-yellow-400'
+                        : 'bg-red-900/30 text-red-400'
+                  }`}
+                >
+                  Hallucination check: {briefingCheckResult.verdict}
+                  {briefingCheckResult.retried && ' (after retry)'}
                 </span>
               )}
             </div>
@@ -4349,7 +4485,11 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
               {synthesizing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating…
+                  {briefingStage === 'checking'
+                    ? 'Auditing briefing…'
+                    : briefingStage === 'retrying'
+                      ? 'Retrying…'
+                      : 'Generating…'}
                 </>
               ) : (
                 <>
@@ -4359,6 +4499,27 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
               )}
             </button>
             {synthesisError && <p className="mt-2 text-sm text-red-400">Error: {synthesisError}</p>}
+            {briefingCheckResult &&
+              briefingCheckResult.verdict !== 'NO' &&
+              briefingCheckResult.flaggedClaims?.length > 0 && (
+                <details className="mt-3 text-xs text-yellow-300">
+                  <summary className="cursor-pointer hover:text-yellow-200">
+                    {briefingCheckResult.flaggedClaims.length} flagged claim
+                    {briefingCheckResult.flaggedClaims.length === 1 ? '' : 's'} · click to view
+                  </summary>
+                  <ul className="mt-2 space-y-2 pl-4">
+                    {briefingCheckResult.flaggedClaims.map((claim, i) => (
+                      <li key={i} className="list-disc">
+                        <div className="italic">&quot;{claim.excerpt}&quot;</div>
+                        {claim.paperArxivId && (
+                          <div className="text-slate-500">re: {claim.paperArxivId}</div>
+                        )}
+                        <div className="text-slate-400">{claim.concern}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
           </div>
         )}
 
