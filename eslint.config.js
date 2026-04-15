@@ -124,9 +124,14 @@ export default [
     },
   },
 
-  // Briefing components use destructured props without propTypes (modern React convention)
+  // Briefing/profile/feedback components use destructured props without propTypes (modern React convention)
   {
-    files: ['components/briefing/**/*.jsx', 'hooks/**/*.js'],
+    files: [
+      'components/briefing/**/*.jsx',
+      'components/profile/**/*.jsx',
+      'components/feedback/**/*.jsx',
+      'hooks/**/*.js',
+    ],
     rules: {
       'react/prop-types': 'off',
     },
