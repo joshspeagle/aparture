@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { MODEL_REGISTRY } from '../../utils/models.js';
+import BriefingView from '../briefing/BriefingView.jsx';
 
 const LAST_RUN_KEY = 'aparture-last-analysis-run';
 
@@ -10,6 +11,127 @@ export function selectPreviewSample(papers) {
     .filter((p) => p.score >= 5.0 && p.score < 7.0 && !top10.includes(p))
     .slice(0, 5);
   return [...top10, ...borderline];
+}
+
+export function computeRankShifts(originalSample, reScored) {
+  const originalRankById = new Map();
+  [...originalSample]
+    .sort((a, b) => b.score - a.score)
+    .forEach((p, i) => originalRankById.set(p.arxivId, i + 1));
+  return reScored.map((p, i) => {
+    const rankBefore = originalRankById.get(p.arxivId) ?? null;
+    const rankAfter = i + 1;
+    const delta = rankBefore !== null ? rankBefore - rankAfter : 0;
+    return {
+      arxivId: p.arxivId,
+      title: p.title,
+      oldScore: p.score,
+      newScore: p.newScore,
+      rankBefore,
+      rankAfter,
+      delta,
+    };
+  });
+}
+
+function FilterChangesSection({ verdicts, originalSample }) {
+  const dropped = (verdicts ?? [])
+    .filter((v) => v.verdict === 'NO')
+    .map((v) => originalSample[v.paperIndex - 1])
+    .filter(Boolean);
+
+  return (
+    <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
+      <h4 className="text-sm font-semibold text-slate-200 mb-2">
+        {dropped.length} {dropped.length === 1 ? 'paper' : 'papers'} would be filtered out
+      </h4>
+      {dropped.length === 0 ? (
+        <p className="text-xs text-slate-500 italic">No papers dropped by filter</p>
+      ) : (
+        <ul className="text-xs text-slate-300 space-y-1 list-disc list-inside">
+          {dropped.map((p) => (
+            <li key={p.arxivId}>{p.title}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ScoringShiftsSection({ shifts }) {
+  if (!shifts || shifts.length === 0) {
+    return (
+      <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
+        <h4 className="text-sm font-semibold text-slate-200 mb-2">Scoring shifts</h4>
+        <p className="text-xs text-slate-500 italic">No papers scored — all were filtered out.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
+      <h4 className="text-sm font-semibold text-slate-200 mb-2">Scoring shifts</h4>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs text-slate-200">
+          <thead>
+            <tr className="text-left text-slate-400 border-b border-slate-700">
+              <th className="py-1 pr-2">Rank before</th>
+              <th className="py-1 pr-2">Title</th>
+              <th className="py-1 pr-2">Old score</th>
+              <th className="py-1 pr-2">New score</th>
+              <th className="py-1 pr-2">Rank after</th>
+              <th className="py-1 pr-2">Δ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shifts.map((s) => {
+              const rowClass = s.delta > 0 ? 'bg-green-900/30' : s.delta < 0 ? 'bg-red-900/30' : '';
+              const deltaStr = s.delta > 0 ? `+${s.delta}` : `${s.delta}`;
+              return (
+                <tr key={s.arxivId} className={`border-b border-slate-800 ${rowClass}`}>
+                  <td className="py-1 pr-2">{s.rankBefore ?? '—'}</td>
+                  <td className="py-1 pr-2">{s.title}</td>
+                  <td className="py-1 pr-2">
+                    {typeof s.oldScore === 'number' ? s.oldScore.toFixed(1) : '—'}
+                  </td>
+                  <td className="py-1 pr-2">
+                    {typeof s.newScore === 'number' ? s.newScore.toFixed(1) : '—'}
+                  </td>
+                  <td className="py-1 pr-2">{s.rankAfter}</td>
+                  <td className="py-1 pr-2">{deltaStr}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function MiniBriefingSection({ briefing }) {
+  if (!briefing) return null;
+  const noop = () => {};
+  return (
+    <div className="rounded-md border border-dashed border-amber-600 bg-amber-950/20 p-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-2">
+        Preview — not saved
+      </div>
+      <div className="bg-slate-950/40 rounded p-3">
+        <BriefingView
+          briefing={briefing}
+          date="preview"
+          papersScreened={briefing.papers?.length ?? 0}
+          quickSummariesById={{}}
+          fullReportsById={{}}
+          onStar={noop}
+          onDismiss={noop}
+          onSkipQuestion={noop}
+          onPreviewProfileUpdate={noop}
+        />
+      </div>
+    </div>
+  );
 }
 
 function deriveProvider(modelId) {
@@ -207,7 +329,7 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
 
           {runState === 'done' && result && (
             <div className="text-sm text-slate-200">
-              <p>
+              <p className="mb-3">
                 Preview complete. {result.reScored.length} papers kept by filter
                 {result.reScored.length > 0 && (
                   <>
@@ -217,6 +339,16 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
                 )}
                 .
               </p>
+              <div className="mt-4 space-y-6">
+                <FilterChangesSection
+                  verdicts={result.filterResult.verdicts}
+                  originalSample={result.originalSample}
+                />
+                <ScoringShiftsSection
+                  shifts={computeRankShifts(result.originalSample, result.reScored)}
+                />
+                <MiniBriefingSection briefing={result.synthResult.briefing} />
+              </div>
             </div>
           )}
 
