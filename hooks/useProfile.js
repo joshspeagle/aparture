@@ -62,6 +62,9 @@ export function useProfile(config = {}) {
   const updateProfile = useCallback(
     (newContent) => {
       setState((prev) => {
+        // No-op when content is unchanged — prevents bloating the revisions
+        // history with spurious entries from callers that don't de-duplicate.
+        if (prev.profile.content === newContent) return prev;
         const now = Date.now();
         const revision = {
           content: prev.profile.content,
@@ -82,6 +85,14 @@ export function useProfile(config = {}) {
     },
     [persist]
   );
+
+  const clearHistory = useCallback(() => {
+    setState((prev) => {
+      const nextProfile = { ...prev.profile, revisions: [] };
+      persist(nextProfile);
+      return { ...prev, profile: nextProfile };
+    });
+  }, [persist]);
 
   const saveSuggested = useCallback(
     (revisedContent, lastFeedbackCutoff, rationale) => {
@@ -149,6 +160,7 @@ export function useProfile(config = {}) {
     updateProfile,
     saveSuggested,
     revertToRevision,
+    clearHistory,
     migrationNotice: state.notice,
     dismissMigrationNotice,
   };

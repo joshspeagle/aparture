@@ -431,12 +431,24 @@ function ArxivAnalyzer() {
     updateProfile,
     saveSuggested,
     revertToRevision,
+    clearHistory,
     migrationNotice,
     dismissMigrationNotice,
   } = useProfile({ scoringCriteria: config.scoringCriteria });
   const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
   const feedback = useFeedback();
   const newInteractionCount = feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0).length;
+
+  // Phase 1.5: draft-vs-committed profile editing. Typing in the Your Profile
+  // textarea updates draftContent only; Save commits it via updateProfile.
+  // When profile.content changes from an external source (revert, suggest
+  // accept), we resync draftContent via a signature check during render.
+  const [draftContent, setDraftContent] = useState(profile?.content ?? '');
+  const [lastSyncedContent, setLastSyncedContent] = useState(profile?.content ?? '');
+  if ((profile?.content ?? '') !== lastSyncedContent) {
+    setDraftContent(profile?.content ?? '');
+    setLastSyncedContent(profile?.content ?? '');
+  }
   const [synthesizing, setSynthesizing] = useState(false);
   const [synthesisError, setSynthesisError] = useState(null);
   const [quickSummariesById, setQuickSummariesById] = useState({});
@@ -3335,7 +3347,10 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
           migrationNotice={migrationNotice}
           dismissMigrationNotice={dismissMigrationNotice}
           revertToRevision={revertToRevision}
+          clearHistory={clearHistory}
           newInteractionCount={newInteractionCount}
+          draftContent={draftContent}
+          setDraftContent={setDraftContent}
           onScrollToFeedback={() => {
             const el = document.getElementById('feedback-panel');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -3348,7 +3363,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         {showPreviewPanel && (
           <div className="mt-4">
             <PreviewPanel
-              editedProfile={profile?.content ?? ''}
+              editedProfile={draftContent}
               models={{
                 filter: config.filterModel,
                 scoring: config.scoringModel,
