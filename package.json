@@ -39,6 +39,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
+    "diff": "^9.0.0",
     "lucide-react": "^0.263.1",
     "next": "^14.2.33",
     "node-fetch": "^3.3.2",
