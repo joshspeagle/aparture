@@ -127,6 +127,7 @@ export default [
   // Briefing/profile/feedback components use destructured props without propTypes (modern React convention)
   {
     files: [
+      'components/analyzer/**/*.jsx',
       'components/briefing/**/*.jsx',
       'components/profile/**/*.jsx',
       'components/feedback/**/*.jsx',

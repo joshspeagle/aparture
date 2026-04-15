@@ -1,25 +1,12 @@
-import {
-  AlertCircle,
-  CheckCircle,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  Lock,
-  Pause,
-  Play,
-  RotateCcw,
-  Square,
-  TestTube,
-  Unlock,
-  XCircle,
-  Zap,
-} from 'lucide-react';
+import { Lock, Unlock } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MODEL_REGISTRY } from '../utils/models';
 import { TEST_PAPERS } from '../utils/testUtils';
 import BriefingCard from './briefing/BriefingCard.jsx';
 import BriefingView from './briefing/BriefingView.jsx';
+import ControlPanel from './analyzer/ControlPanel.jsx';
+import ProgressTracker from './analyzer/ProgressTracker.jsx';
 import AnalysisResultsList from './results/AnalysisResultsList.jsx';
 import DownloadReportCard from './results/DownloadReportCard.jsx';
 import FeedbackPanel from './feedback/FeedbackPanel.jsx';
@@ -387,8 +374,6 @@ function ArxivAnalyzer() {
     lastDryRunTime: null,
     lastMinimalTestTime: null,
   });
-  const [showErrors, setShowErrors] = useState(false);
-  const [showTestDropdown, setShowTestDropdown] = useState(false);
 
   // NotebookLM states
   const [podcastDuration, setPodcastDuration] = useState(20); // Default to 20 minutes
@@ -2963,253 +2948,24 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
 
         <SettingsPanel config={config} setConfig={setConfig} processing={processing} />
 
-        {/* Control Panel */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex gap-3">
-              {!processing.isRunning && (
-                <button
-                  onClick={handleStart}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-medium hover:from-blue-600 hover:to-purple-600 transition-all flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  Start Analysis
-                </button>
-              )}
+        <ControlPanel
+          processing={processing}
+          testState={testState}
+          onStart={handleStart}
+          onPause={handlePause}
+          onResume={handleResume}
+          onStop={handleStop}
+          onReset={handleReset}
+          onRunDryRun={runDryRunTest}
+          onRunMinimalTest={runMinimalTest}
+        />
 
-              {processing.isRunning && !processing.isPaused && (
-                <button
-                  onClick={handlePause}
-                  className="px-4 py-2 bg-yellow-500 rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center gap-2"
-                >
-                  <Pause className="w-4 h-4" />
-                  Pause
-                </button>
-              )}
-
-              {processing.isRunning && processing.isPaused && (
-                <button
-                  onClick={handleResume}
-                  className="px-4 py-2 bg-green-500 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center gap-2"
-                >
-                  <Play className="w-4 h-4" />
-                  Resume
-                </button>
-              )}
-
-              {processing.isRunning && (
-                <button
-                  onClick={handleStop}
-                  className="px-4 py-2 bg-red-500 rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center gap-2"
-                >
-                  <Square className="w-4 h-4" />
-                  Stop
-                </button>
-              )}
-
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 bg-slate-700 rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset
-              </button>
-            </div>
-          </div>
-
-          {/* System Tests - Collapsible Section */}
-          <div>
-            <button
-              onClick={() => setShowTestDropdown(!showTestDropdown)}
-              className="flex items-center text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              {showTestDropdown ? (
-                <ChevronDown className="w-4 h-4 mr-1" />
-              ) : (
-                <ChevronRight className="w-4 h-4 mr-1" />
-              )}
-              System Tests
-            </button>
-
-            {showTestDropdown && (
-              <div className="mt-3 space-y-3 pl-5 border-l-2 border-slate-700">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Dry Run Test */}
-                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center mb-2">
-                      <div
-                        className={`w-3 h-3 rounded-full mr-2 ${testState.dryRunCompleted ? 'bg-green-400' : 'bg-slate-500'}`}
-                      />
-                      <h3 className="font-medium">Dry Run Test</h3>
-                    </div>
-                    <p className="text-sm text-gray-400 mb-3">
-                      Tests all components with mock APIs. No API costs incurred.
-                    </p>
-
-                    {testState.lastDryRunTime && (
-                      <p className="text-xs text-gray-500 mb-3">
-                        Last run: {testState.lastDryRunTime.toLocaleString()}
-                      </p>
-                    )}
-
-                    <button
-                      onClick={runDryRunTest}
-                      disabled={testState.dryRunInProgress || processing.isRunning}
-                      className={`w-full px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                        testState.dryRunInProgress || processing.isRunning
-                          ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                          : 'bg-cyan-500 hover:bg-cyan-600 text-white'
-                      }`}
-                    >
-                      {testState.dryRunInProgress ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Testing...
-                        </>
-                      ) : testState.dryRunCompleted ? (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          Run Again
-                        </>
-                      ) : (
-                        <>
-                          <TestTube className="w-4 h-4" />
-                          Run Dry Test
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Minimal Test */}
-                  <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center mb-2">
-                      <div
-                        className={`w-3 h-3 rounded-full mr-2 ${testState.lastMinimalTestTime ? 'bg-green-400' : 'bg-slate-500'}`}
-                      />
-                      <h3 className="font-medium">Minimal API Test</h3>
-                    </div>
-                    <p className="text-sm text-gray-400 mb-3">
-                      Tests with 5 hardcoded papers using real APIs. Incurs costs.
-                    </p>
-
-                    {testState.lastMinimalTestTime && (
-                      <p className="text-xs text-gray-500 mb-3">
-                        Last run: {testState.lastMinimalTestTime.toLocaleString()}
-                      </p>
-                    )}
-
-                    <button
-                      onClick={runMinimalTest}
-                      disabled={
-                        !testState.dryRunCompleted ||
-                        testState.minimalTestInProgress ||
-                        processing.isRunning
-                      }
-                      className={`w-full px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
-                        !testState.dryRunCompleted ||
-                        testState.minimalTestInProgress ||
-                        processing.isRunning
-                          ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                          : 'bg-orange-500 hover:bg-orange-600 text-white'
-                      }`}
-                    >
-                      {testState.minimalTestInProgress ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Testing...
-                        </>
-                      ) : !testState.dryRunCompleted ? (
-                        <>
-                          <XCircle className="w-4 h-4" />
-                          Run Dry Test First
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4" />
-                          Run API Test
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-xs text-gray-400">
-                  <strong>Testing workflow:</strong> Run the dry test first to verify all components
-                  work correctly without API costs. Then run the minimal test to confirm real API
-                  integration with a small set of papers.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Progress Tracker */}
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-          <div className="flex items-center mb-4">
-            <Zap className="w-5 h-5 mr-2 text-yellow-400" />
-            <h2 className="text-xl font-semibold">Progress</h2>
-            {testState.dryRunInProgress && (
-              <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                <TestTube className="w-3 h-3" />
-                DRY RUN MODE
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Current Stage:</span>
-              <span className="font-medium flex items-center gap-2">
-                {processing.isRunning && <Loader2 className="w-4 h-4 animate-spin" />}
-                {getStageDisplay()}
-                {processing.isPaused && <span className="text-yellow-400">(Paused)</span>}
-              </span>
-            </div>
-
-            {processing.progress.total > 0 && (
-              <>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-gray-400">
-                    <span>Progress</span>
-                    <span>
-                      {processing.progress.current} / {processing.progress.total}{' '}
-                      {processing.stage === 'fetching' ? 'categories' : 'papers'}
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-300"
-                      style={{ width: `${getProgressPercentage()}%` }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Error Log */}
-            {processing.errors.length > 0 && (
-              <div>
-                <button
-                  onClick={() => setShowErrors(!showErrors)}
-                  className="flex items-center text-sm text-red-400 hover:text-red-300 transition-colors"
-                >
-                  <AlertCircle className="w-4 h-4 mr-1" />
-                  {showErrors ? 'Hide' : 'Show'} Logs ({processing.errors.length})
-                </button>
-
-                {showErrors && (
-                  <div className="mt-2 max-h-40 overflow-y-auto bg-slate-800 rounded-lg p-3 text-xs text-red-300 font-mono">
-                    {processing.errors.map((error, idx) => (
-                      <div key={idx} className="mb-1">
-                        {error}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <ProgressTracker
+          processing={processing}
+          testState={testState}
+          getStageDisplay={getStageDisplay}
+          getProgressPercentage={getProgressPercentage}
+        />
 
         <AnalysisResultsList
           results={results}
