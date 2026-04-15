@@ -16,6 +16,8 @@ import YourProfile from './profile/YourProfile.jsx';
 import SuggestDialog from './profile/SuggestDialog.jsx';
 import PreviewPanel from './profile/PreviewPanel.jsx';
 import SettingsPanel from './settings/SettingsPanel.jsx';
+import { runBriefingGeneration } from '../lib/analyzer/briefingClient.js';
+import { downloadBlob, exportAnalysisReport } from '../lib/analyzer/exportReport.js';
 import { MockAPITester } from '../lib/analyzer/mockApi.js';
 import { readInitialConfig, useAnalyzerPersistence } from '../hooks/useAnalyzerPersistence.js';
 import { useProfile } from '../hooks/useProfile.js';
@@ -2091,78 +2093,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
   };
 
   // Export results in a standardized format
-  const exportResults = () => {
-    const timestamp = new Date().toLocaleString();
-    const duration = processingTiming.duration ? Math.round(processingTiming.duration / 60000) : 0;
-
-    const header = `# Aparture Analysis Report
-
-**Generated:** ${timestamp}  
-**Duration:** ${duration} minutes  
-**Abstracts Screened:** ${results.scoredPapers.length}  
-**Papers Analyzed:** ${Math.min(results.scoredPapers.length, config.maxDeepAnalysis)}
-**Final Report:** ${results.finalRanking.length}
-**Categories:** ${config.selectedCategories.join(', ')}  
-**Models Used:** ${config.useQuickFilter ? config.filterModel + ' (filter), ' : ''}${config.scoringModel} (scoring), ${config.pdfModel} (PDF analysis)
-
----
-
-`;
-
-    const papers = results.finalRanking
-      .map((paper, idx) => {
-        const authorTag =
-          paper.authors.length > 0
-            ? paper.authors.length > 2
-              ? `${paper.authors[0]} et al.`
-              : paper.authors.join(' & ')
-            : 'Unknown';
-
-        return `## ${idx + 1}. ${paper.title}
-
-**Score:** ${(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
-**arXiv ID:** [${paper.id}](https://arxiv.org/abs/${paper.id})  
-**Authors:** ${authorTag}  
-
-### Relevance Assessment
-${paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
-
-### Key Findings
-${paper.deepAnalysis?.keyFindings || 'N/A'}
-
-### Methodology
-${paper.deepAnalysis?.methodology || 'N/A'}
-
-### Limitations
-${paper.deepAnalysis?.limitations || 'N/A'}
-
-### Detailed Technical Summary
-${paper.deepAnalysis?.summary || 'No deep analysis available'}
-
----`;
-      })
-      .join('\n\n');
-
-    const output = header + papers;
-
-    const blob = new Blob([output], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-
-    // Generate filename with date first: YYYY-MM-DD_arxiv_analysis_XXmin.md
-    const dateStr = processingTiming.startTime
-      ? processingTiming.startTime.toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
-
-    const durationStr = processingTiming.duration
-      ? `_${Math.round(processingTiming.duration / 60000)}min`
-      : '';
-
-    a.download = `${dateStr}_arxiv_analysis${durationStr}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportResults = () => exportAnalysisReport({ results, processingTiming, config });
 
   // Generate NotebookLM document
   const generateNotebookLM = async () => {
@@ -2257,19 +2188,14 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     }
   };
 
-  // Download NotebookLM document
   const downloadNotebookLM = () => {
     if (!notebookLMContent) return;
-
-    const blob = new Blob([notebookLMContent], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-
     const timestamp = new Date().toISOString().split('T')[0];
-    a.download = `${timestamp}_notebooklm_${podcastDuration}min.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(
+      notebookLMContent,
+      `${timestamp}_notebooklm_${podcastDuration}min.md`,
+      'text/markdown'
+    );
   };
 
   // Generate Briefing (Phase 1)
@@ -2297,204 +2223,21 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     });
   }, []);
 
-  const handleGenerateBriefing = async () => {
-    setSynthesizing(true);
-    setSynthesisError(null);
-    setBriefingCheckResult(null);
-    setBriefingStage('synthesizing');
-    try {
-      const finalRanking = results?.finalRanking ?? [];
-      if (finalRanking.length === 0) {
-        throw new Error('No final-ranking papers available to synthesize.');
-      }
-
-      // Determine provider from briefingModel via MODEL_REGISTRY
-      // MODEL_REGISTRY providers are capitalized ('Anthropic', 'Google', 'OpenAI');
-      // synthesize.js expects lowercase ('anthropic', 'google', 'openai')
-      // Falls back to pdfModel for legacy configs that predate briefingModel.
-      const modelId = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
-      const modelCfg = MODEL_REGISTRY[modelId];
-      const rawProvider = modelCfg?.provider ?? 'Google';
-      const provider = rawProvider.toLowerCase();
-
-      // Map finalRanking into the shape expected by synthesize
-      const papers = finalRanking.map((p) => ({
-        arxivId: p.arxivId ?? p.id,
-        title: p.title,
-        abstract: p.abstract ?? '',
-        score: p.score ?? p.finalScore ?? 0,
-        scoringJustification: p.justification ?? p.relevanceAssessment ?? '',
-        fullReport: p.detailedSummary ?? p.pdfAnalysis?.summary ?? p.analysis ?? '',
-      }));
-
-      // Generate quick summaries for papers that have a full report
-      const quickById = {};
-      const fullById = {};
-
-      // Populate fullById synchronously first (no network calls)
-      for (const p of papers) {
-        fullById[p.arxivId] = p.fullReport;
-      }
-
-      // Generate quick summaries in parallel chunks of 5 to limit concurrency
-      const CONCURRENCY = 5;
-      const papersWithReports = papers.filter((p) => p.fullReport);
-      for (let i = 0; i < papersWithReports.length; i += CONCURRENCY) {
-        const chunk = papersWithReports.slice(i, i + CONCURRENCY);
-        await Promise.all(
-          chunk.map(async (p) => {
-            try {
-              const quickRes = await fetch('/api/analyze-pdf-quick', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({
-                  paper: p,
-                  fullReport: p.fullReport,
-                  provider,
-                  model: modelId,
-                  password,
-                }),
-              });
-              if (quickRes.ok) {
-                const quickJson = await quickRes.json();
-                quickById[p.arxivId] = quickJson.quickSummary;
-              }
-            } catch {
-              // If a single paper fails, continue with the rest — don't abort the batch
-            }
-          })
-        );
-      }
-      setQuickSummariesById(quickById);
-      setFullReportsById(fullById);
-
-      // Build history for longitudinal connections
-      const history = briefingHistory.map((h) => ({
-        date: h.date,
-        paperIds: (h.briefing.papers ?? []).map((pp) => pp.arxivId),
-      }));
-
-      // Helper: call the synthesis route once. Accepts an optional retry hint
-      // to append to the prompt when regenerating after a failed check.
-      const callSynthesize = async (retryHint = null) => {
-        const body = {
-          profile: profile.content,
-          papers,
-          history,
-          provider,
-          model: modelId,
-          password,
-        };
-        if (retryHint) body.retryHint = retryHint;
-        const res = await fetch('/api/synthesize', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? 'synthesis failed');
-        return json;
-      };
-
-      // Helper: call the hallucination check route with a generated briefing
-      // + the papers corpus (abstracts + quick summaries + full reports).
-      const callCheckBriefing = async (briefingObj) => {
-        const corpus = papers.map((p) => ({
-          arxivId: p.arxivId,
-          title: p.title,
-          abstract: p.abstract,
-          quickSummary: quickById[p.arxivId] ?? '',
-          fullReport: p.fullReport,
-        }));
-        const res = await fetch('/api/check-briefing', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            briefing: briefingObj,
-            papers: corpus,
-            provider,
-            model: modelId,
-            password,
-          }),
-        });
-        const json = await res.json();
-        // Check failure is non-fatal — we fall back to trusting the briefing.
-        if (!res.ok) {
-          console.warn('[Phase 1.5.1] Hallucination check failed:', json.error);
-          return null;
-        }
-        return json;
-      };
-
-      // First synthesis pass
-      const synthJson = await callSynthesize();
-      let finalBriefing = synthJson.briefing;
-      let finalCheck = null;
-      let retried = false;
-
-      // Hallucination check + optional retry
-      setBriefingStage('checking');
-      finalCheck = await callCheckBriefing(finalBriefing);
-
-      if (finalCheck) {
-        const shouldRetry =
-          (finalCheck.verdict === 'YES' && (config.briefingRetryOnYes ?? true)) ||
-          (finalCheck.verdict === 'MAYBE' && (config.briefingRetryOnMaybe ?? false));
-
-        if (shouldRetry) {
-          setBriefingStage('retrying');
-          const retryHint = `A hallucination check on your previous briefing returned ${finalCheck.verdict}. Reason: ${finalCheck.justification} Ground all claims strictly in the provided source material this time.`;
-          try {
-            const retryJson = await callSynthesize(retryHint);
-            finalBriefing = retryJson.briefing;
-            // Re-run the check on the retry so the badge reflects the final state
-            setBriefingStage('checking');
-            const recheck = await callCheckBriefing(finalBriefing);
-            if (recheck) finalCheck = recheck;
-            retried = true;
-          } catch (retryErr) {
-            console.warn('[Phase 1.5.1] Retry synthesis failed, keeping original:', retryErr);
-          }
-        }
-      }
-
-      setBriefingCheckResult(finalCheck ? { ...finalCheck, retried } : null);
-      setBriefingStage(null);
-
-      const today = new Date().toISOString().slice(0, 10);
-      saveBriefing(today, finalBriefing);
-
-      // Cache the last analysis run for PreviewPanel (Phase 1.5).
-      // Both finalRanking (local const above) and quickById are fully populated
-      // here, so this is the safest place to snapshot the run for the preview
-      // feature that Task 33 will build on.
-      try {
-        const cachedPapers = finalRanking.map((p) => {
-          const arxivId = p.arxivId ?? p.id;
-          return {
-            arxivId,
-            title: p.title,
-            abstract: p.abstract ?? '',
-            score: p.score ?? p.finalScore ?? 0,
-            scoringJustification: p.justification ?? p.relevanceAssessment ?? '',
-            fullReport: p.detailedSummary ?? p.pdfAnalysis?.summary ?? p.analysis ?? '',
-            quickSummary: quickById?.[arxivId] ?? '',
-          };
-        });
-        window.localStorage.setItem(
-          'aparture-last-analysis-run',
-          JSON.stringify({ papers: cachedPapers, timestamp: Date.now() })
-        );
-      } catch (e) {
-        console.warn('[Phase 1.5] Failed to cache last analysis run for preview:', e);
-      }
-    } catch (err) {
-      setSynthesisError(String(err?.message ?? err));
-    } finally {
-      setSynthesizing(false);
-      setBriefingStage(null);
-    }
-  };
+  const handleGenerateBriefing = () =>
+    runBriefingGeneration({
+      results,
+      config,
+      profile,
+      password,
+      briefingHistory,
+      saveBriefing,
+      setSynthesizing,
+      setSynthesisError,
+      setBriefingCheckResult,
+      setBriefingStage,
+      setQuickSummariesById,
+      setFullReportsById,
+    });
 
   // Get stage display name
   const getStageDisplay = () => {
