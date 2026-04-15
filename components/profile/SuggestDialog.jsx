@@ -41,7 +41,6 @@ export default function SuggestDialog({
   briefingModel,
   provider,
   password,
-  // eslint-disable-next-line no-unused-vars
   onAccept,
 }) {
   // Signature of the current newFeedback — when it changes, we reset local state
@@ -117,6 +116,30 @@ export default function SuggestDialog({
     return applyCap(selectedEvents, cap).stats;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, response]);
+
+  function handleAccept() {
+    // Compute newCutoff from the events that were actually sent to the LLM.
+    // selectedIds was captured at the time of handleGenerate and is
+    // the most recent feedback included in this suggestion.
+    const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
+    const newCutoff =
+      selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
+    const joinedRationale = response.changes.map((c) => `• ${c.rationale}`).join('\n');
+    onAccept(response.revisedProfile, joinedRationale, newCutoff);
+    onClose();
+  }
+
+  function handleNoChangeDismiss() {
+    const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
+    const newCutoff =
+      selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
+    const rationale = `No changes warranted: ${response.noChangeReason}`;
+    // Passes the UNCHANGED profile content so saveSuggested creates a
+    // revision entry that marks the feedback as reviewed without touching
+    // the profile text.
+    onAccept(profile, rationale, newCutoff);
+    onClose();
+  }
 
   const hasChanges =
     state === 'result' &&
@@ -263,7 +286,7 @@ export default function SuggestDialog({
                 </button>
                 <button
                   type="button"
-                  onClick={() => console.log('TODO: accept')}
+                  onClick={handleAccept}
                   className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
                 >
                   Accept
@@ -274,10 +297,7 @@ export default function SuggestDialog({
             {state === 'result' && hasNoChangeReason && (
               <button
                 type="button"
-                onClick={() => {
-                  console.log('TODO: dismiss');
-                  onClose();
-                }}
+                onClick={handleNoChangeDismiss}
                 className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
                 Dismiss

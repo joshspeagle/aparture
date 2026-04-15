@@ -229,3 +229,144 @@ describe('SuggestDialog — loading and result states', () => {
     expect(capturedBody.feedback).toHaveLength(2);
   });
 });
+
+describe('SuggestDialog — accept/reject/dismiss', () => {
+  const starEvent = {
+    id: 'e1',
+    type: 'star',
+    arxivId: '2504.01234',
+    paperTitle: 'T1',
+    quickSummary: 's',
+    score: 9.2,
+    timestamp: 1700000000000,
+    briefingDate: '2026-04-10',
+  };
+  const dismissEvent = {
+    id: 'e2',
+    type: 'dismiss',
+    arxivId: '2504.02345',
+    paperTitle: 'T2',
+    quickSummary: 's',
+    score: 6,
+    timestamp: 1700000000500, // newest of the sample
+    briefingDate: '2026-04-10',
+  };
+  const generalEvent = {
+    id: 'e3',
+    type: 'general-comment',
+    text: 'too much theory',
+    timestamp: 1700000000001,
+    briefingDate: '2026-04-11',
+  };
+
+  const baseProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    profile: 'original profile text',
+    newFeedback: [starEvent, dismissEvent, generalEvent],
+    cap: { commentCap: 30 },
+    briefingModel: 'gemini-3.1-pro',
+    provider: 'google',
+    password: 'test',
+    onAccept: vi.fn(),
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('Accept on diff view calls onAccept with revised profile, joined rationale, and max cutoff', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        revisedProfile: 'updated profile',
+        changes: [
+          { excerpt: 'added bullet', rationale: 'based on star on 2504.01234' },
+          { excerpt: 'dropped phrase', rationale: 'based on dismiss on 2504.02345' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onAccept = vi.fn();
+    const onClose = vi.fn();
+    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/proposed changes/i);
+    fireEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    expect(onAccept).toHaveBeenCalledWith(
+      'updated profile',
+      expect.stringContaining('based on star on 2504.01234'),
+      1700000000500 // the newest timestamp in the selection
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Reject on diff view closes without calling onAccept', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        revisedProfile: 'updated profile',
+        changes: [{ excerpt: 'x', rationale: 'y' }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onAccept = vi.fn();
+    const onClose = vi.fn();
+    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/proposed changes/i);
+    fireEvent.click(screen.getByRole('button', { name: /^reject$/i }));
+    expect(onAccept).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Dismiss on noChangeReason view advances the cutoff with unchanged profile', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        revisedProfile: 'original profile text',
+        changes: [],
+        noChangeReason: 'Profile already covers these areas.',
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onAccept = vi.fn();
+    const onClose = vi.fn();
+    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/no profile changes suggested/i);
+    fireEvent.click(screen.getByRole('button', { name: /^dismiss$/i }));
+    expect(onAccept).toHaveBeenCalledWith(
+      'original profile text', // UNCHANGED profile
+      expect.stringContaining('No changes warranted'),
+      1700000000500 // newest timestamp still advances cutoff
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('Accept uses only the timestamps of selected events (not all events)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        revisedProfile: 'updated',
+        changes: [{ excerpt: 'x', rationale: 'y' }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const onAccept = vi.fn();
+    render(<SuggestDialog {...baseProps} onAccept={onAccept} />);
+    // Uncheck the newest event (dismissEvent, timestamp 1700000000500)
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[1]); // uncheck dismiss
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/proposed changes/i);
+    fireEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    // Newest cutoff should now be from the remaining selected events,
+    // not 1700000000500 which was unchecked
+    expect(onAccept).toHaveBeenCalledWith(
+      'updated',
+      expect.any(String),
+      1700000000001 // generalEvent timestamp — max of star (t=0) and general (t=1)
+    );
+  });
+});
