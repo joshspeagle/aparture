@@ -41,11 +41,14 @@ export default async function handler(req, res) {
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
   }
 
-  if (!profile || !Array.isArray(papers) || !provider || !model || !apiKey) {
+  if (!profile || !Array.isArray(papers) || !provider || !model) {
     res.status(400).json({
-      error:
-        'missing required fields: profile, papers[], provider, model, and either apiKey or password',
+      error: 'missing required fields: profile, papers[], provider, model',
     });
+    return;
+  }
+  if (!apiKey) {
+    res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }
 
@@ -142,6 +145,6 @@ export default async function handler(req, res) {
       originalValidationErrors: validation.errors,
     });
   } catch (err) {
-    res.status(500).json({ error: String(err?.message ?? err) });
+    res.status(500).json({ error: 'synthesis failed', details: String(err?.message ?? err) });
   }
 }

@@ -270,6 +270,6 @@ export default async function handler(req, res) {
       originalValidationErrors: firstErrors,
     });
   } catch (err) {
-    res.status(500).json({ error: String(err?.message ?? err) });
+    res.status(500).json({ error: 'check-briefing failed', details: String(err?.message ?? err) });
   }
 }

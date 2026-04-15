@@ -18,7 +18,7 @@ export default function PaperCard({
   const buildMeta = () => ({
     arxivId: paper.arxivId,
     paperTitle: paper.title,
-    quickSummary: paper.quickSummary,
+    quickSummary: paper.quickSummary ?? '',
     score: paper.score,
     briefingDate,
   });

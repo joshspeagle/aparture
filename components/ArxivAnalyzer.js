@@ -19,7 +19,7 @@ import {
   Zap,
 } from 'lucide-react';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AVAILABLE_MODELS, MODEL_REGISTRY } from '../utils/models';
 import { TEST_PAPERS } from '../utils/testUtils';
 import BriefingView from './briefing/BriefingView.jsx';
@@ -30,6 +30,200 @@ import PreviewPanel from './profile/PreviewPanel.jsx';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
 import { useFeedback } from '../hooks/useFeedback.js';
+
+// Phase 1.5.1 D5 fix: PaperCard hoisted to module scope so React can reconcile
+// cards across re-renders rather than unmount/remount them (which would destroy
+// the inline comment textarea state during active scoring / progress ticks).
+// All closure-captured data (feedback state, callbacks, briefing date) is now
+// passed explicitly as props. The parent computes starred/dismissed once via
+// useMemo from a feedback-event index.
+function PaperCard({
+  paper,
+  idx,
+  showDeepAnalysis,
+  starred,
+  dismissed,
+  briefingDate,
+  onStar,
+  onDismiss,
+  onComment,
+}) {
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [commentText, setCommentText] = useState('');
+
+  const hasFeedbackAffordance = showDeepAnalysis && paper.deepAnalysis;
+  const arxivId = paper.id;
+
+  const buildPaperMeta = () => ({
+    arxivId,
+    paperTitle: paper.title,
+    quickSummary: paper.deepAnalysis?.summary ?? paper.scoreJustification ?? '',
+    score: paper.finalScore ?? paper.relevanceScore ?? 0,
+    briefingDate,
+  });
+
+  const handleStar = () => onStar?.(buildPaperMeta());
+  const handleDismiss = () => onDismiss?.(buildPaperMeta());
+  const handleSaveComment = () => {
+    const text = commentText.trim();
+    if (text) onComment?.(buildPaperMeta(), text);
+    setCommentText('');
+    setShowCommentInput(false);
+  };
+  const handleCancelComment = () => {
+    setCommentText('');
+    setShowCommentInput(false);
+  };
+
+  return (
+    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+              #{idx + 1}
+            </span>
+            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
+              Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
+            </span>
+            {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
+              <span
+                className={`text-xs px-2 py-1 rounded ${
+                  paper.scoreAdjustment > 0
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-orange-500/20 text-orange-400'
+                }`}
+                title={paper.adjustmentReason}
+              >
+                {paper.scoreAdjustment > 0 ? '↑' : '↓'} {Math.abs(paper.scoreAdjustment).toFixed(1)}
+              </span>
+            )}
+            {showDeepAnalysis && paper.deepAnalysis && (
+              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                📄 PDF Analyzed
+              </span>
+            )}
+            <a
+              href={`https://arxiv.org/abs/${paper.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+            >
+              arXiv:{paper.id}
+            </a>
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
+          <p className="text-sm text-gray-400 mb-2">
+            {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+          </p>
+          <p className="text-sm text-gray-300 italic mb-2">
+            {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
+          </p>
+          {showDeepAnalysis && paper.deepAnalysis && (
+            <div className="mt-3 pt-3 border-t border-slate-700">
+              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+                {paper.deepAnalysis.summary}
+              </div>
+            </div>
+          )}
+
+          {hasFeedbackAffordance && (
+            <div className="mt-3 pt-3 border-t border-slate-700">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={handleStar}
+                  className={`px-2 py-1 rounded border transition-colors ${
+                    starred
+                      ? 'bg-yellow-900/40 text-yellow-300 border-yellow-600'
+                      : 'text-slate-400 border-slate-600 hover:border-yellow-500 hover:text-yellow-300'
+                  }`}
+                  title={starred ? 'Remove star' : 'Star this paper'}
+                >
+                  {starred ? '★ starred' : '☆ star'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismiss}
+                  className={`px-2 py-1 rounded border transition-colors ${
+                    dismissed
+                      ? 'bg-slate-800 text-slate-100 border-slate-500'
+                      : 'text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
+                  }`}
+                  title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
+                >
+                  {dismissed ? '⊘ dismissed' : '⊘ dismiss'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentInput((v) => !v)}
+                  className="px-2 py-1 rounded border text-slate-400 border-slate-600 hover:border-purple-500 hover:text-purple-300 transition-colors"
+                  title="Leave a comment on this paper"
+                >
+                  + comment
+                </button>
+              </div>
+              {showCommentInput && (
+                <div className="mt-2">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={3}
+                    placeholder="Your thoughts on this paper…"
+                    className="w-full min-h-[4rem] resize-y rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-slate-500 focus:outline-none"
+                    autoFocus
+                  />
+                  <div className="mt-1 flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCancelComment}
+                      className="px-2 py-1 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveComment}
+                      disabled={commentText.trim().length === 0}
+                      className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+PaperCard.propTypes = {
+  paper: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    authors: PropTypes.arrayOf(PropTypes.string).isRequired,
+    finalScore: PropTypes.number,
+    relevanceScore: PropTypes.number,
+    scoreAdjustment: PropTypes.number,
+    adjustmentReason: PropTypes.string,
+    scoreJustification: PropTypes.string,
+    deepAnalysis: PropTypes.shape({
+      relevanceAssessment: PropTypes.string,
+      summary: PropTypes.string,
+    }),
+  }).isRequired,
+  idx: PropTypes.number.isRequired,
+  showDeepAnalysis: PropTypes.bool.isRequired,
+  starred: PropTypes.bool,
+  dismissed: PropTypes.bool,
+  briefingDate: PropTypes.string,
+  onStar: PropTypes.func,
+  onDismiss: PropTypes.func,
+  onComment: PropTypes.func,
+};
 
 // Distribution that uses the full 0-10 range with decimals
 const generateRealisticScore = () => {
@@ -558,6 +752,7 @@ function ArxivAnalyzer() {
         if (parsed.notebookLM) {
           if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
           if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
+          if (parsed.notebookLM.content) setNotebookLMContent(parsed.notebookLM.content);
         }
         if (parsed.password) {
           setPassword(parsed.password);
@@ -609,6 +804,7 @@ function ArxivAnalyzer() {
           notebookLM: {
             duration: podcastDuration,
             model: notebookLMModel,
+            content: notebookLMContent,
           },
           password: isAuthenticated ? password : '',
         })
@@ -622,6 +818,7 @@ function ArxivAnalyzer() {
     testState,
     podcastDuration,
     notebookLMModel,
+    notebookLMContent,
     password,
     isAuthenticated,
   ]);
@@ -1661,7 +1858,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query, maxResults }),
+      body: JSON.stringify({ query, maxResults, password }),
       signal: abortControllerRef.current?.signal,
     });
 
@@ -3348,192 +3545,37 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     return Math.round((processing.progress.current / processing.progress.total) * 100);
   };
 
-  // Paper Card Component
-  // Phase 1.5.1 B4: inner PaperCard gains a feedback action row (star /
-  // dismiss / + comment) on deep-analysis papers, wired to the shared
-  // useFeedback store. State is owned here (showCommentInput, commentText)
-  // but star/dismiss/commit callbacks go to the outer feedback instance via
-  // closure. The buttons only render when the paper has a deep analysis —
-  // abstract-only scoring rows don't get feedback affordances.
-  const PaperCard = ({ paper, idx, showDeepAnalysis }) => {
-    const [showCommentInput, setShowCommentInput] = useState(false);
-    const [commentText, setCommentText] = useState('');
+  // Phase 1.5.1 D5: index feedback events by arxivId once per render so
+  // PaperCard lookups are O(1) instead of O(events) per card.
+  const feedbackIndex = useMemo(() => {
+    const idx = new Map();
+    for (const e of feedback.events) {
+      if (!e.arxivId || (e.type !== 'star' && e.type !== 'dismiss')) continue;
+      const entry = idx.get(e.arxivId) ?? { starred: false, dismissed: false };
+      if (e.type === 'star') entry.starred = true;
+      if (e.type === 'dismiss') entry.dismissed = true;
+      idx.set(e.arxivId, entry);
+    }
+    return idx;
+  }, [feedback.events]);
 
-    const hasFeedbackAffordance = showDeepAnalysis && paper.deepAnalysis;
-    const arxivId = paper.id;
-    const starred = hasFeedbackAffordance
-      ? feedback.events.some((e) => e.type === 'star' && e.arxivId === arxivId)
-      : false;
-    const dismissed = hasFeedbackAffordance
-      ? feedback.events.some((e) => e.type === 'dismiss' && e.arxivId === arxivId)
-      : false;
-    const briefingDate = currentBriefing?.date ?? new Date().toISOString().slice(0, 10);
-
-    const buildPaperMeta = () => ({
-      arxivId,
-      paperTitle: paper.title,
-      quickSummary: paper.deepAnalysis?.summary ?? paper.scoreJustification ?? '',
-      score: paper.finalScore ?? paper.relevanceScore ?? 0,
-      briefingDate,
-    });
-
-    const handleStar = () => feedback.addStar(buildPaperMeta());
-    const handleDismiss = () => feedback.addDismiss(buildPaperMeta());
-    const handleSaveComment = () => {
-      const text = commentText.trim();
-      if (text) feedback.addPaperComment(buildPaperMeta(), text);
-      setCommentText('');
-      setShowCommentInput(false);
-    };
-    const handleCancelComment = () => {
-      setCommentText('');
-      setShowCommentInput(false);
-    };
-
+  const paperCardBriefingDate = currentBriefing?.date ?? new Date().toISOString().slice(0, 10);
+  const renderPaperCard = (paper, idx, showDeepAnalysis) => {
+    const entry = feedbackIndex.get(paper.id);
     return (
-      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
-                #{idx + 1}
-              </span>
-              <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
-                Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
-              </span>
-              {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    paper.scoreAdjustment > 0
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  }`}
-                  title={paper.adjustmentReason}
-                >
-                  {paper.scoreAdjustment > 0 ? '↑' : '↓'}{' '}
-                  {Math.abs(paper.scoreAdjustment).toFixed(1)}
-                </span>
-              )}
-              {showDeepAnalysis && paper.deepAnalysis && (
-                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
-                  📄 PDF Analyzed
-                </span>
-              )}
-
-              <a
-                href={`https://arxiv.org/abs/${paper.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
-              >
-                arXiv:{paper.id}
-              </a>
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
-            <p className="text-sm text-gray-400 mb-2">
-              {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
-            </p>
-            <p className="text-sm text-gray-300 italic mb-2">
-              {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
-            </p>
-            {showDeepAnalysis && paper.deepAnalysis && (
-              <div className="mt-3 pt-3 border-t border-slate-700">
-                <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
-                  {paper.deepAnalysis.summary}
-                </div>
-              </div>
-            )}
-
-            {hasFeedbackAffordance && (
-              <div className="mt-3 pt-3 border-t border-slate-700">
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={handleStar}
-                    className={`px-2 py-1 rounded border transition-colors ${
-                      starred
-                        ? 'bg-yellow-900/40 text-yellow-300 border-yellow-600'
-                        : 'text-slate-400 border-slate-600 hover:border-yellow-500 hover:text-yellow-300'
-                    }`}
-                    title={starred ? 'Remove star' : 'Star this paper'}
-                  >
-                    {starred ? '★ starred' : '☆ star'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDismiss}
-                    className={`px-2 py-1 rounded border transition-colors ${
-                      dismissed
-                        ? 'bg-slate-800 text-slate-100 border-slate-500'
-                        : 'text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
-                    }`}
-                    title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
-                  >
-                    {dismissed ? '⊘ dismissed' : '⊘ dismiss'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCommentInput((v) => !v)}
-                    className="px-2 py-1 rounded border text-slate-400 border-slate-600 hover:border-purple-500 hover:text-purple-300 transition-colors"
-                    title="Leave a comment on this paper"
-                  >
-                    + comment
-                  </button>
-                </div>
-                {showCommentInput && (
-                  <div className="mt-2">
-                    <textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      rows={3}
-                      placeholder="Your thoughts on this paper…"
-                      className="w-full min-h-[4rem] resize-y rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-slate-500 focus:outline-none"
-                      autoFocus
-                    />
-                    <div className="mt-1 flex gap-2 justify-end">
-                      <button
-                        type="button"
-                        onClick={handleCancelComment}
-                        className="px-2 py-1 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveComment}
-                        disabled={commentText.trim().length === 0}
-                        className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <PaperCard
+        key={paper.id}
+        paper={paper}
+        idx={idx}
+        showDeepAnalysis={showDeepAnalysis}
+        starred={entry?.starred ?? false}
+        dismissed={entry?.dismissed ?? false}
+        briefingDate={paperCardBriefingDate}
+        onStar={feedback.addStar}
+        onDismiss={feedback.addDismiss}
+        onComment={feedback.addPaperComment}
+      />
     );
-  };
-
-  PaperCard.propTypes = {
-    paper: PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      title: PropTypes.string.isRequired,
-      authors: PropTypes.arrayOf(PropTypes.string).isRequired,
-      finalScore: PropTypes.number,
-      relevanceScore: PropTypes.number,
-      scoreAdjustment: PropTypes.number,
-      adjustmentReason: PropTypes.string,
-      scoreJustification: PropTypes.string,
-      deepAnalysis: PropTypes.shape({
-        relevanceAssessment: PropTypes.string,
-        summary: PropTypes.string,
-      }),
-    }).isRequired,
-    idx: PropTypes.number.isRequired,
-    showDeepAnalysis: PropTypes.bool.isRequired,
   };
 
   // If not authenticated, show login screen
@@ -4502,14 +4544,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                         📄 Papers with Deep PDF Analysis ({results.finalRanking.length})
                       </h3>
                       <div className="space-y-2 max-h-[1000px] overflow-y-auto pr-2">
-                        {results.finalRanking.map((paper, idx) => (
-                          <PaperCard
-                            key={paper.id}
-                            paper={paper}
-                            idx={idx}
-                            showDeepAnalysis={true}
-                          />
-                        ))}
+                        {results.finalRanking.map((paper, idx) =>
+                          renderPaperCard(paper, idx, true)
+                        )}
                       </div>
                     </div>
 
@@ -4520,14 +4557,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                           📋 Abstract-Only Scores ({abstractOnlyPapers.length})
                         </h3>
                         <div className="space-y-2 max-h-[750px] overflow-y-auto pr-2">
-                          {abstractOnlyPapers.map((paper, idx) => (
-                            <PaperCard
-                              key={paper.id}
-                              paper={paper}
-                              idx={results.finalRanking.length + idx}
-                              showDeepAnalysis={false}
-                            />
-                          ))}
+                          {abstractOnlyPapers.map((paper, idx) =>
+                            renderPaperCard(paper, results.finalRanking.length + idx, false)
+                          )}
                         </div>
                       </div>
                     )}
@@ -4538,9 +4570,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
               // During abstract scoring: show all scored papers with scroll
               return (
                 <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                  {results.scoredPapers.map((paper, idx) => (
-                    <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={false} />
-                  ))}
+                  {results.scoredPapers.map((paper, idx) => renderPaperCard(paper, idx, false))}
                 </div>
               );
             })()}
@@ -4718,7 +4748,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   {
                     arxivId,
                     paperTitle: paper.title,
-                    quickSummary: paper.quickSummary,
+                    quickSummary: paper.quickSummary ?? '',
                     score: paper.score,
                     briefingDate: currentBriefing.date ?? new Date().toISOString().slice(0, 10),
                   },

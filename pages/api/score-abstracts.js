@@ -68,9 +68,7 @@ async function callOpenAI(modelName, prompt) {
     throw new Error('OPENAI_API_KEY environment variable is not set');
   }
 
-  // Add debugging
   console.log('OpenAI API Key exists:', !!process.env.OPENAI_API_KEY);
-  console.log('OpenAI API Key format:', process.env.OPENAI_API_KEY?.slice(0, 10) + '...');
   console.log('Model name:', modelName);
 
   const requestBody = {
@@ -113,9 +111,7 @@ async function callGemini(modelName, prompt) {
     throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
   }
 
-  // Add debugging
   console.log('Google AI API Key exists:', !!process.env.GOOGLE_AI_API_KEY);
-  console.log('Google AI API Key format:', process.env.GOOGLE_AI_API_KEY?.slice(0, 10) + '...');
   console.log('Model name:', modelName);
 
   const requestBody = {

@@ -31,11 +31,14 @@ export default async function handler(req, res) {
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
   }
 
-  if (!paper?.arxivId || !fullReport || !provider || !model || !apiKey) {
+  if (!paper?.arxivId || !fullReport || !provider || !model) {
     res.status(400).json({
-      error:
-        'missing required fields: paper.arxivId, fullReport, provider, model, and either apiKey or password',
+      error: 'missing required fields: paper.arxivId, fullReport, provider, model',
     });
+    return;
+  }
+  if (!apiKey) {
+    res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }
 
@@ -67,6 +70,6 @@ export default async function handler(req, res) {
       tokensOut: response.tokensOut,
     });
   } catch (err) {
-    res.status(500).json({ error: String(err?.message ?? err) });
+    res.status(500).json({ error: 'quick summary failed', details: String(err?.message ?? err) });
   }
 }
