@@ -7,6 +7,7 @@ import {
   FileText,
   Loader2,
   Lock,
+  Newspaper,
   Pause,
   Play,
   RotateCcw,
@@ -20,7 +21,7 @@ import {
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AVAILABLE_MODELS, MODEL_REGISTRY } from '../utils/models';
-import { generateTestReport, TEST_PAPERS } from '../utils/testUtils';
+import { TEST_PAPERS } from '../utils/testUtils';
 import BriefingView from './briefing/BriefingView.jsx';
 import FeedbackPanel from './feedback/FeedbackPanel.jsx';
 import YourProfile from './profile/YourProfile.jsx';
@@ -2758,16 +2759,6 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
       await startProcessing(true, false); // isDryRun = true, useTestPapers = false
 
-      // Generate and download test report
-      const testReport = generateTestReport(results.finalRanking, 'dry-run');
-      const blob = new Blob([testReport], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${new Date().toISOString().split('T')[0]}_aparture_dry_run_test.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-
       setTestState((prev) => ({
         ...prev,
         dryRunCompleted: true,
@@ -2775,7 +2766,7 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
         dryRunInProgress: false,
       }));
 
-      addError('Dry run test completed successfully');
+      addError('Dry run test completed successfully — click Download Report to save.');
 
       // Restore previous abort controller
       abortControllerRef.current = oldAbortController;
@@ -2801,23 +2792,13 @@ Your entire response MUST ONLY be a single, valid JSON object/array. DO NOT resp
 
       await startProcessing(false, true); // isDryRun = false, useTestPapers = true
 
-      // Generate and download test report
-      const testReport = generateTestReport(results.finalRanking, 'minimal');
-      const blob = new Blob([testReport], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${new Date().toISOString().split('T')[0]}_aparture_minimal_test.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-
       setTestState((prev) => ({
         ...prev,
         lastMinimalTestTime: new Date(),
         minimalTestInProgress: false,
       }));
 
-      addError('Minimal test completed successfully');
+      addError('Minimal test completed successfully — click Download Report to save.');
 
       // Restore previous abort controller
       abortControllerRef.current = oldAbortController;
@@ -4195,6 +4176,86 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
           </div>
         </div>
 
+        {/* Scored Papers Display - Show papers that have been scored */}
+        {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+            <div className="flex items-center mb-4">
+              <FileText className="w-5 h-5 mr-2 text-green-400" />
+              <h2 className="text-xl font-semibold">
+                {results.finalRanking.length > 0 ? 'Analysis Results' : 'Scored Papers'}
+              </h2>
+              {testState.dryRunInProgress && (
+                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                  <TestTube className="w-3 h-3" />
+                  TEST DATA
+                </span>
+              )}
+            </div>
+
+            {(() => {
+              // During/after deep analysis: show two sections
+              if (
+                results.finalRanking.length > 0 &&
+                (processing.stage === 'deep-analysis' || processing.stage === 'complete')
+              ) {
+                const deepAnalyzedIds = new Set(results.finalRanking.map((p) => p.id));
+                const abstractOnlyPapers = results.scoredPapers.filter(
+                  (p) => !deepAnalyzedIds.has(p.id)
+                );
+
+                return (
+                  <div className="space-y-6">
+                    {/* Deep Analysis Section */}
+                    <div>
+                      <h3 className="text-lg font-medium mb-3 text-blue-400">
+                        📄 Papers with Deep PDF Analysis ({results.finalRanking.length})
+                      </h3>
+                      <div className="space-y-2 max-h-[1000px] overflow-y-auto pr-2">
+                        {results.finalRanking.map((paper, idx) => (
+                          <PaperCard
+                            key={paper.id}
+                            paper={paper}
+                            idx={idx}
+                            showDeepAnalysis={true}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Abstract Only Section */}
+                    {abstractOnlyPapers.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-3 text-gray-400">
+                          📋 Abstract-Only Scores ({abstractOnlyPapers.length})
+                        </h3>
+                        <div className="space-y-2 max-h-[750px] overflow-y-auto pr-2">
+                          {abstractOnlyPapers.map((paper, idx) => (
+                            <PaperCard
+                              key={paper.id}
+                              paper={paper}
+                              idx={results.finalRanking.length + idx}
+                              showDeepAnalysis={false}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // During abstract scoring: show all scored papers with scroll
+              return (
+                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                  {results.scoredPapers.map((paper, idx) => (
+                    <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={false} />
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* Download Report Section */}
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
           <div className="flex items-center justify-between">
@@ -4257,8 +4318,104 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
           </div>
         </div>
 
-        {/* NotebookLM Podcast Generation Section */}
-        {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
+        {/* Briefing — Phase 1.5 synthesized reading view */}
+        {results?.finalRanking?.length > 0 && (
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
+            <div className="flex items-center mb-4">
+              <Newspaper className="w-5 h-5 mr-2 text-red-400" />
+              <h2 className="text-xl font-semibold">Briefing</h2>
+              {testState.dryRunInProgress && (
+                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                  <TestTube className="w-3 h-3" />
+                  TEST MODE
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Weave the top-ranked papers from this run into a structured reading view — executive
+              summary, themes, and per-paper pitches — grounded in your profile. Runs on the
+              briefing model configured above.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateBriefing}
+              disabled={synthesizing || processing.isRunning}
+              className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                synthesizing || processing.isRunning
+                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white'
+              }`}
+            >
+              {synthesizing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Newspaper className="w-4 h-4" />
+                  Generate Briefing
+                </>
+              )}
+            </button>
+            {synthesisError && <p className="mt-2 text-sm text-red-400">Error: {synthesisError}</p>}
+          </div>
+        )}
+
+        {currentBriefing && (
+          <div className="mb-6">
+            <BriefingView
+              briefing={currentBriefing.briefing}
+              date={new Date(currentBriefing.date).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+              briefingDate={currentBriefing.date ?? new Date().toISOString().slice(0, 10)}
+              papersScreened={results?.allPapers?.length ?? 0}
+              quickSummariesById={quickSummariesById}
+              fullReportsById={fullReportsById}
+              feedbackEvents={feedback.events}
+              onStar={feedback.addStar}
+              onDismiss={feedback.addDismiss}
+              onAddComment={(arxivId, text) => {
+                const paper = currentBriefing.briefing.papers.find((p) => p.arxivId === arxivId);
+                if (!paper) return;
+                feedback.addPaperComment(
+                  {
+                    arxivId,
+                    paperTitle: paper.title,
+                    quickSummary: paper.quickSummary,
+                    score: paper.score,
+                    briefingDate: currentBriefing.date ?? new Date().toISOString().slice(0, 10),
+                  },
+                  text
+                );
+              }}
+              onSkipQuestion={() => console.log('skip question')}
+              onPreviewProfileUpdate={(answer) =>
+                console.log('Phase 2 will show a diff. Phase 1 captures the answer:', answer)
+              }
+            />
+          </div>
+        )}
+
+        {currentBriefing && (
+          <div id="feedback-panel" className="mb-6">
+            <FeedbackPanel
+              events={feedback.events}
+              cutoff={profile?.lastFeedbackCutoff ?? 0}
+              onAddGeneralComment={(text) => {
+                const today = new Date().toISOString().slice(0, 10);
+                feedback.addGeneralComment(text, today);
+              }}
+              onSuggestClick={() => setShowSuggestDialog(true)}
+            />
+          </div>
+        )}
+
+        {/* NotebookLM Podcast Generation Section — only visible after a briefing exists */}
+        {currentBriefing && (
           <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -4286,7 +4443,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
 
             <p className="text-sm text-gray-400 mb-4">
               Generate a structured document optimized for NotebookLM to create an expert-level
-              podcast discussion
+              podcast discussion. Uses the briefing above as editorial framing when available.
             </p>
 
             {/* Hallucination Warning */}
@@ -4425,161 +4582,6 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 )}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Scored Papers Display - Show papers that have been scored */}
-        {(results.scoredPapers.length > 0 || results.finalRanking.length > 0) && (
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-            <div className="flex items-center mb-4">
-              <FileText className="w-5 h-5 mr-2 text-green-400" />
-              <h2 className="text-xl font-semibold">
-                {results.finalRanking.length > 0 ? 'Analysis Results' : 'Scored Papers'}
-              </h2>
-              {testState.dryRunInProgress && (
-                <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
-                  <TestTube className="w-3 h-3" />
-                  TEST DATA
-                </span>
-              )}
-            </div>
-
-            {(() => {
-              // During/after deep analysis: show two sections
-              if (
-                results.finalRanking.length > 0 &&
-                (processing.stage === 'deep-analysis' || processing.stage === 'complete')
-              ) {
-                const deepAnalyzedIds = new Set(results.finalRanking.map((p) => p.id));
-                const abstractOnlyPapers = results.scoredPapers.filter(
-                  (p) => !deepAnalyzedIds.has(p.id)
-                );
-
-                return (
-                  <div className="space-y-6">
-                    {/* Deep Analysis Section */}
-                    <div>
-                      <h3 className="text-lg font-medium mb-3 text-blue-400">
-                        📄 Papers with Deep PDF Analysis ({results.finalRanking.length})
-                      </h3>
-                      <div className="space-y-2 max-h-[1000px] overflow-y-auto pr-2">
-                        {results.finalRanking.map((paper, idx) => (
-                          <PaperCard
-                            key={paper.id}
-                            paper={paper}
-                            idx={idx}
-                            showDeepAnalysis={true}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Abstract Only Section */}
-                    {abstractOnlyPapers.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-medium mb-3 text-gray-400">
-                          📋 Abstract-Only Scores ({abstractOnlyPapers.length})
-                        </h3>
-                        <div className="space-y-2 max-h-[750px] overflow-y-auto pr-2">
-                          {abstractOnlyPapers.map((paper, idx) => (
-                            <PaperCard
-                              key={paper.id}
-                              paper={paper}
-                              idx={results.finalRanking.length + idx}
-                              showDeepAnalysis={false}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // During abstract scoring: show all scored papers with scroll
-              return (
-                <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                  {results.scoredPapers.map((paper, idx) => (
-                    <PaperCard key={paper.id} paper={paper} idx={idx} showDeepAnalysis={false} />
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Generate Briefing (Phase 1) */}
-        {results?.finalRanking?.length > 0 && (
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-            <div className="flex items-center mb-3">
-              <h2 className="text-xl font-semibold">Briefing (Phase 1)</h2>
-            </div>
-            <p className="text-sm text-gray-400 mb-4">
-              Generate a synthesized briefing from the final-ranking papers above. The briefing is
-              the new output format for Phase 1 — the existing markdown report is still available
-              unchanged below.
-            </p>
-            <button
-              type="button"
-              onClick={handleGenerateBriefing}
-              disabled={synthesizing || processing.isRunning}
-              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
-            >
-              {synthesizing ? 'Generating…' : '→ Generate Briefing'}
-            </button>
-            {synthesisError && <p className="mt-2 text-sm text-red-400">Error: {synthesisError}</p>}
-          </div>
-        )}
-
-        {currentBriefing && (
-          <div className="mb-6">
-            <BriefingView
-              briefing={currentBriefing.briefing}
-              date={new Date(currentBriefing.date).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-              briefingDate={currentBriefing.date ?? new Date().toISOString().slice(0, 10)}
-              papersScreened={results?.allPapers?.length ?? 0}
-              quickSummariesById={quickSummariesById}
-              fullReportsById={fullReportsById}
-              feedbackEvents={feedback.events}
-              onStar={feedback.addStar}
-              onDismiss={feedback.addDismiss}
-              onAddComment={(arxivId, text) => {
-                const paper = currentBriefing.briefing.papers.find((p) => p.arxivId === arxivId);
-                if (!paper) return;
-                feedback.addPaperComment(
-                  {
-                    arxivId,
-                    paperTitle: paper.title,
-                    quickSummary: paper.quickSummary,
-                    score: paper.score,
-                    briefingDate: currentBriefing.date ?? new Date().toISOString().slice(0, 10),
-                  },
-                  text
-                );
-              }}
-              onSkipQuestion={() => console.log('skip question')}
-              onPreviewProfileUpdate={(answer) =>
-                console.log('Phase 2 will show a diff. Phase 1 captures the answer:', answer)
-              }
-            />
-          </div>
-        )}
-
-        {currentBriefing && (
-          <div id="feedback-panel" className="mb-6">
-            <FeedbackPanel
-              events={feedback.events}
-              cutoff={profile?.lastFeedbackCutoff ?? 0}
-              onAddGeneralComment={(text) => {
-                const today = new Date().toISOString().slice(0, 10);
-                feedback.addGeneralComment(text, today);
-              }}
-              onSuggestClick={() => setShowSuggestDialog(true)}
-            />
           </div>
         )}
 
