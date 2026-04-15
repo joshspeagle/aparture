@@ -306,6 +306,7 @@ const DEFAULT_CONFIG = {
   postProcessingBatchSize: 5, // Batch size for post-processing
   postProcessingModel: 'gemini-3-flash', // Model for post-processing (defaults to scoringModel)
   pdfModel: 'gemini-3.1-pro', // RENAMED from deepAnalysisModel
+  briefingModel: 'gemini-3.1-pro', // Phase 1.5: synthesis + suggest-profile model
   maxAbstractDisplay: 500,
 };
 
@@ -466,6 +467,19 @@ function ArxivAnalyzer() {
       }
     }
   }, []);
+
+  // Phase 1.5 migration: if briefingModel is missing from persisted config
+  // (upgrading from Phase 1), inherit the value from pdfModel so existing
+  // users don't silently fall back to the generic default.
+  useEffect(() => {
+    if (config.briefingModel === undefined || config.briefingModel === null) {
+      setConfig((prev) => ({
+        ...prev,
+        briefingModel: prev.pdfModel ?? 'gemini-3.1-pro',
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   // Save state to localStorage
   useEffect(() => {
@@ -3416,6 +3430,36 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                   <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
                     <p className="text-xs text-gray-300">
                       {AVAILABLE_MODELS.find((m) => m.id === config.pdfModel)?.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Briefing Model (Phase 1.5: synthesis + suggest-profile) */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Briefing Model (synthesis + suggest)
+                  </label>
+                  <select
+                    value={config.briefingModel ?? config.pdfModel}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, briefingModel: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
+                    disabled={processing.isRunning}
+                  >
+                    {AVAILABLE_MODELS.filter((m) => m.supportsPDF).map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-2 p-2 bg-slate-800/50 rounded-lg">
+                    <p className="text-xs text-gray-300">
+                      {
+                        AVAILABLE_MODELS.find(
+                          (m) => m.id === (config.briefingModel ?? config.pdfModel)
+                        )?.description
+                      }
                     </p>
                   </div>
                 </div>

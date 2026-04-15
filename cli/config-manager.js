@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
   scoringModel: 'gemini-3-flash',
   postProcessingModel: 'gemini-3-flash',
   pdfModel: 'gemini-3.1-pro',
+  briefingModel: 'gemini-3.1-pro',
   notebookLMModel: 'gemini-3.1-pro',
 
   // Processing options
