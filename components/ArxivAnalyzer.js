@@ -1,6 +1,6 @@
 import { Lock, Unlock } from 'lucide-react';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { MODEL_REGISTRY } from '../utils/models';
 import { TEST_PAPERS } from '../utils/testUtils';
 import BriefingCard from './briefing/BriefingCard.jsx';
@@ -17,6 +17,7 @@ import SuggestDialog from './profile/SuggestDialog.jsx';
 import PreviewPanel from './profile/PreviewPanel.jsx';
 import SettingsPanel from './settings/SettingsPanel.jsx';
 import { MockAPITester } from '../lib/analyzer/mockApi.js';
+import { readInitialConfig, useAnalyzerPersistence } from '../hooks/useAnalyzerPersistence.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
 import { useFeedback } from '../hooks/useFeedback.js';
@@ -215,125 +216,6 @@ PaperCard.propTypes = {
   onComment: PropTypes.func,
 };
 
-// Default configuration
-const DEFAULT_CONFIG = {
-  version: 2,
-  selectedCategories: [
-    'cs.AI',
-    'cs.CL',
-    'cs.CV',
-    'cs.IR',
-    'cs.LG',
-    'cs.MA',
-    'cs.NE',
-    'stat.AP',
-    'stat.CO',
-    'stat.ME',
-    'stat.ML',
-    'stat.OT',
-    'stat.TH',
-    'astro-ph.CO',
-    'astro-ph.EP',
-    'astro-ph.GA',
-    'astro-ph.HE',
-    'astro-ph.IM',
-    'astro-ph.SR',
-  ],
-  scoringCriteria: `**Core Methodological Interests:**
-**Statistical Learning:** Deep learning advances, general ML methods, novel architectures and training techniques with practical applications
-**Uncertainty Quantification & Robustness:** Principled approaches to model uncertainty, calibration, conformal prediction, robustness evaluation, out-of-distribution detection, Bayesian deep learning
-**Mechanistic Interpretability:** Understanding how models work internally, feature attribution, causal discovery in neural networks—not just making them "more honest" through prompting
-**Advanced Statistical Methods:** Novel sampling/inference techniques, variational inference, hierarchical modeling, state space models, time series analysis, probabilistic programming innovations
-**AI for Scientific Discovery:** Methods specifically designed to accelerate scientific understanding, not just routine applications of existing ML to new domains. Be highly selective with LLM papers—only major architectural innovations or fundamental breakthroughs, not incremental applications or fine-tuning studies.
-
-**Astrophysics Domain Interests:**
-**Galaxy Formation & Evolution:** Observational studies of galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphological evolution
-**Stellar Populations & Evolution:** Stellar activity, stellar populations as galactic tracers, stellar physics and evolution, star clusters, star formation processes
-**Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
-**Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
-
-**Research Philosophy:** Values EITHER (1) fundamental methodological advances in general OR (2) significant observational/data-driven astrophysical insights. Papers excelling in ANY category above should score highly - they do NOT need to match multiple domains. A landmark ML paper should score as highly as a landmark astrophysics paper. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
-  maxDeepAnalysis: 30,
-  finalOutputCount: 30,
-  daysBack: 1,
-  batchSize: 3,
-  maxCorrections: 1,
-  maxRetries: 1,
-  // Three-stage model configuration
-  useQuickFilter: true, // NEW: Enable quick filtering stage (enabled by default)
-  filterModel: 'gemini-2.5-flash-lite', // Model for quick YES/NO/MAYBE filtering
-  filterBatchSize: 3, // Batch size for filtering
-  categoriesToScore: ['YES', 'MAYBE'], // Which filter categories proceed to scoring
-  scoringModel: 'gemini-3-flash', // Model for abstract scoring
-  scoringBatchSize: 3, // RENAMED from batchSize
-  // Post-processing configuration
-  enableScorePostProcessing: true, // Enable score post-processing
-  postProcessingCount: 50, // Number of top papers to post-process
-  postProcessingBatchSize: 5, // Batch size for post-processing
-  postProcessingModel: 'gemini-3-flash', // Model for post-processing (defaults to scoringModel)
-  pdfModel: 'gemini-3.1-pro', // RENAMED from deepAnalysisModel
-  briefingModel: 'gemini-3.1-pro', // Phase 1.5: synthesis + suggest-profile model
-  // Phase 1.5.1: hallucination check retry criteria for briefing generation
-  briefingRetryOnYes: true, // Auto-retry if check returns YES (definite hallucination)
-  briefingRetryOnMaybe: false, // Auto-retry if check returns MAYBE (possible hallucination)
-  maxAbstractDisplay: 500,
-};
-
-// Available AI models
-// AVAILABLE_MODELS is now imported from utils/models.js
-
-// Phase 1.5: lazy-initialize the config state synchronously from localStorage so
-// hooks that depend on config values (notably useProfile, which reads
-// config.scoringCriteria for the Phase 1 → 1.5 migration) see the real persisted
-// values on first render, not the hardcoded DEFAULT_CONFIG.
-function readInitialConfig() {
-  if (typeof window === 'undefined') return DEFAULT_CONFIG;
-  try {
-    const savedState = window.localStorage.getItem('arxivAnalyzerState');
-    if (!savedState) return DEFAULT_CONFIG;
-    const parsed = JSON.parse(savedState);
-    if (!parsed?.config) return DEFAULT_CONFIG;
-
-    // Convert old categories string to selectedCategories array
-    if (parsed.config.categories && !parsed.config.selectedCategories) {
-      parsed.config.selectedCategories = parsed.config.categories
-        .split(',')
-        .map((c) => c.trim())
-        .filter((c) => c);
-      delete parsed.config.categories;
-    }
-
-    // Outdated config version → use fresh defaults
-    if (!parsed.config.version || parsed.config.version < DEFAULT_CONFIG.version) {
-      return DEFAULT_CONFIG;
-    }
-
-    // Migrate old two-model setup
-    if (parsed.config.screeningModel && !parsed.config.scoringModel) {
-      parsed.config.filterModel = 'gemini-2.5-flash-lite';
-      parsed.config.scoringModel = parsed.config.screeningModel;
-      parsed.config.pdfModel = parsed.config.deepAnalysisModel;
-      parsed.config.filterBatchSize = 3;
-      parsed.config.scoringBatchSize = parsed.config.batchSize || 3;
-      parsed.config.useQuickFilter = false;
-      parsed.config.categoriesToScore = ['YES', 'MAYBE'];
-      delete parsed.config.screeningModel;
-      delete parsed.config.deepAnalysisModel;
-    }
-    // Migrate even older single-model setup
-    if (parsed.config.selectedModel) {
-      parsed.config.filterModel = 'gemini-2.5-flash-lite';
-      parsed.config.scoringModel = 'gemini-3-flash';
-      parsed.config.pdfModel = parsed.config.selectedModel;
-      delete parsed.config.selectedModel;
-    }
-
-    return { ...DEFAULT_CONFIG, ...parsed.config };
-  } catch {
-    return DEFAULT_CONFIG;
-  }
-}
-
 // Main Application Component
 function ArxivAnalyzer() {
   const [config, setConfig] = useState(readInitialConfig);
@@ -420,160 +302,7 @@ function ArxivAnalyzer() {
   const pauseRef = useRef(false);
   const mockAPITesterRef = useRef(null);
 
-  // Load saved state from localStorage
-  useEffect(() => {
-    const savedState = localStorage.getItem('arxivAnalyzerState');
-    if (savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        if (parsed.config) {
-          // Handle backward compatibility: convert old categories string to selectedCategories array
-          if (parsed.config.categories && !parsed.config.selectedCategories) {
-            const categoriesArray = parsed.config.categories
-              .split(',')
-              .map((c) => c.trim())
-              .filter((c) => c);
-            parsed.config.selectedCategories = categoriesArray;
-            delete parsed.config.categories;
-          }
-
-          // Check if saved config is from an older version
-          if (!parsed.config.version || parsed.config.version < DEFAULT_CONFIG.version) {
-            // Use fresh defaults for outdated configs
-            setConfig(DEFAULT_CONFIG);
-          } else {
-            // Handle migration from old model names to new three-model setup
-            if (parsed.config.screeningModel && !parsed.config.scoringModel) {
-              // Migrate from two-model to three-model structure
-              parsed.config.filterModel = 'gemini-2.5-flash-lite';
-              parsed.config.scoringModel = parsed.config.screeningModel;
-              parsed.config.pdfModel = parsed.config.deepAnalysisModel;
-              parsed.config.filterBatchSize = 3;
-              parsed.config.scoringBatchSize = parsed.config.batchSize || 3;
-              parsed.config.useQuickFilter = false;
-              parsed.config.categoriesToScore = ['YES', 'MAYBE'];
-              delete parsed.config.screeningModel;
-              delete parsed.config.deepAnalysisModel;
-            }
-            // Handle even older single model setup
-            if (parsed.config.selectedModel) {
-              parsed.config.filterModel = 'gemini-2.5-flash-lite';
-              parsed.config.scoringModel = 'gemini-3-flash';
-              parsed.config.pdfModel = parsed.config.selectedModel;
-              delete parsed.config.selectedModel;
-            }
-
-            // Merge saved config with new defaults to pick up any new default values
-            const mergedConfig = {
-              ...DEFAULT_CONFIG,
-              ...parsed.config,
-            };
-            setConfig(mergedConfig);
-          }
-        }
-        if (parsed.results) setResults(parsed.results);
-        if (parsed.filterResults) {
-          // Restore persisted filter verdicts but reset transient progress
-          // fields so a refresh mid-run doesn't strand the UI in an
-          // "inProgress" state for a stage that is no longer running.
-          setFilterResults({
-            total: parsed.filterResults.total ?? 0,
-            yes: parsed.filterResults.yes ?? [],
-            maybe: parsed.filterResults.maybe ?? [],
-            no: parsed.filterResults.no ?? [],
-            inProgress: false,
-            currentBatch: 0,
-            totalBatches: 0,
-          });
-        }
-        if (parsed.processingTiming) {
-          const timing = { ...parsed.processingTiming };
-          // Convert date strings back to Date objects
-          if (timing.startTime) timing.startTime = new Date(timing.startTime);
-          if (timing.endTime) timing.endTime = new Date(timing.endTime);
-          setProcessingTiming(timing);
-        }
-        if (parsed.testState) setTestState(parsed.testState);
-        if (parsed.notebookLM) {
-          if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
-          if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
-          if (parsed.notebookLM.content) setNotebookLMContent(parsed.notebookLM.content);
-        }
-        if (parsed.password) {
-          setPassword(parsed.password);
-          setIsAuthenticated(true);
-        }
-      } catch (e) {
-        console.error('Failed to load saved state:', e);
-      }
-    }
-  }, []);
-
-  // Phase 1.5 migration: if briefingModel is missing from persisted config
-  // (upgrading from Phase 1), inherit the value from pdfModel so existing
-  // users don't silently fall back to the generic default.
-  useEffect(() => {
-    if (config.briefingModel === undefined || config.briefingModel === null) {
-      setConfig((prev) => ({
-        ...prev,
-        briefingModel: prev.pdfModel ?? 'gemini-3.1-pro',
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
-
-  // Save state to localStorage.
-  // Phase 1.5.1 D5: debounced so a fast-updating loop (e.g. filter batches
-  // on 500 papers) does not JSON.stringify the growing results/filterResults
-  // arrays on every tick. A trailing 400ms debounce means the user-visible
-  // state settles shortly after the last update without blocking the main
-  // thread during the batch loop.
-  const saveTimeoutRef = useRef(null);
-  useEffect(() => {
-    const hasResults =
-      results.allPapers.length > 0 ||
-      results.scoredPapers.length > 0 ||
-      filterResults.yes.length > 0 ||
-      filterResults.maybe.length > 0 ||
-      filterResults.no.length > 0;
-    if (!hasResults && !password) return undefined;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
-      localStorage.setItem(
-        'arxivAnalyzerState',
-        JSON.stringify({
-          config,
-          results,
-          // Save only stable filter fields; transient progress fields are
-          // reset on load via the load effect.
-          filterResults: {
-            total: filterResults.total,
-            yes: filterResults.yes,
-            maybe: filterResults.maybe,
-            no: filterResults.no,
-          },
-          processingTiming,
-          testState,
-          notebookLM: {
-            duration: podcastDuration,
-            model: notebookLMModel,
-            content: notebookLMContent,
-          },
-          password: isAuthenticated ? password : '',
-        })
-      );
-    }, 400);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = null;
-      }
-    };
-  }, [
+  useAnalyzerPersistence({
     config,
     results,
     filterResults,
@@ -584,7 +313,16 @@ function ArxivAnalyzer() {
     notebookLMContent,
     password,
     isAuthenticated,
-  ]);
+    setResults,
+    setFilterResults,
+    setProcessingTiming,
+    setTestState,
+    setPodcastDuration,
+    setNotebookLMModel,
+    setNotebookLMContent,
+    setPassword,
+    setIsAuthenticated,
+  });
 
   // Add error to log
   const addError = useCallback((error) => {
