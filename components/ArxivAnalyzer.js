@@ -777,7 +777,13 @@ function ArxivAnalyzer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
-  // Save state to localStorage
+  // Save state to localStorage.
+  // Phase 1.5.1 D5: debounced so a fast-updating loop (e.g. filter batches
+  // on 500 papers) does not JSON.stringify the growing results/filterResults
+  // arrays on every tick. A trailing 400ms debounce means the user-visible
+  // state settles shortly after the last update without blocking the main
+  // thread during the batch loop.
+  const saveTimeoutRef = useRef(null);
   useEffect(() => {
     const hasResults =
       results.allPapers.length > 0 ||
@@ -785,7 +791,12 @@ function ArxivAnalyzer() {
       filterResults.yes.length > 0 ||
       filterResults.maybe.length > 0 ||
       filterResults.no.length > 0;
-    if (hasResults || password) {
+    if (!hasResults && !password) return undefined;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
       localStorage.setItem(
         'arxivAnalyzerState',
         JSON.stringify({
@@ -809,7 +820,14 @@ function ArxivAnalyzer() {
           password: isAuthenticated ? password : '',
         })
       );
-    }
+    }, 400);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
   }, [
     config,
     results,
@@ -3545,6 +3563,46 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
     return Math.round((processing.progress.current / processing.progress.total) * 100);
   };
 
+  // Phase 1.5.1 D5: stable callbacks for YourProfile so it can memo
+  // meaningfully in the future without re-rendering on every parent tick.
+  const scrollToFeedback = useCallback(() => {
+    const el = document.getElementById('feedback-panel');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+  const togglePreviewPanel = useCallback(() => setShowPreviewPanel((v) => !v), []);
+  const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
+
+  // Phase 1.5.1 D5: derive abstract-only papers once per render cycle
+  // instead of inside an IIFE in the JSX block.
+  const abstractOnlyPapers = useMemo(() => {
+    const deepAnalyzedIds = new Set(results.finalRanking.map((p) => p.id));
+    return results.scoredPapers.filter((p) => !deepAnalyzedIds.has(p.id));
+  }, [results.finalRanking, results.scoredPapers]);
+
+  // Phase 1.5.1 D5: derive filter-bucket scoring state once. Used by the
+  // filter-results panel to show which papers have already been scored and
+  // which are still pending (unscored).
+  const filterSortedPapers = useMemo(() => {
+    const scoredPaperIds = new Set([
+      ...results.scoredPapers.map((p) => p.id),
+      ...(results.failedPapers ?? []).map((p) => p.id),
+    ]);
+    return {
+      scoredPaperIds,
+      unscoredYes: filterResults.yes.filter((p) => !scoredPaperIds.has(p.id)),
+      unscoredMaybe: filterResults.maybe.filter((p) => !scoredPaperIds.has(p.id)),
+      unscoredNo: filterResults.no.filter((p) => !scoredPaperIds.has(p.id)),
+      scoredYesCount: filterResults.yes.filter((p) => scoredPaperIds.has(p.id)).length,
+      scoredMaybeCount: filterResults.maybe.filter((p) => scoredPaperIds.has(p.id)).length,
+    };
+  }, [
+    results.scoredPapers,
+    results.failedPapers,
+    filterResults.yes,
+    filterResults.maybe,
+    filterResults.no,
+  ]);
+
   // Phase 1.5.1 D5: index feedback events by arxivId once per render so
   // PaperCard lookups are O(1) instead of O(events) per card.
   const feedbackIndex = useMemo(() => {
@@ -3653,12 +3711,9 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
           newInteractionCount={newInteractionCount}
           draftContent={draftContent}
           setDraftContent={setDraftContent}
-          onScrollToFeedback={() => {
-            const el = document.getElementById('feedback-panel');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-          onPreviewClick={() => setShowPreviewPanel((v) => !v)}
-          onSuggestClick={() => setShowSuggestDialog(true)}
+          onScrollToFeedback={scrollToFeedback}
+          onPreviewClick={togglePreviewPanel}
+          onSuggestClick={openSuggestDialog}
           disabled={processing?.isRunning ?? false}
         />
 
@@ -4531,11 +4586,6 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 results.finalRanking.length > 0 &&
                 (processing.stage === 'deep-analysis' || processing.stage === 'complete')
               ) {
-                const deepAnalyzedIds = new Set(results.finalRanking.map((p) => p.id));
-                const abstractOnlyPapers = results.scoredPapers.filter(
-                  (p) => !deepAnalyzedIds.has(p.id)
-                );
-
                 return (
                   <div className="space-y-6">
                     {/* Deep Analysis Section */}
@@ -4772,7 +4822,7 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
                 const today = new Date().toISOString().slice(0, 10);
                 feedback.addGeneralComment(text, today);
               }}
-              onSuggestClick={() => setShowSuggestDialog(true)}
+              onSuggestClick={openSuggestDialog}
             />
           </div>
         )}
@@ -4973,25 +5023,10 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
             </div>
 
             <div className="space-y-4">
-              {/* Get scored paper IDs to exclude them from filtered display */}
+              {/* Derived filter buckets (Phase 1.5.1 D5: memoized once per render). */}
               {(() => {
-                // Include all scored papers from results
-                const scoredPaperIds = new Set([
-                  ...results.scoredPapers.map((p) => p.id),
-                  ...(results.failedPapers || []).map((p) => p.id),
-                ]);
-
-                const unscoredYes = filterResults.yes.filter((p) => !scoredPaperIds.has(p.id));
-                const unscoredMaybe = filterResults.maybe.filter((p) => !scoredPaperIds.has(p.id));
-                const unscoredNo = filterResults.no.filter((p) => !scoredPaperIds.has(p.id));
-
-                // Count how many were actually scored from each category
-                const scoredYesCount = filterResults.yes.filter((p) =>
-                  scoredPaperIds.has(p.id)
-                ).length;
-                const scoredMaybeCount = filterResults.maybe.filter((p) =>
-                  scoredPaperIds.has(p.id)
-                ).length;
+                const { unscoredYes, unscoredMaybe, unscoredNo, scoredYesCount, scoredMaybeCount } =
+                  filterSortedPapers;
 
                 // Helper: render a single filter result row with the Phase 1.5.1
                 // summary + justification + click-cycle override pill. Defined
