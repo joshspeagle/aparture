@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
+import DiffPreview from './DiffPreview.jsx';
 
 function iconForType(type) {
   if (type === 'star') return '★';
@@ -34,14 +35,11 @@ function FeedbackRow({ event, checked, onToggle }) {
 export default function SuggestDialog({
   isOpen,
   onClose,
-  // eslint-disable-next-line no-unused-vars
   profile,
   newFeedback,
   cap,
   briefingModel,
-  // eslint-disable-next-line no-unused-vars
   provider,
-  // eslint-disable-next-line no-unused-vars
   password,
   // eslint-disable-next-line no-unused-vars
   onAccept,
@@ -52,9 +50,7 @@ export default function SuggestDialog({
   const [lastSignature, setLastSignature] = useState(feedbackSignature);
   const [selectedIds, setSelectedIds] = useState(() => new Set(newFeedback.map((e) => e.id)));
   const [state, setState] = useState('selection');
-  // eslint-disable-next-line no-unused-vars
   const [response, setResponse] = useState(null);
-  // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
 
   if (feedbackSignature !== lastSignature) {
@@ -85,6 +81,51 @@ export default function SuggestDialog({
   const hasSelection = selectedIds.size > 0;
   const canGenerate = hasFeedback && hasSelection;
 
+  async function handleGenerate() {
+    setError(null);
+    setState('loading');
+    try {
+      const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
+      const res = await fetch('/api/suggest-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentProfile: profile,
+          feedback: selectedEvents,
+          briefingModel,
+          provider,
+          password,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`Suggestion failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setResponse(data);
+      setState('result');
+    } catch (e) {
+      setError(e.message);
+      setState('selection');
+    }
+  }
+
+  // For the result-state "no changes" counts, compute stats over the
+  // actually-selected events (after applying the cap).
+  const resultStats = useMemo(() => {
+    if (state !== 'result' || !response) return null;
+    const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
+    return applyCap(selectedEvents, cap).stats;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, response]);
+
+  const hasChanges =
+    state === 'result' &&
+    response &&
+    Array.isArray(response.changes) &&
+    response.changes.length > 0;
+  const hasNoChangeReason =
+    state === 'result' && response && (!response.changes || response.changes.length === 0);
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -103,6 +144,11 @@ export default function SuggestDialog({
           <div className="flex-1 overflow-y-auto p-5 space-y-3">
             {state === 'selection' && (
               <>
+                {error && (
+                  <div className="rounded-md border border-red-700/50 bg-red-900/20 px-3 py-2 text-xs text-red-200">
+                    Suggestion failed: {error}. Retry?
+                  </div>
+                )}
                 {capStats.trimmed && (
                   <div className="rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
                     {droppedCount} older comments will not be included in this suggestion. Visit the
@@ -130,34 +176,113 @@ export default function SuggestDialog({
             )}
 
             {state === 'loading' && (
-              <div className="py-10 text-center text-sm text-slate-400">
-                Asking {briefingModel}…
+              <div className="py-16 text-center">
+                <div className="inline-block animate-pulse text-slate-400 text-sm">
+                  Asking {briefingModel}…
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  This typically takes 15–45 seconds depending on the model.
+                </div>
               </div>
             )}
 
-            {state === 'result' && (
-              <div className="py-10 text-center text-sm text-slate-500">
-                [Result view — Task 18]
+            {hasChanges && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-slate-200">
+                    Proposed changes ({response.changes.length})
+                  </h3>
+                  <div className="text-xs text-slate-500">via {briefingModel}</div>
+                </div>
+                <DiffPreview
+                  before={profile}
+                  after={response.revisedProfile}
+                  changes={response.changes}
+                />
+              </div>
+            )}
+
+            {hasNoChangeReason && (
+              <div className="py-8 text-center space-y-3">
+                <div className="text-lg text-slate-300">No profile changes suggested</div>
+                {response.noChangeReason && (
+                  <div className="mx-auto max-w-xl text-sm text-slate-400 italic">
+                    &ldquo;{response.noChangeReason}&rdquo;
+                  </div>
+                )}
+                {resultStats && (
+                  <div className="text-xs text-slate-500">
+                    Reviewed {resultStats.starCount} stars, {resultStats.dismissCount} dismisses,{' '}
+                    {resultStats.paperCommentTotal + resultStats.generalCommentTotal} comments — no
+                    profile gaps identified.
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           <div className="p-5 border-t border-slate-800 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => setState('loading')}
-              disabled={!canGenerate}
-              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Generate suggestion
-            </button>
+            {state === 'selection' && (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate suggestion
+                </button>
+              </>
+            )}
+
+            {state === 'loading' && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
+              >
+                Cancel
+              </button>
+            )}
+
+            {state === 'result' && hasChanges && (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={() => console.log('TODO: accept')}
+                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Accept
+                </button>
+              </>
+            )}
+
+            {state === 'result' && hasNoChangeReason && (
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('TODO: dismiss');
+                  onClose();
+                }}
+                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Dismiss
+              </button>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
