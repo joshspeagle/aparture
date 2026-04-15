@@ -2998,10 +2998,11 @@ ${paper.deepAnalysis?.summary || 'No deep analysis available'}
         throw new Error('No final-ranking papers available to synthesize.');
       }
 
-      // Determine provider from pdfModel via MODEL_REGISTRY
+      // Determine provider from briefingModel via MODEL_REGISTRY
       // MODEL_REGISTRY providers are capitalized ('Anthropic', 'Google', 'OpenAI');
       // synthesize.js expects lowercase ('anthropic', 'google', 'openai')
-      const modelId = config?.pdfModel ?? 'gemini-3.1-pro';
+      // Falls back to pdfModel for legacy configs that predate briefingModel.
+      const modelId = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
       const modelCfg = MODEL_REGISTRY[modelId];
       const rawProvider = modelCfg?.provider ?? 'Google';
       const provider = rawProvider.toLowerCase();
