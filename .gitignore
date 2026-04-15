@@ -158,5 +158,8 @@ claude-code.json
 # Kept locally for reference but not committed to the repo
 docs/superpowers/
 
+# Superpowers brainstorming session content (local-only mockups/state)
+.superpowers/
+
 # Runtime-generated test fixtures (re-seeded on each test run via beforeAll)
 tests/fixtures/llm/runtime/
