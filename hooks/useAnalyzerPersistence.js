@@ -210,11 +210,11 @@ export function useAnalyzerPersistence({
   const saveTimeoutRef = useRef(null);
   useEffect(() => {
     const hasResults =
-      results.allPapers.length > 0 ||
-      results.scoredPapers.length > 0 ||
-      filterResults.yes.length > 0 ||
-      filterResults.maybe.length > 0 ||
-      filterResults.no.length > 0;
+      (results?.allPapers?.length ?? 0) > 0 ||
+      (results?.scoredPapers?.length ?? 0) > 0 ||
+      (filterResults?.yes?.length ?? 0) > 0 ||
+      (filterResults?.maybe?.length ?? 0) > 0 ||
+      (filterResults?.no?.length ?? 0) > 0;
     if (!hasResults && !password) return undefined;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);

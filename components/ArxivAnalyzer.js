@@ -344,9 +344,11 @@ function ArxivAnalyzer() {
   }, []);
 
   // Phase 1.5.1 F4: publish current state/setters/refs to the pipeline's
-  // mutable state ref after every render. The effect runs on every render
-  // (lint-compliant by listing all reactive deps), so pipeline stages
-  // destructuring stateRef.current at call time always see current values.
+  // mutable state ref after every render. Deps list the reactive VALUES the
+  // pipeline reads; state setters are omitted because React guarantees
+  // their identity is stable across renders (adding them would re-fire the
+  // effect on every render for zero benefit). Refs are omitted for the same
+  // reason — they are stable objects whose .current is mutated in place.
   useEffect(() => {
     pipelineStateRef.current = {
       config,
@@ -572,7 +574,10 @@ function ArxivAnalyzer() {
   const handleGenerateBriefing = () =>
     runBriefingGeneration({
       results,
-      config,
+      briefingModel: config?.briefingModel,
+      pdfModel: config?.pdfModel,
+      briefingRetryOnYes: config.briefingRetryOnYes ?? true,
+      briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
       profile,
       password,
       briefingHistory,
