@@ -6,6 +6,7 @@ import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
 import { repairBriefing } from '../../lib/synthesis/repair.js';
 import { estimateTokens, budgetPreflight } from '../../lib/llm/tokenBudget.js';
+import { MODEL_REGISTRY } from '../../utils/models.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -47,6 +48,12 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Resolve user-facing model ID to the provider's apiId via MODEL_REGISTRY.
+  // If the caller already passed an apiId, or the ID is unknown to the
+  // registry, fall through unchanged so existing tests and BYOK flows that
+  // pass raw apiIds keep working.
+  const modelApiId = MODEL_REGISTRY[model]?.apiId ?? model;
+
   try {
     // Load the synthesis prompt template
     const templatePath = path.resolve(process.cwd(), 'prompts', 'synthesis.md');
@@ -59,7 +66,7 @@ export default async function handler(req, res) {
     const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? prompt;
 
     // Token budget pre-flight
-    const estimatedTokens = estimateTokens({ provider, model, text: finalPrompt });
+    const estimatedTokens = estimateTokens({ provider, model: modelApiId, text: finalPrompt });
     const preflight = budgetPreflight({ estimatedTokens, thresholds: budgetThresholds });
     if (preflight.action === 'block' && !allowOverBudget) {
       res.status(400).json({
@@ -78,7 +85,7 @@ export default async function handler(req, res) {
     const response = await callModel(
       {
         provider,
-        model,
+        model: modelApiId,
         prompt: finalPrompt,
         apiKey,
         structuredOutput: {
@@ -116,7 +123,7 @@ export default async function handler(req, res) {
       briefing: response.structured,
       inputPaperIds,
       callModel: (input) => callModel(input, callMode),
-      llmConfig: { provider, model, apiKey },
+      llmConfig: { provider, model: modelApiId, apiKey },
     });
 
     res.status(200).json({

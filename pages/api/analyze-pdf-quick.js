@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
+import { MODEL_REGISTRY } from '../../utils/models.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -50,8 +51,12 @@ export default async function handler(req, res) {
       .replaceAll('{{abstract}}', paper.abstract ?? '')
       .replaceAll('{{scoringJustification}}', paper.scoringJustification ?? '');
 
+    // Resolve user-facing model ID → apiId via MODEL_REGISTRY; fall through
+    // unchanged if the caller already passed an apiId or an unknown value.
+    const modelApiId = MODEL_REGISTRY[model]?.apiId ?? model;
+
     const response = await callModel(
-      { provider, model, prompt, apiKey },
+      { provider, model: modelApiId, prompt, apiKey },
       callModelMode ?? { mode: 'live' }
     );
 
