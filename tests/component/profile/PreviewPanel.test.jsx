@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PreviewPanel, { selectPreviewSample } from '../../../components/profile/PreviewPanel.jsx';
 
 describe('selectPreviewSample', () => {
@@ -94,5 +94,170 @@ describe('PreviewPanel shell', () => {
     render(<PreviewPanel {...defaultProps} onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+});
+
+describe('PreviewPanel orchestration', () => {
+  const defaultProps = {
+    editedProfile: 'edited profile text',
+    models: {
+      filter: 'gemini-2.5-flash-lite',
+      scoring: 'gemini-3-flash',
+      briefing: 'gemini-3.1-pro',
+    },
+    password: 'test-password',
+    onClose: vi.fn(),
+  };
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem(
+      'aparture-last-analysis-run',
+      JSON.stringify({
+        papers: [
+          {
+            arxivId: 'a',
+            title: 'A',
+            abstract: 'abs a',
+            score: 9,
+            fullReport: 'fr a',
+            quickSummary: 'qs a',
+          },
+          {
+            arxivId: 'b',
+            title: 'B',
+            abstract: 'abs b',
+            score: 8,
+            fullReport: 'fr b',
+            quickSummary: 'qs b',
+          },
+          {
+            arxivId: 'c',
+            title: 'C',
+            abstract: 'abs c',
+            score: 6,
+            fullReport: 'fr c',
+            quickSummary: 'qs c',
+          },
+        ],
+        timestamp: Date.now(),
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('calls filter, score, and synthesize endpoints in order', async () => {
+    const fetchMock = vi.fn();
+    // Filter response: a=YES, b=MAYBE, c=NO
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        verdicts: [
+          { paperIndex: 1, verdict: 'YES' },
+          { paperIndex: 2, verdict: 'MAYBE' },
+          { paperIndex: 3, verdict: 'NO' },
+        ],
+      }),
+    });
+    // Scoring response for survivors (a, b)
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        scores: [
+          { paperIndex: 1, score: 9.1, justification: 'j a' },
+          { paperIndex: 2, score: 7.5, justification: 'j b' },
+        ],
+      }),
+    });
+    // Synthesis response
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        briefing: {
+          executiveSummary: 'preview briefing',
+          themes: [],
+          papers: [],
+          debates: [],
+          longitudinal: [],
+          proactiveQuestions: [],
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<PreviewPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /run preview/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/preview complete/i)).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/quick-filter');
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/score-abstracts');
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/synthesize');
+  });
+
+  it('passes editedProfile as scoringCriteria to filter and scoring stages', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ verdicts: [] }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ scores: [] }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        briefing: {
+          executiveSummary: '',
+          themes: [],
+          papers: [],
+          debates: [],
+          longitudinal: [],
+          proactiveQuestions: [],
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<PreviewPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /run preview/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const filterBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(filterBody.scoringCriteria).toBe('edited profile text');
+  });
+
+  it('shows an error state when filter stage fails', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<PreviewPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /run preview/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/filter stage failed/i)).toBeInTheDocument();
+    });
+  });
+
+  it('provides a Retry button in the error state', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<PreviewPanel {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /run preview/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    });
   });
 });
