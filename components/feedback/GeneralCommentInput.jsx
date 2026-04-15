@@ -34,9 +34,9 @@ export default function GeneralCommentInput({ onSave }) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        rows={4}
+        rows={6}
         placeholder="General comment on this week's briefing or your research interests…"
-        className="w-full min-h-[6rem] resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
+        className="w-full min-h-[8rem] resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
         autoFocus
       />
       <div className="flex gap-2 justify-end">

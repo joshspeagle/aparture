@@ -90,7 +90,7 @@ export default function PaperCard({
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            rows={3}
+            rows={6}
             placeholder="Your thoughts on this paper…"
           />
           <div className="comment-actions">
