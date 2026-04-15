@@ -33,10 +33,6 @@ export default function YourProfile({
     setDraftContent(currentContent);
   };
 
-  const handlePreview = () => {
-    onPreviewClick?.();
-  };
-
   const handleSuggest = () => {
     if (dirty) return;
     onSuggestClick?.();
@@ -104,7 +100,7 @@ export default function YourProfile({
             <div className="flex-1" />
             <button
               type="button"
-              onClick={handlePreview}
+              onClick={onPreviewClick}
               disabled={disabled}
               className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title="Preview how this profile (including unsaved changes) would affect filter + scoring + synthesis on your last analysis run"

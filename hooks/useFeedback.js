@@ -45,13 +45,13 @@ export function useFeedback() {
     });
   }, []);
 
-  const addStar = useCallback(
-    (paper) => {
+  const toggleReaction = useCallback(
+    (type, paper) => {
       replaceStarOrDismiss(paper.arxivId, (existing) => {
-        if (existing?.type === 'star') return null;
+        if (existing?.type === type) return null;
         return {
           id: makeId(),
-          type: 'star',
+          type,
           arxivId: paper.arxivId,
           paperTitle: paper.paperTitle,
           quickSummary: paper.quickSummary,
@@ -64,24 +64,8 @@ export function useFeedback() {
     [replaceStarOrDismiss]
   );
 
-  const addDismiss = useCallback(
-    (paper) => {
-      replaceStarOrDismiss(paper.arxivId, (existing) => {
-        if (existing?.type === 'dismiss') return null;
-        return {
-          id: makeId(),
-          type: 'dismiss',
-          arxivId: paper.arxivId,
-          paperTitle: paper.paperTitle,
-          quickSummary: paper.quickSummary,
-          score: paper.score,
-          timestamp: Date.now(),
-          briefingDate: paper.briefingDate,
-        };
-      });
-    },
-    [replaceStarOrDismiss]
-  );
+  const addStar = useCallback((paper) => toggleReaction('star', paper), [toggleReaction]);
+  const addDismiss = useCallback((paper) => toggleReaction('dismiss', paper), [toggleReaction]);
 
   const addPaperComment = useCallback((paper, text) => {
     setEvents((prev) => {
@@ -143,10 +127,6 @@ export function useFeedback() {
 
   const getNewSince = useCallback((cutoff) => events.filter((e) => e.timestamp > cutoff), [events]);
 
-  const markIncorporated = useCallback(() => {
-    // No-op at the feedback-store level — useProfile owns the cutoff value.
-  }, []);
-
   return {
     events,
     addStar,
@@ -155,6 +135,5 @@ export function useFeedback() {
     addGeneralComment,
     addFilterOverride,
     getNewSince,
-    markIncorporated,
   };
 }

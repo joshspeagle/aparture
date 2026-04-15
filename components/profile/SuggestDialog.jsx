@@ -1,18 +1,11 @@
 import { useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
+import { iconFor } from '../feedback/eventMeta.js';
 import DiffPreview from './DiffPreview.jsx';
 
-function iconForType(type) {
-  if (type === 'star') return '★';
-  if (type === 'dismiss') return '⊘';
-  if (type === 'paper-comment') return '💬';
-  if (type === 'general-comment') return '💭';
-  return '·';
-}
-
 function FeedbackRow({ event, checked, onToggle }) {
-  const icon = iconForType(event.type);
+  const icon = iconFor(event.type);
   const dateStr = new Date(event.timestamp).toLocaleDateString();
   const label =
     event.type === 'general-comment'
@@ -117,37 +110,36 @@ export default function SuggestDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, response]);
 
-  function handleAccept() {
-    // Compute newCutoff from the events that were actually sent to the LLM.
-    // selectedIds was captured at the time of handleGenerate and is
-    // the most recent feedback included in this suggestion.
+  // Compute newCutoff from the events actually sent to the LLM. selectedIds
+  // was captured at handleGenerate time and holds the most recent feedback
+  // included in this suggestion.
+  function computeCutoff() {
     const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
-    const newCutoff =
-      selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
+    return selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
+  }
+
+  function handleAccept() {
     const joinedRationale = response.changes.map((c) => `• ${c.rationale}`).join('\n');
-    onAccept(response.revisedProfile, joinedRationale, newCutoff);
+    onAccept(response.revisedProfile, joinedRationale, computeCutoff());
     onClose();
   }
 
   function handleNoChangeDismiss() {
-    const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
-    const newCutoff =
-      selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
     const rationale = `No changes warranted: ${response.noChangeReason}`;
     // Passes the UNCHANGED profile content so saveSuggested creates a
     // revision entry that marks the feedback as reviewed without touching
     // the profile text.
-    onAccept(profile, rationale, newCutoff);
+    onAccept(profile, rationale, computeCutoff());
     onClose();
   }
 
-  const hasChanges =
-    state === 'result' &&
-    response &&
-    Array.isArray(response.changes) &&
-    response.changes.length > 0;
-  const hasNoChangeReason =
-    state === 'result' && response && (!response.changes || response.changes.length === 0);
+  // result-state discriminant: 'changes' | 'no-change' | null
+  const resultMode =
+    state === 'result' && response
+      ? Array.isArray(response.changes) && response.changes.length > 0
+        ? 'changes'
+        : 'no-change'
+      : null;
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -209,7 +201,7 @@ export default function SuggestDialog({
               </div>
             )}
 
-            {hasChanges && (
+            {resultMode === 'changes' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium text-slate-200">
@@ -225,7 +217,7 @@ export default function SuggestDialog({
               </div>
             )}
 
-            {hasNoChangeReason && (
+            {resultMode === 'no-change' && (
               <div className="py-8 text-center space-y-3">
                 <div className="text-lg text-slate-300">No profile changes suggested</div>
                 {response.noChangeReason && (
@@ -275,7 +267,7 @@ export default function SuggestDialog({
               </button>
             )}
 
-            {state === 'result' && hasChanges && (
+            {resultMode === 'changes' && (
               <>
                 <button
                   type="button"
@@ -294,7 +286,7 @@ export default function SuggestDialog({
               </>
             )}
 
-            {state === 'result' && hasNoChangeReason && (
+            {resultMode === 'no-change' && (
               <button
                 type="button"
                 onClick={handleNoChangeDismiss}

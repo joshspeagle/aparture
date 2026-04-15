@@ -83,10 +83,17 @@ export default function HistoryDropdown({ revisions, onRevert, onClearHistory })
                     className="rounded border border-transparent hover:border-slate-800"
                   >
                     <div className="flex items-start justify-between gap-3 text-xs px-1 py-1">
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => toggleExpanded(rev.createdAt)}
-                        className="flex-1 min-w-0 text-left"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleExpanded(rev.createdAt);
+                          }
+                        }}
+                        className="flex-1 min-w-0 text-left cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-500 rounded"
                         aria-expanded={isExpanded}
                         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} revision from ${formatDate(rev.createdAt)}`}
                       >
@@ -105,13 +112,10 @@ export default function HistoryDropdown({ revisions, onRevert, onClearHistory })
                             {rev.rationale}
                           </p>
                         )}
-                      </button>
+                      </div>
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRevert(rev.createdAt);
-                        }}
+                        onClick={() => onRevert(rev.createdAt)}
                         className="rounded border border-slate-600 px-2 py-0.5 text-slate-300 hover:border-slate-400 hover:text-slate-100 shrink-0"
                       >
                         Revert

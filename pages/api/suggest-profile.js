@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { callModel } from '../../lib/llm/callModel.js';
+import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { renderSuggestPrompt } from '../../lib/profile/suggestPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
@@ -71,17 +72,12 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
-  let apiKey = clientApiKey;
-  if (!apiKey && password) {
-    if (password !== process.env.ACCESS_PASSWORD) {
-      res.status(401).json({ error: 'invalid password' });
-      return;
-    }
-    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  const resolved = resolveApiKey({ clientApiKey, password, provider });
+  if (resolved.error) {
+    res.status(resolved.status).json({ error: resolved.error });
+    return;
   }
+  const apiKey = resolved.apiKey;
 
   if (
     typeof currentProfile !== 'string' ||

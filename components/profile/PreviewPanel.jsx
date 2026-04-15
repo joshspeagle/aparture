@@ -85,7 +85,9 @@ function ScoringShiftsSection({ shifts }) {
           </thead>
           <tbody>
             {shifts.map((s) => {
-              const rowClass = s.delta > 0 ? 'bg-green-900/30' : s.delta < 0 ? 'bg-red-900/30' : '';
+              let rowClass = '';
+              if (s.delta > 0) rowClass = 'bg-green-900/30';
+              else if (s.delta < 0) rowClass = 'bg-red-900/30';
               const deltaStr = s.delta > 0 ? `+${s.delta}` : `${s.delta}`;
               return (
                 <tr key={s.arxivId} className={`border-b border-slate-800 ${rowClass}`}>

@@ -1,40 +1,8 @@
+import { borderClass, iconFor, metaLabel } from './eventMeta.js';
+
 function formatDate(ts) {
   if (!ts) return '';
   return new Date(ts).toLocaleDateString();
-}
-
-function borderClass(type) {
-  switch (type) {
-    case 'star':
-      return 'border-l-yellow-500';
-    case 'dismiss':
-      return 'border-l-slate-500';
-    case 'paper-comment':
-      return 'border-l-purple-500';
-    case 'general-comment':
-      return 'border-l-blue-500';
-    case 'filter-override':
-      return 'border-l-orange-500';
-    default:
-      return 'border-l-slate-700';
-  }
-}
-
-function iconFor(type) {
-  switch (type) {
-    case 'star':
-      return '★';
-    case 'dismiss':
-      return '⊘';
-    case 'paper-comment':
-      return '💬';
-    case 'general-comment':
-      return '💭';
-    case 'filter-override':
-      return '⇄';
-    default:
-      return '·';
-  }
 }
 
 function labelFor(event) {
@@ -49,21 +17,12 @@ function labelFor(event) {
   return `${icon} ${event.type} on ${title} (${event.arxivId})`;
 }
 
-function metaLabel(type) {
-  switch (type) {
-    case 'star':
-      return 'starred';
-    case 'dismiss':
-      return 'dismissed';
-    case 'paper-comment':
-      return 'comment';
-    case 'general-comment':
-      return 'general';
-    case 'filter-override':
-      return 'filter override';
-    default:
-      return type;
-  }
+function MetaLine({ event, date }) {
+  return (
+    <p className="mt-1 text-[10px] text-slate-500">
+      {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
+    </p>
+  );
 }
 
 export default function FeedbackItem({ event }) {
@@ -87,9 +46,7 @@ export default function FeedbackItem({ event }) {
             </span>
             {event.text}
           </p>
-          <p className="mt-1 text-[10px] text-slate-500">
-            {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
-          </p>
+          <MetaLine event={event} date={date} />
         </div>
       ) : isFilterOverride ? (
         <div>
@@ -108,9 +65,7 @@ export default function FeedbackItem({ event }) {
           {event.justification && (
             <p className="mt-0.5 text-xs text-slate-500">{event.justification}</p>
           )}
-          <p className="mt-1 text-[10px] text-slate-500">
-            {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
-          </p>
+          <MetaLine event={event} date={date} />
         </div>
       ) : (
         <div>
@@ -124,9 +79,7 @@ export default function FeedbackItem({ event }) {
           {isPaperComment && event.text && (
             <p className="mt-1 text-xs italic text-slate-400">“{event.text}”</p>
           )}
-          <p className="mt-1 text-[10px] text-slate-500">
-            {metaLabel(event.type)} · {date} · briefing {event.briefingDate}
-          </p>
+          <MetaLine event={event} date={date} />
         </div>
       )}
     </article>
