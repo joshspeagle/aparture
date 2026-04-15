@@ -68,6 +68,7 @@ When questions arise about features, configuration, or usage, refer to the docum
 - **Design system primitives**: `@radix-ui/react-dialog`, `@radix-ui/react-collapsible` (used by briefing UI)
 - **Icons**: Lucide React
 - **Schema validation**: `zod` (briefing structured output)
+- **Word-level diff**: `diff` (used by DiffPreview in the suggest-profile flow)
 - **Token estimation**: `tiktoken` for OpenAI + char-based heuristic for Anthropic/Google
 - **Browser Automation**: Playwright (for PDF downloads and testing)
 - **Testing**: Vitest + @testing-library/react + jsdom (fixture-based, zero real LLM calls)
@@ -83,16 +84,21 @@ When questions arise about features, configuration, or usage, refer to the docum
 - `components/` - React components
   - `components/ArxivAnalyzer.js` - Main application component with multi-stage paper analysis workflow
   - `components/briefing/` - **Phase 1** briefing reading view (BriefingView root + 10 leaf components)
+  - `components/profile/` - **Phase 1.5** Your Profile panel (YourProfile, StatusRow, MigrationNotice, HistoryDropdown, PreviewPanel, SuggestDialog, DiffPreview)
+  - `components/feedback/` - **Phase 1.5** Feedback panel (FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState)
 - `lib/` - **Phase 1** backend library code
   - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget)
   - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai)
   - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
+  - `lib/profile/` - **Phase 1.5** profile utilities (migrations, diff, feedbackCap, suggestPrompt)
 - `prompts/` - **Phase 1** editable LLM prompt templates
   - `prompts/synthesis.md` - Synthesis prompt (the main quality knob — edit to tune briefings)
   - `prompts/analyze-pdf-quick.md` - Quick-summary compression prompt
+  - `prompts/suggest-profile.md` - **Phase 1.5** prompt template for the suggest-improvements flow
 - `hooks/` - **Phase 1** React hooks with localStorage persistence
-  - `hooks/useProfile.js` - Prose research interests (profile.md equivalent)
+  - `hooks/useProfile.js` - Research profile hook (rewritten in Phase 1.5 for a structured data model with versioned history; was a plain string in Phase 1)
   - `hooks/useBriefing.js` - Current briefing + 14-day history
+  - `hooks/useFeedback.js` - **Phase 1.5** feedback event store with latest-wins star/dismiss semantics
 - `tests/` - **Phase 1** Vitest test suite (67 tests across 26 files, fully fixture-based)
   - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
   - `tests/component/` - React component tests via @testing-library/react
@@ -159,8 +165,11 @@ API routes in `pages/api/` handle:
 - `generate-notebooklm.js` - Generate NotebookLM-optimized documents for podcast creation
 - `synthesize.js` - **Phase 1** Cross-paper synthesis into a structured briefing. Loads `prompts/synthesis.md`, renders with profile/papers/history, calls the chosen LLM with provider-native structured output, validates via `lib/synthesis/validator.js`, runs a two-pass repair via `lib/synthesis/repair.js` if validation fails. Returns a typed briefing object for `components/briefing/BriefingView.jsx` to render.
 - `analyze-pdf-quick.js` - **Phase 1** Compresses an existing per-paper full technical report into a ~300-word pre-reading summary using a smaller/cheaper model. Used by the Generate Briefing flow to populate the inline-expansion quick summaries.
+- `suggest-profile.js` - **Phase 1.5** Accepts `{currentProfile, feedback, briefingModel, provider, apiKey|password}`, loads `prompts/suggest-profile.md`, calls the LLM via `lib/llm/callModel.js` with a zod schema for structured output, runs two-pass repair on validation failure, returns `{revisedProfile, changes, noChangeReason?}`. Used by the SuggestDialog in the manual memory loop.
 
 **Auth pattern:** All API routes (including the new Phase 1 ones) accept EITHER a client-supplied `apiKey` (for future BYOK flows) OR a `password` field validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the requested provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). The existing web UI uses the password path; Phase 2's Electron app will use the client-supplied apiKey path from OS keychain.
+
+**Phase 1.5 note:** The config now has a separate `briefingModel` field distinct from `pdfModel`. `briefingModel` drives `/api/synthesize` and `/api/suggest-profile`, while `pdfModel` continues to drive Stage 3 `/api/analyze-pdf`. Both default to the same model on first run, but can be tuned independently.
 
 ### Security
 
@@ -243,7 +252,7 @@ npm run test:minimal       # Real API test (3 papers)
 - **Visual Indicators**: Clear "TEST MODE" badges when using mock data
 - **Comprehensive Mock API**: Tests error handling, retries, and edge cases
 
-### Phase 1 Briefing Pipeline
+### Profile + Briefing Pipeline (Phase 1 + 1.5)
 
 Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, all additive to the existing pipeline:
 
@@ -270,6 +279,20 @@ Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, 
 **To change briefing visual design:** edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the React components, so color changes propagate without touching `.jsx`.
 
 **Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a new fixture, run the helper at `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests. The entire suite runs in ~30s and costs $0 because no real LLM calls are made.
+
+### Phase 1.5 Additions
+
+- **Unified profile field.** The old "Research Profile" (Phase 1) and "Scoring Criteria" (pre-Phase 1) textareas are replaced by a single "Your Profile" panel at the top of the app. Every pipeline stage (quick-filter, score-abstracts, rescore-abstracts, analyze-pdf, generate-notebooklm, synthesize) reads `profile.content` from `useProfile`.
+- **Four feedback types.** Stars, dismisses, per-paper comments, and freeform general comments — all persisted in `aparture-feedback` localStorage via `useFeedback`. Star/dismiss are latest-wins per paper; comments are append-only.
+- **Preview flow.** Explicit-click Preview button in Your Profile runs Stage 1 quick filter + Stage 2 scoring + synthesis on a 15-paper cached sample (top 10 + 5 borderline) using the edited profile. No new API endpoint — frontend orchestrates existing routes. Cached Stage 3 reports are reused.
+- **Suggest-improvements flow.** `/api/suggest-profile` accepts the current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if the feedback doesn't point to a clear gap. SuggestDialog surfaces the diff and lets the user accept or reject.
+- **Smart feedback cap.** All stars/dismisses are always included in the suggest-profile prompt; comments are capped at most-recent N per type (default 30). Transparent notice in the dialog when trimming fires.
+- **`briefingModel` config slot.** Separate from `pdfModel`. Drives synthesize + suggest-profile. Defaults to pdfModel on first run.
+- **ProactiveQuestionPanel deleted.** The Phase 1 stub for LLM-initiated questions is removed; Phase 1.5 uses a manual Suggest improvements button instead.
+
+**To tune suggest-improvements quality:** edit `prompts/suggest-profile.md`. Takes effect on the next suggest call — no rebuild needed.
+
+**To add a new feedback type:** extend the event type union in `hooks/useFeedback.js`, add a variant in `components/feedback/FeedbackItem.jsx`, and add a new section in `lib/profile/suggestPrompt.js`'s `renderFeedbackSection`.
 
 ### Refactor Context (design spec + implementation plan)
 
@@ -336,6 +359,8 @@ The documentation is built with VitePress and includes:
 
 **Always refer to `utils/models.js` for accurate model information.**
 
+**Model slots:** `filterModel` (Stage 1 quick filter), `scoringModel` (Stage 2 abstract scoring), `pdfModel` (Stage 3 deep analysis), `briefingModel` (Phase 1.5 — synthesis + suggest-profile), `notebookLMModel` (NotebookLM document generation).
+
 Current models (as of April 2026). The user-facing ID (left) is what goes into `MODEL_REGISTRY` and the UI; the API ID (right) is what gets sent to the provider.
 
 **Anthropic — current:**
@@ -376,3 +401,20 @@ When updating documentation or code, verify current model names and pricing via:
 - Anthropic: https://platform.claude.com/docs/en/docs/about-claude/models
 - OpenAI: https://developers.openai.com/api/docs/models
 - Google: https://ai.google.dev/gemini-api/docs/models
+
+## Phase B — Web UX Redesign (STANDING DIRECTIVE)
+
+After Phase 1.5 ships and the user has used the new features for ~1–2 weeks of real briefings, the next work should be a dedicated `superpowers:brainstorming` session titled **"Phase B — Web UX redesign"**. The current UX is functional but "workable, not top-tier" — Phase B is a follow-up project with its own design cycle.
+
+**Scope of Phase B (to brainstorm, not to implement here):**
+
+- Information hierarchy: does the single vertical scroll layout scale with Your Profile + Settings + Progress + Results + Briefing + Feedback stacked? Consider tabs, sidebar, routes, collapsible accordions, responsive breakpoints.
+- Typography + palette: the briefing's warm-serif aesthetic vs. the dark-tech app shell — unify or embrace the contrast deliberately.
+- Component primitives: button / card / form / modal / dialog.
+- Empty states and onboarding.
+- Dark / light mode.
+- Responsive / mobile.
+
+**When to trigger:** user explicitly says "let's brainstorm Phase B — Web UX redesign". Full directive at `docs/superpowers/specs/2026-04-14-profile-feedback-memory-design.md` (Phase B section).
+
+**Explicit non-constraint:** Phase B is free to rewrite components wholesale. Phase 1.5's implementation was NOT held to any "keep things easy to restyle" architectural invariant — it followed normal React hygiene only.
