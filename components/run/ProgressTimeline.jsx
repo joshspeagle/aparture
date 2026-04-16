@@ -4,6 +4,7 @@
 // pipeline stages to user-facing labels with status icons.
 
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 
 // Map internal pipeline stages to timeline stage indices.
@@ -15,6 +16,7 @@ function resolveStageIndex(pipelineStage) {
     idle: -1,
     fetching: 0,
     Filtering: 1,
+    'filter-review': 1, // paused between filter and scoring
     'initial-scoring': 2,
     selecting: 3,
     'deep-analysis': 4,
@@ -120,6 +122,7 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
 export default function ProgressTimeline({
   onCycleVerdict: _onCycleVerdict,
   pauseAfterFilter,
+  onContinueAfterFilter,
   children,
 }) {
   const processing = useAnalyzerStore((s) => s.processing);
@@ -179,11 +182,8 @@ export default function ProgressTimeline({
     marginBottom: 'var(--aparture-space-4)',
   };
 
-  // Show filter-pause UI when filter is done and pauseAfterFilter is on
-  const showFilterPause =
-    pauseAfterFilter &&
-    processing.isPaused &&
-    (processing.stage === 'Filtering' || currentIndex === 1);
+  // Show filter-pause UI when the pipeline has halted at the filter-review gate
+  const showFilterPause = pauseAfterFilter && processing.stage === 'filter-review';
   const hasFilterResults =
     (filterResults?.yes?.length ?? 0) +
       (filterResults?.maybe?.length ?? 0) +
@@ -257,6 +257,11 @@ export default function ProgressTimeline({
                       >
                         Use the filter results panel below to override verdicts, then continue.
                       </div>
+                      {onContinueAfterFilter && (
+                        <Button variant="primary" onClick={onContinueAfterFilter}>
+                          Continue to scoring →
+                        </Button>
+                      )}
                     </Card>
                   </div>
                 )}

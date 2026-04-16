@@ -970,6 +970,9 @@ export default function App() {
           getStageDisplay={getStageDisplay}
           getProgressPercentage={getProgressPercentage}
           onCycleVerdict={cycleFilterVerdict}
+          onContinueAfterFilter={() => {
+            pauseRef.current = false;
+          }}
           // Briefing card (generate button)
           synthesizing={synthesizing}
           synthesisError={synthesisError}

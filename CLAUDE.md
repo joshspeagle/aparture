@@ -65,7 +65,8 @@ When questions arise about features, configuration, or usage, refer to the docum
 - **Framework**: Next.js 14 with React 18
 - **Styling**: Tailwind CSS with PostCSS
 - **Typography (briefing view)**: Source Serif 4 + Inter + JetBrains Mono via `next/font/google`
-- **Design system primitives**: `@radix-ui/react-dialog`, `@radix-ui/react-collapsible` (used by briefing UI)
+- **State management**: Zustand (`stores/analyzerStore.js`) — central store for pipeline + UI state; React hooks for profile, briefing, feedback
+- **Design system**: `components/ui/` warm-palette primitives (Button, Card, Input, TextArea, Select, Checkbox) + `@radix-ui/react-dialog` + `@radix-ui/react-collapsible`
 - **Icons**: Lucide React
 - **Schema validation**: `zod` (briefing structured output)
 - **Word-level diff**: `diff` (used by DiffPreview in the suggest-profile flow)
@@ -82,21 +83,24 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `pages/index.js` - Main application entry point
   - `pages/_app.js` - App shell; wraps routes with next/font CSS variables for the briefing typography
 - `components/` - React components
-  - `components/ArxivAnalyzer.js` - **Phase 1.5.1:** shell that wires state, effects, persistence, and the analysis pipeline together. ~925 lines after the F-pass refactor (down from ~5200). Owns NO pipeline logic, NO mock API, NO pure-presentation JSX — just the mount-point for the extracted hooks and components below.
-  - `components/analyzer/` - **Phase 1.5.1** extracted shell cards (ControlPanel, ProgressTracker)
-  - `components/briefing/` - **Phase 1** briefing reading view (BriefingView root + 10 leaf components) + **Phase 1.5.1** BriefingCard
-  - `components/filter/` - **Phase 1.5.1** FilterResultsList with inline FilterResultRow + cycle-verdict pill
-  - `components/notebooklm/` - **Phase 1.5.1** NotebookLMCard (podcast generation panel)
-  - `components/profile/` - **Phase 1.5** Your Profile panel (YourProfile, StatusRow, MigrationNotice, HistoryDropdown, PreviewPanel, SuggestDialog, DiffPreview)
-  - `components/feedback/` - **Phase 1.5** Feedback panel (FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState) + `eventMeta.js` (shared TYPE_META)
-  - `components/results/` - **Phase 1.5.1** results-list cards (AnalysisResultsList, DownloadReportCard)
-  - `components/settings/` - **Phase 1.5.1** SettingsPanel (~580 lines; owns its own UI state + category helpers)
+  - `components/shell/` - **Phase B** root shell: `App.jsx` (replaces the deleted `ArxivAnalyzer.js`), `Sidebar.jsx`, `SidebarBriefingList.jsx`, `MainArea.jsx`. App.jsx is the entry point — owns all hook calls, Zustand selectors, pipeline creation, and the sidebar + main-area layout.
+  - `components/ui/` - **Phase B** warm-palette primitive library: `Button.jsx` (primary/secondary/ghost), `Card.jsx`, `Input.jsx`, `TextArea.jsx`, `Select.jsx`, `Checkbox.jsx`. All use inline styles with `var(--aparture-*)` CSS variables; no Tailwind.
+  - `components/run/` - **Phase B** `ProgressTimeline.jsx` — 6-stage vertical timeline for live pipeline progress display with filter-override pause support.
+  - `components/welcome/` - **Phase B** `WelcomeView.jsx` — persistent getting-started reference page.
+  - `components/analyzer/` - `ControlPanel.jsx` (restyled to warm palette in Phase B)
+  - `components/briefing/` - Briefing reading view (BriefingView root + 10 leaf components) + `BriefingCard.jsx` + **Phase B** `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure)
+  - `components/filter/` - `FilterResultsList.jsx` with inline FilterResultRow + cycle-verdict pill (restyled to warm palette)
+  - `components/notebooklm/` - `NotebookLMCard.jsx` (restyled to warm palette, rendered as disclosure below briefing)
+  - `components/profile/` - Your Profile panel (YourProfile, StatusRow, MigrationNotice, HistoryDropdown, PreviewPanel, SuggestDialog, DiffPreview) — all restyled to warm palette with UI primitives
+  - `components/feedback/` - Feedback panel (FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState) + `eventMeta.js` — all restyled to warm palette
+  - `components/results/` - results-list cards (AnalysisResultsList, DownloadReportCard) — restyled to warm palette
+  - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + briefing retry checkboxes) — restyled to warm palette
 - `lib/` - Backend and analyzer library code
-  - `lib/analyzer/` - **Phase 1.5.1** extracted analyzer internals (see "Analyzer module split" below)
-    - `pipeline.js` - createAnalysisPipeline(stateRef) builder returning `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Owns fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, and the arXiv query stack.
+  - `lib/analyzer/` - Extracted analyzer internals
+    - `pipeline.js` - `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` builder. Reads state from Zustand store via `useAnalyzerStore.getState()`. Returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Owns fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, and the arXiv query stack.
     - `mockApi.js` - MockAPITester class. DI constructor takes `{abortControllerRef, pauseRef, waitForResume}`.
-    - `briefingClient.js` - runBriefingGeneration() orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing → last-run cache.
-    - `exportReport.js` - buildReportMarkdown() + downloadBlob() + exportAnalysisReport() glue.
+    - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing (with generationMetadata) → last-run cache.
+    - `exportReport.js` - `buildReportMarkdown()` + `downloadBlob()` + `exportAnalysisReport()` glue.
   - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey)
   - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai)
   - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
@@ -107,11 +111,14 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `prompts/suggest-profile.md` - **Phase 1.5** prompt template for the suggest-improvements flow
   - `prompts/check-briefing.md` - **Phase 1.5.1** hallucination-audit prompt for the retry loop
 - `hooks/` - React hooks with localStorage persistence
-  - `hooks/useProfile.js` - Research profile hook (rewritten in Phase 1.5 for a structured data model with versioned history; was a plain string in Phase 1)
-  - `hooks/useBriefing.js` - Current briefing + 14-day history
-  - `hooks/useFeedback.js` - **Phase 1.5** feedback event store with latest-wins star/dismiss semantics
-  - `hooks/useAnalyzerPersistence.js` - **Phase 1.5.1** owns DEFAULT_CONFIG, readInitialConfig, load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
-- `tests/` - Vitest test suite (237 tests across 46 files as of Phase 1.5.1, fully fixture-based)
+  - `hooks/useProfile.js` - Research profile hook (structured data model with versioned history)
+  - `hooks/useBriefing.js` - Current briefing + 90-day history archive + generationMetadata support
+  - `hooks/useFeedback.js` - Feedback event store with latest-wins star/dismiss semantics (5 event types: star, dismiss, paper-comment, general-comment, filter-override)
+  - `hooks/useAnalyzerPersistence.js` - Owns DEFAULT_CONFIG, readInitialConfig, load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
+  - `hooks/useTheme.js` - **Phase B** light/dark/auto theme switching; reads/writes `aparture-theme` localStorage key, applies `data-theme` attribute to `<html>`
+- `stores/` - **Phase B** Zustand state management
+  - `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `useAnalyzerStore.getState()` directly.
+- `tests/` - Vitest test suite (308 tests across 50 files, fully fixture-based)
   - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
   - `tests/component/` - React component tests via @testing-library/react
   - `tests/integration/` - API route handler tests with fixture-mode callModel
@@ -129,9 +136,13 @@ When questions arise about features, configuration, or usage, refer to the docum
 - `utils/` - Utility functions
   - `utils/models.js` - **Centralized model configuration** (source of truth for all model IDs, names, and capabilities)
 - `docs/` - VitePress documentation site
+- `lib/briefing/` - **Phase B** briefing utility code
+  - `lib/briefing/filterBriefings.js` - Pure filter function for sidebar search (dateRange / starredOnly / query)
 - `styles/` - Global styles
-  - `styles/globals.css` - Tailwind directives + base resets
-  - `styles/briefing.css` - **Phase 1** briefing palette, type scale, and `.briefing-prose` component styles
+  - `styles/globals.css` - Tailwind directives + base resets + token/shell/briefing imports
+  - `styles/tokens.css` - **Phase B** global design tokens (warm palette colors, typography, spacing, app-chrome tokens) in both light and `[data-theme=dark]` variants
+  - `styles/shell.css` - **Phase B** sidebar + main-area flexbox layout (`.shell`, `.shell-sidebar`, `.shell-main`, `.briefing-surface`, `.config-surface`)
+  - `styles/briefing.css` - `.briefing-prose`-scoped typography rules (consumes tokens from tokens.css)
 - `vitest.config.mjs` - **Phase 1** Vitest configuration (jsdom env, React plugin, 68ch measure)
 - `reports/` - **Runtime state** (gitignored): generated analysis reports, NotebookLM documents, and podcasts. Historical outputs accumulate here across runs. See "Runtime state directories" below.
 - `temp/` - **Runtime state** (gitignored): Playwright browser profiles + cached PDF downloads. See "Runtime state directories" below.
