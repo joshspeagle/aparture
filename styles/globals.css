@@ -31,4 +31,5 @@ a {
 }
 
 @import './tokens.css';
+@import './shell.css';
 @import './briefing.css';

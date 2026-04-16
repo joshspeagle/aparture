@@ -70,3 +70,22 @@
     --aparture-focus-ring: #d94545;
   }
 }
+
+/* Programmatic theme override via data-theme attribute on <html>.
+ * When useTheme sets an explicit theme (not 'auto'), this rule takes
+ * precedence over the media query above. */
+[data-theme=dark] {
+  --aparture-bg: #141211;
+  --aparture-surface: #1f1c1a;
+  --aparture-ink: #e8e4dc;
+  --aparture-mute: #8a857c;
+  --aparture-hairline: #2e2a26;
+  --aparture-accent: #d94545;
+  --aparture-debate: #2a2520;
+  --aparture-longitudinal: #1e2427;
+  --aparture-question: #29231a;
+  --aparture-sidebar-bg: #1f1c1a;
+  --aparture-sidebar-active: #2a2520;
+  --aparture-hover: #2a2520;
+  --aparture-focus-ring: #d94545;
+}

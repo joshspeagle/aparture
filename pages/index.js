@@ -1,5 +1,5 @@
-import ArxivAnalyzer from '../components/ArxivAnalyzer';
+import App from '../components/shell/App.jsx';
 
 export default function Home() {
-  return <ArxivAnalyzer />;
+  return <App />;
 }

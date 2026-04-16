@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
 import { iconFor } from '../feedback/eventMeta.js';
+import Button from '../ui/Button.jsx';
 import DiffPreview from './DiffPreview.jsx';
 
 function FeedbackRow({ event, checked, onToggle }) {
@@ -10,16 +11,56 @@ function FeedbackRow({ event, checked, onToggle }) {
   const label =
     event.type === 'general-comment'
       ? event.text
-      : `${event.arxivId}${event.paperTitle ? ` · ${event.paperTitle}` : ''}`;
+      : `${event.arxivId}${event.paperTitle ? ` \u00b7 ${event.paperTitle}` : ''}`;
   return (
-    <label className="flex items-start gap-2 py-1 px-2 rounded hover:bg-slate-800/40 cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={onToggle} className="mt-1" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-xs text-slate-200">
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '8px',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        transition: 'background 100ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'var(--aparture-hover)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        style={{ marginTop: '4px', accentColor: 'var(--aparture-accent)' }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-ink)',
+          }}
+        >
           <span>{icon}</span>
-          <span className="truncate">{label}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {label}
+          </span>
         </div>
-        <div className="text-[10px] text-slate-500">{dateStr}</div>
+        <div
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: '10px',
+            color: 'var(--aparture-mute)',
+          }}
+        >
+          {dateStr}
+        </div>
       </div>
     </label>
   );
@@ -36,8 +77,6 @@ export default function SuggestDialog({
   password,
   onAccept,
 }) {
-  // Signature of the current newFeedback — when it changes, we reset local state
-  // during render rather than in an effect (avoids cascading renders).
   const feedbackSignature = useMemo(() => newFeedback.map((e) => e.id).join('|'), [newFeedback]);
   const [lastSignature, setLastSignature] = useState(feedbackSignature);
   const [selectedIds, setSelectedIds] = useState(() => new Set(newFeedback.map((e) => e.id)));
@@ -101,8 +140,6 @@ export default function SuggestDialog({
     }
   }
 
-  // For the result-state "no changes" counts, compute stats over the
-  // actually-selected events (after applying the cap).
   const resultStats = useMemo(() => {
     if (state !== 'result' || !response) return null;
     const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
@@ -110,30 +147,23 @@ export default function SuggestDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, response]);
 
-  // Compute newCutoff from the events actually sent to the LLM. selectedIds
-  // was captured at handleGenerate time and holds the most recent feedback
-  // included in this suggestion.
   function computeCutoff() {
     const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
     return selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
   }
 
   function handleAccept() {
-    const joinedRationale = response.changes.map((c) => `• ${c.rationale}`).join('\n');
+    const joinedRationale = response.changes.map((c) => `\u2022 ${c.rationale}`).join('\n');
     onAccept(response.revisedProfile, joinedRationale, computeCutoff());
     onClose();
   }
 
   function handleNoChangeDismiss() {
     const rationale = `No changes warranted: ${response.noChangeReason}`;
-    // Passes the UNCHANGED profile content so saveSuggested creates a
-    // revision entry that marks the feedback as reviewed without touching
-    // the profile text.
     onAccept(profile, rationale, computeCutoff());
     onClose();
   }
 
-  // result-state discriminant: 'changes' | 'no-change' | null
   const resultMode =
     state === 'result' && response
       ? Array.isArray(response.changes) && response.changes.length > 0
@@ -141,42 +171,128 @@ export default function SuggestDialog({
         : 'no-change'
       : null;
 
+  const overlayStyle = {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+  };
+
+  const contentStyle = {
+    position: 'fixed',
+    left: '50%',
+    top: '50%',
+    maxHeight: '85vh',
+    width: '90vw',
+    maxWidth: '48rem',
+    transform: 'translate(-50%, -50%)',
+    overflow: 'hidden',
+    borderRadius: '4px',
+    background: 'var(--aparture-surface)',
+    border: '1px solid var(--aparture-hairline)',
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+  };
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/60" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 max-h-[85vh] w-[90vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg bg-slate-900 shadow-xl flex flex-col">
-          <div className="p-5 border-b border-slate-800">
-            <Dialog.Title className="text-lg font-semibold text-slate-100">
+        <Dialog.Overlay style={overlayStyle} />
+        <Dialog.Content style={contentStyle}>
+          <div
+            style={{
+              padding: '20px',
+              borderBottom: '1px solid var(--aparture-hairline)',
+            }}
+          >
+            <Dialog.Title
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-lg)',
+                fontWeight: 600,
+                color: 'var(--aparture-ink)',
+              }}
+            >
               Suggest profile improvements
             </Dialog.Title>
-            <Dialog.Description className="mt-1 text-xs text-slate-400">
+            <Dialog.Description
+              style={{
+                marginTop: '4px',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+              }}
+            >
               Select which feedback events should inform the suggestion. All are included by default
               — uncheck any you want to exclude.
             </Dialog.Description>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--aparture-space-3)',
+            }}
+          >
             {state === 'selection' && (
               <>
                 {error && (
-                  <div className="rounded-md border border-red-700/50 bg-red-900/20 px-3 py-2 text-xs text-red-200">
+                  <div
+                    style={{
+                      borderRadius: '4px',
+                      border: '1px solid rgba(239,68,68,0.3)',
+                      background: 'rgba(239,68,68,0.08)',
+                      padding: '8px 12px',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: '#ef4444',
+                    }}
+                  >
                     Suggestion failed: {error}. Retry?
                   </div>
                 )}
                 {capStats.trimmed && (
-                  <div className="rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+                  <div
+                    style={{
+                      borderRadius: '4px',
+                      border: '1px solid rgba(245,158,11,0.3)',
+                      background: 'rgba(245,158,11,0.08)',
+                      padding: '8px 12px',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: '#f59e0b',
+                    }}
+                  >
                     {droppedCount} older comments will not be included in this suggestion. Visit the
                     Feedback panel to curate manually.
                   </div>
                 )}
 
                 {!hasFeedback ? (
-                  <p className="text-sm text-slate-400">
+                  <p
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      color: 'var(--aparture-mute)',
+                    }}
+                  >
                     No new feedback since your last profile revision. Nothing to suggest from.
                   </p>
                 ) : (
-                  <div className="max-h-[40vh] overflow-y-auto rounded border border-slate-800 bg-slate-950/40 p-2">
+                  <div
+                    style={{
+                      maxHeight: '40vh',
+                      overflowY: 'auto',
+                      borderRadius: '4px',
+                      border: '1px solid var(--aparture-hairline)',
+                      background: 'var(--aparture-bg)',
+                      padding: '8px',
+                    }}
+                  >
                     {newFeedback.map((e) => (
                       <FeedbackRow
                         key={e.id}
@@ -191,23 +307,64 @@ export default function SuggestDialog({
             )}
 
             {state === 'loading' && (
-              <div className="py-16 text-center">
-                <div className="inline-block animate-pulse text-slate-400 text-sm">
-                  Asking {briefingModel}…
+              <div
+                style={{
+                  padding: 'var(--aparture-space-16) 0',
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-sm)',
+                    color: 'var(--aparture-mute)',
+                  }}
+                >
+                  Asking {briefingModel}...
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
-                  This typically takes 15–45 seconds depending on the model.
+                <div
+                  style={{
+                    marginTop: '8px',
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                  }}
+                >
+                  This typically takes 15-45 seconds depending on the model.
                 </div>
               </div>
             )}
 
             {resultMode === 'changes' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-slate-200">
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-3)' }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      fontWeight: 500,
+                      color: 'var(--aparture-ink)',
+                    }}
+                  >
                     Proposed changes ({response.changes.length})
                   </h3>
-                  <div className="text-xs text-slate-500">via {briefingModel}</div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-mute)',
+                    }}
+                  >
+                    via {briefingModel}
+                  </div>
                 </div>
                 <DiffPreview
                   before={profile}
@@ -218,15 +375,46 @@ export default function SuggestDialog({
             )}
 
             {resultMode === 'no-change' && (
-              <div className="py-8 text-center space-y-3">
-                <div className="text-lg text-slate-300">No profile changes suggested</div>
+              <div
+                style={{
+                  padding: 'var(--aparture-space-8) 0',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--aparture-space-3)',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-lg)',
+                    color: 'var(--aparture-ink)',
+                  }}
+                >
+                  No profile changes suggested
+                </div>
                 {response.noChangeReason && (
-                  <div className="mx-auto max-w-xl text-sm text-slate-400 italic">
+                  <div
+                    style={{
+                      margin: '0 auto',
+                      maxWidth: '32rem',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      color: 'var(--aparture-mute)',
+                      fontStyle: 'italic',
+                    }}
+                  >
                     &ldquo;{response.noChangeReason}&rdquo;
                   </div>
                 )}
                 {resultStats && (
-                  <div className="text-xs text-slate-500">
+                  <div
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-mute)',
+                    }}
+                  >
                     Reviewed {resultStats.starCount} stars, {resultStats.dismissCount} dismisses,{' '}
                     {resultStats.paperCommentTotal + resultStats.generalCommentTotal} comments — no
                     profile gaps identified.
@@ -236,64 +424,47 @@ export default function SuggestDialog({
             )}
           </div>
 
-          <div className="p-5 border-t border-slate-800 flex justify-end gap-2">
+          <div
+            style={{
+              padding: '20px',
+              borderTop: '1px solid var(--aparture-hairline)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '8px',
+            }}
+          >
             {state === 'selection' && (
               <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
-                >
+                <Button variant="secondary" onClick={onClose}>
                   Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={!canGenerate}
-                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                </Button>
+                <Button variant="primary" onClick={handleGenerate} disabled={!canGenerate}>
                   Generate suggestion
-                </button>
+                </Button>
               </>
             )}
 
             {state === 'loading' && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
-              >
+              <Button variant="secondary" onClick={onClose}>
                 Cancel
-              </button>
+              </Button>
             )}
 
             {resultMode === 'changes' && (
               <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm"
-                >
+                <Button variant="secondary" onClick={onClose}>
                   Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAccept}
-                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
+                </Button>
+                <Button variant="primary" onClick={handleAccept}>
                   Accept
-                </button>
+                </Button>
               </>
             )}
 
             {resultMode === 'no-change' && (
-              <button
-                type="button"
-                onClick={handleNoChangeDismiss}
-                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
+              <Button variant="primary" onClick={handleNoChangeDismiss}>
                 Dismiss
-              </button>
+              </Button>
             )}
           </div>
         </Dialog.Content>

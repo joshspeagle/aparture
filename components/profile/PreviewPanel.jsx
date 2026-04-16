@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import BriefingView from '../briefing/BriefingView.jsx';
+import Button from '../ui/Button.jsx';
 
 const LAST_RUN_KEY = 'aparture-last-analysis-run';
 
@@ -41,14 +42,49 @@ function FilterChangesSection({ verdicts, originalSample }) {
     .filter(Boolean);
 
   return (
-    <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
-      <h4 className="text-sm font-semibold text-slate-200 mb-2">
+    <div
+      style={{
+        borderRadius: '4px',
+        border: '1px solid var(--aparture-hairline)',
+        background: 'var(--aparture-bg)',
+        padding: 'var(--aparture-space-3)',
+      }}
+    >
+      <h4
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-sm)',
+          fontWeight: 600,
+          color: 'var(--aparture-ink)',
+          marginBottom: '8px',
+        }}
+      >
         {dropped.length} {dropped.length === 1 ? 'paper' : 'papers'} would be filtered out
       </h4>
       {dropped.length === 0 ? (
-        <p className="text-xs text-slate-500 italic">No papers dropped by filter</p>
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            fontStyle: 'italic',
+          }}
+        >
+          No papers dropped by filter
+        </p>
       ) : (
-        <ul className="text-xs text-slate-300 space-y-1 list-disc list-inside">
+        <ul
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-ink)',
+            listStyle: 'disc',
+            listStylePosition: 'inside',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+          }}
+        >
           {dropped.map((p) => (
             <li key={p.arxivId}>{p.title}</li>
           ))}
@@ -59,48 +95,120 @@ function FilterChangesSection({ verdicts, originalSample }) {
 }
 
 function ScoringShiftsSection({ shifts }) {
+  const cellStyle = {
+    padding: '4px 8px',
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+  };
+
   if (!shifts || shifts.length === 0) {
     return (
-      <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
-        <h4 className="text-sm font-semibold text-slate-200 mb-2">Scoring shifts</h4>
-        <p className="text-xs text-slate-500 italic">No papers scored — all were filtered out.</p>
+      <div
+        style={{
+          borderRadius: '4px',
+          border: '1px solid var(--aparture-hairline)',
+          background: 'var(--aparture-bg)',
+          padding: 'var(--aparture-space-3)',
+        }}
+      >
+        <h4
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-sm)',
+            fontWeight: 600,
+            color: 'var(--aparture-ink)',
+            marginBottom: '8px',
+          }}
+        >
+          Scoring shifts
+        </h4>
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            fontStyle: 'italic',
+          }}
+        >
+          No papers scored — all were filtered out.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-slate-700 bg-slate-900/40 p-3">
-      <h4 className="text-sm font-semibold text-slate-200 mb-2">Scoring shifts</h4>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs text-slate-200">
+    <div
+      style={{
+        borderRadius: '4px',
+        border: '1px solid var(--aparture-hairline)',
+        background: 'var(--aparture-bg)',
+        padding: 'var(--aparture-space-3)',
+      }}
+    >
+      <h4
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-sm)',
+          fontWeight: 600,
+          color: 'var(--aparture-ink)',
+          marginBottom: '8px',
+        }}
+      >
+        Scoring shifts
+      </h4>
+      <div style={{ overflowX: 'auto' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-ink)',
+          }}
+        >
           <thead>
-            <tr className="text-left text-slate-400 border-b border-slate-700">
-              <th className="py-1 pr-2">Rank before</th>
-              <th className="py-1 pr-2">Title</th>
-              <th className="py-1 pr-2">Old score</th>
-              <th className="py-1 pr-2">New score</th>
-              <th className="py-1 pr-2">Rank after</th>
-              <th className="py-1 pr-2">Δ</th>
+            <tr
+              style={{
+                textAlign: 'left',
+                color: 'var(--aparture-mute)',
+                borderBottom: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <th style={cellStyle}>Rank before</th>
+              <th style={cellStyle}>Title</th>
+              <th style={cellStyle}>Old score</th>
+              <th style={cellStyle}>New score</th>
+              <th style={cellStyle}>Rank after</th>
+              <th style={cellStyle}>{'\u0394'}</th>
             </tr>
           </thead>
           <tbody>
             {shifts.map((s) => {
-              let rowClass = '';
-              if (s.delta > 0) rowClass = 'bg-green-900/30';
-              else if (s.delta < 0) rowClass = 'bg-red-900/30';
+              const rowBg =
+                s.delta > 0
+                  ? 'rgba(34,197,94,0.08)'
+                  : s.delta < 0
+                    ? 'rgba(239,68,68,0.08)'
+                    : 'transparent';
               const deltaStr = s.delta > 0 ? `+${s.delta}` : `${s.delta}`;
               return (
-                <tr key={s.arxivId} className={`border-b border-slate-800 ${rowClass}`}>
-                  <td className="py-1 pr-2">{s.rankBefore ?? '—'}</td>
-                  <td className="py-1 pr-2">{s.title}</td>
-                  <td className="py-1 pr-2">
-                    {typeof s.oldScore === 'number' ? s.oldScore.toFixed(1) : '—'}
+                <tr
+                  key={s.arxivId}
+                  style={{
+                    borderBottom: '1px solid var(--aparture-hairline)',
+                    background: rowBg,
+                  }}
+                >
+                  <td style={cellStyle}>{s.rankBefore ?? '\u2014'}</td>
+                  <td style={cellStyle}>{s.title}</td>
+                  <td style={cellStyle}>
+                    {typeof s.oldScore === 'number' ? s.oldScore.toFixed(1) : '\u2014'}
                   </td>
-                  <td className="py-1 pr-2">
-                    {typeof s.newScore === 'number' ? s.newScore.toFixed(1) : '—'}
+                  <td style={cellStyle}>
+                    {typeof s.newScore === 'number' ? s.newScore.toFixed(1) : '\u2014'}
                   </td>
-                  <td className="py-1 pr-2">{s.rankAfter}</td>
-                  <td className="py-1 pr-2">{deltaStr}</td>
+                  <td style={cellStyle}>{s.rankAfter}</td>
+                  <td style={cellStyle}>{deltaStr}</td>
                 </tr>
               );
             })}
@@ -115,11 +223,34 @@ function MiniBriefingSection({ briefing }) {
   if (!briefing) return null;
   const noop = () => {};
   return (
-    <div className="rounded-md border border-dashed border-amber-600 bg-amber-950/20 p-3">
-      <div className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-2">
+    <div
+      style={{
+        borderRadius: '4px',
+        border: '1px dashed var(--aparture-accent)',
+        background: 'rgba(179,27,27,0.04)',
+        padding: 'var(--aparture-space-3)',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-xs)',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          color: 'var(--aparture-accent)',
+          marginBottom: '8px',
+        }}
+      >
         Preview — not saved
       </div>
-      <div className="bg-slate-950/40 rounded p-3">
+      <div
+        style={{
+          background: 'var(--aparture-bg)',
+          borderRadius: '4px',
+          padding: 'var(--aparture-space-3)',
+        }}
+      >
         <BriefingView
           briefing={briefing}
           date="preview"
@@ -189,8 +320,6 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
       if (!filterRes.ok) throw new Error(`Filter stage failed: ${filterRes.status}`);
       const filterResult = await filterRes.json();
 
-      // Survivors: YES + MAYBE (drop NO). API returns { verdicts: [{ paperIndex, verdict }] }
-      // paperIndex is 1-based and corresponds to the order of `sample`.
       const verdictsArray = Array.isArray(filterResult.verdicts) ? filterResult.verdicts : [];
       const survivorIdx = new Set(
         verdictsArray.filter((v) => v.verdict !== 'NO').map((v) => v.paperIndex - 1)
@@ -217,7 +346,6 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
       if (!scoreRes.ok) throw new Error(`Scoring stage failed: ${scoreRes.status}`);
       const scoreResult = await scoreRes.json();
 
-      // Merge new scores back into the survivors via paperIndex (1-based).
       const scoresArray = Array.isArray(scoreResult.scores) ? scoreResult.scores : [];
       const reScored = scoresArray
         .map((s) => {
@@ -274,64 +402,127 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
   }
 
   const stageLabel = {
-    'running-filter': 'Running filter…',
-    'running-score': 'Running scoring…',
-    'running-synth': 'Running synthesis…',
+    'running-filter': 'Running filter\u2026',
+    'running-score': 'Running scoring\u2026',
+    'running-synth': 'Running synthesis\u2026',
   };
 
   const isRunning =
     runState === 'running-filter' || runState === 'running-score' || runState === 'running-synth';
 
   return (
-    <section className="rounded-lg border border-slate-700 bg-slate-950/60 p-4 mt-3">
-      <header className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-200">Preview — profile changes</h3>
+    <section
+      style={{
+        borderRadius: '4px',
+        border: '1px solid var(--aparture-hairline)',
+        background: 'var(--aparture-surface)',
+        padding: 'var(--aparture-space-4)',
+        marginTop: 'var(--aparture-space-3)',
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 'var(--aparture-space-3)',
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-sm)',
+            fontWeight: 600,
+            color: 'var(--aparture-ink)',
+          }}
+        >
+          Preview — profile changes
+        </h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close preview"
-          className="text-slate-400 hover:text-slate-100 text-lg leading-none"
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-lg)',
+            lineHeight: 1,
+            color: 'var(--aparture-mute)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+          }}
         >
-          ×
+          {'\u00d7'}
         </button>
       </header>
 
       {!lastRun ? (
-        <p className="text-xs text-slate-400">
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+          }}
+        >
           No recent analysis to preview against. Run a full analysis first.
         </p>
       ) : (
         <div>
           {runState === 'idle' && (
             <>
-              <p className="text-xs text-slate-400 mb-3">
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  marginBottom: 'var(--aparture-space-3)',
+                }}
+              >
                 Will run filter + scoring + synthesis on {sample.length} cached papers (top 10 + up
                 to 5 borderline).
               </p>
-              <button
-                type="button"
-                onClick={runPreview}
-                title="~$0.15–0.30 per run · ~45–90s"
-                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
+              <Button variant="primary" onClick={runPreview} title="~$0.15–0.30 per run · ~45–90s">
                 Run preview
-              </button>
+              </Button>
             </>
           )}
 
           {isRunning && (
-            <div className="flex items-center gap-2 text-sm text-slate-300">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-ink)',
+              }}
+            >
               <span
                 aria-hidden="true"
-                className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-slate-200"
+                className="animate-spin"
+                style={{
+                  display: 'inline-block',
+                  height: '12px',
+                  width: '12px',
+                  borderRadius: '50%',
+                  border: '2px solid var(--aparture-hairline)',
+                  borderTopColor: 'var(--aparture-ink)',
+                }}
               />
               <span>{stageLabel[runState]}</span>
             </div>
           )}
 
           {runState === 'done' && result && (
-            <div className="text-sm text-slate-200">
-              <p className="mb-3">
+            <div
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-ink)',
+              }}
+            >
+              <p style={{ marginBottom: 'var(--aparture-space-3)' }}>
                 Preview complete. {result.reScored.length} papers kept by filter
                 {result.reScored.length > 0 && (
                   <>
@@ -341,7 +532,14 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
                 )}
                 .
               </p>
-              <div className="mt-4 space-y-6">
+              <div
+                style={{
+                  marginTop: 'var(--aparture-space-4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--aparture-space-6)',
+                }}
+              >
                 <FilterChangesSection
                   verdicts={result.filterResult.verdicts}
                   originalSample={result.originalSample}
@@ -355,15 +553,21 @@ export default function PreviewPanel({ editedProfile, models, password, onClose 
           )}
 
           {runState === 'error' && (
-            <div className="rounded-md border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">
-              <p className="mb-2">{error}</p>
-              <button
-                type="button"
-                onClick={runPreview}
-                className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-md text-xs font-medium"
-              >
+            <div
+              style={{
+                borderRadius: '4px',
+                border: '1px solid rgba(239,68,68,0.3)',
+                background: 'rgba(239,68,68,0.08)',
+                padding: 'var(--aparture-space-3)',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: '#ef4444',
+              }}
+            >
+              <p style={{ marginBottom: '8px' }}>{error}</p>
+              <Button variant="primary" onClick={runPreview}>
                 Retry
-              </button>
+              </Button>
             </div>
           )}
         </div>

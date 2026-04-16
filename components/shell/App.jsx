@@ -1,35 +1,29 @@
-import { Lock, Unlock } from 'lucide-react';
+// components/shell/App.jsx
+// Root application shell — replaces ArxivAnalyzer as the top-level component.
+// Owns all state management (hooks, store, pipeline, persistence) and renders
+// a sidebar + main-area layout instead of the old vertical scroll stack.
+
+import { Lock } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MODEL_REGISTRY } from '../utils/models';
-import BriefingCard from './briefing/BriefingCard.jsx';
-import BriefingView from './briefing/BriefingView.jsx';
-import ControlPanel from './analyzer/ControlPanel.jsx';
-import ProgressTracker from './analyzer/ProgressTracker.jsx';
-import AnalysisResultsList from './results/AnalysisResultsList.jsx';
-import DownloadReportCard from './results/DownloadReportCard.jsx';
-import FeedbackPanel from './feedback/FeedbackPanel.jsx';
-import FilterResultsList from './filter/FilterResultsList.jsx';
-import NotebookLMCard from './notebooklm/NotebookLMCard.jsx';
-import YourProfile from './profile/YourProfile.jsx';
-import SuggestDialog from './profile/SuggestDialog.jsx';
-import PreviewPanel from './profile/PreviewPanel.jsx';
-import SettingsPanel from './settings/SettingsPanel.jsx';
-import { runBriefingGeneration } from '../lib/analyzer/briefingClient.js';
-import { downloadBlob, exportAnalysisReport } from '../lib/analyzer/exportReport.js';
-import { createAnalysisPipeline } from '../lib/analyzer/pipeline.js';
-import { readInitialConfig, useAnalyzerPersistence } from '../hooks/useAnalyzerPersistence.js';
-import { useAnalyzerStore } from '../stores/analyzerStore.js';
-import { useProfile } from '../hooks/useProfile.js';
-import { useBriefing } from '../hooks/useBriefing.js';
-import { useFeedback } from '../hooks/useFeedback.js';
+import { MODEL_REGISTRY } from '../../utils/models';
+import { runBriefingGeneration } from '../../lib/analyzer/briefingClient.js';
+import { downloadBlob, exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
+import { createAnalysisPipeline } from '../../lib/analyzer/pipeline.js';
+import { readInitialConfig, useAnalyzerPersistence } from '../../hooks/useAnalyzerPersistence.js';
+import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import { useProfile } from '../../hooks/useProfile.js';
+import { useBriefing } from '../../hooks/useBriefing.js';
+import { useFeedback } from '../../hooks/useFeedback.js';
+import Sidebar from './Sidebar.jsx';
+import MainArea from './MainArea.jsx';
+import SuggestDialog from '../profile/SuggestDialog.jsx';
 
 // Phase 1.5.1 D5 fix: PaperCard hoisted to module scope so React can reconcile
 // cards across re-renders rather than unmount/remount them (which would destroy
 // the inline comment textarea state during active scoring / progress ticks).
 // All closure-captured data (feedback state, callbacks, briefing date) is now
-// passed explicitly as props. The parent computes starred/dismissed once via
-// useMemo from a feedback-event index.
+// passed explicitly as props.
 function PaperCard({
   paper,
   idx,
@@ -68,109 +62,235 @@ function PaperCard({
     setShowCommentInput(false);
   };
 
+  const badgeBase = {
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    display: 'inline-block',
+  };
+
+  const feedbackBtnBase = {
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    border: '1px solid var(--aparture-hairline)',
+    background: 'transparent',
+    color: 'var(--aparture-mute)',
+    cursor: 'pointer',
+    transition: 'all 150ms ease',
+  };
+
   return (
-    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+    <div
+      style={{
+        background: 'var(--aparture-surface)',
+        borderRadius: '4px',
+        padding: 'var(--aparture-space-4)',
+        border: '1px solid var(--aparture-hairline)',
+        transition: 'border-color 150ms ease',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: '8px',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '4px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ ...badgeBase, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
               #{idx + 1}
             </span>
-            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
+            <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
               Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
             </span>
             {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
               <span
-                className={`text-xs px-2 py-1 rounded ${
-                  paper.scoreAdjustment > 0
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-orange-500/20 text-orange-400'
-                }`}
+                style={{
+                  ...badgeBase,
+                  background:
+                    paper.scoreAdjustment > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
+                  color: paper.scoreAdjustment > 0 ? '#22c55e' : '#f97316',
+                }}
                 title={paper.adjustmentReason}
               >
-                {paper.scoreAdjustment > 0 ? '↑' : '↓'} {Math.abs(paper.scoreAdjustment).toFixed(1)}
+                {paper.scoreAdjustment > 0 ? '\u2191' : '\u2193'}{' '}
+                {Math.abs(paper.scoreAdjustment).toFixed(1)}
               </span>
             )}
             {showDeepAnalysis && paper.deepAnalysis && (
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
-                📄 PDF Analyzed
+              <span style={{ ...badgeBase, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
+                PDF Analyzed
               </span>
             )}
             <a
               href={`https://arxiv.org/abs/${paper.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+              style={{
+                ...badgeBase,
+                background: 'var(--aparture-bg)',
+                color: 'var(--aparture-mute)',
+                textDecoration: 'none',
+              }}
             >
               arXiv:{paper.id}
             </a>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
-          <p className="text-sm text-gray-400 mb-2">
+          <h3
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-lg)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
+              marginBottom: '4px',
+            }}
+          >
+            {paper.title}
+          </h3>
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              color: 'var(--aparture-mute)',
+              marginBottom: '8px',
+            }}
+          >
             {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
           </p>
-          <p className="text-sm text-gray-300 italic mb-2">
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              color: 'var(--aparture-ink)',
+              fontStyle: 'italic',
+              marginBottom: '8px',
+            }}
+          >
             {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
           </p>
           {showDeepAnalysis && paper.deepAnalysis && (
-            <div className="mt-3 pt-3 border-t border-slate-700">
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-3)',
+                paddingTop: 'var(--aparture-space-3)',
+                borderTop: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: 'var(--aparture-ink)',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-line',
+                }}
+              >
                 {paper.deepAnalysis.summary}
               </div>
             </div>
           )}
 
           {hasFeedbackAffordance && (
-            <div className="mt-3 pt-3 border-t border-slate-700">
-              <div className="flex flex-wrap gap-2 text-xs">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-3)',
+                paddingTop: 'var(--aparture-space-3)',
+                borderTop: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 <button
                   type="button"
                   onClick={handleStar}
-                  className={`px-2 py-1 rounded border transition-colors ${
-                    starred
-                      ? 'bg-yellow-900/40 text-yellow-300 border-yellow-600'
-                      : 'text-slate-400 border-slate-600 hover:border-yellow-500 hover:text-yellow-300'
-                  }`}
+                  style={{
+                    ...feedbackBtnBase,
+                    ...(starred
+                      ? {
+                          background: 'rgba(245,158,11,0.15)',
+                          color: '#f59e0b',
+                          borderColor: '#f59e0b',
+                        }
+                      : {}),
+                  }}
                   title={starred ? 'Remove star' : 'Star this paper'}
                 >
-                  {starred ? '★ starred' : '☆ star'}
+                  {starred ? '\u2605 starred' : '\u2606 star'}
                 </button>
                 <button
                   type="button"
                   onClick={handleDismiss}
-                  className={`px-2 py-1 rounded border transition-colors ${
-                    dismissed
-                      ? 'bg-slate-800 text-slate-100 border-slate-500'
-                      : 'text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
-                  }`}
+                  style={{
+                    ...feedbackBtnBase,
+                    ...(dismissed
+                      ? {
+                          background: 'var(--aparture-bg)',
+                          color: 'var(--aparture-ink)',
+                          borderColor: 'var(--aparture-mute)',
+                        }
+                      : {}),
+                  }}
                   title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
                 >
-                  {dismissed ? '⊘ dismissed' : '⊘ dismiss'}
+                  {dismissed ? '\u2298 dismissed' : '\u2298 dismiss'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCommentInput((v) => !v)}
-                  className="px-2 py-1 rounded border text-slate-400 border-slate-600 hover:border-purple-500 hover:text-purple-300 transition-colors"
+                  style={feedbackBtnBase}
                   title="Leave a comment on this paper"
                 >
                   + comment
                 </button>
               </div>
               {showCommentInput && (
-                <div className="mt-2">
+                <div style={{ marginTop: '8px' }}>
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     rows={3}
-                    placeholder="Your thoughts on this paper…"
-                    className="w-full min-h-[4rem] resize-y rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-slate-500 focus:outline-none"
+                    placeholder="Your thoughts on this paper\u2026"
+                    style={{
+                      width: '100%',
+                      minHeight: '4rem',
+                      resize: 'vertical',
+                      borderRadius: '4px',
+                      border: '1px solid var(--aparture-hairline)',
+                      background: 'var(--aparture-bg)',
+                      padding: '4px 8px',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-ink)',
+                      boxSizing: 'border-box',
+                    }}
                     autoFocus
                   />
-                  <div className="mt-1 flex gap-2 justify-end">
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      display: 'flex',
+                      gap: '8px',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={handleCancelComment}
-                      className="px-2 py-1 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400"
+                      style={{
+                        ...feedbackBtnBase,
+                      }}
                     >
                       Cancel
                     </button>
@@ -178,7 +298,18 @@ function PaperCard({
                       type="button"
                       onClick={handleSaveComment}
                       disabled={commentText.trim().length === 0}
-                      className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--aparture-accent)',
+                        background: 'var(--aparture-accent)',
+                        color: '#fff',
+                        fontWeight: 500,
+                        cursor: commentText.trim().length === 0 ? 'not-allowed' : 'pointer',
+                        opacity: commentText.trim().length === 0 ? 0.5 : 1,
+                      }}
                     >
                       Save
                     </button>
@@ -218,11 +349,14 @@ PaperCard.propTypes = {
   onComment: PropTypes.func,
 };
 
-// Main Application Component
-function ArxivAnalyzer() {
+// Main Application Shell
+export default function App() {
   const [config, setConfig] = useState(readInitialConfig);
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
   const [showPreviewPanel, setShowPreviewPanel] = useState(false);
+
+  // activeView: 'welcome' | 'profile' | 'settings' | 'pipeline' | 'briefing:<date>'
+  const [activeView, setActiveView] = useState('welcome');
 
   // Briefing (Phase 1) state
   const {
@@ -238,10 +372,7 @@ function ArxivAnalyzer() {
   const feedback = useFeedback();
   const newInteractionCount = feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0).length;
 
-  // Phase 1.5: draft-vs-committed profile editing. Typing in the Your Profile
-  // textarea updates draftContent only; Save commits it via updateProfile.
-  // When profile.content changes from an external source (revert, suggest
-  // accept), we resync draftContent via a signature check during render.
+  // Phase 1.5: draft-vs-committed profile editing.
   const [draftContent, setDraftContent] = useState(profile?.content ?? '');
   const [lastSyncedContent, setLastSyncedContent] = useState(profile?.content ?? '');
   if ((profile?.content ?? '') !== lastSyncedContent) {
@@ -253,7 +384,7 @@ function ArxivAnalyzer() {
   const pauseRef = useRef(false);
   const mockAPITesterRef = useRef(null);
 
-  // Phase B-prep 4b: read state from the Zustand store.
+  // Read state from the Zustand store.
   const processing = useAnalyzerStore((s) => s.processing);
   const results = useAnalyzerStore((s) => s.results);
   const filterResults = useAnalyzerStore((s) => s.filterResults);
@@ -262,9 +393,6 @@ function ArxivAnalyzer() {
   const password = useAnalyzerStore((s) => s.password);
   const isAuthenticated = useAnalyzerStore((s) => s.isAuthenticated);
 
-  // Destructure nested slices for convenience — variable names match
-  // the old useState names so the rest of the component body doesn't
-  // need to change.
   const {
     podcastDuration,
     notebookLMModel,
@@ -306,8 +434,8 @@ function ArxivAnalyzer() {
     setReactContext,
   } = useAnalyzerStore.getState();
 
-  // Phase B-prep 4b: pipeline reads state from the Zustand store.
-  // Only React refs are passed as closure args.
+  // Pipeline — reads state from the Zustand store. Only React refs are
+  // passed as closure args.
   const pipeline = useMemo(
     () =>
       createAnalysisPipeline({
@@ -346,9 +474,21 @@ function ArxivAnalyzer() {
     setIsAuthenticated,
   });
 
+  // Default activeView: if a current briefing exists, show it; else welcome.
+  // Runs only on mount (and when currentBriefing identity changes from null
+  // to populated, e.g. after localStorage hydration).
+  const initialViewSet = useRef(false);
+  useEffect(() => {
+    if (initialViewSet.current) return;
+    if (currentBriefing?.date) {
+      setActiveView(`briefing:${currentBriefing.date}`);
+      initialViewSet.current = true;
+    }
+  }, [currentBriefing]);
+
   const { startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM } = pipeline;
 
-  // Handle authentication
+  // --- Auth handlers ---
   const handleAuth = async () => {
     if (!password.trim()) {
       addError('Please enter a password');
@@ -358,9 +498,7 @@ function ArxivAnalyzer() {
     try {
       const response = await fetch('/api/score-abstracts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           papers: [],
           scoringCriteria: '',
@@ -385,35 +523,7 @@ function ArxivAnalyzer() {
     localStorage.removeItem('arxivAnalyzerState');
   };
 
-  // Fetch papers from arXiv
-
-  // Fetch papers for a single category with smart date range shifting
-
-  // Calculate date range for arXiv query
-
-  // Build arXiv query string (following Python implementation pattern)
-
-  // Execute the actual arXiv API query
-
-  // Parse a single arXiv entry from the XML
-
-  // Remove duplicate papers based on arXiv ID
-
-  // Quick filter papers using YES/NO/MAYBE verdicts
-
-  // Score abstracts using chosen API (or mock for dry run)
-
-  // Post-process scores for consistency and accuracy
-
-  // Deep analysis of PDFs (or mock for dry run)
-
-  // Wait for resume when paused
-
-  // Main processing pipeline
-
-  // Enhanced test functions with proper abort controller setup
-
-  // Control functions
+  // --- Pipeline control handlers ---
   const handleStart = () => {
     startProcessing(false, false);
   };
@@ -428,20 +538,16 @@ function ArxivAnalyzer() {
     setProcessing((prev) => ({ ...prev, isPaused: false }));
   };
 
-  // Enhanced handleStop function
   const handleStop = () => {
     console.log('Stop button clicked - aborting all operations');
 
-    // Abort current operations
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       console.log('Abort signal sent');
     }
 
-    // Reset pause state
     pauseRef.current = false;
 
-    // Update UI state immediately
     setProcessing((prev) => ({
       ...prev,
       isRunning: false,
@@ -449,7 +555,6 @@ function ArxivAnalyzer() {
       stage: 'idle',
     }));
 
-    // Reset test states
     setTestState((prev) => ({
       ...prev,
       dryRunInProgress: false,
@@ -482,10 +587,8 @@ function ArxivAnalyzer() {
     localStorage.removeItem('arxivAnalyzerState');
   };
 
-  // Export results in a standardized format
+  // --- Export handlers ---
   const exportResults = () => exportAnalysisReport({ results, processingTiming, config });
-
-  // Generate NotebookLM document
 
   const downloadNotebookLM = () => {
     if (!notebookLMContent) return;
@@ -497,12 +600,7 @@ function ArxivAnalyzer() {
     );
   };
 
-  // Generate Briefing (Phase 1)
-  // Phase 1.5.1 B3: click-cycle verdict override. Moves a paper between
-  // filterResults buckets (yes/maybe/no) when the user clicks its verdict pill.
-  // The paper's originalVerdict is preserved (captured at filter time) so that
-  // when scoring runs we can diff current vs. original and record filter-override
-  // feedback events for any changed papers.
+  // --- Filter verdict cycling ---
   const cycleFilterVerdict = useCallback(
     (paperId, currentVerdict) => {
       const VERDICT_CYCLE = { YES: 'MAYBE', MAYBE: 'NO', NO: 'YES' };
@@ -525,17 +623,8 @@ function ArxivAnalyzer() {
     [setFilterResults]
   );
 
+  // --- Briefing generation ---
   const handleGenerateBriefing = () => {
-    // Phase B-prep: construct the generationMetadata snapshot at call
-    // time so the eventual briefing entry carries full provenance.
-    // The metadata is intentionally captured by value (snapshot of
-    // the current state) — subsequent edits to profile / settings do
-    // NOT retroactively change past briefings' recorded provenance.
-    //
-    // Resolve the effective briefingModel once so the metadata
-    // records exactly what the pipeline will use. Falls back to
-    // pdfModel for legacy configs that predate briefingModel, then
-    // to the standard default if neither is set.
     const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
     const filterVerdictCounts = {
       yes: filterResults.yes?.length ?? 0,
@@ -556,6 +645,13 @@ function ArxivAnalyzer() {
       pauseAfterFilter: config.pauseAfterFilter ?? true,
       timestamp: new Date().toISOString(),
     };
+
+    // Wrap saveBriefing so we can auto-switch to the new briefing view
+    const saveBriefingAndSwitch = (date, briefing, metadata) => {
+      saveBriefing(date, briefing, metadata);
+      setActiveView(`briefing:${date}`);
+    };
+
     return runBriefingGeneration({
       results,
       briefingModel: resolvedBriefingModel,
@@ -565,7 +661,7 @@ function ArxivAnalyzer() {
       profile,
       password,
       briefingHistory,
-      saveBriefing,
+      saveBriefing: saveBriefingAndSwitch,
       generationMetadata,
       setSynthesizing,
       setSynthesisError,
@@ -576,7 +672,7 @@ function ArxivAnalyzer() {
     });
   };
 
-  // Get stage display name
+  // --- Stage display helpers ---
   const getStageDisplay = () => {
     const stages = {
       idle: 'Ready',
@@ -589,14 +685,12 @@ function ArxivAnalyzer() {
     return stages[processing.stage] || processing.stage;
   };
 
-  // Get stage progress percentage
   const getProgressPercentage = () => {
     if (processing.progress.total === 0) return 0;
     return Math.round((processing.progress.current / processing.progress.total) * 100);
   };
 
-  // Phase 1.5.1 D5: stable callbacks for YourProfile so it can memo
-  // meaningfully in the future without re-rendering on every parent tick.
+  // --- Stable callbacks for YourProfile ---
   const scrollToFeedback = useCallback(() => {
     const el = document.getElementById('feedback-panel');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -604,16 +698,12 @@ function ArxivAnalyzer() {
   const togglePreviewPanel = useCallback(() => setShowPreviewPanel((v) => !v), []);
   const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
 
-  // Phase 1.5.1 D5: derive abstract-only papers once per render cycle
-  // instead of inside an IIFE in the JSX block.
+  // --- Derived data (useMemo) ---
   const abstractOnlyPapers = useMemo(() => {
     const deepAnalyzedIds = new Set(results.finalRanking.map((p) => p.id));
     return results.scoredPapers.filter((p) => !deepAnalyzedIds.has(p.id));
   }, [results.finalRanking, results.scoredPapers]);
 
-  // Phase 1.5.1 D5: derive filter-bucket scoring state once. Used by the
-  // filter-results panel to show which papers have already been scored and
-  // which are still pending (unscored).
   const filterSortedPapers = useMemo(() => {
     const scoredPaperIds = new Set([
       ...results.scoredPapers.map((p) => p.id),
@@ -635,8 +725,6 @@ function ArxivAnalyzer() {
     filterResults.no,
   ]);
 
-  // Phase 1.5.1 D5: index feedback events by arxivId once per render so
-  // PaperCard lookups are O(1) instead of O(events) per card.
   const feedbackIndex = useMemo(() => {
     const idx = new Map();
     for (const e of feedback.events) {
@@ -668,40 +756,120 @@ function ArxivAnalyzer() {
     );
   };
 
-  // If not authenticated, show login screen
+  // --- Auth gate ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white flex items-center justify-center p-6">
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-8 border border-slate-800 max-w-md w-full">
-          <div className="text-center mb-6">
-            <Lock className="w-12 h-12 mx-auto mb-4 text-blue-400" />
-            <h1 className="text-2xl font-bold mb-2">aparture</h1>
-            <p className="text-gray-400">Enter password to access</p>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'var(--aparture-bg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 'var(--aparture-space-6)',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--aparture-surface)',
+            border: '1px solid var(--aparture-hairline)',
+            borderRadius: '4px',
+            padding: 'var(--aparture-space-8)',
+            maxWidth: '400px',
+            width: '100%',
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: 'var(--aparture-space-6)' }}>
+            <Lock
+              className="w-12 h-12"
+              style={{
+                margin: '0 auto var(--aparture-space-4)',
+                display: 'block',
+                color: 'var(--aparture-accent)',
+              }}
+            />
+            <h1
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-2xl)',
+                fontWeight: 700,
+                color: 'var(--aparture-ink)',
+                marginBottom: '8px',
+              }}
+            >
+              aparture
+            </h1>
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-mute)',
+              }}
+            >
+              Enter password to access
+            </p>
           </div>
 
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
             <div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                 placeholder="Enter password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'var(--aparture-bg)',
+                  border: '1px solid var(--aparture-hairline)',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: 'var(--aparture-ink)',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
               />
             </div>
 
             <button
               onClick={handleAuth}
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-medium hover:from-blue-600 hover:to-purple-600 transition-all"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: 'var(--aparture-accent)',
+                color: '#fff',
+                border: '1px solid var(--aparture-accent)',
+                borderRadius: '4px',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+              }}
             >
               Access Analyzer
             </button>
           </div>
 
           {processing.errors.length > 0 && (
-            <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
-              <p className="text-red-300 text-sm">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-4)',
+                padding: 'var(--aparture-space-3)',
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: '4px',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: '#ef4444',
+                }}
+              >
                 {processing.errors[processing.errors.length - 1]}
               </p>
             </div>
@@ -711,64 +879,86 @@ function ArxivAnalyzer() {
     );
   }
 
+  // --- Authenticated shell ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              aparture
-            </h1>
-            <p className="text-gray-400">Bringing the arXiv into focus</p>
-          </div>
+    <div className="shell">
+      <Sidebar
+        briefingHistory={briefingHistory}
+        feedbackEvents={feedback.events}
+        activeView={activeView}
+        onSelectView={setActiveView}
+        onNewBriefing={handleStart}
+        feedbackCount={feedback.events.length}
+      />
 
-          <button
-            onClick={handleLogout}
-            className="px-3 py-2 bg-slate-700 rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2 text-sm"
-          >
-            <Unlock className="w-4 h-4" />
-            Logout
-          </button>
-        </div>
-
-        {/* Your Profile Panel (Phase 1.5) */}
-        <YourProfile
+      <div className="shell-main">
+        <MainArea
+          activeView={activeView}
+          // Briefing views
+          briefingHistory={briefingHistory}
+          currentBriefing={currentBriefing}
+          quickSummariesById={quickSummariesById}
+          fullReportsById={fullReportsById}
+          results={results}
+          feedbackEvents={feedback.events}
+          onStar={feedback.addStar}
+          onDismiss={feedback.addDismiss}
+          onAddComment={(arxivId, text) => {
+            // Look for the paper in the current briefing first, then in
+            // the active briefing entry for the selected view.
+            const dateKey = activeView.startsWith('briefing:')
+              ? activeView.slice('briefing:'.length)
+              : currentBriefing?.date;
+            const entry = briefingHistory?.find((b) => b.date === dateKey);
+            const paper = entry?.briefing?.papers?.find((p) => p.arxivId === arxivId);
+            if (!paper) return;
+            feedback.addPaperComment(
+              {
+                arxivId,
+                paperTitle: paper.title,
+                quickSummary: paper.quickSummary ?? '',
+                score: paper.score,
+                briefingDate: entry.date ?? new Date().toISOString().slice(0, 10),
+              },
+              text
+            );
+          }}
+          // Profile view
           profile={profile}
           updateProfile={updateProfile}
-          migrationNotice={migrationNotice}
-          dismissMigrationNotice={dismissMigrationNotice}
           revertToRevision={revertToRevision}
           clearHistory={clearHistory}
-          newInteractionCount={newInteractionCount}
+          migrationNotice={migrationNotice}
+          dismissMigrationNotice={dismissMigrationNotice}
           draftContent={draftContent}
           setDraftContent={setDraftContent}
+          newInteractionCount={newInteractionCount}
           onScrollToFeedback={scrollToFeedback}
           onPreviewClick={togglePreviewPanel}
           onSuggestClick={openSuggestDialog}
           disabled={processing?.isRunning ?? false}
-        />
-
-        {showPreviewPanel && (
-          <div className="mt-4">
-            <PreviewPanel
-              editedProfile={draftContent}
-              models={{
-                filter: config.filterModel,
-                scoring: config.scoringModel,
-                briefing: config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro',
-              }}
-              password={password}
-              onClose={() => setShowPreviewPanel(false)}
-            />
-          </div>
-        )}
-
-        <SettingsPanel config={config} setConfig={setConfig} processing={processing} />
-
-        <ControlPanel
+          showPreviewPanel={showPreviewPanel}
+          previewPanelProps={{
+            editedProfile: draftContent,
+            models: {
+              filter: config.filterModel,
+              scoring: config.scoringModel,
+              briefing: config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro',
+            },
+            password,
+            onClose: () => setShowPreviewPanel(false),
+          }}
+          // Settings view
+          config={config}
+          setConfig={setConfig}
           processing={processing}
+          // Pipeline view
           testState={testState}
+          processingTiming={processingTiming}
+          filterResults={filterResults}
+          filterSortedPapers={filterSortedPapers}
+          abstractOnlyPapers={abstractOnlyPapers}
+          renderPaperCard={renderPaperCard}
           onStart={handleStart}
           onPause={handlePause}
           onResume={handleResume}
@@ -776,98 +966,23 @@ function ArxivAnalyzer() {
           onReset={handleReset}
           onRunDryRun={runDryRunTest}
           onRunMinimalTest={runMinimalTest}
-        />
-
-        <ProgressTracker
-          processing={processing}
-          testState={testState}
+          onExport={exportResults}
           getStageDisplay={getStageDisplay}
           getProgressPercentage={getProgressPercentage}
-        />
-
-        <AnalysisResultsList
-          results={results}
-          testState={testState}
-          processing={processing}
-          abstractOnlyPapers={abstractOnlyPapers}
-          renderPaperCard={renderPaperCard}
-        />
-
-        <DownloadReportCard
-          testState={testState}
-          processingTiming={processingTiming}
-          results={results}
-          processing={processing}
-          config={config}
-          onExport={exportResults}
-        />
-
-        <BriefingCard
-          results={results}
-          testState={testState}
+          onCycleVerdict={cycleFilterVerdict}
+          // Briefing card (generate button)
           synthesizing={synthesizing}
           synthesisError={synthesisError}
           briefingCheckResult={briefingCheckResult}
           briefingStage={briefingStage}
-          processing={processing}
-          onGenerate={handleGenerateBriefing}
-        />
-
-        {currentBriefing && (
-          <div className="mb-6">
-            <BriefingView
-              briefing={currentBriefing.briefing}
-              date={new Date(currentBriefing.date).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-              briefingDate={currentBriefing.date ?? new Date().toISOString().slice(0, 10)}
-              papersScreened={results?.allPapers?.length ?? 0}
-              quickSummariesById={quickSummariesById}
-              fullReportsById={fullReportsById}
-              feedbackEvents={feedback.events}
-              onStar={feedback.addStar}
-              onDismiss={feedback.addDismiss}
-              onAddComment={(arxivId, text) => {
-                const paper = currentBriefing.briefing.papers.find((p) => p.arxivId === arxivId);
-                if (!paper) return;
-                feedback.addPaperComment(
-                  {
-                    arxivId,
-                    paperTitle: paper.title,
-                    quickSummary: paper.quickSummary ?? '',
-                    score: paper.score,
-                    briefingDate: currentBriefing.date ?? new Date().toISOString().slice(0, 10),
-                  },
-                  text
-                );
-              }}
-              onSkipQuestion={() => console.log('skip question')}
-              onPreviewProfileUpdate={(answer) =>
-                console.log('Phase 2 will show a diff. Phase 1 captures the answer:', answer)
-              }
-            />
-          </div>
-        )}
-
-        {currentBriefing && (
-          <div id="feedback-panel" className="mb-6">
-            <FeedbackPanel
-              events={feedback.events}
-              cutoff={profile?.lastFeedbackCutoff ?? 0}
-              onAddGeneralComment={(text) => {
-                const today = new Date().toISOString().slice(0, 10);
-                feedback.addGeneralComment(text, today);
-              }}
-              onSuggestClick={openSuggestDialog}
-            />
-          </div>
-        )}
-
-        <NotebookLMCard
-          currentBriefing={currentBriefing}
-          testState={testState}
+          onGenerateBriefing={handleGenerateBriefing}
+          // Feedback panel
+          feedbackCutoff={profile?.lastFeedbackCutoff ?? 0}
+          onAddGeneralComment={(text) => {
+            const today = new Date().toISOString().slice(0, 10);
+            feedback.addGeneralComment(text, today);
+          }}
+          // NotebookLM
           podcastDuration={podcastDuration}
           setPodcastDuration={setPodcastDuration}
           notebookLMModel={notebookLMModel}
@@ -878,38 +993,30 @@ function ArxivAnalyzer() {
           enableHallucinationCheck={enableHallucinationCheck}
           setEnableHallucinationCheck={setEnableHallucinationCheck}
           hallucinationWarning={hallucinationWarning}
-          results={results}
-          onGenerate={generateNotebookLM}
-          onDownload={downloadNotebookLM}
-        />
-
-        <FilterResultsList
-          filterResults={filterResults}
-          filterSortedPapers={filterSortedPapers}
-          testState={testState}
-          processing={processing}
-          onCycleVerdict={cycleFilterVerdict}
-        />
-
-        <SuggestDialog
-          isOpen={showSuggestDialog}
-          onClose={() => setShowSuggestDialog(false)}
-          profile={profile?.content ?? ''}
-          newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
-          cap={{ commentCap: 30 }}
-          briefingModel={config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro'}
-          provider={(
-            MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
-          ).toLowerCase()}
-          password={password}
-          onAccept={(revisedProfile, rationale, newCutoff) => {
-            saveSuggested(revisedProfile, newCutoff, rationale);
-            setShowSuggestDialog(false);
-          }}
+          onGenerateNotebookLM={generateNotebookLM}
+          onDownloadNotebookLM={downloadNotebookLM}
+          // Logout
+          onLogout={handleLogout}
         />
       </div>
+
+      {/* SuggestDialog — modal, always mounted at root */}
+      <SuggestDialog
+        isOpen={showSuggestDialog}
+        onClose={() => setShowSuggestDialog(false)}
+        profile={profile?.content ?? ''}
+        newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
+        cap={{ commentCap: 30 }}
+        briefingModel={config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro'}
+        provider={(
+          MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
+        ).toLowerCase()}
+        password={password}
+        onAccept={(revisedProfile, rationale, newCutoff) => {
+          saveSuggested(revisedProfile, newCutoff, rationale);
+          setShowSuggestDialog(false);
+        }}
+      />
     </div>
   );
 }
-
-export default ArxivAnalyzer;

@@ -142,7 +142,7 @@ describe('FeedbackTimeline', () => {
     );
     expect(container.querySelector('.border-dashed')).toBeNull();
     // Two star feedback items rendered
-    expect(container.querySelectorAll('.border-l-yellow-500')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(2);
   });
 
   it('renders a dashed divider when cutoff splits the events', () => {
@@ -160,7 +160,7 @@ describe('FeedbackTimeline', () => {
     const { container } = render(
       <FeedbackTimeline events={events} filters={{ ...defaultFilters, type: 'stars' }} cutoff={0} />
     );
-    expect(container.querySelectorAll('.border-l-yellow-500')).toHaveLength(1);
-    expect(container.querySelectorAll('.border-l-blue-500')).toHaveLength(0);
+    expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-event-type="general-comment"]')).toHaveLength(0);
   });
 });

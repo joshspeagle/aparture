@@ -16,7 +16,7 @@ describe('FeedbackItem', () => {
 
   it('renders a star event with yellow border and ★ icon', () => {
     const { container } = render(<FeedbackItem event={baseStar} />);
-    const item = container.querySelector('.border-l-yellow-500');
+    const item = container.querySelector('[data-event-type="star"]');
     expect(item).not.toBeNull();
     expect(screen.getByText(/★/)).toBeInTheDocument();
     expect(screen.getByText(/Circuit analysis/)).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe('FeedbackItem', () => {
   it('renders a dismiss event with gray border and ⊘ icon', () => {
     const dismiss = { ...baseStar, id: 'd1', type: 'dismiss' };
     const { container } = render(<FeedbackItem event={dismiss} />);
-    expect(container.querySelector('.border-l-slate-500')).not.toBeNull();
+    expect(container.querySelector('[data-event-type="dismiss"]')).not.toBeNull();
     expect(screen.getByText(/⊘/)).toBeInTheDocument();
   });
 
@@ -38,7 +38,7 @@ describe('FeedbackItem', () => {
       text: 'This is exactly the angle I wanted',
     };
     const { container } = render(<FeedbackItem event={comment} />);
-    expect(container.querySelector('.border-l-purple-500')).not.toBeNull();
+    expect(container.querySelector('[data-event-type="paper-comment"]')).not.toBeNull();
     expect(screen.getByText(/💬/)).toBeInTheDocument();
     expect(screen.getByText(/exactly the angle/)).toBeInTheDocument();
     expect(screen.getByText(/Circuit analysis/)).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('FeedbackItem', () => {
       briefingDate: '2026-04-14',
     };
     const { container } = render(<FeedbackItem event={general} />);
-    expect(container.querySelector('.border-l-blue-500')).not.toBeNull();
+    expect(container.querySelector('[data-event-type="general-comment"]')).not.toBeNull();
     expect(screen.getByText(/💭/)).toBeInTheDocument();
     expect(screen.getByText(/too much theory/)).toBeInTheDocument();
   });

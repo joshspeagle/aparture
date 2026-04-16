@@ -13,12 +13,12 @@ describe('FeedbackFilters', () => {
     expect(screen.getByRole('button', { name: /comment/i })).toBeInTheDocument();
   });
 
-  it('marks the active type with distinct styling', () => {
+  it('marks the active type with data-active attribute', () => {
     const { container } = render(
       <FeedbackFilters filters={{ ...defaultFilters, type: 'stars' }} onFiltersChange={() => {}} />
     );
-    // Active button should have bg-slate-700 class
-    const active = container.querySelector('button.bg-slate-700');
+    // Active button should have data-active attribute
+    const active = container.querySelector('button[data-active]');
     expect(active).not.toBeNull();
     expect(active.textContent).toMatch(/star/i);
   });

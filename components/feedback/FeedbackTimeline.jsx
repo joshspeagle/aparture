@@ -62,11 +62,20 @@ export default function FeedbackTimeline({ events, filters, cutoff }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div>
       {newGroups.length > 0 && (
         <div>
           {cutoff > 0 && (
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+            <p
+              style={{
+                fontSize: '10px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: 'var(--aparture-mute)',
+                marginBottom: '4px',
+              }}
+            >
               New since last revision
             </p>
           )}
@@ -80,8 +89,25 @@ export default function FeedbackTimeline({ events, filters, cutoff }) {
         </div>
       )}
       {oldGroups.length > 0 && (
-        <div className="pt-3 border-t border-dashed border-slate-700 mt-3 opacity-60">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+        <div
+          style={{
+            paddingTop: 'var(--aparture-space-3)',
+            borderTop: '1px dashed var(--aparture-hairline)',
+            marginTop: 'var(--aparture-space-3)',
+            opacity: 0.6,
+          }}
+          className="border-dashed"
+        >
+          <p
+            style={{
+              fontSize: '10px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              color: 'var(--aparture-mute)',
+              marginBottom: '4px',
+            }}
+          >
             Already incorporated in previous profile revision
           </p>
           {oldGroups.map((group) => (

@@ -1,5 +1,9 @@
 import { AlertCircle, Download, FileText, Loader2, TestTube } from 'lucide-react';
 import { AVAILABLE_MODELS } from '../../utils/models';
+import Button from '../ui/Button.jsx';
+import Card from '../ui/Card.jsx';
+import Checkbox from '../ui/Checkbox.jsx';
+import Select from '../ui/Select.jsx';
 
 export default function NotebookLMCard({
   currentBriefing,
@@ -20,50 +24,127 @@ export default function NotebookLMCard({
 }) {
   if (!currentBriefing) return null;
 
+  const labelStyle = {
+    display: 'block',
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+    fontWeight: 500,
+    color: 'var(--aparture-mute)',
+    marginBottom: '8px',
+  };
+
+  const testBadgeStyle = {
+    marginLeft: '12px',
+    padding: '2px 8px',
+    background: 'rgba(245,158,11,0.12)',
+    color: '#f59e0b',
+    fontSize: 'var(--aparture-text-xs)',
+    borderRadius: '9999px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  };
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
-          <FileText className="w-5 h-5 mr-2 text-purple-400" />
-          <h2 className="text-xl font-semibold">NotebookLM Podcast Generation</h2>
+    <Card>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 'var(--aparture-space-4)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <FileText
+            className="w-5 h-5"
+            style={{ marginRight: '8px', color: 'var(--aparture-accent)' }}
+          />
+          <h2
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xl)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
+            }}
+          >
+            NotebookLM Podcast Generation
+          </h2>
           {testState.dryRunInProgress && (
-            <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+            <span style={testBadgeStyle}>
               <TestTube className="w-3 h-3" />
               TEST MODE
             </span>
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={enableHallucinationCheck}
-            onChange={(e) => setEnableHallucinationCheck(e.target.checked)}
-            className="rounded border-gray-600 text-purple-500 focus:ring-purple-500"
-          />
-          Enable hallucination check & retry
-        </label>
+        <Checkbox
+          checked={enableHallucinationCheck}
+          onChange={(e) => setEnableHallucinationCheck(e.target.checked)}
+          label="Enable hallucination check &amp; retry"
+        />
       </div>
 
-      <p className="text-sm text-gray-400 mb-4">
+      <p
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-sm)',
+          color: 'var(--aparture-mute)',
+          marginBottom: 'var(--aparture-space-4)',
+        }}
+      >
         Generate a structured document optimized for NotebookLM to create an expert-level podcast
         discussion. Uses the briefing above as editorial framing when available.
       </p>
 
       {hallucinationWarning && (
-        <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
-          <p className="text-yellow-400 text-sm font-medium mb-2 flex items-center gap-2">
+        <div
+          style={{
+            marginBottom: 'var(--aparture-space-4)',
+            padding: 'var(--aparture-space-3)',
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.3)',
+            borderRadius: '4px',
+          }}
+        >
+          <p
+            style={{
+              color: '#f59e0b',
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              fontWeight: 500,
+              marginBottom: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <AlertCircle className="w-4 h-4" />
             Hallucination detected and corrected
           </p>
           {hallucinationWarning.issues && hallucinationWarning.issues.length > 0 && (
             <>
-              <p className="text-yellow-300 text-xs mb-2">{hallucinationWarning.summary}</p>
-              <details className="text-yellow-300 text-xs">
-                <summary className="cursor-pointer hover:text-yellow-200">View details</summary>
-                <ul className="mt-2 space-y-1 pl-4">
+              <p
+                style={{
+                  color: 'var(--aparture-ink)',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-xs)',
+                  marginBottom: '8px',
+                }}
+              >
+                {hallucinationWarning.summary}
+              </p>
+              <details
+                style={{
+                  color: 'var(--aparture-ink)',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-xs)',
+                }}
+              >
+                <summary style={{ cursor: 'pointer' }}>View details</summary>
+                <ul style={{ marginTop: '8px', paddingLeft: '16px', listStyle: 'disc' }}>
                   {hallucinationWarning.issues.map((issue, i) => (
-                    <li key={i} className="list-disc">
+                    <li key={i} style={{ marginBottom: '4px' }}>
                       {issue}
                     </li>
                   ))}
@@ -72,27 +153,44 @@ export default function NotebookLMCard({
             </>
           )}
           {hallucinationWarning.resolved ? (
-            <p className="text-green-400 text-xs mt-2">
-              ✓ Successfully corrected with strict generation mode
+            <p
+              style={{
+                color: '#22c55e',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                marginTop: '8px',
+              }}
+            >
+              &#10003; Successfully corrected with strict generation mode
             </p>
           ) : (
-            <p className="text-orange-400 text-xs mt-2">
-              ⚠️ Some issues may persist - please review carefully
+            <p
+              style={{
+                color: '#f97316',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                marginTop: '8px',
+              }}
+            >
+              &#9888;&#65039; Some issues may persist - please review carefully
             </p>
           )}
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 'var(--aparture-space-4)',
+          }}
+        >
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-2">
-              Target Podcast Duration
-            </label>
-            <select
+            <label style={labelStyle}>Target Podcast Duration</label>
+            <Select
               value={podcastDuration}
               onChange={(e) => setPodcastDuration(Number(e.target.value))}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white text-sm"
               disabled={notebookLMGenerating}
             >
               <option value="5">5 minutes - Quick Overview</option>
@@ -100,15 +198,14 @@ export default function NotebookLMCard({
               <option value="15">15 minutes - Detailed Analysis</option>
               <option value="20">20 minutes - In-depth Coverage (Recommended)</option>
               <option value="30">30 minutes - Comprehensive Review</option>
-            </select>
+            </Select>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-2">Generation Model</label>
-            <select
+            <label style={labelStyle}>Generation Model</label>
+            <Select
               value={notebookLMModel}
               onChange={(e) => setNotebookLMModel(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white text-sm"
               disabled={notebookLMGenerating}
             >
               {AVAILABLE_MODELS.map((model) => (
@@ -116,40 +213,64 @@ export default function NotebookLMCard({
                   {model.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 
-        <div className="p-2 bg-slate-800/50 rounded-lg">
-          <p className="text-xs text-gray-300">
-            <span className="text-gray-400">Model: </span>
+        <div
+          style={{
+            padding: '8px',
+            background: 'var(--aparture-bg)',
+            borderRadius: '4px',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-ink)',
+            }}
+          >
+            <span style={{ color: 'var(--aparture-mute)' }}>Model: </span>
             {AVAILABLE_MODELS.find((m) => m.id === notebookLMModel)?.description}
           </p>
         </div>
 
         {notebookLMStatus && (
           <div
-            className={`p-3 rounded-lg text-sm ${
-              notebookLMStatus.includes('Error')
-                ? 'bg-red-900/20 text-red-400 border border-red-800'
+            style={{
+              padding: 'var(--aparture-space-3)',
+              borderRadius: '4px',
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              ...(notebookLMStatus.includes('Error')
+                ? {
+                    background: 'rgba(239,68,68,0.08)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                  }
                 : notebookLMStatus.includes('successfully')
-                  ? 'bg-green-900/20 text-green-400 border border-green-800'
-                  : 'bg-blue-900/20 text-blue-400 border border-blue-800'
-            }`}
+                  ? {
+                      background: 'rgba(34,197,94,0.08)',
+                      color: '#22c55e',
+                      border: '1px solid rgba(34,197,94,0.3)',
+                    }
+                  : {
+                      background: 'rgba(59,130,246,0.08)',
+                      color: '#3b82f6',
+                      border: '1px solid rgba(59,130,246,0.3)',
+                    }),
+            }}
           >
             {notebookLMStatus}
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
+        <div style={{ display: 'flex', gap: 'var(--aparture-space-3)' }}>
+          <Button
+            variant="primary"
             onClick={onGenerate}
             disabled={notebookLMGenerating || results.scoredPapers.length === 0}
-            className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
-              notebookLMGenerating || results.scoredPapers.length === 0
-                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-            }`}
           >
             {notebookLMGenerating ? (
               <>
@@ -162,19 +283,23 @@ export default function NotebookLMCard({
                 Generate NotebookLM File
               </>
             )}
-          </button>
+          </Button>
 
           {notebookLMContent && (
-            <button
+            <Button
+              variant="secondary"
               onClick={onDownload}
-              className="px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+              style={{
+                borderColor: '#22c55e',
+                color: '#22c55e',
+              }}
             >
               <Download className="w-4 h-4" />
               Download NotebookLM Document
-            </button>
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

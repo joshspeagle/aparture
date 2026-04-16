@@ -35,7 +35,7 @@ describe('FeedbackPanel', () => {
     const events = [makeStar('s1', '2504.01234', 1700000000000)];
     const { container } = render(<FeedbackPanel {...defaultProps} events={events} />);
     expect(screen.queryByText(/feedback will appear here/i)).toBeNull();
-    expect(container.querySelector('.border-l-yellow-500')).not.toBeNull();
+    expect(container.querySelector('[data-event-type="star"]')).not.toBeNull();
   });
 
   it('computes newCount from events after the cutoff', () => {

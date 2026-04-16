@@ -1,4 +1,6 @@
 import { Download, TestTube } from 'lucide-react';
+import Button from '../ui/Button.jsx';
+import Card from '../ui/Card.jsx';
 
 export default function DownloadReportCard({
   testState,
@@ -10,15 +12,37 @@ export default function DownloadReportCard({
 }) {
   const hasReport = results.finalRanking.length > 0;
 
+  const testBadgeStyle = {
+    marginLeft: '12px',
+    padding: '2px 8px',
+    background: 'rgba(245,158,11,0.12)',
+    color: '#f59e0b',
+    fontSize: 'var(--aparture-text-xs)',
+    fontFamily: 'var(--aparture-font-sans)',
+    borderRadius: '9999px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  };
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center mb-2">
-            <Download className="w-5 h-5 mr-2 text-green-400" />
-            <h2 className="text-xl font-semibold">Download Report</h2>
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <Download className="w-5 h-5" style={{ marginRight: '8px', color: '#22c55e' }} />
+            <h2
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xl)',
+                fontWeight: 600,
+                color: 'var(--aparture-ink)',
+              }}
+            >
+              Download Report
+            </h2>
             {testState.dryRunInProgress && (
-              <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+              <span style={testBadgeStyle}>
                 <TestTube className="w-3 h-3" />
                 TEST DATA
               </span>
@@ -26,27 +50,34 @@ export default function DownloadReportCard({
           </div>
 
           {processingTiming.startTime && (
-            <div className="text-sm text-gray-400 mb-3">
+            <div
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-mute)',
+                marginBottom: 'var(--aparture-space-3)',
+              }}
+            >
               {processingTiming.endTime ? (
                 <>
                   Completed: {processingTiming.endTime.toLocaleString()}
-                  <span className="mx-2">•</span>
+                  <span style={{ margin: '0 8px' }}>&bull;</span>
                   Duration:{' '}
                   {processingTiming.duration
                     ? Math.round(processingTiming.duration / 60000)
                     : 0}{' '}
                   minutes
-                  <span className="mx-2">•</span>
+                  <span style={{ margin: '0 8px' }}>&bull;</span>
                   {results.scoredPapers.length} abstracts screened
-                  <span className="mx-2">•</span>
+                  <span style={{ margin: '0 8px' }}>&bull;</span>
                   {Math.min(results.scoredPapers.length, config.maxDeepAnalysis)} papers analyzed
-                  <span className="mx-2">•</span>
+                  <span style={{ margin: '0 8px' }}>&bull;</span>
                   {results.finalRanking.length} papers summarized
                 </>
               ) : processing.isRunning ? (
                 <>
                   Started: {processingTiming.startTime.toLocaleString()}
-                  <span className="mx-2">•</span>
+                  <span style={{ margin: '0 8px' }}>&bull;</span>
                   Analysis in progress...
                 </>
               ) : (
@@ -56,19 +87,16 @@ export default function DownloadReportCard({
           )}
         </div>
 
-        <button
+        <Button
+          variant={hasReport ? 'primary' : 'secondary'}
           onClick={onExport}
           disabled={!hasReport}
-          className={`px-6 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
-            hasReport
-              ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
-              : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-          }`}
+          style={hasReport ? { background: '#22c55e', borderColor: '#22c55e' } : undefined}
         >
           <Download className="w-4 h-4" />
           {hasReport ? 'Download Report' : 'No Report Available'}
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

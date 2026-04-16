@@ -1,28 +1,77 @@
 import { FileText, TestTube } from 'lucide-react';
+import Card from '../ui/Card.jsx';
 
-function FilterResultRow({ paper, verdict, borderClass, processingIsRunning, onCycleVerdict }) {
-  const pillClass =
+function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onCycleVerdict }) {
+  const pillColors =
     verdict === 'YES'
-      ? 'bg-green-900/40 text-green-300 border-green-700 hover:border-green-500'
+      ? { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' }
       : verdict === 'MAYBE'
-        ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700 hover:border-yellow-500'
-        : 'bg-red-900/40 text-red-300 border-red-700 hover:border-red-500';
+        ? { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' }
+        : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' };
   const overridden = paper.originalVerdict && paper.originalVerdict !== verdict;
 
   return (
-    <div className={`bg-slate-800/50 rounded-lg p-3 border ${borderClass}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-white">{paper.title}</h4>
-          <p className="text-xs text-gray-400 mt-1">
+    <div
+      style={{
+        background: 'var(--aparture-bg)',
+        borderRadius: '4px',
+        padding: 'var(--aparture-space-3)',
+        border: `1px solid ${borderColor}`,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 'var(--aparture-space-3)',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h4
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              fontWeight: 500,
+              color: 'var(--aparture-ink)',
+            }}
+          >
+            {paper.title}
+          </h4>
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              marginTop: '4px',
+            }}
+          >
             {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
           </p>
           {paper.filterSummary && (
-            <p className="text-xs text-slate-300 italic mt-2">{paper.filterSummary}</p>
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-ink)',
+                fontStyle: 'italic',
+                marginTop: '8px',
+              }}
+            >
+              {paper.filterSummary}
+            </p>
           )}
           {paper.filterJustification && (
-            <p className="text-xs text-slate-500 mt-1">
-              <span className="font-medium">Verdict reasoning:</span> {paper.filterJustification}
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+                marginTop: '4px',
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>Verdict reasoning:</span>{' '}
+              {paper.filterJustification}
             </p>
           )}
         </div>
@@ -32,13 +81,27 @@ function FilterResultRow({ paper, verdict, borderClass, processingIsRunning, onC
           title={
             overridden
               ? `Filter originally said ${paper.originalVerdict}. Click to cycle.`
-              : 'Click to override the filter verdict (cycles YES → MAYBE → NO)'
+              : 'Click to override the filter verdict (cycles YES \u2192 MAYBE \u2192 NO)'
           }
           disabled={processingIsRunning}
-          className={`shrink-0 px-2 py-1 text-[10px] uppercase tracking-wider rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${pillClass}`}
+          style={{
+            flexShrink: 0,
+            padding: '2px 8px',
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            borderRadius: '9999px',
+            border: `1px solid ${pillColors.border}`,
+            background: pillColors.bg,
+            color: pillColors.color,
+            cursor: processingIsRunning ? 'not-allowed' : 'pointer',
+            opacity: processingIsRunning ? 0.5 : 1,
+            fontFamily: 'var(--aparture-font-sans)',
+            transition: 'all 150ms ease',
+          }}
         >
           {verdict}
-          {overridden && <span className="ml-1">⇄</span>}
+          {overridden && <span style={{ marginLeft: '4px' }}>{'\u21C4'}</span>}
         </button>
       </div>
     </div>
@@ -59,43 +122,97 @@ export default function FilterResultsList({
   const { unscoredYes, unscoredMaybe, unscoredNo, scoredYesCount, scoredMaybeCount } =
     filterSortedPapers;
 
+  const testBadgeStyle = {
+    marginLeft: '12px',
+    padding: '2px 8px',
+    background: 'rgba(245,158,11,0.12)',
+    color: '#f59e0b',
+    fontSize: 'var(--aparture-text-xs)',
+    fontFamily: 'var(--aparture-font-sans)',
+    borderRadius: '9999px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  };
+
+  const sectionTitleStyle = (color) => ({
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-sm)',
+    fontWeight: 500,
+    marginBottom: '8px',
+    color,
+  });
+
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-800">
-      <div className="flex items-center mb-4">
-        <FileText className="w-5 h-5 mr-2 text-yellow-400" />
-        <h2 className="text-xl font-semibold">
+    <Card>
+      <div
+        style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
+      >
+        <FileText className="w-5 h-5" style={{ marginRight: '8px', color: '#f59e0b' }} />
+        <h2
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xl)',
+            fontWeight: 600,
+            color: 'var(--aparture-ink)',
+          }}
+        >
           Filtered Papers
           {filterResults.inProgress && (
-            <span className="text-sm text-gray-400 ml-2">
+            <span
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-mute)',
+                marginLeft: '8px',
+              }}
+            >
               (Processing batch {filterResults.currentBatch || 0} of{' '}
               {filterResults.totalBatches || 0})
             </span>
           )}
         </h2>
         {testState.dryRunInProgress && (
-          <span className="ml-3 px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+          <span style={testBadgeStyle}>
             <TestTube className="w-3 h-3" />
             TEST DATA
           </span>
         )}
       </div>
 
-      <div className="space-y-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
         {unscoredYes.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2 text-green-400">
-              ✓ YES ({unscoredYes.length})
+            <h3 style={sectionTitleStyle('#22c55e')}>
+              {'\u2713'} YES ({unscoredYes.length})
               {scoredYesCount > 0 && (
-                <span className="text-xs text-gray-400 ml-2">({scoredYesCount} scored)</span>
+                <span
+                  style={{
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                    marginLeft: '8px',
+                  }}
+                >
+                  ({scoredYesCount} scored)
+                </span>
               )}
             </h3>
-            <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                maxHeight: '800px',
+                overflowY: 'auto',
+                paddingRight: '8px',
+              }}
+            >
               {unscoredYes.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="YES"
-                  borderClass="border-green-900/50"
+                  borderColor="rgba(34,197,94,0.2)"
                   processingIsRunning={processing.isRunning}
                   onCycleVerdict={onCycleVerdict}
                 />
@@ -106,19 +223,36 @@ export default function FilterResultsList({
 
         {unscoredMaybe.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2 text-yellow-400">
+            <h3 style={sectionTitleStyle('#f59e0b')}>
               ? MAYBE ({unscoredMaybe.length})
               {scoredMaybeCount > 0 && (
-                <span className="text-xs text-gray-400 ml-2">({scoredMaybeCount} scored)</span>
+                <span
+                  style={{
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                    marginLeft: '8px',
+                  }}
+                >
+                  ({scoredMaybeCount} scored)
+                </span>
               )}
             </h3>
-            <div className="space-y-2 max-h-[800px] overflow-y-auto pr-2">
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                maxHeight: '800px',
+                overflowY: 'auto',
+                paddingRight: '8px',
+              }}
+            >
               {unscoredMaybe.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="MAYBE"
-                  borderClass="border-yellow-900/50"
+                  borderColor="rgba(245,158,11,0.2)"
                   processingIsRunning={processing.isRunning}
                   onCycleVerdict={onCycleVerdict}
                 />
@@ -129,16 +263,25 @@ export default function FilterResultsList({
 
         {unscoredNo.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2 text-red-400">
-              ✗ NO ({unscoredNo.length} filtered out)
+            <h3 style={sectionTitleStyle('#ef4444')}>
+              {'\u2717'} NO ({unscoredNo.length} filtered out)
             </h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                maxHeight: '600px',
+                overflowY: 'auto',
+                paddingRight: '8px',
+              }}
+            >
               {unscoredNo.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="NO"
-                  borderClass="border-red-900/50"
+                  borderColor="rgba(239,68,68,0.2)"
                   processingIsRunning={processing.isRunning}
                   onCycleVerdict={onCycleVerdict}
                 />
@@ -148,18 +291,26 @@ export default function FilterResultsList({
         )}
 
         {(unscoredYes.length > 0 || unscoredMaybe.length > 0 || unscoredNo.length > 0) && (
-          <div className="pt-3 border-t border-slate-700 text-xs text-gray-400">
-            <div className="flex justify-between">
-              <span>
-                Filtered:{' '}
-                {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length}{' '}
-                papers
-              </span>
-              <span>Remaining to score: {unscoredYes.length + unscoredMaybe.length}</span>
-            </div>
+          <div
+            style={{
+              paddingTop: 'var(--aparture-space-3)',
+              borderTop: '1px solid var(--aparture-hairline)',
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>
+              Filtered:{' '}
+              {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length}{' '}
+              papers
+            </span>
+            <span>Remaining to score: {unscoredYes.length + unscoredMaybe.length}</span>
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
