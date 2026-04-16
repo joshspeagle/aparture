@@ -6,6 +6,10 @@ const MODEL_REGISTRY = {
   // User-facing ID -> Actual API model ID mapping
 
   // Anthropic — current
+  'claude-opus-4.7': {
+    apiId: 'claude-opus-4-7',
+    provider: 'Anthropic',
+  },
   'claude-opus-4.6': {
     apiId: 'claude-opus-4-6',
     provider: 'Anthropic',
@@ -19,7 +23,7 @@ const MODEL_REGISTRY = {
     provider: 'Anthropic',
   },
 
-  // Anthropic — legacy (still available)
+  // Anthropic — legacy (still available, thinking supported via adaptive mode)
   'claude-opus-4.5': {
     apiId: 'claude-opus-4-5',
     provider: 'Anthropic',
@@ -84,13 +88,22 @@ const MODEL_REGISTRY = {
 const AVAILABLE_MODELS = [
   // --- Anthropic: current ---
   {
-    id: 'claude-opus-4.6',
-    name: 'Claude Opus 4.6',
+    id: 'claude-opus-4.7',
+    name: 'Claude Opus 4.7',
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: false, // Too expensive for simple filtering
     description:
-      'Most intelligent broadly available model; 1M context, top-tier reasoning and coding',
+      'Most capable model; step-change in agentic coding over 4.6, adaptive thinking, 1M context',
+    apiKeyEnv: 'CLAUDE_API_KEY',
+  },
+  {
+    id: 'claude-opus-4.6',
+    name: 'Claude Opus 4.6',
+    provider: 'Anthropic',
+    supportsPDF: true,
+    supportsQuickFilter: false,
+    description: 'Previous flagship; 1M context, top-tier reasoning and coding',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
@@ -277,7 +290,7 @@ const MODEL_PRESETS = {
   quality: {
     filterModel: 'gpt-5.4-nano',
     scoringModel: 'claude-sonnet-4.6',
-    pdfModel: 'claude-opus-4.6',
+    pdfModel: 'claude-opus-4.7',
   },
   'google-free': {
     // For Google's free tier

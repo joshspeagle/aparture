@@ -5,19 +5,20 @@ import {
 } from '../../../../lib/llm/structured/anthropic.js';
 
 describe('buildAnthropicRequest', () => {
-  it('builds a plain text request without structured output', () => {
+  it('builds a plain text request with adaptive thinking', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-4-7',
       prompt: 'Say hi.',
     });
-    expect(req.body.model).toBe('claude-opus-4-6');
+    expect(req.body.model).toBe('claude-opus-4-7');
     expect(req.body.messages).toEqual([{ role: 'user', content: 'Say hi.' }]);
+    expect(req.body.thinking).toEqual({ type: 'adaptive' });
     expect(req.body.tools).toBeUndefined();
   });
 
-  it('adds a tool_use tool when structuredOutput is provided', () => {
+  it('uses tool_choice auto with structured output (required by thinking)', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-4-7',
       prompt: 'Summarize.',
       structuredOutput: {
         name: 'summary',
@@ -31,12 +32,21 @@ describe('buildAnthropicRequest', () => {
       type: 'object',
       properties: { headline: { type: 'string' } },
     });
-    expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
+    // Thinking requires tool_choice "auto" — "tool" is not supported
+    expect(req.body.tool_choice).toEqual({ type: 'auto' });
+  });
+
+  it('defaults max_tokens to 16000 for thinking overhead', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-7',
+      prompt: 'Hi.',
+    });
+    expect(req.body.max_tokens).toBe(16000);
   });
 
   it('respects a custom maxTokens override', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-4-7',
       prompt: 'Hi.',
       maxTokens: 1024,
     });
@@ -77,6 +87,41 @@ describe('parseAnthropicResponse', () => {
     };
     const result = parseAnthropicResponse(response);
     expect(result.text).toBe('Hello world.');
+  });
+
+  it('skips thinking blocks from adaptive thinking', () => {
+    const response = {
+      content: [
+        {
+          type: 'thinking',
+          thinking: 'Let me reason about this...',
+          signature: 'WaUjzkypQ2mUEVM36O2...',
+        },
+        { type: 'text', text: 'The answer is 42.' },
+      ],
+      usage: { input_tokens: 15, output_tokens: 10 },
+    };
+    const result = parseAnthropicResponse(response);
+    expect(result.text).toBe('The answer is 42.');
+    expect(result.structured).toBeUndefined();
+    expect(result.tokensIn).toBe(15);
+  });
+
+  it('handles thinking block followed by tool_use', () => {
+    const response = {
+      content: [
+        {
+          type: 'thinking',
+          thinking: 'I should use the tool...',
+          signature: 'abc123...',
+        },
+        { type: 'tool_use', name: 'summary', input: { headline: 'Big news' } },
+      ],
+      usage: { input_tokens: 25, output_tokens: 12 },
+    };
+    const result = parseAnthropicResponse(response);
+    expect(result.structured).toEqual({ headline: 'Big news' });
+    expect(result.text).toBe('');
   });
 
   it('returns safe defaults for an empty response', () => {
