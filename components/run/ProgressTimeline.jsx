@@ -18,6 +18,7 @@ function resolveStageIndex(pipelineStage) {
     Filtering: 1,
     'filter-review': 1, // paused between filter and scoring
     'initial-scoring': 2,
+    'Post-Processing': 3, // between scoring and deep analysis
     selecting: 3,
     'deep-analysis': 4,
     complete: 6, // past all stages
