@@ -188,3 +188,23 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.briefing-prose .paper-card .paper-comments {
+  margin-top: var(--aparture-space-3);
+  padding-top: var(--aparture-space-3);
+  border-top: 1px solid var(--aparture-hairline);
+}
+
+.briefing-prose .paper-card .paper-comment-entry {
+  font-family: var(--aparture-font-sans);
+  font-size: var(--aparture-text-sm);
+  color: var(--aparture-ink);
+  margin-bottom: var(--aparture-space-2);
+  line-height: 1.5;
+}
+
+.briefing-prose .paper-card .paper-comment-date {
+  color: var(--aparture-mute);
+  font-size: var(--aparture-text-xs);
+  margin-right: var(--aparture-space-2);
+}

@@ -211,6 +211,34 @@ describe('useBriefing', () => {
     expect(stored[0].archived).toBe(true);
   });
 
+  // --- quickSummariesById / fullReportsById persistence ---
+
+  it('persists quickSummariesById and fullReportsById when provided', () => {
+    const { result } = renderHook(() => useBriefing());
+    const briefing = makeBriefing();
+    const quick = { '2504.01234': 'A quick summary' };
+    const full = { '2504.01234': 'Full detailed report...' };
+    act(() => {
+      result.current.saveBriefing('2026-04-16', briefing, null, {
+        quickSummariesById: quick,
+        fullReportsById: full,
+      });
+    });
+    expect(result.current.current.quickSummariesById).toEqual(quick);
+    expect(result.current.current.fullReportsById).toEqual(full);
+    expect(result.current.history[0].quickSummariesById).toEqual(quick);
+    expect(result.current.history[0].fullReportsById).toEqual(full);
+  });
+
+  it('omits quickSummariesById/fullReportsById when not provided', () => {
+    const { result } = renderHook(() => useBriefing());
+    act(() => {
+      result.current.saveBriefing('2026-04-16', makeBriefing());
+    });
+    expect(result.current.current.quickSummariesById).toBeUndefined();
+    expect(result.current.current.fullReportsById).toBeUndefined();
+  });
+
   // --- Back-compat / migration ---
 
   it('tolerates legacy entries without id/timestamp/archived and migrates them', () => {

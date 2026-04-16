@@ -77,6 +77,7 @@ export default function BriefingView({
                   starred={isStarred(paper.arxivId)}
                   dismissed={isDismissed(paper.arxivId)}
                   briefingDate={briefingDate}
+                  feedbackEvents={feedbackEvents}
                   onStar={onStar}
                   onDismiss={onDismiss}
                   onAddComment={onAddComment}

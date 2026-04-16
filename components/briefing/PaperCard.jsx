@@ -5,6 +5,7 @@ export default function PaperCard({
   starred = false,
   dismissed = false,
   briefingDate,
+  feedbackEvents = [],
   onStar,
   onDismiss,
   onAddComment,
@@ -107,6 +108,27 @@ export default function PaperCard({
           </div>
         </div>
       )}
+      {(() => {
+        const comments = feedbackEvents.filter(
+          (e) => e.type === 'paper-comment' && e.arxivId === paper.arxivId
+        );
+        if (comments.length === 0) return null;
+        return (
+          <div className="paper-comments">
+            {comments.map((c) => (
+              <div key={c.id} className="paper-comment-entry">
+                <span className="paper-comment-date">
+                  {new Date(c.timestamp).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+                <span className="paper-comment-text">{c.comment}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </section>
   );
 }

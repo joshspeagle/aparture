@@ -54,29 +54,34 @@ export function useBriefing() {
   const [current, setCurrent] = useState(readStoredCurrent);
   const [history, setHistory] = useState(readStoredHistory);
 
-  const saveBriefing = useCallback((date, briefing, generationMetadata) => {
-    const id = generateId();
-    const entry = {
-      id,
-      date,
-      timestamp: Date.now(),
-      briefing,
-      archived: false,
-      ...(generationMetadata !== undefined ? { generationMetadata } : {}),
-    };
-    setCurrent(entry);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CURRENT_KEY, JSON.stringify(entry));
-    }
-    setHistory((prev) => {
-      const next = [entry, ...prev].slice(0, MAX_HISTORY);
+  const saveBriefing = useCallback(
+    (date, briefing, generationMetadata, { quickSummariesById, fullReportsById } = {}) => {
+      const id = generateId();
+      const entry = {
+        id,
+        date,
+        timestamp: Date.now(),
+        briefing,
+        archived: false,
+        ...(generationMetadata !== undefined ? { generationMetadata } : {}),
+        ...(quickSummariesById ? { quickSummariesById } : {}),
+        ...(fullReportsById ? { fullReportsById } : {}),
+      };
+      setCurrent(entry);
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        window.localStorage.setItem(CURRENT_KEY, JSON.stringify(entry));
       }
-      return next;
-    });
-    return id;
-  }, []);
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, MAX_HISTORY);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        }
+        return next;
+      });
+      return id;
+    },
+    []
+  );
 
   const deleteBriefing = useCallback((id) => {
     setHistory((prev) => {

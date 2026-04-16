@@ -252,8 +252,8 @@ export default function MainArea({
           })}
           briefingDate={entry.date}
           papersScreened={results?.allPapers?.length ?? 0}
-          quickSummariesById={quickSummariesById}
-          fullReportsById={fullReportsById}
+          quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
+          fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
           feedbackEvents={feedbackEvents}
           onStar={onStar}
           onDismiss={onDismiss}
