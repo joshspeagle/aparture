@@ -1,0 +1,43 @@
+/* Shell layout — sidebar + main area.
+ * Uses design tokens from tokens.css for all visual properties. */
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--aparture-bg);
+  color: var(--aparture-ink);
+  font-family: var(--aparture-font-sans);
+}
+
+.shell-sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--aparture-sidebar-bg);
+  border-right: 1px solid var(--aparture-hairline);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+}
+
+.shell-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  height: 100vh;
+}
+
+.briefing-surface {
+  background: var(--aparture-bg);
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: var(--aparture-space-12) var(--aparture-space-6);
+}
+
+.config-surface {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--aparture-space-8) var(--aparture-space-6);
+}
