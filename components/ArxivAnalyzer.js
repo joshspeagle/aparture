@@ -577,6 +577,12 @@ function ArxivAnalyzer() {
     // The metadata is intentionally captured by value (snapshot of
     // the current state) — subsequent edits to profile / settings do
     // NOT retroactively change past briefings' recorded provenance.
+    //
+    // Resolve the effective briefingModel once so the metadata
+    // records exactly what the pipeline will use. Falls back to
+    // pdfModel for legacy configs that predate briefingModel, then
+    // to the standard default if neither is set.
+    const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
     const filterVerdictCounts = {
       yes: filterResults.yes?.length ?? 0,
       maybe: filterResults.maybe?.length ?? 0,
@@ -587,7 +593,7 @@ function ArxivAnalyzer() {
       filterModel: config?.filterModel ?? '',
       scoringModel: config?.scoringModel ?? '',
       pdfModel: config?.pdfModel ?? '',
-      briefingModel: config?.briefingModel ?? config?.pdfModel ?? '',
+      briefingModel: resolvedBriefingModel,
       categories: [...(config?.selectedCategories ?? [])],
       filterVerdictCounts,
       feedbackCutoff: profile?.lastFeedbackCutoff ?? null,
@@ -598,7 +604,7 @@ function ArxivAnalyzer() {
     };
     return runBriefingGeneration({
       results,
-      briefingModel: config?.briefingModel,
+      briefingModel: resolvedBriefingModel,
       pdfModel: config?.pdfModel,
       briefingRetryOnYes: config.briefingRetryOnYes ?? true,
       briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,

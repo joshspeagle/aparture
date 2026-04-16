@@ -68,6 +68,7 @@ export const DEFAULT_CONFIG = {
   postProcessingModel: 'gemini-3-flash',
   pdfModel: 'gemini-3.1-pro',
   briefingModel: 'gemini-3.1-pro',
+  pauseAfterFilter: true,
   briefingRetryOnYes: true,
   briefingRetryOnMaybe: false,
   maxAbstractDisplay: 500,
