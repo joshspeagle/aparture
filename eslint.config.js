@@ -135,6 +135,7 @@ export default [
       'components/notebooklm/**/*.jsx',
       'components/filter/**/*.jsx',
       'components/settings/**/*.jsx',
+      'components/ui/**/*.jsx',
       'hooks/**/*.js',
       'tests/component/**/*.jsx',
     ],
