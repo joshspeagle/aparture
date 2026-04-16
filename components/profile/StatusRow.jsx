@@ -3,12 +3,30 @@ export default function StatusRow({ newInteractionCount, lastUpdated, onScrollTo
   const hasCount = newInteractionCount > 0;
 
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-400">
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--aparture-space-2)',
+        fontSize: 'var(--aparture-text-xs)',
+        color: 'var(--aparture-mute)',
+      }}
+    >
       {hasCount ? (
         <button
           type="button"
           onClick={onScrollToFeedback}
-          className="text-red-400 hover:text-red-300 font-medium underline-offset-2 hover:underline"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'var(--aparture-accent)',
+            fontWeight: 500,
+            fontSize: 'inherit',
+            fontFamily: 'var(--aparture-font-sans)',
+            cursor: 'pointer',
+            textDecoration: 'none',
+          }}
         >
           {newInteractionCount} new interactions
         </button>

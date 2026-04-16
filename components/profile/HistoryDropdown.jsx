@@ -1,5 +1,6 @@
 import * as Collapsible from '@radix-ui/react-collapsible';
 import { useState } from 'react';
+import Button from '../ui/Button.jsx';
 
 function formatDate(ts) {
   if (!ts) return 'unknown';
@@ -8,13 +9,30 @@ function formatDate(ts) {
 
 function SourceBadge({ source }) {
   const label = source === 'suggested' ? 'suggested' : 'manual';
-  const classes =
+  const badgeStyle =
     source === 'suggested'
-      ? 'bg-blue-900/40 text-blue-300 border-blue-800'
-      : 'bg-slate-800 text-slate-300 border-slate-700';
+      ? {
+          background: 'rgba(59, 130, 246, 0.15)',
+          color: '#93c5fd',
+          borderColor: 'rgba(59, 130, 246, 0.3)',
+        }
+      : {
+          background: 'var(--aparture-surface)',
+          color: 'var(--aparture-mute)',
+          borderColor: 'var(--aparture-hairline)',
+        };
+
   return (
     <span
-      className={`rounded-sm border px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${classes}`}
+      style={{
+        borderRadius: '2px',
+        border: '1px solid',
+        padding: '1px 6px',
+        fontSize: '10px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        ...badgeStyle,
+      }}
     >
       {label}
     </span>
@@ -44,45 +62,117 @@ export default function HistoryDropdown({ revisions, onRevert, onClearHistory })
   };
 
   return (
-    <Collapsible.Root open={open} onOpenChange={setOpen} className="mt-2">
+    <Collapsible.Root
+      open={open}
+      onOpenChange={setOpen}
+      style={{ marginTop: 'var(--aparture-space-2)' }}
+    >
       <Collapsible.Trigger asChild>
         <button
           type="button"
-          className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1"
+          style={{
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontFamily: 'var(--aparture-font-sans)',
+          }}
         >
-          History {open ? '⏶' : '⏷'}
-          {revisions.length > 0 && <span className="text-slate-500">({revisions.length})</span>}
+          History {open ? '\u23F6' : '\u23F7'}
+          {revisions.length > 0 && (
+            <span style={{ color: 'var(--aparture-mute)', opacity: 0.7 }}>
+              ({revisions.length})
+            </span>
+          )}
         </button>
       </Collapsible.Trigger>
-      <Collapsible.Content className="mt-2 rounded border border-slate-700 bg-slate-900/50 px-3 py-2">
+      <Collapsible.Content
+        style={{
+          marginTop: 'var(--aparture-space-2)',
+          borderRadius: '4px',
+          border: '1px solid var(--aparture-hairline)',
+          background: 'var(--aparture-surface)',
+          padding: 'var(--aparture-space-3) var(--aparture-space-3)',
+        }}
+      >
         {revisions.length === 0 ? (
-          <p className="text-xs text-slate-500 py-2">No revisions yet.</p>
+          <p
+            style={{
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              padding: 'var(--aparture-space-2) 0',
+            }}
+          >
+            No revisions yet.
+          </p>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 'var(--aparture-space-2)',
+                paddingBottom: 'var(--aparture-space-2)',
+                borderBottom: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <p
+                style={{
+                  fontSize: '10px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--aparture-mute)',
+                }}
+              >
                 {revisions.length} revision{revisions.length === 1 ? '' : 's'} · newest first
               </p>
               {onClearHistory && (
                 <button
                   type="button"
                   onClick={handleClearHistory}
-                  className="text-[10px] text-slate-500 hover:text-red-400 underline-offset-2 hover:underline"
+                  style={{
+                    fontSize: '10px',
+                    color: 'var(--aparture-mute)',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--aparture-font-sans)',
+                  }}
                   title="Remove all past revisions (does not change current profile content)"
                 >
                   Clear history
                 </button>
               )}
             </div>
-            <ul className="space-y-1">
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {revisions.map((rev) => {
                 const isExpanded = expandedId === rev.createdAt;
                 return (
                   <li
                     key={rev.createdAt}
-                    className="rounded border border-transparent hover:border-slate-800"
+                    style={{
+                      borderRadius: '4px',
+                      border: '1px solid transparent',
+                      marginBottom: '4px',
+                    }}
                   >
-                    <div className="flex items-start justify-between gap-3 text-xs px-1 py-1">
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 'var(--aparture-space-3)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        padding: '4px',
+                      }}
+                    >
                       <div
                         role="button"
                         tabIndex={0}
@@ -93,40 +183,90 @@ export default function HistoryDropdown({ revisions, onRevert, onClearHistory })
                             toggleExpanded(rev.createdAt);
                           }
                         }}
-                        className="flex-1 min-w-0 text-left cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-slate-500 rounded"
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                        }}
                         aria-expanded={isExpanded}
                         aria-label={`${isExpanded ? 'Collapse' : 'Expand'} revision from ${formatDate(rev.createdAt)}`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400" aria-hidden>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--aparture-space-2)',
+                          }}
+                        >
+                          <span style={{ color: 'var(--aparture-mute)' }} aria-hidden>
                             {isExpanded ? '▾' : '▸'}
                           </span>
-                          <span className="text-slate-300">{formatDate(rev.createdAt)}</span>
+                          <span style={{ color: 'var(--aparture-ink)' }}>
+                            {formatDate(rev.createdAt)}
+                          </span>
                           <SourceBadge source={rev.source} />
                         </div>
                         {rev.rationale && (
                           <p
-                            className={`mt-1 text-slate-500 ${isExpanded ? '' : 'truncate'}`}
+                            style={{
+                              marginTop: '4px',
+                              color: 'var(--aparture-mute)',
+                              overflow: isExpanded ? 'visible' : 'hidden',
+                              textOverflow: isExpanded ? 'unset' : 'ellipsis',
+                              whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                            }}
                             title={rev.rationale}
                           >
                             {rev.rationale}
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
                         onClick={() => onRevert(rev.createdAt)}
-                        className="rounded border border-slate-600 px-2 py-0.5 text-slate-300 hover:border-slate-400 hover:text-slate-100 shrink-0"
+                        style={{
+                          flexShrink: 0,
+                          padding: '2px 8px',
+                          fontSize: 'var(--aparture-text-xs)',
+                        }}
                       >
                         Revert
-                      </button>
+                      </Button>
                     </div>
                     {isExpanded && (
-                      <div className="ml-5 mb-2 mr-1">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+                      <div
+                        style={{
+                          marginLeft: '20px',
+                          marginBottom: 'var(--aparture-space-2)',
+                          marginRight: '4px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            color: 'var(--aparture-mute)',
+                            marginBottom: '4px',
+                          }}
+                        >
                           Profile content at this revision
                         </div>
-                        <pre className="whitespace-pre-wrap rounded border border-slate-800 bg-slate-950 p-3 text-[11px] text-slate-200 max-h-64 overflow-y-auto">
+                        <pre
+                          style={{
+                            whiteSpace: 'pre-wrap',
+                            borderRadius: '4px',
+                            border: '1px solid var(--aparture-hairline)',
+                            background: 'var(--aparture-bg)',
+                            padding: 'var(--aparture-space-3)',
+                            fontSize: '11px',
+                            color: 'var(--aparture-ink)',
+                            maxHeight: '16rem',
+                            overflowY: 'auto',
+                          }}
+                        >
                           {rev.content || '(empty profile)'}
                         </pre>
                       </div>

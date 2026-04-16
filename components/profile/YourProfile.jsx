@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import Button from '../ui/Button.jsx';
+import TextArea from '../ui/TextArea.jsx';
 import StatusRow from './StatusRow.jsx';
 import MigrationNotice from './MigrationNotice.jsx';
 import HistoryDropdown from './HistoryDropdown.jsx';
@@ -39,29 +41,62 @@ export default function YourProfile({
   };
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-900/50 p-5 mb-6">
+    <section
+      style={{
+        background: 'var(--aparture-surface)',
+        border: '1px solid var(--aparture-hairline)',
+        borderRadius: '8px',
+        padding: 'var(--aparture-space-6)',
+        marginBottom: 'var(--aparture-space-6)',
+      }}
+    >
       <MigrationNotice notice={migrationNotice} onDismiss={dismissMigrationNotice} />
 
       <header
-        className="flex cursor-pointer items-center justify-between mb-3"
+        style={{
+          display: 'flex',
+          cursor: 'pointer',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 'var(--aparture-space-3)',
+        }}
         onClick={() => setCollapsed((c) => !c)}
       >
-        <div className="flex items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-100">Your Profile</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aparture-space-3)' }}>
+          <h2
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-base)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
+              margin: 0,
+            }}
+          >
+            Your Profile
+          </h2>
           {dirty && (
-            <span className="text-xs text-amber-400" aria-label="unsaved changes">
+            <span
+              style={{
+                fontSize: 'var(--aparture-text-xs)',
+                color: '#f59e0b',
+              }}
+              aria-label="unsaved changes"
+            >
               ● Unsaved changes
             </span>
           )}
         </div>
-        <span className="text-slate-400 text-sm" aria-hidden>
+        <span
+          style={{ color: 'var(--aparture-mute)', fontSize: 'var(--aparture-text-sm)' }}
+          aria-hidden
+        >
           {collapsed ? '▸' : '▾'}
         </span>
       </header>
 
       {!collapsed && (
         <>
-          <div className="mb-3">
+          <div style={{ marginBottom: 'var(--aparture-space-3)' }}>
             <StatusRow
               newInteractionCount={newInteractionCount}
               lastUpdated={profile?.updatedAt}
@@ -69,49 +104,52 @@ export default function YourProfile({
             />
           </div>
 
-          <textarea
+          <TextArea
             value={currentDraft}
             onChange={(e) => setDraftContent(e.target.value)}
             readOnly={disabled}
             rows={8}
-            className="w-full min-h-[10rem] resize-y rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
+            style={{ minHeight: '10rem' }}
             placeholder="Describe your research interests in prose. This profile drives every pipeline stage and the briefing synthesis."
           />
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
+          <div
+            style={{
+              marginTop: 'var(--aparture-space-3)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 'var(--aparture-space-2)',
+            }}
+          >
+            <Button
+              variant="primary"
               onClick={handleSave}
               disabled={disabled || !dirty}
-              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               title={dirty ? 'Commit your changes as a new profile revision' : 'No changes to save'}
             >
               Save changes
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleDiscard}
               disabled={disabled || !dirty}
-              className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title={dirty ? 'Discard your unsaved changes' : 'Nothing to discard'}
             >
               Discard
-            </button>
-            <div className="flex-1" />
-            <button
-              type="button"
+            </Button>
+            <div style={{ flex: 1 }} />
+            <Button
+              variant="secondary"
               onClick={onPreviewClick}
               disabled={disabled}
-              className="border border-slate-600 hover:border-slate-400 text-slate-200 px-4 py-2 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               title="Preview how this profile (including unsaved changes) would affect filter + scoring + synthesis on your last analysis run"
             >
               Preview
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               onClick={handleSuggest}
               disabled={disabled || dirty}
-              className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               title={
                 dirty
                   ? 'Save or discard your unsaved changes before requesting suggestions'
@@ -119,7 +157,7 @@ export default function YourProfile({
               }
             >
               Suggest improvements
-            </button>
+            </Button>
           </div>
 
           <HistoryDropdown
