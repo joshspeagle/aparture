@@ -69,6 +69,10 @@ export function initialState() {
       fullReportsById: {},
     },
     // --- auth slice (password + isAuthenticated) ---
+    // NOTE: unlike other slices, these are FLAT top-level keys (not
+    // wrapped in an `auth: {...}` object). Task 4b consumers should
+    // read them as `useAnalyzerStore((s) => s.password)`, NOT
+    // `useAnalyzerStore((s) => s.auth.password)`.
     password: '',
     isAuthenticated: false,
     // --- reactContext slice ---
@@ -161,4 +165,13 @@ export const useAnalyzerStore = create((set) => ({
   // --- reactContext slice actions ---
   setReactContext: (updater) =>
     set((state) => ({ reactContext: applyPatch(state.reactContext, updater) })),
+
+  // --- reset (primarily for tests) ---
+  // Explicit reset action. Calling set() with an object shallow-merges
+  // the data keys, preserving action identities — so the store is
+  // restored to pristine data values without losing any setters.
+  // Tests should call this in beforeEach rather than setState(initialState())
+  // directly, so test isolation isn't load-bearing on the structural
+  // coincidence that initialState() happens to cover every top-level key.
+  resetStore: () => set(initialState()),
 }));

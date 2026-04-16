@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
+import { useAnalyzerStore } from '../../../stores/analyzerStore.js';
 
 beforeEach(() => {
-  // Reset the store to its initial state between tests.
-  useAnalyzerStore.setState(initialState());
+  // Reset the store to pristine data values between tests via the
+  // explicit resetStore action. Using setState(initialState()) directly
+  // would be fragile — future top-level keys absent from initialState()
+  // would leak between tests.
+  useAnalyzerStore.getState().resetStore();
 });
 
 describe('analyzerStore — processing slice', () => {
@@ -210,5 +213,49 @@ describe('analyzerStore — reactContext slice', () => {
     const s = useAnalyzerStore.getState();
     expect(s.reactContext.profile).toEqual({ content: 'a' });
     expect(s.reactContext.currentBriefing).toEqual({ date: '2025-01-01' });
+  });
+});
+
+describe('analyzerStore — resetStore', () => {
+  it('restores all slices to pristine initial values', () => {
+    // Pollute every slice
+    const s = useAnalyzerStore.getState();
+    s.setProcessing({ stage: 'running', isRunning: true });
+    s.setResults({ allPapers: [{ id: 'x' }] });
+    s.setFilterResults({ yes: [{ id: 'y' }] });
+    s.setProcessingTiming({ startTime: new Date() });
+    s.setTestState({ dryRunInProgress: true });
+    s.setPodcastDuration(99);
+    s.setSynthesizing(true);
+    s.setPassword('leaked');
+    s.setIsAuthenticated(true);
+    s.setReactContext({ profile: { content: 'leaked' } });
+
+    // Reset
+    useAnalyzerStore.getState().resetStore();
+
+    // Verify every slice is back to initial
+    const out = useAnalyzerStore.getState();
+    expect(out.processing.stage).toBe('idle');
+    expect(out.processing.isRunning).toBe(false);
+    expect(out.results.allPapers).toEqual([]);
+    expect(out.filterResults.yes).toEqual([]);
+    expect(out.processingTiming.startTime).toBeNull();
+    expect(out.testState.dryRunInProgress).toBe(false);
+    expect(out.notebookLM.podcastDuration).toBe(20);
+    expect(out.briefingUI.synthesizing).toBe(false);
+    expect(out.password).toBe('');
+    expect(out.isAuthenticated).toBe(false);
+    expect(out.reactContext.profile).toBeNull();
+  });
+
+  it('preserves action identities (actions are still callable after reset)', () => {
+    const before = useAnalyzerStore.getState().setProcessing;
+    useAnalyzerStore.getState().resetStore();
+    const after = useAnalyzerStore.getState().setProcessing;
+    expect(after).toBe(before);
+    // And it still works
+    after({ stage: 'fetching' });
+    expect(useAnalyzerStore.getState().processing.stage).toBe('fetching');
   });
 });
