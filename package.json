@@ -48,7 +48,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tiktoken": "^1.0.22",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
