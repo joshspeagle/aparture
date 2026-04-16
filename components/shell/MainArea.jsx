@@ -13,7 +13,6 @@ import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
 import FilterResultsList from '../filter/FilterResultsList.jsx';
 import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
-import PreviewPanel from '../profile/PreviewPanel.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
 
@@ -38,13 +37,9 @@ export default function MainArea({
   dismissMigrationNotice,
   draftContent,
   setDraftContent,
-  newInteractionCount,
-  onScrollToFeedback,
-  onPreviewClick,
+  newFeedback,
   onSuggestClick,
   disabled,
-  showPreviewPanel,
-  previewPanelProps,
   // For settings view
   config,
   setConfig,
@@ -104,15 +99,12 @@ export default function MainArea({
           dismissMigrationNotice={dismissMigrationNotice}
           revertToRevision={revertToRevision}
           clearHistory={clearHistory}
-          newInteractionCount={newInteractionCount}
-          onScrollToFeedback={onScrollToFeedback}
-          onPreviewClick={onPreviewClick}
+          newFeedback={newFeedback}
           onSuggestClick={onSuggestClick}
           draftContent={draftContent}
           setDraftContent={setDraftContent}
           disabled={disabled}
         />
-        {showPreviewPanel && <PreviewPanel {...previewPanelProps} />}
       </div>
     );
   }

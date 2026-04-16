@@ -3,8 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { useState } from 'react';
 import YourProfile from '../../../components/profile/YourProfile.jsx';
 
-// Wrapper that provides the draft/setDraft state pair that ArxivAnalyzer normally owns.
-// Accepts an initial draft override so we can simulate dirty state at mount time.
+// Wrapper that provides the draft/setDraft state pair that App.jsx normally owns.
 function Harness({ initialDraft, ...props }) {
   const [draftContent, setDraftContent] = useState(initialDraft ?? props.profile?.content ?? '');
   return <YourProfile {...props} draftContent={draftContent} setDraftContent={setDraftContent} />;
@@ -23,15 +22,17 @@ describe('YourProfile', () => {
     dismissMigrationNotice: vi.fn(),
     revertToRevision: vi.fn(),
     clearHistory: vi.fn(),
-    newInteractionCount: 5,
-    onScrollToFeedback: vi.fn(),
-    onPreviewClick: vi.fn(),
+    newFeedback: [
+      { id: '1', type: 'star', arxivId: '2504.01234' },
+      { id: '2', type: 'dismiss', arxivId: '2504.05678' },
+      { id: '3', type: 'paper-comment', arxivId: '2504.01234', text: 'good' },
+    ],
     onSuggestClick: vi.fn(),
   };
 
   it('renders the panel title', () => {
     render(<Harness {...defaultProps} />);
-    expect(screen.getByText(/your profile/i)).toBeInTheDocument();
+    expect(screen.getByText('Your Profile')).toBeInTheDocument();
   });
 
   it('renders a textarea initially bound to profile.content', () => {
@@ -50,12 +51,12 @@ describe('YourProfile', () => {
   it('shows the Unsaved changes indicator when the draft differs from profile.content', () => {
     render(<Harness {...defaultProps} />);
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'different content' } });
-    expect(screen.getByText(/unsaved changes/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('unsaved changes')).toBeInTheDocument();
   });
 
   it('does not show the Unsaved indicator when the draft equals profile.content', () => {
     render(<Harness {...defaultProps} />);
-    expect(screen.queryByText(/unsaved changes/i)).toBeNull();
+    expect(screen.queryByLabelText('unsaved changes')).toBeNull();
   });
 
   it('Save button is disabled when there are no unsaved changes', () => {
@@ -86,25 +87,29 @@ describe('YourProfile', () => {
     expect(screen.getByRole('button', { name: /suggest improvements/i })).toBeDisabled();
   });
 
-  it('Suggest improvements calls onSuggestClick when clean', () => {
+  it('Suggest improvements calls onSuggestClick when clean and feedback exists', () => {
     const onSuggestClick = vi.fn();
     render(<Harness {...defaultProps} onSuggestClick={onSuggestClick} />);
     fireEvent.click(screen.getByRole('button', { name: /suggest improvements/i }));
     expect(onSuggestClick).toHaveBeenCalledOnce();
   });
 
-  it('Preview is enabled even when the draft is dirty', () => {
-    const onPreviewClick = vi.fn();
-    render(<Harness {...defaultProps} onPreviewClick={onPreviewClick} />);
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'unsaved edit' } });
-    expect(screen.getByRole('button', { name: /preview/i })).not.toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /preview/i }));
-    expect(onPreviewClick).toHaveBeenCalledOnce();
+  it('Suggest improvements is disabled when no new feedback', () => {
+    render(<Harness {...defaultProps} newFeedback={[]} />);
+    expect(screen.getByRole('button', { name: /suggest improvements/i })).toBeDisabled();
   });
 
-  it('renders StatusRow with the correct count', () => {
-    render(<Harness {...defaultProps} newInteractionCount={12} />);
-    expect(screen.getByText(/12 new interactions/i)).toBeInTheDocument();
+  it('shows feedback breakdown in the suggest section', () => {
+    render(<Harness {...defaultProps} />);
+    expect(screen.getByText(/3 new interactions/)).toBeInTheDocument();
+    expect(screen.getByText(/1 star/)).toBeInTheDocument();
+    expect(screen.getByText(/1 dismiss/)).toBeInTheDocument();
+    expect(screen.getByText(/1 comment/)).toBeInTheDocument();
+  });
+
+  it('shows no-feedback message when newFeedback is empty', () => {
+    render(<Harness {...defaultProps} newFeedback={[]} />);
+    expect(screen.getByText(/no new feedback/i)).toBeInTheDocument();
   });
 
   it('renders MigrationNotice when notice prop is non-null', () => {
@@ -125,7 +130,6 @@ describe('YourProfile', () => {
   it('disables textarea and action buttons when disabled prop is true', () => {
     render(<Harness {...defaultProps} disabled />);
     expect(screen.getByRole('textbox')).toHaveAttribute('readonly');
-    expect(screen.getByRole('button', { name: /preview/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /suggest improvements/i })).toBeDisabled();
   });
 });

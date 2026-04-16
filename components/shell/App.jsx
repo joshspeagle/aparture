@@ -353,7 +353,6 @@ PaperCard.propTypes = {
 export default function App() {
   const [config, setConfig] = useState(readInitialConfig);
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
-  const [showPreviewPanel, setShowPreviewPanel] = useState(false);
 
   // activeView: 'welcome' | 'profile' | 'settings' | 'pipeline' | 'briefing:<date>'
   const [activeView, setActiveView] = useState('welcome');
@@ -370,7 +369,6 @@ export default function App() {
   } = useProfile({ scoringCriteria: config.scoringCriteria });
   const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
   const feedback = useFeedback();
-  const newInteractionCount = feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0).length;
 
   // Phase 1.5: draft-vs-committed profile editing.
   const [draftContent, setDraftContent] = useState(profile?.content ?? '');
@@ -690,12 +688,6 @@ export default function App() {
     return Math.round((processing.progress.current / processing.progress.total) * 100);
   };
 
-  // --- Stable callbacks for YourProfile ---
-  const scrollToFeedback = useCallback(() => {
-    const el = document.getElementById('feedback-panel');
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-  const togglePreviewPanel = useCallback(() => setShowPreviewPanel((v) => !v), []);
   const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
 
   // --- Derived data (useMemo) ---
@@ -932,22 +924,9 @@ export default function App() {
           dismissMigrationNotice={dismissMigrationNotice}
           draftContent={draftContent}
           setDraftContent={setDraftContent}
-          newInteractionCount={newInteractionCount}
-          onScrollToFeedback={scrollToFeedback}
-          onPreviewClick={togglePreviewPanel}
+          newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
           onSuggestClick={openSuggestDialog}
           disabled={processing?.isRunning ?? false}
-          showPreviewPanel={showPreviewPanel}
-          previewPanelProps={{
-            editedProfile: draftContent,
-            models: {
-              filter: config.filterModel,
-              scoring: config.scoringModel,
-              briefing: config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro',
-            },
-            password,
-            onClose: () => setShowPreviewPanel(false),
-          }}
           // Settings view
           config={config}
           setConfig={setConfig}
