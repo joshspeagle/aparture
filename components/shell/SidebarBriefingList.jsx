@@ -135,7 +135,7 @@ export default function SidebarBriefingList({
           <div style={{ flex: 1 }}>
             <Input
               type="text"
-              placeholder="Search\u2026"
+              placeholder="Search…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{

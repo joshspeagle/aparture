@@ -341,7 +341,7 @@ function PaperCard({
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     rows={3}
-                    placeholder="Your thoughts on this paper\u2026"
+                    placeholder="Your thoughts on this paper…"
                     style={{
                       width: '100%',
                       minHeight: '4rem',
