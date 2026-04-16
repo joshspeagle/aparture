@@ -515,6 +515,7 @@ export default function App() {
     setPassword,
     setIsAuthenticated,
     addError,
+    addStatus,
     setReactContext,
   } = useAnalyzerStore.getState();
 
@@ -679,7 +680,7 @@ export default function App() {
       minimalTestInProgress: false,
     }));
 
-    addError('Operation stopped by user');
+    addStatus('Operation stopped by user');
   };
 
   const handleReset = () => {
@@ -698,6 +699,7 @@ export default function App() {
       stage: 'idle',
       progress: { current: 0, total: 0 },
       errors: [],
+      statusLog: [],
       isRunning: false,
       isPaused: false,
     });

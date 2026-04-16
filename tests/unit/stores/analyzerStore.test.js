@@ -39,6 +39,14 @@ describe('analyzerStore — processing slice', () => {
     expect(s.processing.errors).toHaveLength(1);
     expect(s.processing.errors[0]).toContain('boom');
   });
+
+  it('addStatus appends to processing.statusLog (not errors)', () => {
+    useAnalyzerStore.getState().addStatus('fetching astro-ph.GA');
+    const s = useAnalyzerStore.getState();
+    expect(s.processing.statusLog).toHaveLength(1);
+    expect(s.processing.statusLog[0]).toContain('fetching astro-ph.GA');
+    expect(s.processing.errors).toHaveLength(0);
+  });
 });
 
 describe('analyzerStore — results slice', () => {

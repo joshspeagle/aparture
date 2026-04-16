@@ -12,10 +12,14 @@ import { create } from 'zustand';
 export function initialState() {
   return {
     // --- processing slice ---
+    // `errors` holds real failures. `statusLog` holds informational
+    // progress messages (fetching, retry attempts, stage completions).
+    // Both are timestamped on insertion by their respective actions.
     processing: {
       stage: 'idle',
       progress: { current: 0, total: 0 },
       errors: [],
+      statusLog: [],
       isRunning: false,
       isPaused: false,
     },
@@ -112,6 +116,16 @@ export const useAnalyzerStore = create((set) => ({
       processing: {
         ...state.processing,
         errors: [...state.processing.errors, `[${new Date().toLocaleTimeString()}] ${message}`],
+      },
+    })),
+  addStatus: (message) =>
+    set((state) => ({
+      processing: {
+        ...state.processing,
+        statusLog: [
+          ...state.processing.statusLog,
+          `[${new Date().toLocaleTimeString()}] ${message}`,
+        ],
       },
     })),
 

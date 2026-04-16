@@ -346,14 +346,53 @@ export default function ProgressTimeline({
           </div>
         )}
 
-        {/* Errors */}
-        {processing.errors.length > 0 && (
+        {/* Activity log — informational progress messages */}
+        {processing.statusLog.length > 0 && (
           <div
             style={{
               marginTop: 'var(--aparture-space-4)',
               padding: 'var(--aparture-space-3)',
               background: 'var(--aparture-bg)',
               border: '1px solid var(--aparture-hairline)',
+              borderRadius: '4px',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+                marginBottom: '4px',
+              }}
+            >
+              Activity log ({processing.statusLog.length})
+            </div>
+            <div
+              style={{
+                maxHeight: '120px',
+                overflowY: 'auto',
+                fontFamily: 'var(--aparture-font-mono)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+              }}
+            >
+              {processing.statusLog.map((entry, idx) => (
+                <div key={idx} style={{ marginBottom: '4px' }}>
+                  {entry}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Errors — real failures only */}
+        {processing.errors.length > 0 && (
+          <div
+            style={{
+              marginTop: 'var(--aparture-space-4)',
+              padding: 'var(--aparture-space-3)',
+              background: 'var(--aparture-bg)',
+              border: '1px solid var(--aparture-accent)',
               borderRadius: '4px',
             }}
           >
@@ -373,7 +412,7 @@ export default function ProgressTimeline({
                 overflowY: 'auto',
                 fontFamily: 'var(--aparture-font-mono)',
                 fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
+                color: 'var(--aparture-ink)',
               }}
             >
               {processing.errors.map((error, idx) => (
