@@ -6,7 +6,6 @@ import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
 import GenerationDetails from '../briefing/GenerationDetails.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
-import ProgressTracker from '../analyzer/ProgressTracker.jsx';
 import ProgressTimeline from '../run/ProgressTimeline.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
@@ -65,8 +64,8 @@ export default function MainArea({
   onRunDryRun,
   onRunMinimalTest,
   onExport,
-  getStageDisplay,
-  getProgressPercentage,
+  getStageDisplay: _getStageDisplay,
+  getProgressPercentage: _getProgressPercentage,
   onCycleVerdict,
   // Briefing card (generate button)
   synthesizing,
