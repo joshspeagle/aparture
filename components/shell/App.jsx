@@ -1008,6 +1008,7 @@ export default function App() {
       <div className="shell-main">
         <MainArea
           activeView={activeView}
+          onNavigate={setActiveView}
           // Briefing views
           briefingHistory={briefingHistory}
           currentBriefing={currentBriefing}

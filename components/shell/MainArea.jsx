@@ -5,6 +5,8 @@ import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
 import GenerationDetails from '../briefing/GenerationDetails.jsx';
+import PipelineArchiveView from '../briefing/PipelineArchiveView.jsx';
+import Button from '../ui/Button.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
 import ProgressTimeline from '../run/ProgressTimeline.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
@@ -86,6 +88,8 @@ export default function MainArea({
   hallucinationWarning,
   onGenerateNotebookLM,
   onDownloadNotebookLM,
+  // Navigation (for paired briefing ↔ pipeline views)
+  onNavigate,
   // Logout
   onLogout,
 }) {
@@ -221,6 +225,15 @@ export default function MainArea({
     );
   }
 
+  // Pipeline details view — paired with a briefing via "pipeline:<id>"
+  if (activeView.startsWith('pipeline:')) {
+    const entryKey = activeView.slice('pipeline:'.length);
+    const entry = briefingHistory?.find((b) => b.id === entryKey);
+    return (
+      <PipelineArchiveView entry={entry} onBack={() => onNavigate?.(`briefing:${entryKey}`)} />
+    );
+  }
+
   // Briefing view — matched by "briefing:<id>" pattern
   if (activeView.startsWith('briefing:')) {
     const entryKey = activeView.slice('briefing:'.length);
@@ -261,6 +274,14 @@ export default function MainArea({
         />
 
         <GenerationDetails generationMetadata={entry.generationMetadata} />
+
+        {entry.pipelineArchive && (
+          <div style={{ marginTop: 'var(--aparture-space-4)' }}>
+            <Button variant="ghost" onClick={() => onNavigate?.(`pipeline:${entry.id}`)}>
+              View pipeline details →
+            </Button>
+          </div>
+        )}
 
         {/* Feedback panel below briefing */}
         <div id="feedback-panel" style={{ marginTop: 'var(--aparture-space-6)' }}>

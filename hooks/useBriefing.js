@@ -55,7 +55,12 @@ export function useBriefing() {
   const [history, setHistory] = useState(readStoredHistory);
 
   const saveBriefing = useCallback(
-    (date, briefing, generationMetadata, { quickSummariesById, fullReportsById } = {}) => {
+    (
+      date,
+      briefing,
+      generationMetadata,
+      { quickSummariesById, fullReportsById, pipelineArchive } = {}
+    ) => {
       const id = generateId();
       const entry = {
         id,
@@ -66,6 +71,7 @@ export function useBriefing() {
         ...(generationMetadata !== undefined ? { generationMetadata } : {}),
         ...(quickSummariesById ? { quickSummariesById } : {}),
         ...(fullReportsById ? { fullReportsById } : {}),
+        ...(pipelineArchive ? { pipelineArchive } : {}),
       };
       setCurrent(entry);
       if (typeof window !== 'undefined') {

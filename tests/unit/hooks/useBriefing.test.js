@@ -239,6 +239,22 @@ describe('useBriefing', () => {
     expect(result.current.current.fullReportsById).toBeUndefined();
   });
 
+  it('persists pipelineArchive when provided', () => {
+    const { result } = renderHook(() => useBriefing());
+    const archive = {
+      filterResults: { yes: [{ arxivId: '2504.01234' }], maybe: [], no: [], total: 1 },
+      scoredPapers: [{ arxivId: '2504.01234', relevanceScore: 8.5 }],
+      finalRanking: [{ arxivId: '2504.01234', score: 9.0 }],
+    };
+    act(() => {
+      result.current.saveBriefing('2026-04-16', makeBriefing(), null, {
+        pipelineArchive: archive,
+      });
+    });
+    expect(result.current.current.pipelineArchive).toEqual(archive);
+    expect(result.current.history[0].pipelineArchive).toEqual(archive);
+  });
+
   // --- Back-compat / migration ---
 
   it('tolerates legacy entries without id/timestamp/archived and migrates them', () => {
