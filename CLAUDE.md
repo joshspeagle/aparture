@@ -85,23 +85,23 @@ When questions arise about features, configuration, or usage, refer to the docum
 - `components/` - React components
   - `components/shell/` - **Phase B** root shell: `App.jsx` (replaces the deleted `ArxivAnalyzer.js`), `Sidebar.jsx`, `SidebarBriefingList.jsx`, `MainArea.jsx`. App.jsx is the entry point — owns all hook calls, Zustand selectors, pipeline creation, and the sidebar + main-area layout.
   - `components/ui/` - **Phase B** warm-palette primitive library: `Button.jsx` (primary/secondary/ghost), `Card.jsx`, `Input.jsx`, `TextArea.jsx`, `Select.jsx`, `Checkbox.jsx`. All use inline styles with `var(--aparture-*)` CSS variables; no Tailwind.
-  - `components/run/` - **Phase B** `ProgressTimeline.jsx` — 6-stage vertical timeline for live pipeline progress display with filter-override pause support.
+  - `components/run/` - **Phase B** `ProgressTimeline.jsx` — 6-stage vertical timeline for live pipeline progress display with filter-override and pre-briefing-review pause support.
   - `components/welcome/` - **Phase B** `WelcomeView.jsx` — persistent getting-started reference page.
   - `components/analyzer/` - `ControlPanel.jsx` (restyled to warm palette in Phase B)
   - `components/briefing/` - Briefing reading view (BriefingView root + 10 leaf components) + `BriefingCard.jsx` + **Phase B** `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure)
   - `components/filter/` - `FilterResultsList.jsx` with inline FilterResultRow + cycle-verdict pill (restyled to warm palette)
   - `components/notebooklm/` - `NotebookLMCard.jsx` (restyled to warm palette, rendered as disclosure below briefing)
-  - `components/profile/` - Your Profile panel (YourProfile, StatusRow, MigrationNotice, HistoryDropdown, PreviewPanel, SuggestDialog, DiffPreview) — all restyled to warm palette with UI primitives
+  - `components/profile/` - Your Profile panel (YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview; StatusRow + PreviewPanel are unused legacy files) — all restyled to warm palette with UI primitives
   - `components/feedback/` - Feedback panel (FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState) + `eventMeta.js` — all restyled to warm palette
   - `components/results/` - results-list cards (AnalysisResultsList, DownloadReportCard) — restyled to warm palette
-  - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + briefing retry checkboxes) — restyled to warm palette
+  - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + `pauseBeforeBriefing` + briefing retry checkboxes) — restyled to warm palette
 - `lib/` - Backend and analyzer library code
   - `lib/analyzer/` - Extracted analyzer internals
-    - `pipeline.js` - `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` builder. Reads state from Zustand store via `useAnalyzerStore.getState()`. Returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Owns fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, and the arXiv query stack.
+    - `pipeline.js` - `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` builder. Reads state from Zustand store via `useAnalyzerStore.getState()`. Returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Owns fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, and the arXiv query stack. Auto-generates briefing at the end of `startProcessing` via `briefingClient.js`, with optional `pauseBeforeBriefing` gate (sets stage `'pre-briefing-review'` and waits for user to click Continue).
     - `mockApi.js` - MockAPITester class. DI constructor takes `{abortControllerRef, pauseRef, waitForResume}`.
-    - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing (with generationMetadata) → last-run cache.
+    - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing (with generationMetadata including hallucination verdict/justification/flaggedClaims) → last-run cache. Called automatically at the end of the pipeline's `startProcessing`.
     - `exportReport.js` - `buildReportMarkdown()` + `downloadBlob()` + `exportAnalysisReport()` glue.
-  - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey)
+  - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live-mode call to the terminal (`Sending request to <Provider>: {model, promptLength, structured}`).
   - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai)
   - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
   - `lib/profile/` - **Phase 1.5** profile utilities (migrations, diff, feedbackCap, suggestPrompt)
@@ -112,13 +112,13 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `prompts/check-briefing.md` - **Phase 1.5.1** hallucination-audit prompt for the retry loop
 - `hooks/` - React hooks with localStorage persistence
   - `hooks/useProfile.js` - Research profile hook (structured data model with versioned history)
-  - `hooks/useBriefing.js` - Current briefing + 90-day history archive + generationMetadata support
+  - `hooks/useBriefing.js` - Briefing archive with 90-day rolling window. Entries keyed by unique ID + timestamp (multiple briefings per day supported). `saveBriefing(date, briefing, metadata)` returns the new entry's ID. `deleteBriefing(id)`, `toggleArchive(id)` for managing history. `generationMetadata` carries profile snapshot, model IDs, filter verdicts, hallucination check results.
   - `hooks/useFeedback.js` - Feedback event store with latest-wins star/dismiss semantics (5 event types: star, dismiss, paper-comment, general-comment, filter-override)
-  - `hooks/useAnalyzerPersistence.js` - Owns DEFAULT_CONFIG, readInitialConfig, load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
+  - `hooks/useAnalyzerPersistence.js` - Owns DEFAULT_CONFIG (includes `pauseAfterFilter: true`, `pauseBeforeBriefing: true`), readInitialConfig, load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
   - `hooks/useTheme.js` - **Phase B** light/dark/auto theme switching; reads/writes `aparture-theme` localStorage key, applies `data-theme` attribute to `<html>`
 - `stores/` - **Phase B** Zustand state management
   - `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `useAnalyzerStore.getState()` directly.
-- `tests/` - Vitest test suite (308 tests across 50 files, fully fixture-based)
+- `tests/` - Vitest test suite (320 tests across 50 files, fully fixture-based)
   - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
   - `tests/component/` - React component tests via @testing-library/react
   - `tests/integration/` - API route handler tests with fixture-mode callModel
@@ -223,7 +223,7 @@ Required in `.env.local`:
 4. **PDF Analysis** (Stage 3): Deep analysis of top papers with full PDF content
 5. **Report Generation**: Export comprehensive markdown report (existing, unchanged)
 6. **NotebookLM Integration**: Generate structured documents optimized for podcast creation (existing, unchanged)
-7. **Synthesis (Phase 1, optional)**: After the existing pipeline completes, click "→ Generate Briefing" to run the synthesis stage. Quick summaries are generated in parallel (5-at-a-time), then `/api/synthesize` produces a structured briefing rendered via `<BriefingView>`. The briefing is **additive** — it runs alongside the existing markdown report without replacing it.
+7. **Briefing Generation (auto, with optional pause)**: After PDF analysis, the pipeline auto-generates a briefing via `briefingClient.js`. If `pauseBeforeBriefing` is on (default), the pipeline pauses at `'pre-briefing-review'` to let the user review results and add stars/dismissals before generating. Quick summaries are generated in parallel (5-at-a-time), then `/api/synthesize` produces a structured briefing, `/api/check-briefing` audits for hallucinations (results persisted in `generationMetadata`), and the briefing is saved and rendered via `<BriefingView>`.
 
 ### CLI Automation
 
@@ -290,10 +290,10 @@ Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, 
 
 **Frontend data flow:**
 
-1. `components/ArxivAnalyzer.js`'s thin `handleGenerateBriefing` wrapper delegates to `runBriefingGeneration` in `lib/analyzer/briefingClient.js`, passing state setters as deps
-2. `briefingClient.js` calls `/api/analyze-pdf-quick` in parallel (5-at-a-time) to generate per-paper quick summaries, then `/api/synthesize` with the profile + papers + recent history, then `/api/check-briefing` to audit for hallucinations, then optionally retries synthesis with a retry hint (**Phase 1.5.1**)
-3. Saves via `hooks/useBriefing.js` (localStorage, 14-day window)
-4. Renders via `components/briefing/BriefingView.jsx`
+1. Pipeline's `startProcessing` in `lib/analyzer/pipeline.js` auto-calls `runBriefingGeneration` from `lib/analyzer/briefingClient.js` after PDF analysis completes (with optional `pauseBeforeBriefing` gate)
+2. `briefingClient.js` calls `/api/analyze-pdf-quick` in parallel (5-at-a-time) to generate per-paper quick summaries, then `/api/synthesize` with the profile + papers + recent history, then `/api/check-briefing` to audit for hallucinations (results persisted in `generationMetadata`), then optionally retries synthesis with a retry hint
+3. Saves via `hooks/useBriefing.js` (localStorage, 90-day window, ID-keyed entries supporting multiple briefings per day)
+4. `App.jsx` navigates to the new briefing via `stableSaveBriefingAndSwitch`; renders via `components/briefing/BriefingView.jsx`
 
 **To tune synthesis quality:** edit `prompts/synthesis.md`. Changes take effect on the next `/api/synthesize` call — no rebuild needed. The 150-line prompt is the single most important quality knob for Phase 1.
 
@@ -307,8 +307,7 @@ Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, 
 
 - **Unified profile field.** The old "Research Profile" (Phase 1) and "Scoring Criteria" (pre-Phase 1) textareas are replaced by a single "Your Profile" panel at the top of the app. Every pipeline stage (quick-filter, score-abstracts, rescore-abstracts, analyze-pdf, generate-notebooklm, synthesize) reads `profile.content` from `useProfile`.
 - **Four feedback types.** Stars, dismisses, per-paper comments, and freeform general comments — all persisted in `aparture-feedback` localStorage via `useFeedback`. Star/dismiss are latest-wins per paper; comments are append-only.
-- **Preview flow.** Explicit-click Preview button in Your Profile runs Stage 1 quick filter + Stage 2 scoring + synthesis on a 15-paper cached sample (top 10 + 5 borderline) using the edited profile. No new API endpoint — frontend orchestrates existing routes. Cached Stage 3 reports are reused.
-- **Suggest-improvements flow.** `/api/suggest-profile` accepts the current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if the feedback doesn't point to a clear gap. SuggestDialog surfaces the diff and lets the user accept or reject.
+- **Suggest-improvements flow.** `/api/suggest-profile` accepts the current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if the feedback doesn't point to a clear gap. SuggestDialog surfaces the diff and lets the user accept or reject. The Your Profile page shows a feedback breakdown (stars, dismisses, comments, overrides) as helper text.
 - **Smart feedback cap.** All stars/dismisses are always included in the suggest-profile prompt; comments are capped at most-recent N per type (default 30). Transparent notice in the dialog when trimming fires.
 - **`briefingModel` config slot.** Separate from `pdfModel`. Drives synthesize + suggest-profile. Defaults to pdfModel on first run.
 - **ProactiveQuestionPanel deleted.** The Phase 1 stub for LLM-initiated questions is removed; Phase 1.5 uses a manual Suggest improvements button instead.
@@ -326,26 +325,26 @@ Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, 
 - **Layout reshuffle.** Results → Download Report → Briefing → NotebookLM (NotebookLM only visible after briefing exists). Report no longer auto-downloads on completion.
 - **Analyzer module split (F-pass).** `components/ArxivAnalyzer.js` dropped from ~5200 → ~925 lines (−82%). See "Analyzer module split" below for the architecture.
 
-### Analyzer module split (Phase 1.5.1 F-pass)
+### Analyzer module split
 
-`components/ArxivAnalyzer.js` is now a thin shell component. The actual work lives in extracted modules, each unit-testable in isolation:
+The analysis pipeline lives in extracted modules, each unit-testable in isolation:
 
-- **Pipeline (`lib/analyzer/pipeline.js`):** a builder function `createAnalysisPipeline(stateRef)` that returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Owns every analysis stage (fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs) and their helpers (makeRobustAPICall, waitForResume, the arXiv query stack). Each stage destructures its deps from `stateRef.current` at the top of its body — so it always reads current state at call time, never stale closure captures.
+- **Pipeline (`lib/analyzer/pipeline.js`):** a builder function `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` that returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Reads state from Zustand store via `useAnalyzerStore.getState()`. Owns every analysis stage (fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, runBriefingGeneration) and their helpers (makeRobustAPICall, waitForResume, the arXiv query stack). Auto-generates briefing at the end of `startProcessing` with optional `pauseBeforeBriefing` and `pauseAfterFilter` gates.
 - **Mock API (`lib/analyzer/mockApi.js`):** `MockAPITester` class with a DI constructor taking `{abortControllerRef, pauseRef, waitForResume}`. No React imports.
-- **Briefing client (`lib/analyzer/briefingClient.js`):** `runBriefingGeneration()` orchestrates the full briefing flow. Takes primitive config values (`briefingModel`, `pdfModel`, `briefingRetryOnYes`, `briefingRetryOnMaybe`) as explicit params rather than a `config` object, so the snapshot taken at call time is intentional and documented.
+- **Briefing client (`lib/analyzer/briefingClient.js`):** `runBriefingGeneration()` orchestrates the full briefing flow. Takes primitive config values (`briefingModel`, `pdfModel`, `briefingRetryOnYes`, `briefingRetryOnMaybe`) as explicit params. Merges hallucination check results into `generationMetadata` before saving.
 - **Report export (`lib/analyzer/exportReport.js`):** `buildReportMarkdown()`, `downloadBlob()`, `exportAnalysisReport()`.
-- **Persistence (`hooks/useAnalyzerPersistence.js`):** load-on-mount effect + debounced save effect + `DEFAULT_CONFIG` + `readInitialConfig` (used as lazy useState initializer).
+- **Persistence (`hooks/useAnalyzerPersistence.js`):** load-on-mount effect + debounced save effect + `DEFAULT_CONFIG` (includes `pauseAfterFilter: true`, `pauseBeforeBriefing: true`) + `readInitialConfig` (used as lazy useState initializer).
 
-**How ArxivAnalyzer wires the pipeline:** creates a mutable `pipelineStateRef` (plain `useRef`), creates the pipeline once via `useMemo(() => createAnalysisPipeline(pipelineStateRef), [])`, and publishes current state/setters/refs into `pipelineStateRef.current` via a `useEffect` whose deps list the reactive values it reads (setters are omitted because React guarantees stable identity). Pipeline stage handlers (`startProcessing`, `runDryRunTest`, etc.) are destructured from the memoized pipeline object and passed down to `ControlPanel` as callbacks.
+**How App.jsx wires the pipeline:** creates the pipeline once via `useMemo(() => createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef}), [])`. The pipeline reads all state from `useAnalyzerStore.getState()` (including the `reactContext` slice which holds React-hook-derived values like profile, config, saveBriefing, briefingHistory). `App.jsx` publishes these into the Zustand store's `reactContext` on every render. Pipeline stage handlers (`startProcessing`, `runDryRunTest`, etc.) are destructured from the memoized pipeline object and passed down to `ControlPanel` as callbacks.
 
 **To add a new pipeline stage:**
 
-1. Add the stage function inside `createAnalysisPipeline` in `lib/analyzer/pipeline.js`, destructuring its deps from `stateRef.current` at the top.
-2. If it calls sibling stages (e.g. a new stage between `scoreAbstracts` and `postProcessScores`), declare it after its dependencies.
+1. Add the stage function inside `createAnalysisPipeline` in `lib/analyzer/pipeline.js`, reading its deps from `store()` and `store().reactContext`.
+2. If it calls sibling stages, declare it after its dependencies.
 3. Wire it into `startProcessing`.
-4. If it reads a new state value or setter, add the key to `pipelineStateRef.current = { ... }` in `ArxivAnalyzer.js` AND to the `useEffect` deps list.
+4. If it reads a new React-hook value, add the key to the `reactContext` publish in `App.jsx`.
 
-**To unit-test a pipeline stage:** build a fake `stateRef = { current: { config, addError: vi.fn(), setResults: vi.fn(), ... } }`, call `createAnalysisPipeline(stateRef)` (but note the builder returns only the public handlers; internal stages aren't exported — you'd need to test them via `startProcessing` with a mock pipeline). If direct stage testing is needed, extract the stage to a separate exported function.
+**To unit-test a pipeline stage:** mock the Zustand store via `useAnalyzerStore.setState(...)` with the required state, then call `createAnalysisPipeline({...refs})` and invoke the returned handler. Internal stages aren't exported — test them via `startProcessing` with mocked API responses.
 
 ### Refactor Context (design spec + implementation plan)
 
@@ -455,19 +454,11 @@ When updating documentation or code, verify current model names and pricing via:
 - OpenAI: https://developers.openai.com/api/docs/models
 - Google: https://ai.google.dev/gemini-api/docs/models
 
-## Phase B — Web UX Redesign (STANDING DIRECTIVE)
+## Phase B — Web UX Redesign (SHIPPED)
 
-After Phase 1.5 ships and the user has used the new features for ~1–2 weeks of real briefings, the next work should be a dedicated `superpowers:brainstorming` session titled **"Phase B — Web UX redesign"**. The current UX is functional but "workable, not top-tier" — Phase B is a follow-up project with its own design cycle.
+Phase B shipped the sidebar + main-area layout, warm unified palette (Source Serif 4 + Inter + arXiv red), light/dark theme toggle, component primitives, Zustand state management, 90-day briefing archive with search/filter/delete/archive, per-briefing provenance (GenerationDetails with hallucination audit), Welcome page, and pipeline pause gates (`pauseAfterFilter`, `pauseBeforeBriefing`).
 
-**Scope of Phase B (to brainstorm, not to implement here):**
+**Design docs:** `docs/superpowers/specs/2026-04-15-phase-b-web-ux-redesign-design.md`
+**Implementation plans:** `docs/superpowers/plans/2026-04-15-phase-b-core-1.md`, `docs/superpowers/plans/2026-04-15-phase-b-core-2.md`
 
-- Information hierarchy: does the single vertical scroll layout scale with Your Profile + Settings + Progress + Results + Briefing + Feedback stacked? Consider tabs, sidebar, routes, collapsible accordions, responsive breakpoints.
-- Typography + palette: the briefing's warm-serif aesthetic vs. the dark-tech app shell — unify or embrace the contrast deliberately.
-- Component primitives: button / card / form / modal / dialog.
-- Empty states and onboarding.
-- Dark / light mode.
-- Responsive / mobile.
-
-**When to trigger:** user explicitly says "let's brainstorm Phase B — Web UX redesign". Full directive at `docs/superpowers/specs/2026-04-14-profile-feedback-memory-design.md` (Phase B section).
-
-**Explicit non-constraint:** Phase B is free to rewrite components wholesale. Phase 1.5's implementation was NOT held to any "keep things easy to restyle" architectural invariant — it followed normal React hygiene only.
+**Out of scope / deferred to Phase 2:** Electron packaging, responsive/mobile, keyboard shortcuts, daily scheduler/automation, cloud sync.
