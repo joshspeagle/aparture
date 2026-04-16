@@ -38,6 +38,7 @@ export default function GenerationDetails({ generationMetadata }) {
     briefingRetryOnMaybe,
     pauseAfterFilter,
     timestamp,
+    hallucinationCheck,
   } = generationMetadata;
 
   const profilePreview =
@@ -200,6 +201,106 @@ export default function GenerationDetails({ generationMetadata }) {
                 briefingRetryOnMaybe: {briefingRetryOnMaybe ? 'on' : 'off'}
               </span>
             </div>
+          </div>
+
+          {/* Hallucination audit */}
+          <div style={sectionStyle}>
+            <div style={labelStyle}>Hallucination audit</div>
+            {hallucinationCheck ? (
+              <div>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}
+                >
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontFamily: 'var(--aparture-font-mono)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      fontWeight: 600,
+                      color:
+                        hallucinationCheck.verdict === 'YES'
+                          ? '#b91c1c'
+                          : hallucinationCheck.verdict === 'MAYBE'
+                            ? '#b45309'
+                            : '#15803d',
+                      background:
+                        hallucinationCheck.verdict === 'YES'
+                          ? '#fef2f2'
+                          : hallucinationCheck.verdict === 'MAYBE'
+                            ? '#fffbeb'
+                            : '#f0fdf4',
+                      border: `1px solid ${
+                        hallucinationCheck.verdict === 'YES'
+                          ? '#fecaca'
+                          : hallucinationCheck.verdict === 'MAYBE'
+                            ? '#fde68a'
+                            : '#bbf7d0'
+                      }`,
+                      borderRadius: '12px',
+                      padding: '2px 10px',
+                    }}
+                  >
+                    {hallucinationCheck.verdict}
+                  </span>
+                  {hallucinationCheck.retried && (
+                    <span
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                      }}
+                    >
+                      (after retry)
+                    </span>
+                  )}
+                </div>
+                {hallucinationCheck.justification && (
+                  <p
+                    style={{
+                      ...valueStyle,
+                      marginTop: 0,
+                      marginBottom: hallucinationCheck.flaggedClaims?.length > 0 ? '12px' : 0,
+                    }}
+                  >
+                    {hallucinationCheck.justification}
+                  </p>
+                )}
+                {hallucinationCheck.flaggedClaims?.length > 0 && (
+                  <div>
+                    <div style={{ ...labelStyle, marginTop: '4px' }}>Flagged claims</div>
+                    <ul
+                      style={{
+                        margin: 0,
+                        paddingLeft: '20px',
+                        listStyleType: 'disc',
+                      }}
+                    >
+                      {hallucinationCheck.flaggedClaims.map((claim, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            ...valueStyle,
+                            marginBottom: '6px',
+                          }}
+                        >
+                          <span style={{ fontStyle: 'italic' }}>&ldquo;{claim.excerpt}&rdquo;</span>
+                          {claim.paperArxivId && (
+                            <span style={monoValueStyle}> [{claim.paperArxivId}]</span>
+                          )}
+                          {claim.concern && (
+                            <span style={{ ...valueStyle, display: 'block', marginTop: '2px' }}>
+                              {claim.concern}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={valueStyle}>Hallucination check did not run or result not captured.</div>
+            )}
           </div>
 
           {/* Generated at */}
