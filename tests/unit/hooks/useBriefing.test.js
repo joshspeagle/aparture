@@ -31,20 +31,26 @@ describe('useBriefing', () => {
     expect(result.current.history.some((b) => b.date === '2026-04-13')).toBe(true);
   });
 
-  it('keeps at most 14 past briefings in history', () => {
+  it('keeps at most 90 past briefings in history', () => {
     const { result } = renderHook(() => useBriefing());
+    const empty = {
+      executiveSummary: 'x',
+      themes: [],
+      papers: [],
+      debates: [],
+      longitudinal: [],
+      proactiveQuestions: [],
+    };
     act(() => {
-      for (let i = 1; i <= 20; i++) {
-        result.current.saveBriefing(`2026-04-${i.toString().padStart(2, '0')}`, {
-          executiveSummary: 'x',
-          themes: [],
-          papers: [],
-          debates: [],
-          longitudinal: [],
-          proactiveQuestions: [],
-        });
+      // Save 100 dated briefings. Dates generated from epoch so we
+      // deterministically exceed the 90-day window.
+      for (let i = 0; i < 100; i++) {
+        const d = new Date(Date.UTC(2025, 0, 1));
+        d.setUTCDate(d.getUTCDate() + i);
+        const iso = d.toISOString().slice(0, 10);
+        result.current.saveBriefing(iso, empty);
       }
     });
-    expect(result.current.history.length).toBe(14);
+    expect(result.current.history.length).toBe(90);
   });
 });

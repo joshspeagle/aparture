@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 const CURRENT_KEY = 'aparture-briefing-current';
 const HISTORY_KEY = 'aparture-briefing-history';
-const MAX_HISTORY = 14;
+const MAX_HISTORY = 90;
 
 function readStoredCurrent() {
   if (typeof window === 'undefined') return null;
