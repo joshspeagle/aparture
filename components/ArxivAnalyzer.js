@@ -19,6 +19,7 @@ import { runBriefingGeneration } from '../lib/analyzer/briefingClient.js';
 import { downloadBlob, exportAnalysisReport } from '../lib/analyzer/exportReport.js';
 import { createAnalysisPipeline } from '../lib/analyzer/pipeline.js';
 import { readInitialConfig, useAnalyzerPersistence } from '../hooks/useAnalyzerPersistence.js';
+import { useAnalyzerStore } from '../stores/analyzerStore.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useBriefing } from '../hooks/useBriefing.js';
 import { useFeedback } from '../hooks/useFeedback.js';
@@ -220,52 +221,8 @@ PaperCard.propTypes = {
 // Main Application Component
 function ArxivAnalyzer() {
   const [config, setConfig] = useState(readInitialConfig);
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
   const [showPreviewPanel, setShowPreviewPanel] = useState(false);
-  const [processing, setProcessing] = useState({
-    stage: 'idle',
-    progress: { current: 0, total: 0 },
-    errors: [],
-    isRunning: false,
-    isPaused: false,
-  });
-  const [results, setResults] = useState({
-    allPapers: [],
-    scoredPapers: [],
-    finalRanking: [],
-  });
-  const [filterResults, setFilterResults] = useState({
-    total: 0,
-    yes: [],
-    maybe: [],
-    no: [],
-    inProgress: false,
-    currentBatch: 0,
-    totalBatches: 0,
-  });
-  const [processingTiming, setProcessingTiming] = useState({
-    startTime: null,
-    endTime: null,
-    duration: null,
-  });
-  const [testState, setTestState] = useState({
-    dryRunCompleted: false,
-    dryRunInProgress: false,
-    minimalTestInProgress: false,
-    lastDryRunTime: null,
-    lastMinimalTestTime: null,
-  });
-
-  // NotebookLM states
-  const [podcastDuration, setPodcastDuration] = useState(20); // Default to 20 minutes
-  const [notebookLMModel, setNotebookLMModel] = useState('gemini-3.1-pro');
-  const [notebookLMStatus, setNotebookLMStatus] = useState('');
-  const [notebookLMContent, setNotebookLMContent] = useState(null);
-  const [notebookLMGenerating, setNotebookLMGenerating] = useState(false);
-  const [enableHallucinationCheck, setEnableHallucinationCheck] = useState(true);
-  const [hallucinationWarning, setHallucinationWarning] = useState(null);
 
   // Briefing (Phase 1) state
   const {
@@ -291,27 +248,81 @@ function ArxivAnalyzer() {
     setDraftContent(profile?.content ?? '');
     setLastSyncedContent(profile?.content ?? '');
   }
-  const [synthesizing, setSynthesizing] = useState(false);
-  const [synthesisError, setSynthesisError] = useState(null);
-  // Phase 1.5.1: hallucination check result + retry stage indicator
-  const [briefingCheckResult, setBriefingCheckResult] = useState(null);
-  const [briefingStage, setBriefingStage] = useState(null); // 'synthesizing' | 'checking' | 'retrying' | null
-  const [quickSummariesById, setQuickSummariesById] = useState({});
-  const [fullReportsById, setFullReportsById] = useState({});
 
   const abortControllerRef = useRef(null);
   const pauseRef = useRef(false);
   const mockAPITesterRef = useRef(null);
 
-  // Phase 1.5.1 F4: the analysis pipeline lives in lib/analyzer/pipeline.js
-  // as a builder that closes over a single mutable stateRef. We update
-  // stateRef.current on every render so the pipeline always reads current
-  // state at call time — no stale closure capture.
-  const pipelineStateRef = useRef(null);
-  // Factory only stores the ref; .current is read lazily inside stage
-  // closures when they are called later, never during render.
-  // eslint-disable-next-line react-hooks/refs
-  const pipeline = useMemo(() => createAnalysisPipeline(pipelineStateRef), []);
+  // Phase B-prep 4b: read state from the Zustand store.
+  const processing = useAnalyzerStore((s) => s.processing);
+  const results = useAnalyzerStore((s) => s.results);
+  const filterResults = useAnalyzerStore((s) => s.filterResults);
+  const processingTiming = useAnalyzerStore((s) => s.processingTiming);
+  const testState = useAnalyzerStore((s) => s.testState);
+  const password = useAnalyzerStore((s) => s.password);
+  const isAuthenticated = useAnalyzerStore((s) => s.isAuthenticated);
+
+  // Destructure nested slices for convenience — variable names match
+  // the old useState names so the rest of the component body doesn't
+  // need to change.
+  const {
+    podcastDuration,
+    notebookLMModel,
+    notebookLMStatus,
+    notebookLMContent,
+    notebookLMGenerating,
+    enableHallucinationCheck,
+    hallucinationWarning,
+  } = useAnalyzerStore((s) => s.notebookLM);
+  const {
+    synthesizing,
+    synthesisError,
+    briefingCheckResult,
+    briefingStage,
+    quickSummariesById,
+    fullReportsById,
+  } = useAnalyzerStore((s) => s.briefingUI);
+
+  // Actions — stable identity, no selector needed.
+  const {
+    setProcessing,
+    setResults,
+    setFilterResults,
+    setProcessingTiming,
+    setTestState,
+    setPodcastDuration,
+    setNotebookLMModel,
+    setNotebookLMContent,
+    setEnableHallucinationCheck,
+    setSynthesizing,
+    setSynthesisError,
+    setBriefingCheckResult,
+    setBriefingStage,
+    setQuickSummariesById,
+    setFullReportsById,
+    setPassword,
+    setIsAuthenticated,
+    addError,
+    setReactContext,
+  } = useAnalyzerStore.getState();
+
+  // Phase B-prep 4b: pipeline reads state from the Zustand store.
+  // Only React refs are passed as closure args.
+  const pipeline = useMemo(
+    () =>
+      createAnalysisPipeline({
+        abortControllerRef,
+        pauseRef,
+        mockAPITesterRef,
+      }),
+    []
+  );
+
+  // Publish React-hook values into the store's reactContext slice so
+  // the pipeline can read them via store().reactContext.
+  useEffect(() => {
+    setReactContext({ profile, currentBriefing, feedback, config });
+  }, [profile, currentBriefing, feedback, config, setReactContext]);
 
   useAnalyzerPersistence({
     config,
@@ -334,66 +345,6 @@ function ArxivAnalyzer() {
     setPassword,
     setIsAuthenticated,
   });
-
-  // Add error to log
-  const addError = useCallback((error) => {
-    setProcessing((prev) => ({
-      ...prev,
-      errors: [...prev.errors, `[${new Date().toLocaleTimeString()}] ${error}`],
-    }));
-  }, []);
-
-  // Phase 1.5.1 F4: publish current state/setters/refs to the pipeline's
-  // mutable state ref after every render. Deps list the reactive VALUES the
-  // pipeline reads; state setters are omitted because React guarantees
-  // their identity is stable across renders (adding them would re-fire the
-  // effect on every render for zero benefit). Refs are omitted for the same
-  // reason — they are stable objects whose .current is mutated in place.
-  useEffect(() => {
-    pipelineStateRef.current = {
-      config,
-      results,
-      filterResults,
-      testState,
-      profile,
-      password,
-      currentBriefing,
-      podcastDuration,
-      notebookLMModel,
-      notebookLMContent,
-      enableHallucinationCheck,
-      hallucinationWarning,
-      setResults,
-      setProcessing,
-      setFilterResults,
-      setProcessingTiming,
-      setTestState,
-      setNotebookLMContent,
-      setNotebookLMStatus,
-      setNotebookLMGenerating,
-      setHallucinationWarning,
-      abortControllerRef,
-      pauseRef,
-      mockAPITesterRef,
-      addError,
-      feedback,
-    };
-  }, [
-    config,
-    results,
-    filterResults,
-    testState,
-    profile,
-    password,
-    currentBriefing,
-    podcastDuration,
-    notebookLMModel,
-    notebookLMContent,
-    enableHallucinationCheck,
-    hallucinationWarning,
-    addError,
-    feedback,
-  ]);
 
   const { startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM } = pipeline;
 
@@ -552,24 +503,27 @@ function ArxivAnalyzer() {
   // The paper's originalVerdict is preserved (captured at filter time) so that
   // when scoring runs we can diff current vs. original and record filter-override
   // feedback events for any changed papers.
-  const cycleFilterVerdict = useCallback((paperId, currentVerdict) => {
-    const VERDICT_CYCLE = { YES: 'MAYBE', MAYBE: 'NO', NO: 'YES' };
-    const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
-    const nextVerdict = VERDICT_CYCLE[currentVerdict] ?? 'YES';
-    setFilterResults((prev) => {
-      const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
-      const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
-      if (!currentBucket || !nextBucket) return prev;
-      const paper = prev[currentBucket].find((p) => p.id === paperId);
-      if (!paper) return prev;
-      const updatedPaper = { ...paper, filterVerdict: nextVerdict };
-      return {
-        ...prev,
-        [currentBucket]: prev[currentBucket].filter((p) => p.id !== paperId),
-        [nextBucket]: [...prev[nextBucket], updatedPaper],
-      };
-    });
-  }, []);
+  const cycleFilterVerdict = useCallback(
+    (paperId, currentVerdict) => {
+      const VERDICT_CYCLE = { YES: 'MAYBE', MAYBE: 'NO', NO: 'YES' };
+      const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
+      const nextVerdict = VERDICT_CYCLE[currentVerdict] ?? 'YES';
+      setFilterResults((prev) => {
+        const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
+        const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
+        if (!currentBucket || !nextBucket) return prev;
+        const paper = prev[currentBucket].find((p) => p.id === paperId);
+        if (!paper) return prev;
+        const updatedPaper = { ...paper, filterVerdict: nextVerdict };
+        return {
+          ...prev,
+          [currentBucket]: prev[currentBucket].filter((p) => p.id !== paperId),
+          [nextBucket]: [...prev[nextBucket], updatedPaper],
+        };
+      });
+    },
+    [setFilterResults]
+  );
 
   const handleGenerateBriefing = () => {
     // Phase B-prep: construct the generationMetadata snapshot at call

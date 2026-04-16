@@ -77,13 +77,14 @@ export function initialState() {
     isAuthenticated: false,
     // --- reactContext slice ---
     // Mirror of React-hook-derived values (profile, currentBriefing,
-    // feedback) that the pipeline needs to read but which don't live
-    // in the store naturally. ArxivAnalyzer publishes these via a
+    // feedback, config) that the pipeline needs to read but which don't
+    // live in the store naturally. ArxivAnalyzer publishes these via a
     // useEffect on every render.
     reactContext: {
       profile: null,
       currentBriefing: null,
       feedback: null,
+      config: null,
     },
   };
 }

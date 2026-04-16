@@ -196,6 +196,7 @@ describe('analyzerStore — reactContext slice', () => {
     expect(reactContext.profile).toBeNull();
     expect(reactContext.currentBriefing).toBeNull();
     expect(reactContext.feedback).toBeNull();
+    expect(reactContext.config).toBeNull();
   });
 
   it('setReactContext accepts a patch', () => {
