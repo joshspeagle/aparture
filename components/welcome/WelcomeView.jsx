@@ -22,6 +22,20 @@ export default function WelcomeView() {
         </span>
       </h1>
 
+      {/* Tagline */}
+      <p
+        style={{
+          fontFamily: 'var(--aparture-font-serif)',
+          fontSize: 'var(--aparture-text-lg)',
+          fontStyle: 'italic',
+          color: 'var(--aparture-mute)',
+          marginTop: 'var(--aparture-space-2)',
+          marginBottom: 0,
+        }}
+      >
+        Bringing the arXiv into focus.
+      </p>
+
       {/* Intro paragraph */}
       <p
         style={{
@@ -33,8 +47,9 @@ export default function WelcomeView() {
           marginBottom: 0,
         }}
       >
-        A research-paper discovery tool for arXiv. Each morning, generate a briefing of the papers
-        most relevant to your interests — and spend your reading time on the ones worth it.
+        Aparture screens the day&#8217;s arXiv papers against your research profile, scores them for
+        relevance, and distills the top results into a briefing you can read over your morning
+        coffee. Star or dismiss papers to teach it what matters to you.
       </p>
 
       {/* Getting started card */}
@@ -91,8 +106,8 @@ export default function WelcomeView() {
             >
               2.
             </span>
-            Click <strong>Settings</strong> to pick arXiv categories (defaults are already
-            reasonable).
+            Click <strong>Settings</strong> to choose your arXiv categories, models, and other
+            options — the advanced section has additional knobs worth exploring.
           </li>
           <li
             style={{
@@ -107,7 +122,9 @@ export default function WelcomeView() {
             >
               3.
             </span>
-            Click <strong>+ New Briefing</strong> and wait a couple minutes.
+            Open the <strong>Pipeline</strong> page and run each stage to see how papers flow
+            through filtering, scoring, and analysis. Once you&#8217;re comfortable, use{' '}
+            <strong>+ New Briefing</strong> to run everything end-to-end.
           </li>
         </ol>
       </Card>
@@ -124,8 +141,8 @@ export default function WelcomeView() {
           marginBottom: 0,
         }}
       >
-        You can always adjust later. Each briefing records the exact profile + settings used, so you
-        can iterate with confidence.
+        Every past briefing is saved in the sidebar with the exact profile and settings that
+        produced it.
       </p>
     </div>
   );
