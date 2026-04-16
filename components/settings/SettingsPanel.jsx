@@ -49,6 +49,27 @@ export default function SettingsPanel({ config, setConfig, processing }) {
     }));
   };
 
+  // Helper for integer inputs: freeform typing with range clamping on blur.
+  // Removes the browser spinner arrows that type="number" shows.
+  const integerInputProps = (configKey, defaultVal, min, max) => ({
+    type: 'text',
+    inputMode: 'numeric',
+    value: config[configKey],
+    onChange: (e) => {
+      const raw = e.target.value;
+      // Allow empty + digits while typing; parseInt on blur does the real validation
+      if (raw === '' || /^\d+$/.test(raw)) {
+        setConfig((prev) => ({ ...prev, [configKey]: raw === '' ? '' : parseInt(raw, 10) }));
+      }
+    },
+    onBlur: (e) => {
+      const parsed = parseInt(e.target.value, 10);
+      const clamped = Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : defaultVal;
+      setConfig((prev) => ({ ...prev, [configKey]: clamped }));
+    },
+    disabled: processing.isRunning,
+  });
+
   return (
     <div
       style={{
@@ -86,6 +107,24 @@ export default function SettingsPanel({ config, setConfig, processing }) {
           Configuration
         </h2>
       </div>
+
+      {/* Pipeline overview */}
+      <p
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-sm)',
+          lineHeight: 1.6,
+          color: 'var(--aparture-mute)',
+          margin: 0,
+          marginBottom: 'var(--aparture-space-6)',
+        }}
+      >
+        Aparture runs papers through a multi-stage pipeline: fetch from arXiv, filter for relevance,
+        score abstracts in detail, optionally post-process for consistency, then deep-analyze top
+        papers via their full PDFs. Each stage can use a different model — cheaper and faster models
+        work well for early filtering, while more capable models shine for deep analysis and
+        briefing synthesis.
+      </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
         <div>
@@ -372,6 +411,19 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               >
                 Quick Filter Model (Stage 1)
               </label>
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: '11px',
+                  color: 'var(--aparture-mute)',
+                  margin: '0 0 8px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                Triages each paper as YES / MAYBE / NO based on your profile. Processes papers in
+                small batches (configurable under Advanced Options) so even lightweight models work
+                well here.
+              </p>
               <Select
                 value={config.filterModel}
                 onChange={(e) => setConfig((prev) => ({ ...prev, filterModel: e.target.value }))}
@@ -417,6 +469,18 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               >
                 Abstract Scoring Model (Stage 2)
               </label>
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: '11px',
+                  color: 'var(--aparture-mute)',
+                  margin: '0 0 8px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                Reads each abstract and scores relevance 0–10 with a justification. This is where
+                your profile has the most influence on paper ranking.
+              </p>
               <Select
                 value={config.scoringModel}
                 onChange={(e) => setConfig((prev) => ({ ...prev, scoringModel: e.target.value }))}
@@ -462,6 +526,18 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               >
                 Deep PDF Analysis Model (Stage 3)
               </label>
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: '11px',
+                  color: 'var(--aparture-mute)',
+                  margin: '0 0 8px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                Downloads and analyzes the full PDF for top-ranked papers. Produces detailed
+                summaries, key findings, and methodology assessments. Benefits from a capable model.
+              </p>
               <Select
                 value={config.pdfModel}
                 onChange={(e) => setConfig((prev) => ({ ...prev, pdfModel: e.target.value }))}
@@ -507,6 +583,18 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               >
                 Briefing Model (synthesis + suggest)
               </label>
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: '11px',
+                  color: 'var(--aparture-mute)',
+                  margin: '0 0 8px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                Synthesizes the analyzed papers into a structured briefing, and also powers the
+                Suggest Improvements flow on the Profile page.
+              </p>
               <Select
                 value={config.briefingModel ?? config.pdfModel}
                 onChange={(e) => setConfig((prev) => ({ ...prev, briefingModel: e.target.value }))}
@@ -559,8 +647,8 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 margin: 0,
               }}
             >
-              <strong>Tip:</strong> Use cheaper models for early filtering and scoring stages, and
-              more expensive models for analyzing PDFs to optimize cost while maintaining accuracy.
+              <strong>Tip:</strong> Use cheaper, faster models for early filtering and scoring, and
+              more capable models for PDF analysis and briefing synthesis.
             </p>
           </div>
 
@@ -686,6 +774,17 @@ export default function SettingsPanel({ config, setConfig, processing }) {
             )}
             Advanced Options
           </button>
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: '11px',
+              color: 'var(--aparture-mute)',
+              margin: 'var(--aparture-space-1) 0 0 0',
+              lineHeight: 1.5,
+            }}
+          >
+            Fine-grained control over batch sizes, retry behavior, date range, and post-processing.
+          </p>
 
           {showAdvanced && (
             <div
@@ -726,19 +825,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Days to Look Back
                     </label>
-                    <Input
-                      type="number"
-                      value={config.daysBack}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          daysBack: parseInt(e.target.value) || 7,
-                        }))
-                      }
-                      min="1"
-                      max="30"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('daysBack', 7, 1, 30)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -763,19 +850,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Correction Attempts
                     </label>
-                    <Input
-                      type="number"
-                      value={config.maxCorrections}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          maxCorrections: parseInt(e.target.value) || 1,
-                        }))
-                      }
-                      min="0"
-                      max="5"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('maxCorrections', 1, 0, 5)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -800,19 +875,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Retry Attempts
                     </label>
-                    <Input
-                      type="number"
-                      value={config.maxRetries}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          maxRetries: parseInt(e.target.value) || 3,
-                        }))
-                      }
-                      min="0"
-                      max="10"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('maxRetries', 3, 0, 10)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -867,19 +930,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Filter Batch Size
                     </label>
-                    <Input
-                      type="number"
-                      value={config.filterBatchSize}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          filterBatchSize: parseInt(e.target.value) || 3,
-                        }))
-                      }
-                      min="1"
-                      max="20"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('filterBatchSize', 3, 1, 20)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -1003,19 +1054,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Scoring Batch Size
                     </label>
-                    <Input
-                      type="number"
-                      value={config.scoringBatchSize}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          scoringBatchSize: parseInt(e.target.value) || 3,
-                        }))
-                      }
-                      min="1"
-                      max="10"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('scoringBatchSize', 3, 1, 10)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -1042,19 +1081,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         >
                           Review Batch Size
                         </label>
-                        <Input
-                          type="number"
-                          value={config.postProcessingBatchSize}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              postProcessingBatchSize: parseInt(e.target.value) || 5,
-                            }))
-                          }
-                          min="3"
-                          max="10"
-                          disabled={processing.isRunning}
-                        />
+                        <Input {...integerInputProps('postProcessingBatchSize', 5, 3, 10)} />
                         <p
                           style={{
                             fontFamily: 'var(--aparture-font-sans)',
@@ -1079,19 +1106,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         >
                           Papers to Review
                         </label>
-                        <Input
-                          type="number"
-                          value={config.postProcessingCount}
-                          onChange={(e) =>
-                            setConfig((prev) => ({
-                              ...prev,
-                              postProcessingCount: parseInt(e.target.value) || 50,
-                            }))
-                          }
-                          min="5"
-                          max="200"
-                          disabled={processing.isRunning}
-                        />
+                        <Input {...integerInputProps('postProcessingCount', 50, 5, 200)} />
                         <p
                           style={{
                             fontFamily: 'var(--aparture-font-sans)',
@@ -1164,19 +1179,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Papers to Analyze
                     </label>
-                    <Input
-                      type="number"
-                      value={config.maxDeepAnalysis}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          maxDeepAnalysis: parseInt(e.target.value) || 30,
-                        }))
-                      }
-                      min="1"
-                      max="100"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('maxDeepAnalysis', 30, 1, 100)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -1201,19 +1204,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Summaries to Output
                     </label>
-                    <Input
-                      type="number"
-                      value={config.finalOutputCount}
-                      onChange={(e) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          finalOutputCount: parseInt(e.target.value) || 15,
-                        }))
-                      }
-                      min="1"
-                      max="50"
-                      disabled={processing.isRunning}
-                    />
+                    <Input {...integerInputProps('finalOutputCount', 15, 1, 50)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',

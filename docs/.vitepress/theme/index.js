@@ -4,7 +4,7 @@ import './custom.css';
 
 export default {
   extends: DefaultTheme,
-  enhanceApp({ app }) {
+  enhanceApp({ app: _app }) {
     // Add custom app enhancements here if needed
   },
 };
