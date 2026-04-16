@@ -62,24 +62,68 @@ function PaperCard({
     setShowCommentInput(false);
   };
 
+  const badgeBase = {
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    display: 'inline-block',
+  };
+
+  const feedbackBtnBase = {
+    fontFamily: 'var(--aparture-font-sans)',
+    fontSize: 'var(--aparture-text-xs)',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    border: '1px solid var(--aparture-hairline)',
+    background: 'transparent',
+    color: 'var(--aparture-mute)',
+    cursor: 'pointer',
+    transition: 'all 150ms ease',
+  };
+
   return (
-    <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition-colors">
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+    <div
+      style={{
+        background: 'var(--aparture-surface)',
+        borderRadius: '4px',
+        padding: 'var(--aparture-space-4)',
+        border: '1px solid var(--aparture-hairline)',
+        transition: 'border-color 150ms ease',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: '8px',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginBottom: '4px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ ...badgeBase, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
               #{idx + 1}
             </span>
-            <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
+            <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
               Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
             </span>
             {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
               <span
-                className={`text-xs px-2 py-1 rounded ${
-                  paper.scoreAdjustment > 0
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-orange-500/20 text-orange-400'
-                }`}
+                style={{
+                  ...badgeBase,
+                  background:
+                    paper.scoreAdjustment > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
+                  color: paper.scoreAdjustment > 0 ? '#22c55e' : '#f97316',
+                }}
                 title={paper.adjustmentReason}
               >
                 {paper.scoreAdjustment > 0 ? '\u2191' : '\u2193'}{' '}
@@ -87,7 +131,7 @@ function PaperCard({
               </span>
             )}
             {showDeepAnalysis && paper.deepAnalysis && (
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+              <span style={{ ...badgeBase, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
                 PDF Analyzed
               </span>
             )}
@@ -95,37 +139,92 @@ function PaperCard({
               href={`https://arxiv.org/abs/${paper.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs bg-slate-700 text-gray-300 px-2 py-1 rounded hover:bg-slate-600 transition-colors"
+              style={{
+                ...badgeBase,
+                background: 'var(--aparture-bg)',
+                color: 'var(--aparture-mute)',
+                textDecoration: 'none',
+              }}
             >
               arXiv:{paper.id}
             </a>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-1">{paper.title}</h3>
-          <p className="text-sm text-gray-400 mb-2">
+          <h3
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-lg)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
+              marginBottom: '4px',
+            }}
+          >
+            {paper.title}
+          </h3>
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              color: 'var(--aparture-mute)',
+              marginBottom: '8px',
+            }}
+          >
             {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
           </p>
-          <p className="text-sm text-gray-300 italic mb-2">
+          <p
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              color: 'var(--aparture-ink)',
+              fontStyle: 'italic',
+              marginBottom: '8px',
+            }}
+          >
             {paper.deepAnalysis?.relevanceAssessment || paper.scoreJustification}
           </p>
           {showDeepAnalysis && paper.deepAnalysis && (
-            <div className="mt-3 pt-3 border-t border-slate-700">
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-3)',
+                paddingTop: 'var(--aparture-space-3)',
+                borderTop: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: 'var(--aparture-ink)',
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-line',
+                }}
+              >
                 {paper.deepAnalysis.summary}
               </div>
             </div>
           )}
 
           {hasFeedbackAffordance && (
-            <div className="mt-3 pt-3 border-t border-slate-700">
-              <div className="flex flex-wrap gap-2 text-xs">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-3)',
+                paddingTop: 'var(--aparture-space-3)',
+                borderTop: '1px solid var(--aparture-hairline)',
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 <button
                   type="button"
                   onClick={handleStar}
-                  className={`px-2 py-1 rounded border transition-colors ${
-                    starred
-                      ? 'bg-yellow-900/40 text-yellow-300 border-yellow-600'
-                      : 'text-slate-400 border-slate-600 hover:border-yellow-500 hover:text-yellow-300'
-                  }`}
+                  style={{
+                    ...feedbackBtnBase,
+                    ...(starred
+                      ? {
+                          background: 'rgba(245,158,11,0.15)',
+                          color: '#f59e0b',
+                          borderColor: '#f59e0b',
+                        }
+                      : {}),
+                  }}
                   title={starred ? 'Remove star' : 'Star this paper'}
                 >
                   {starred ? '\u2605 starred' : '\u2606 star'}
@@ -133,11 +232,16 @@ function PaperCard({
                 <button
                   type="button"
                   onClick={handleDismiss}
-                  className={`px-2 py-1 rounded border transition-colors ${
-                    dismissed
-                      ? 'bg-slate-800 text-slate-100 border-slate-500'
-                      : 'text-slate-400 border-slate-600 hover:border-slate-400 hover:text-slate-200'
-                  }`}
+                  style={{
+                    ...feedbackBtnBase,
+                    ...(dismissed
+                      ? {
+                          background: 'var(--aparture-bg)',
+                          color: 'var(--aparture-ink)',
+                          borderColor: 'var(--aparture-mute)',
+                        }
+                      : {}),
+                  }}
                   title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
                 >
                   {dismissed ? '\u2298 dismissed' : '\u2298 dismiss'}
@@ -145,27 +249,48 @@ function PaperCard({
                 <button
                   type="button"
                   onClick={() => setShowCommentInput((v) => !v)}
-                  className="px-2 py-1 rounded border text-slate-400 border-slate-600 hover:border-purple-500 hover:text-purple-300 transition-colors"
+                  style={feedbackBtnBase}
                   title="Leave a comment on this paper"
                 >
                   + comment
                 </button>
               </div>
               {showCommentInput && (
-                <div className="mt-2">
+                <div style={{ marginTop: '8px' }}>
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     rows={3}
                     placeholder="Your thoughts on this paper\u2026"
-                    className="w-full min-h-[4rem] resize-y rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 focus:border-slate-500 focus:outline-none"
+                    style={{
+                      width: '100%',
+                      minHeight: '4rem',
+                      resize: 'vertical',
+                      borderRadius: '4px',
+                      border: '1px solid var(--aparture-hairline)',
+                      background: 'var(--aparture-bg)',
+                      padding: '4px 8px',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-ink)',
+                      boxSizing: 'border-box',
+                    }}
                     autoFocus
                   />
-                  <div className="mt-1 flex gap-2 justify-end">
+                  <div
+                    style={{
+                      marginTop: '4px',
+                      display: 'flex',
+                      gap: '8px',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={handleCancelComment}
-                      className="px-2 py-1 text-xs rounded border border-slate-600 text-slate-300 hover:border-slate-400"
+                      style={{
+                        ...feedbackBtnBase,
+                      }}
                     >
                       Cancel
                     </button>
@@ -173,7 +298,18 @@ function PaperCard({
                       type="button"
                       onClick={handleSaveComment}
                       disabled={commentText.trim().length === 0}
-                      className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--aparture-accent)',
+                        background: 'var(--aparture-accent)',
+                        color: '#fff',
+                        fontWeight: 500,
+                        cursor: commentText.trim().length === 0 ? 'not-allowed' : 'pointer',
+                        opacity: commentText.trim().length === 0 ? 0.5 : 1,
+                      }}
                     >
                       Save
                     </button>

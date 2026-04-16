@@ -4,7 +4,6 @@
 // pipeline stages to user-facing labels with status icons.
 
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
-import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 
 // Map internal pipeline stages to timeline stage indices.
@@ -118,7 +117,11 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
   return labels[stageKey]?.[status] ?? stageKey;
 }
 
-export default function ProgressTimeline({ onCycleVerdict, pauseAfterFilter, children }) {
+export default function ProgressTimeline({
+  onCycleVerdict: _onCycleVerdict,
+  pauseAfterFilter,
+  children,
+}) {
   const processing = useAnalyzerStore((s) => s.processing);
   const filterResults = useAnalyzerStore((s) => s.filterResults);
   const results = useAnalyzerStore((s) => s.results);
@@ -177,7 +180,6 @@ export default function ProgressTimeline({ onCycleVerdict, pauseAfterFilter, chi
   };
 
   // Show filter-pause UI when filter is done and pauseAfterFilter is on
-  const filterDone = currentIndex > 1 || (currentIndex >= 1 && !isRunning);
   const showFilterPause =
     pauseAfterFilter &&
     processing.isPaused &&

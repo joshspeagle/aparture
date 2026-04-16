@@ -126,8 +126,21 @@ export default function MainArea({
         <div style={{ marginTop: 'var(--aparture-space-6)' }}>
           <button
             onClick={onLogout}
-            className="px-3 py-2 bg-slate-700 rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2 text-sm"
-            style={{ color: 'var(--aparture-ink)' }}
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-sm)',
+              fontWeight: 500,
+              color: 'var(--aparture-ink)',
+              background: 'var(--aparture-surface)',
+              border: '1px solid var(--aparture-hairline)',
+              borderRadius: '4px',
+              padding: '8px 12px',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 150ms ease',
+            }}
           >
             <Unlock className="w-4 h-4" />
             Logout
