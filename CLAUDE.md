@@ -118,7 +118,7 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `hooks/useTheme.js` - **Phase B** light/dark/auto theme switching; reads/writes `aparture-theme` localStorage key, applies `data-theme` attribute to `<html>`
 - `stores/` - **Phase B** Zustand state management
   - `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `useAnalyzerStore.getState()` directly.
-- `tests/` - Vitest test suite (320 tests across 50 files, fully fixture-based)
+- `tests/` - Vitest test suite (325 tests across 50 files, fully fixture-based)
   - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
   - `tests/component/` - React component tests via @testing-library/react
   - `tests/integration/` - API route handler tests with fixture-mode callModel
@@ -417,6 +417,7 @@ Current models (as of April 2026). The user-facing ID (left) is what goes into `
 
 **Anthropic — current:**
 
+- Claude Opus 4.7: `claude-opus-4.7` → `claude-opus-4-7` (1M context, $5/$25 per MTok, adaptive thinking)
 - Claude Opus 4.6: `claude-opus-4.6` → `claude-opus-4-6` (1M context, $5/$25 per MTok)
 - Claude Sonnet 4.6: `claude-sonnet-4.6` → `claude-sonnet-4-6` (1M context, $3/$15 per MTok)
 - Claude Haiku 4.5: `claude-haiku-4.5` → `claude-haiku-4-5` (200k context, $1/$5 per MTok)
@@ -427,6 +428,8 @@ Current models (as of April 2026). The user-facing ID (left) is what goes into `
 - Claude Opus 4.1: `claude-opus-4.1` → `claude-opus-4-1`
 - Claude Sonnet 4.5: `claude-sonnet-4.5` → `claude-sonnet-4-5`
 - Claude Haiku 3.5: `claude-haiku-3.5` → `claude-3-5-haiku-20241022`
+
+**Anthropic adaptive thinking:** All Anthropic API calls now include `thinking: {type: "adaptive"}`. With thinking enabled, `tool_choice` must be `{type: "auto"}` (forced tool choice is incompatible with thinking). The model still calls the provided tool reliably. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` raised to 16000 to accommodate thinking overhead.
 
 **OpenAI (GPT-5.4 family):**
 
