@@ -4,6 +4,7 @@
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
+import GenerationDetails from '../briefing/GenerationDetails.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
 import ProgressTracker from '../analyzer/ProgressTracker.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
@@ -246,6 +247,8 @@ export default function MainArea({
           onDismiss={onDismiss}
           onAddComment={onAddComment}
         />
+
+        <GenerationDetails generationMetadata={entry.generationMetadata} />
 
         {/* Feedback panel below briefing */}
         <div id="feedback-panel" style={{ marginTop: 'var(--aparture-space-6)' }}>
