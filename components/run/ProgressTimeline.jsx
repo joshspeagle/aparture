@@ -8,10 +8,8 @@ import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 
 // Map internal pipeline stages to timeline stage indices.
-// Pipeline stages: idle → fetching → Filtering → initial-scoring → selecting → deep-analysis → complete
-// Synthesize (briefing) is excluded — it's a separate user-initiated
-// action via "Generate Briefing", not part of the automatic pipeline.
-const STAGE_ORDER = ['fetch', 'filter', 'score', 'postprocess', 'analyze'];
+// Pipeline stages: idle → fetching → Filtering → initial-scoring → selecting → deep-analysis → synthesizing → complete
+const STAGE_ORDER = ['fetch', 'filter', 'score', 'postprocess', 'analyze', 'synthesize'];
 
 function resolveStageIndex(pipelineStage) {
   const map = {
@@ -23,7 +21,9 @@ function resolveStageIndex(pipelineStage) {
     'Post-Processing': 3, // between scoring and deep analysis
     selecting: 3,
     'deep-analysis': 4,
-    complete: 5, // past all stages
+    'pre-briefing-review': 5, // paused between analysis and briefing
+    synthesizing: 5,
+    complete: 6, // past all stages
   };
   return map[pipelineStage] ?? -1;
 }
@@ -112,6 +112,11 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
         return `${count} papers analyzed`;
       })(),
     },
+    synthesize: {
+      pending: 'Generate briefing',
+      running: 'Generating briefing...',
+      done: 'Briefing generated',
+    },
   };
 
   return labels[stageKey]?.[status] ?? stageKey;
@@ -120,7 +125,9 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
 export default function ProgressTimeline({
   onCycleVerdict: _onCycleVerdict,
   pauseAfterFilter,
+  pauseBeforeBriefing,
   onContinueAfterFilter,
+  onContinueAfterReview,
   children,
 }) {
   const processing = useAnalyzerStore((s) => s.processing);
@@ -182,6 +189,8 @@ export default function ProgressTimeline({
 
   // Show filter-pause UI when the pipeline has halted at the filter-review gate
   const showFilterPause = pauseAfterFilter && processing.stage === 'filter-review';
+  // Show briefing-pause UI when the pipeline has halted at the pre-briefing-review gate
+  const showBriefingPause = pauseBeforeBriefing && processing.stage === 'pre-briefing-review';
   const hasFilterResults =
     (filterResults?.yes?.length ?? 0) +
       (filterResults?.maybe?.length ?? 0) +
@@ -258,6 +267,36 @@ export default function ProgressTimeline({
                       {onContinueAfterFilter && (
                         <Button variant="primary" onClick={onContinueAfterFilter}>
                           Continue to scoring →
+                        </Button>
+                      )}
+                    </Card>
+                  </div>
+                )}
+
+                {/* Pre-briefing-review pause interstitial */}
+                {stageKey === 'synthesize' && showBriefingPause && (
+                  <div
+                    style={{
+                      marginLeft: '40px',
+                      marginTop: 'var(--aparture-space-2)',
+                      marginBottom: 'var(--aparture-space-2)',
+                    }}
+                  >
+                    <Card>
+                      <div
+                        style={{
+                          fontFamily: 'var(--aparture-font-sans)',
+                          fontSize: 'var(--aparture-text-sm)',
+                          color: 'var(--aparture-ink)',
+                          marginBottom: 'var(--aparture-space-3)',
+                        }}
+                      >
+                        Analysis complete — review results and add stars/dismissals before
+                        generating your briefing.
+                      </div>
+                      {onContinueAfterReview && (
+                        <Button variant="primary" onClick={onContinueAfterReview}>
+                          Continue to briefing →
                         </Button>
                       )}
                     </Card>

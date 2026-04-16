@@ -733,6 +733,14 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 disabled={processing.isRunning}
               />
               <Checkbox
+                label="Pause before briefing to review scores and add feedback"
+                checked={config.pauseBeforeBriefing ?? true}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, pauseBeforeBriefing: e.target.checked }))
+                }
+                disabled={processing.isRunning}
+              />
+              <Checkbox
                 label="Auto-retry briefing if hallucination check returns YES"
                 checked={config.briefingRetryOnYes ?? true}
                 onChange={(e) =>

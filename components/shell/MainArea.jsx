@@ -63,6 +63,7 @@ export default function MainArea({
   getProgressPercentage: _getProgressPercentage,
   onCycleVerdict,
   onContinueAfterFilter,
+  onContinueAfterReview,
   // Briefing card (generate button)
   synthesizing,
   synthesisError,
@@ -149,7 +150,9 @@ export default function MainArea({
         <ProgressTimeline
           onCycleVerdict={onCycleVerdict}
           pauseAfterFilter={config?.pauseAfterFilter ?? true}
+          pauseBeforeBriefing={config?.pauseBeforeBriefing ?? true}
           onContinueAfterFilter={onContinueAfterFilter}
+          onContinueAfterReview={onContinueAfterReview}
         >
           {/* Controls */}
           <div style={{ marginTop: 'var(--aparture-space-6)' }}>

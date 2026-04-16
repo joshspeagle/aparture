@@ -85,6 +85,8 @@ export function initialState() {
       currentBriefing: null,
       feedback: null,
       config: null,
+      saveBriefing: null,
+      briefingHistory: null,
     },
   };
 }

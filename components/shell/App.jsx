@@ -530,11 +530,40 @@ export default function App() {
     []
   );
 
+  // Wrap saveBriefing so pipeline-generated briefings auto-switch view.
+  // Stable ref avoids reactContext churn on every render (setActiveView
+  // identity is stable from useState, saveBriefing from useBriefing).
+  const saveBriefingAndSwitchRef = useRef(null);
+  saveBriefingAndSwitchRef.current = (date, briefing, metadata) => {
+    const newId = saveBriefing(date, briefing, metadata);
+    setActiveView(`briefing:${newId}`);
+    return newId;
+  };
+  const stableSaveBriefingAndSwitch = useCallback(
+    (date, briefing, metadata) => saveBriefingAndSwitchRef.current(date, briefing, metadata),
+    []
+  );
+
   // Publish React-hook values into the store's reactContext slice so
   // the pipeline can read them via store().reactContext.
   useEffect(() => {
-    setReactContext({ profile, currentBriefing, feedback, config });
-  }, [profile, currentBriefing, feedback, config, setReactContext]);
+    setReactContext({
+      profile,
+      currentBriefing,
+      feedback,
+      config,
+      saveBriefing: stableSaveBriefingAndSwitch,
+      briefingHistory,
+    });
+  }, [
+    profile,
+    currentBriefing,
+    feedback,
+    config,
+    stableSaveBriefingAndSwitch,
+    briefingHistory,
+    setReactContext,
+  ]);
 
   useAnalyzerPersistence({
     config,
@@ -730,12 +759,6 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    // Wrap saveBriefing so we can auto-switch to the new briefing view
-    const saveBriefingAndSwitch = (date, briefing, metadata) => {
-      const newId = saveBriefing(date, briefing, metadata);
-      setActiveView(`briefing:${newId}`);
-    };
-
     return runBriefingGeneration({
       results,
       briefingModel: resolvedBriefingModel,
@@ -745,7 +768,7 @@ export default function App() {
       profile,
       password,
       briefingHistory,
-      saveBriefing: saveBriefingAndSwitch,
+      saveBriefing: stableSaveBriefingAndSwitch,
       generationMetadata,
       setSynthesizing,
       setSynthesisError,
@@ -1038,6 +1061,9 @@ export default function App() {
           getProgressPercentage={getProgressPercentage}
           onCycleVerdict={cycleFilterVerdict}
           onContinueAfterFilter={() => {
+            pauseRef.current = false;
+          }}
+          onContinueAfterReview={() => {
             pauseRef.current = false;
           }}
           // Briefing card (generate button)
