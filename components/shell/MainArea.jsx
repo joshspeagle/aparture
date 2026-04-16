@@ -151,7 +151,7 @@ export default function MainArea({
           pauseAfterFilter={config?.pauseAfterFilter ?? true}
           onContinueAfterFilter={onContinueAfterFilter}
         >
-          {/* ControlPanel and ProgressTracker sit below the timeline */}
+          {/* Controls */}
           <div style={{ marginTop: 'var(--aparture-space-6)' }}>
             <ControlPanel
               processing={processing}
@@ -166,6 +166,16 @@ export default function MainArea({
             />
           </div>
 
+          {/* Filter results — first stage output, shown near the top */}
+          <FilterResultsList
+            filterResults={filterResults}
+            filterSortedPapers={filterSortedPapers}
+            testState={testState}
+            processing={processing}
+            onCycleVerdict={onCycleVerdict}
+          />
+
+          {/* Scored / analyzed papers */}
           <AnalysisResultsList
             results={results}
             testState={testState}
@@ -174,6 +184,7 @@ export default function MainArea({
             renderPaperCard={renderPaperCard}
           />
 
+          {/* Report download + briefing generation */}
           <DownloadReportCard
             testState={testState}
             processingTiming={processingTiming}
@@ -192,14 +203,6 @@ export default function MainArea({
             briefingStage={briefingStage}
             processing={processing}
             onGenerate={onGenerateBriefing}
-          />
-
-          <FilterResultsList
-            filterResults={filterResults}
-            filterSortedPapers={filterSortedPapers}
-            testState={testState}
-            processing={processing}
-            onCycleVerdict={onCycleVerdict}
           />
         </ProgressTimeline>
       </div>

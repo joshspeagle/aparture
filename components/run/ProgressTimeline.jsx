@@ -9,7 +9,9 @@ import Card from '../ui/Card.jsx';
 
 // Map internal pipeline stages to timeline stage indices.
 // Pipeline stages: idle → fetching → Filtering → initial-scoring → selecting → deep-analysis → complete
-const STAGE_ORDER = ['fetch', 'filter', 'score', 'postprocess', 'analyze', 'synthesize'];
+// Synthesize (briefing) is excluded — it's a separate user-initiated
+// action via "Generate Briefing", not part of the automatic pipeline.
+const STAGE_ORDER = ['fetch', 'filter', 'score', 'postprocess', 'analyze'];
 
 function resolveStageIndex(pipelineStage) {
   const map = {
@@ -21,7 +23,7 @@ function resolveStageIndex(pipelineStage) {
     'Post-Processing': 3, // between scoring and deep analysis
     selecting: 3,
     'deep-analysis': 4,
-    complete: 6, // past all stages
+    complete: 5, // past all stages
   };
   return map[pipelineStage] ?? -1;
 }
@@ -109,11 +111,6 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
         const count = results?.finalRanking?.length ?? 0;
         return `${count} papers analyzed`;
       })(),
-    },
-    synthesize: {
-      pending: 'Generate briefing',
-      running: 'Generating briefing...',
-      done: 'Briefing ready',
     },
   };
 
