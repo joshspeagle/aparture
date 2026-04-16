@@ -119,8 +119,15 @@ export default function FilterResultsList({
     filterResults.yes.length > 0 || filterResults.maybe.length > 0 || filterResults.no.length > 0;
   if (!hasAny) return null;
 
-  const { unscoredYes, unscoredMaybe, unscoredNo, scoredYesCount, scoredMaybeCount } =
-    filterSortedPapers;
+  // Allow verdict overrides during the filter-review pause (the whole
+  // point of that gate) even though processing.isRunning is still true.
+  const disableOverrides = processing.isRunning && processing.stage !== 'filter-review';
+
+  // Show ALL papers in each bucket, not just unscored ones. The old
+  // layout hid already-scored papers to avoid duplication, but in the
+  // sidebar layout filter results and scoring results live on separate
+  // views so hiding them just makes the filter output look incomplete.
+  const { scoredYesCount, scoredMaybeCount } = filterSortedPapers;
 
   const testBadgeStyle = {
     marginLeft: '12px',
@@ -181,10 +188,10 @@ export default function FilterResultsList({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
-        {unscoredYes.length > 0 && (
+        {filterResults.yes.length > 0 && (
           <div>
             <h3 style={sectionTitleStyle('#22c55e')}>
-              {'\u2713'} YES ({unscoredYes.length})
+              {'\u2713'} YES ({filterResults.yes.length})
               {scoredYesCount > 0 && (
                 <span
                   style={{
@@ -207,13 +214,13 @@ export default function FilterResultsList({
                 paddingRight: '8px',
               }}
             >
-              {unscoredYes.map((paper) => (
+              {filterResults.yes.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="YES"
                   borderColor="rgba(34,197,94,0.2)"
-                  processingIsRunning={processing.isRunning}
+                  processingIsRunning={disableOverrides}
                   onCycleVerdict={onCycleVerdict}
                 />
               ))}
@@ -221,10 +228,10 @@ export default function FilterResultsList({
           </div>
         )}
 
-        {unscoredMaybe.length > 0 && (
+        {filterResults.maybe.length > 0 && (
           <div>
             <h3 style={sectionTitleStyle('#f59e0b')}>
-              ? MAYBE ({unscoredMaybe.length})
+              ? MAYBE ({filterResults.maybe.length})
               {scoredMaybeCount > 0 && (
                 <span
                   style={{
@@ -247,13 +254,13 @@ export default function FilterResultsList({
                 paddingRight: '8px',
               }}
             >
-              {unscoredMaybe.map((paper) => (
+              {filterResults.maybe.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="MAYBE"
                   borderColor="rgba(245,158,11,0.2)"
-                  processingIsRunning={processing.isRunning}
+                  processingIsRunning={disableOverrides}
                   onCycleVerdict={onCycleVerdict}
                 />
               ))}
@@ -261,10 +268,10 @@ export default function FilterResultsList({
           </div>
         )}
 
-        {unscoredNo.length > 0 && (
+        {filterResults.no.length > 0 && (
           <div>
             <h3 style={sectionTitleStyle('#ef4444')}>
-              {'\u2717'} NO ({unscoredNo.length} filtered out)
+              {'\u2717'} NO ({filterResults.no.length} filtered out)
             </h3>
             <div
               style={{
@@ -276,13 +283,13 @@ export default function FilterResultsList({
                 paddingRight: '8px',
               }}
             >
-              {unscoredNo.map((paper) => (
+              {filterResults.no.map((paper) => (
                 <FilterResultRow
                   key={paper.id}
                   paper={paper}
                   verdict="NO"
                   borderColor="rgba(239,68,68,0.2)"
-                  processingIsRunning={processing.isRunning}
+                  processingIsRunning={disableOverrides}
                   onCycleVerdict={onCycleVerdict}
                 />
               ))}
@@ -290,7 +297,9 @@ export default function FilterResultsList({
           </div>
         )}
 
-        {(unscoredYes.length > 0 || unscoredMaybe.length > 0 || unscoredNo.length > 0) && (
+        {(filterResults.yes.length > 0 ||
+          filterResults.maybe.length > 0 ||
+          filterResults.no.length > 0) && (
           <div
             style={{
               paddingTop: 'var(--aparture-space-3)',
@@ -307,7 +316,7 @@ export default function FilterResultsList({
               {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length}{' '}
               papers
             </span>
-            <span>Remaining to score: {unscoredYes.length + unscoredMaybe.length}</span>
+            <span>Remaining to score: {filterResults.yes.length + filterResults.maybe.length}</span>
           </div>
         )}
       </div>
