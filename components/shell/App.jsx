@@ -101,6 +101,7 @@ function PaperCard({
         }}
       >
         <div style={{ flex: 1 }}>
+          {/* Top row: rank + final score + arXiv link */}
           <div
             style={{
               display: 'flex',
@@ -114,27 +115,8 @@ function PaperCard({
               #{idx + 1}
             </span>
             <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
-              Score: {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
+              {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
             </span>
-            {paper.scoreAdjustment && Math.abs(paper.scoreAdjustment) > 0.1 && (
-              <span
-                style={{
-                  ...badgeBase,
-                  background:
-                    paper.scoreAdjustment > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)',
-                  color: paper.scoreAdjustment > 0 ? '#22c55e' : '#f97316',
-                }}
-                title={paper.adjustmentReason}
-              >
-                {paper.scoreAdjustment > 0 ? '\u2191' : '\u2193'}{' '}
-                {Math.abs(paper.scoreAdjustment).toFixed(1)}
-              </span>
-            )}
-            {showDeepAnalysis && paper.deepAnalysis && (
-              <span style={{ ...badgeBase, background: 'rgba(34,197,94,0.12)', color: '#22c55e' }}>
-                PDF Analyzed
-              </span>
-            )}
             <a
               href={`https://arxiv.org/abs/${paper.id}`}
               target="_blank"
@@ -144,11 +126,109 @@ function PaperCard({
                 background: 'var(--aparture-bg)',
                 color: 'var(--aparture-mute)',
                 textDecoration: 'none',
+                marginLeft: 'auto',
               }}
             >
               arXiv:{paper.id}
             </a>
           </div>
+          {/* Score trail: abstract → rescore → PDF */}
+          {(paper.scoreAdjustment || paper.deepAnalysis) && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: '6px',
+                flexWrap: 'wrap',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: '11px',
+                color: 'var(--aparture-mute)',
+              }}
+            >
+              {/* Abstract score */}
+              <span
+                style={{
+                  ...badgeBase,
+                  background: 'var(--aparture-bg)',
+                  color: 'var(--aparture-mute)',
+                  fontSize: '11px',
+                }}
+              >
+                Abstract: {(paper.initialScore ?? paper.relevanceScore ?? 0).toFixed(1)}
+              </span>
+              {/* Rescore */}
+              {paper.scoreAdjustment != null && Math.abs(paper.scoreAdjustment) > 0.01 && (
+                <>
+                  <span style={{ color: 'var(--aparture-mute)' }}>{'\u2192'}</span>
+                  <span
+                    style={{
+                      ...badgeBase,
+                      fontSize: '11px',
+                      background:
+                        paper.scoreAdjustment > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(249,115,22,0.1)',
+                      color: paper.scoreAdjustment > 0 ? '#22c55e' : '#f97316',
+                    }}
+                  >
+                    Rescore: {(paper.adjustedScore ?? paper.relevanceScore ?? 0).toFixed(1)}
+                    {' ('}
+                    {paper.scoreAdjustment > 0 ? '\u2191' : '\u2193'}
+                    {Math.abs(paper.scoreAdjustment).toFixed(1)}
+                    {')'}
+                  </span>
+                </>
+              )}
+              {/* PDF score */}
+              {paper.finalScore != null && paper.deepAnalysis && (
+                <>
+                  <span style={{ color: 'var(--aparture-mute)' }}>{'\u2192'}</span>
+                  <span
+                    style={{
+                      ...badgeBase,
+                      fontSize: '11px',
+                      background:
+                        paper.pdfScoreAdjustment > 0
+                          ? 'rgba(34,197,94,0.1)'
+                          : paper.pdfScoreAdjustment < 0
+                            ? 'rgba(249,115,22,0.1)'
+                            : 'var(--aparture-bg)',
+                      color:
+                        paper.pdfScoreAdjustment > 0
+                          ? '#22c55e'
+                          : paper.pdfScoreAdjustment < 0
+                            ? '#f97316'
+                            : 'var(--aparture-mute)',
+                    }}
+                  >
+                    PDF: {paper.finalScore.toFixed(1)}
+                    {paper.pdfScoreAdjustment != null &&
+                      Math.abs(paper.pdfScoreAdjustment) > 0.01 && (
+                        <>
+                          {' ('}
+                          {paper.pdfScoreAdjustment > 0 ? '\u2191' : '\u2193'}
+                          {Math.abs(paper.pdfScoreAdjustment).toFixed(1)}
+                          {')'}
+                        </>
+                      )}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+          {/* Adjustment reasons (visible, not hidden in tooltips) */}
+          {paper.adjustmentReason && (
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: '11px',
+                color: 'var(--aparture-mute)',
+                marginBottom: '4px',
+                lineHeight: 1.4,
+              }}
+            >
+              <span style={{ fontWeight: 500 }}>Rescore:</span> {paper.adjustmentReason}
+            </p>
+          )}
           <h3
             style={{
               fontFamily: 'var(--aparture-font-sans)',
