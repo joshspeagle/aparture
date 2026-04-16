@@ -4,7 +4,7 @@ import BriefingView from '../../components/briefing/BriefingView.jsx';
 import sample from '../fixtures/briefing/sample-output.json';
 
 describe('BriefingView', () => {
-  it('renders header, executive summary, themes, paper cards, and debates', () => {
+  it('renders header, executive summary, themes, and paper cards', () => {
     render(
       <BriefingView
         briefing={sample}
@@ -34,9 +34,6 @@ describe('BriefingView', () => {
     // Paper cards
     expect(screen.getByText('Circuit-level analysis of reasoning')).toBeInTheDocument();
     expect(screen.getByText('Head pruning ablations')).toBeInTheDocument();
-    // Debate
-    expect(screen.getByText(/DEBATE/i)).toBeInTheDocument();
-    expect(screen.getByText(/Are attention heads the right unit/)).toBeInTheDocument();
   });
 
   it('marks a paper as starred when feedbackEvents contains a star for that arxivId', () => {

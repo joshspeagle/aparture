@@ -1,5 +1,5 @@
 {
-  "hash": "cb5c35a993be5903d06baf2e65a99d92",
+  "hash": "4740f67ac09121f2b24dcd20abbfed35",
   "input": {
     "provider": "anthropic",
     "model": "claude-opus-4-6",
@@ -73,73 +73,6 @@
                       }
                     }
                   }
-                },
-                "quickSummaryPath": {
-                  "type": "string"
-                },
-                "fullReportPath": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "debates": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["title", "summary", "paperIds"],
-              "properties": {
-                "title": {
-                  "type": "string"
-                },
-                "summary": {
-                  "type": "string"
-                },
-                "paperIds": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "stance": {
-                  "type": "string",
-                  "enum": ["tension", "builds-on", "compromise"]
-                }
-              }
-            }
-          },
-          "longitudinal": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["summary", "todayPaperId", "pastPaperId", "pastDate"],
-              "properties": {
-                "summary": {
-                  "type": "string"
-                },
-                "todayPaperId": {
-                  "type": "string"
-                },
-                "pastPaperId": {
-                  "type": "string"
-                },
-                "pastDate": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "proactiveQuestions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["question"],
-              "properties": {
-                "question": {
-                  "type": "string"
-                },
-                "proposedMemoryPatch": {
-                  "type": "string"
                 }
               }
             }
@@ -166,9 +99,7 @@
           "score": 9.2,
           "onelinePitch": "A mechanistic account of how attention heads compose into multi-step reasoning circuits.",
           "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability of large language models.",
-          "figures": [],
-          "quickSummaryPath": "reports/2026-04-13/papers/2504.01234-quick.md",
-          "fullReportPath": "reports/2026-04-13/papers/2504.01234-full.md"
+          "figures": []
         },
         {
           "arxivId": "2504.02345",
@@ -176,14 +107,9 @@
           "score": 8.5,
           "onelinePitch": "Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.",
           "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity.",
-          "figures": [],
-          "quickSummaryPath": "reports/2026-04-13/papers/2504.02345-quick.md",
-          "fullReportPath": "reports/2026-04-13/papers/2504.02345-full.md"
+          "figures": []
         }
-      ],
-      "debates": [],
-      "longitudinal": [],
-      "proactiveQuestions": []
+      ]
     },
     "tokensIn": 100,
     "tokensOut": 200

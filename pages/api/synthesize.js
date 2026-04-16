@@ -17,7 +17,6 @@ export default async function handler(req, res) {
   const {
     profile,
     papers,
-    history,
     provider,
     model,
     apiKey: clientApiKey,
@@ -65,7 +64,6 @@ export default async function handler(req, res) {
     const prompt = renderSynthesisPrompt(template, {
       profile,
       papers,
-      history: history ?? [],
     });
     // Phase 1.5.1: optional retry hint from the client-side hallucination
     // check + retry flow. Appended to the prompt so the model knows this is

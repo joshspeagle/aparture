@@ -14,13 +14,8 @@ describe('repairBriefing', () => {
           onelinePitch: 'p',
           whyMatters: 'w',
           figures: [],
-          quickSummaryPath: 'q',
-          fullReportPath: 'f',
         },
       ],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
     };
     const callModel = vi.fn();
     const result = await repairBriefing({
@@ -45,13 +40,8 @@ describe('repairBriefing', () => {
           onelinePitch: 'p',
           whyMatters: 'w',
           figures: [],
-          quickSummaryPath: 'q',
-          fullReportPath: 'f',
         },
       ],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
     };
     const fixedBriefing = {
       ...brokenBriefing,
@@ -67,7 +57,7 @@ describe('repairBriefing', () => {
       briefing: brokenBriefing,
       inputPaperIds: ['p1'],
       callModel,
-      llmConfig: { provider: 'anthropic', model: 'claude-opus-4-6', apiKey: 'k' },
+      llmConfig: { provider: 'anthropic', model: 'claude-opus-4-7', apiKey: 'k' },
     });
     expect(result.repaired).toBe(true);
     expect(result.briefing.papers[0].arxivId).toBe('p1');
@@ -86,13 +76,8 @@ describe('repairBriefing', () => {
           onelinePitch: 'p',
           whyMatters: 'w',
           figures: [],
-          quickSummaryPath: 'q',
-          fullReportPath: 'f',
         },
       ],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
     };
     const callModel = vi.fn().mockResolvedValue({
       structured: brokenBriefing,
@@ -105,7 +90,7 @@ describe('repairBriefing', () => {
         briefing: brokenBriefing,
         inputPaperIds: ['p1'],
         callModel,
-        llmConfig: { provider: 'anthropic', model: 'claude-opus-4-6', apiKey: 'k' },
+        llmConfig: { provider: 'anthropic', model: 'claude-opus-4-7', apiKey: 'k' },
       })
     ).rejects.toThrow(/repair failed/i);
   });

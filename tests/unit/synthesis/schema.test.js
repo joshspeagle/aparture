@@ -21,8 +21,6 @@ describe('BriefingSchema', () => {
             'A mechanistic account of how attention heads compose into reasoning steps.',
           whyMatters: 'Grounded in your stated interest in mechanistic interpretability.',
           figures: [],
-          quickSummaryPath: 'reports/2026-04-13/papers/2504.01234-quick.md',
-          fullReportPath: 'reports/2026-04-13/papers/2504.01234-full.md',
         },
         {
           arxivId: '2504.02345',
@@ -32,13 +30,8 @@ describe('BriefingSchema', () => {
             'Ablation evidence that only a small subset of attention heads matter for task X.',
           whyMatters: 'Directly tests the framing from your March 3 starred paper.',
           figures: [],
-          quickSummaryPath: 'reports/2026-04-13/papers/2504.02345-quick.md',
-          fullReportPath: 'reports/2026-04-13/papers/2504.02345-full.md',
         },
       ],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
     };
     const result = BriefingSchema.safeParse(briefing);
     expect(result.success).toBe(true);

@@ -8,8 +8,6 @@ describe('validateCitations', () => {
     const briefing = {
       papers: inputPaperIds.map((id) => ({ arxivId: id })),
       themes: [{ paperIds: ['2504.01234'] }],
-      debates: [{ paperIds: ['2504.02345', '2504.03456'] }],
-      longitudinal: [],
     };
     const result = validateCitations(briefing, inputPaperIds);
     expect(result.ok).toBe(true);
@@ -20,8 +18,6 @@ describe('validateCitations', () => {
     const briefing = {
       papers: [{ arxivId: '2504.01234' }],
       themes: [{ paperIds: ['2504.99999'] }],
-      debates: [],
-      longitudinal: [],
     };
     const result = validateCitations(briefing, inputPaperIds);
     expect(result.ok).toBe(false);
@@ -32,23 +28,9 @@ describe('validateCitations', () => {
     const briefing = {
       papers: [{ arxivId: '2504.88888' }],
       themes: [],
-      debates: [],
-      longitudinal: [],
     };
     const result = validateCitations(briefing, inputPaperIds);
     expect(result.ok).toBe(false);
     expect(result.errors.some((e) => e.includes('2504.88888'))).toBe(true);
-  });
-
-  it('flags longitudinal todayPaperId not in input list', () => {
-    const briefing = {
-      papers: [{ arxivId: '2504.01234' }],
-      themes: [],
-      debates: [],
-      longitudinal: [{ todayPaperId: '2504.77777', pastPaperId: 'old-1' }],
-    };
-    const result = validateCitations(briefing, inputPaperIds);
-    expect(result.ok).toBe(false);
-    expect(result.errors.some((e) => e.includes('2504.77777'))).toBe(true);
   });
 });

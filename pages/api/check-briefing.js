@@ -146,7 +146,7 @@ export default async function handler(req, res) {
 
   if (!briefing || !Array.isArray(papers) || !briefingModel || !provider) {
     res.status(400).json({
-      error: 'missing required fields: briefing, papers (array), briefingModel, provider',
+      error: 'missing required fields: briefing, papers (array), model, provider',
     });
     return;
   }

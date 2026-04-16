@@ -4,8 +4,6 @@ import BriefingHeader from './BriefingHeader.jsx';
 import ExecutiveSummary from './ExecutiveSummary.jsx';
 import ThemeSection from './ThemeSection.jsx';
 import PaperCard from './PaperCard.jsx';
-import DebateBlock from './DebateBlock.jsx';
-import LongitudinalBlock from './LongitudinalBlock.jsx';
 import QuickSummaryInline from './QuickSummaryInline.jsx';
 import FullReportSidePanel from './FullReportSidePanel.jsx';
 
@@ -20,9 +18,6 @@ function estimateReadingTime(briefing) {
   }
   for (const paper of briefing.papers ?? []) {
     words += countWords(paper.onelinePitch ?? '') + countWords(paper.whyMatters ?? '');
-  }
-  for (const debate of briefing.debates ?? []) {
-    words += countWords(debate.summary ?? '');
   }
   return Math.max(1, Math.round(words / 250));
 }
@@ -92,25 +87,6 @@ export default function BriefingView({
             );
           })}
         </ThemeSection>
-      ))}
-
-      {(briefing.debates ?? []).map((debate, idx) => (
-        <DebateBlock
-          key={`debate-${idx}`}
-          title={debate.title}
-          summary={debate.summary}
-          paperIds={debate.paperIds}
-        />
-      ))}
-
-      {(briefing.longitudinal ?? []).map((conn, idx) => (
-        <LongitudinalBlock
-          key={`long-${idx}`}
-          summary={conn.summary}
-          todayPaperId={conn.todayPaperId}
-          pastPaperId={conn.pastPaperId}
-          pastDate={conn.pastDate}
-        />
       ))}
 
       <FullReportSidePanel

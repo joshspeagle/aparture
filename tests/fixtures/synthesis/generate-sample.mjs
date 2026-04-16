@@ -42,8 +42,6 @@ const briefing = {
       whyMatters:
         'Directly grounded in your stated interest in mechanistic interpretability of large language models.',
       figures: [],
-      quickSummaryPath: 'reports/2026-04-13/papers/2504.01234-quick.md',
-      fullReportPath: 'reports/2026-04-13/papers/2504.01234-full.md',
     },
     {
       arxivId: '2504.02345',
@@ -53,13 +51,8 @@ const briefing = {
         'Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.',
       whyMatters: 'Tests the framing from your March 3 starred paper on circuit sparsity.',
       figures: [],
-      quickSummaryPath: 'reports/2026-04-13/papers/2504.02345-quick.md',
-      fullReportPath: 'reports/2026-04-13/papers/2504.02345-full.md',
     },
   ],
-  debates: [],
-  longitudinal: [],
-  proactiveQuestions: [],
 };
 
 const fixturePath = path.resolve(__dirname, '../llm', `${hash}.json`);

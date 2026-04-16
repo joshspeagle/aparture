@@ -78,23 +78,6 @@ function renderBriefingText(briefing) {
         .join('\n')}`
     );
   }
-  if (Array.isArray(briefing?.debates) && briefing.debates.length > 0) {
-    parts.push(
-      `DEBATES:\n${briefing.debates
-        .map(
-          (d, i) =>
-            `  ${i + 1}. ${d.title ?? ''}\n     paperIds: [${(d.paperIds ?? []).join(', ')}]\n     summary: ${d.summary ?? ''}`
-        )
-        .join('\n')}`
-    );
-  }
-  if (Array.isArray(briefing?.longitudinal) && briefing.longitudinal.length > 0) {
-    parts.push(
-      `LONGITUDINAL:\n${briefing.longitudinal
-        .map((l, i) => `  ${i + 1}. ${l.summary ?? JSON.stringify(l)}`)
-        .join('\n')}`
-    );
-  }
   return parts.join('\n\n');
 }
 
@@ -138,8 +121,6 @@ const CLEAN_BRIEFING = {
         'Directly grounded in the user profile focus on mechanistic interpretability of language models.',
     },
   ],
-  debates: [],
-  longitudinal: [],
 };
 
 const CLEAN_PAPERS = [
@@ -172,8 +153,6 @@ const HALLUCINATED_BRIEFING = {
       whyMatters: 'Sets a new state of the art on mathematical benchmarks.',
     },
   ],
-  debates: [],
-  longitudinal: [],
 };
 
 async function seedFixture({ briefing, papers, response }) {
@@ -253,7 +232,7 @@ describe('check-briefing API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       briefing: CLEAN_BRIEFING,
       papers: CLEAN_PAPERS,
-      briefingModel: 'claude-opus-4-6',
+      model: 'claude-opus-4-6',
       provider: 'anthropic',
       apiKey: 'test-key',
       callModelMode: { mode: 'fixture', fixturesDir },
@@ -272,7 +251,7 @@ describe('check-briefing API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       briefing: HALLUCINATED_BRIEFING,
       papers: CLEAN_PAPERS,
-      briefingModel: 'claude-opus-4-6',
+      model: 'claude-opus-4-6',
       provider: 'anthropic',
       apiKey: 'test-key',
       callModelMode: { mode: 'fixture', fixturesDir },
@@ -294,7 +273,7 @@ describe('check-briefing API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       briefing: CLEAN_BRIEFING,
       papers: CLEAN_PAPERS,
-      briefingModel: 'claude-opus-4-6',
+      model: 'claude-opus-4-6',
       provider: 'anthropic',
       callModelMode: { mode: 'fixture', fixturesDir },
     });
@@ -310,7 +289,7 @@ describe('check-briefing API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       // missing briefing
       papers: CLEAN_PAPERS,
-      briefingModel: 'claude-opus-4-6',
+      model: 'claude-opus-4-6',
       provider: 'anthropic',
       apiKey: 'test-key',
       callModelMode: { mode: 'fixture', fixturesDir },

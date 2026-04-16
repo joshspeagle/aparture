@@ -34,7 +34,6 @@ describe('synthesize API route (fixture mode)', () => {
         { arxivId: '2504.01234', title: 'Circuit-level analysis of reasoning', abstract: '...' },
         { arxivId: '2504.02345', title: 'Head pruning ablations', abstract: '...' },
       ],
-      history: [],
       provider: 'anthropic',
       model: 'claude-opus-4-6',
       apiKey: 'test-key',
