@@ -5,18 +5,35 @@ import { useMemo, useState } from 'react';
 import { filterBriefings } from '../../lib/briefing/filterBriefings.js';
 import Input from '../ui/Input.jsx';
 
-function formatBriefingDate(dateStr) {
+/**
+ * Build a human-friendly label for a briefing entry.
+ * When `showTime` is true (i.e. multiple entries share the same date),
+ * a time suffix is appended — e.g. "Today · 2:30 PM".
+ */
+function formatBriefingLabel(dateStr, timestamp, showTime) {
   const date = new Date(dateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const todayISO = today.toISOString().slice(0, 10);
+  const isToday = dateStr === todayISO;
 
-  if (dateStr === todayISO) {
-    return `Today \u00b7 ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  let base;
+  if (isToday) {
+    base = `Today \u00b7 ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  } else {
+    base = `${date.toLocaleDateString('en-US', { weekday: 'short' })} \u00b7 ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   }
 
-  return `${date.toLocaleDateString('en-US', { weekday: 'short' })} \u00b7 ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  if (showTime && timestamp) {
+    const time = new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    return `${base} \u00b7 ${time}`;
+  }
+
+  return base;
 }
 
 function countStars(briefing, feedbackEvents) {
@@ -30,26 +47,44 @@ export default function SidebarBriefingList({
   feedbackEvents,
   activeView,
   onSelectView,
+  onDeleteBriefing,
+  onToggleArchive,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [starredOnly, setStarredOnly] = useState(false);
 
+  const isSearching = !!(searchQuery || starredOnly);
+
   const filtered = useMemo(() => {
     if (!briefingHistory?.length) return [];
-    return filterBriefings(briefingHistory, feedbackEvents, {
+    // When searching, include archived entries so they're discoverable.
+    // Otherwise, filter them out.
+    const source = isSearching ? briefingHistory : briefingHistory.filter((b) => !b.archived);
+    return filterBriefings(source, feedbackEvents, {
       query: searchQuery || undefined,
       starredOnly: starredOnly || undefined,
     });
-  }, [briefingHistory, feedbackEvents, searchQuery, starredOnly]);
+  }, [briefingHistory, feedbackEvents, searchQuery, starredOnly, isSearching]);
+
+  // Determine which dates have multiple entries — those need time suffixes.
+  const dateCounts = useMemo(() => {
+    const counts = {};
+    for (const entry of filtered) {
+      counts[entry.date] = (counts[entry.date] || 0) + 1;
+    }
+    return counts;
+  }, [filtered]);
 
   const entries = useMemo(() => {
     return filtered.map((entry) => ({
+      id: entry.id,
       date: entry.date,
-      label: formatBriefingDate(entry.date),
+      label: formatBriefingLabel(entry.date, entry.timestamp, dateCounts[entry.date] > 1),
       starCount: countStars(entry.briefing, feedbackEvents),
-      viewId: `briefing:${entry.date}`,
+      viewId: `briefing:${entry.id}`,
+      archived: entry.archived ?? false,
     }));
-  }, [filtered, feedbackEvents]);
+  }, [filtered, feedbackEvents, dateCounts]);
 
   const entryStyle = (isActive) => ({
     display: 'flex',
@@ -64,6 +99,18 @@ export default function SidebarBriefingList({
     background: isActive ? 'var(--aparture-sidebar-active)' : 'transparent',
     transition: 'background 100ms ease',
   });
+
+  const actionBtnStyle = {
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '2px 4px',
+    fontSize: '13px',
+    lineHeight: 1,
+    opacity: 0.5,
+    transition: 'opacity 150ms ease',
+    flexShrink: 0,
+  };
 
   const hasHistory = briefingHistory?.length > 0;
 
@@ -147,21 +194,90 @@ export default function SidebarBriefingList({
             }
           }}
         >
-          <span>{entry.label}</span>
-          {entry.starCount > 0 && (
-            <span
-              style={{
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '2px',
-              }}
-            >
-              <span style={{ fontSize: '11px' }}>{'\u2605'}</span>
-              {entry.starCount}
-            </span>
-          )}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {entry.label}
+            {entry.archived && (
+              <span
+                style={{
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  marginLeft: '4px',
+                }}
+              >
+                (archived)
+              </span>
+            )}
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+            {entry.starCount > 0 && (
+              <span
+                style={{
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '2px',
+                  marginRight: '4px',
+                }}
+              >
+                <span style={{ fontSize: '11px' }}>{'\u2605'}</span>
+                {entry.starCount}
+              </span>
+            )}
+            {/* Archive / Unarchive button */}
+            {onToggleArchive && (
+              <button
+                type="button"
+                title={entry.archived ? 'Unarchive' : 'Archive'}
+                style={actionBtnStyle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleArchive(entry.id);
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = 1;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = 0.5;
+                }}
+              >
+                {entry.archived ? '\u{1F4E4}' : '\u{1F4E6}'}
+              </button>
+            )}
+            {/* Delete button */}
+            {onDeleteBriefing && (
+              <button
+                type="button"
+                title="Delete briefing"
+                style={actionBtnStyle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const confirmed = window.confirm(
+                    `Delete this briefing from ${entry.date}? This cannot be undone.`
+                  );
+                  if (confirmed) {
+                    onDeleteBriefing(entry.id);
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = 1;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = 0.5;
+                }}
+              >
+                {'\u{1F5D1}'}
+              </button>
+            )}
+          </span>
         </div>
       ))}
 

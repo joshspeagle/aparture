@@ -114,6 +114,8 @@ export default function Sidebar({
   onSelectView,
   onNewBriefing,
   feedbackCount,
+  onDeleteBriefing,
+  onToggleArchive,
 }) {
   return (
     <div className="shell-sidebar">
@@ -159,6 +161,8 @@ export default function Sidebar({
         feedbackEvents={feedbackEvents}
         activeView={activeView}
         onSelectView={onSelectView}
+        onDeleteBriefing={onDeleteBriefing}
+        onToggleArchive={onToggleArchive}
       />
 
       {/* Separator */}

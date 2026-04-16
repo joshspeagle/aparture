@@ -218,10 +218,10 @@ export default function MainArea({
     );
   }
 
-  // Briefing view — matched by "briefing:<date>" pattern
+  // Briefing view — matched by "briefing:<id>" pattern
   if (activeView.startsWith('briefing:')) {
-    const dateKey = activeView.slice('briefing:'.length);
-    const entry = briefingHistory?.find((b) => b.date === dateKey);
+    const entryKey = activeView.slice('briefing:'.length);
+    const entry = briefingHistory?.find((b) => b.id === entryKey);
 
     if (!entry) {
       return (
@@ -232,7 +232,7 @@ export default function MainArea({
               fontFamily: 'var(--aparture-font-sans)',
             }}
           >
-            No briefing found for {dateKey}.
+            No briefing found for {entryKey}.
           </p>
         </div>
       );

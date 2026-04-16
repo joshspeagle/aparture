@@ -447,7 +447,13 @@ export default function App() {
     migrationNotice,
     dismissMigrationNotice,
   } = useProfile({ scoringCriteria: config.scoringCriteria });
-  const { current: currentBriefing, history: briefingHistory, saveBriefing } = useBriefing();
+  const {
+    current: currentBriefing,
+    history: briefingHistory,
+    saveBriefing,
+    deleteBriefing,
+    toggleArchive,
+  } = useBriefing();
   const feedback = useFeedback();
 
   // Phase 1.5: draft-vs-committed profile editing.
@@ -558,8 +564,8 @@ export default function App() {
   const initialViewSet = useRef(false);
   useEffect(() => {
     if (initialViewSet.current) return;
-    if (currentBriefing?.date) {
-      setActiveView(`briefing:${currentBriefing.date}`);
+    if (currentBriefing?.id) {
+      setActiveView(`briefing:${currentBriefing.id}`);
       initialViewSet.current = true;
     }
   }, [currentBriefing]);
@@ -726,8 +732,8 @@ export default function App() {
 
     // Wrap saveBriefing so we can auto-switch to the new briefing view
     const saveBriefingAndSwitch = (date, briefing, metadata) => {
-      saveBriefing(date, briefing, metadata);
-      setActiveView(`briefing:${date}`);
+      const newId = saveBriefing(date, briefing, metadata);
+      setActiveView(`briefing:${newId}`);
     };
 
     return runBriefingGeneration({
@@ -961,6 +967,8 @@ export default function App() {
         onSelectView={setActiveView}
         onNewBriefing={handleStart}
         feedbackCount={feedback.events.length}
+        onDeleteBriefing={deleteBriefing}
+        onToggleArchive={toggleArchive}
       />
 
       <div className="shell-main">
@@ -978,10 +986,10 @@ export default function App() {
           onAddComment={(arxivId, text) => {
             // Look for the paper in the current briefing first, then in
             // the active briefing entry for the selected view.
-            const dateKey = activeView.startsWith('briefing:')
+            const entryKey = activeView.startsWith('briefing:')
               ? activeView.slice('briefing:'.length)
-              : currentBriefing?.date;
-            const entry = briefingHistory?.find((b) => b.date === dateKey);
+              : currentBriefing?.id;
+            const entry = briefingHistory?.find((b) => b.id === entryKey);
             const paper = entry?.briefing?.papers?.find((p) => p.arxivId === arxivId);
             if (!paper) return;
             feedback.addPaperComment(

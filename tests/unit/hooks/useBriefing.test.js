@@ -6,6 +6,15 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+const makeBriefing = (summary = 'Test') => ({
+  executiveSummary: summary,
+  themes: [],
+  papers: [{ arxivId: '2504.01234', title: 't', score: 8 }],
+  debates: [],
+  longitudinal: [],
+  proactiveQuestions: [],
+});
+
 describe('useBriefing', () => {
   it('starts with no current briefing', () => {
     const { result } = renderHook(() => useBriefing());
@@ -15,14 +24,7 @@ describe('useBriefing', () => {
 
   it('sets the current briefing and appends to history', () => {
     const { result } = renderHook(() => useBriefing());
-    const briefing = {
-      executiveSummary: 'Test',
-      themes: [],
-      papers: [{ arxivId: '2504.01234', title: 't', score: 8 }],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
-    };
+    const briefing = makeBriefing();
     act(() => {
       result.current.saveBriefing('2026-04-13', briefing);
     });
@@ -31,19 +33,48 @@ describe('useBriefing', () => {
     expect(result.current.history.some((b) => b.date === '2026-04-13')).toBe(true);
   });
 
+  it('creates entries with id, timestamp, and archived: false', () => {
+    const { result } = renderHook(() => useBriefing());
+    const briefing = makeBriefing();
+    act(() => {
+      result.current.saveBriefing('2026-04-13', briefing);
+    });
+    const entry = result.current.current;
+    expect(entry.id).toBeDefined();
+    expect(typeof entry.id).toBe('string');
+    expect(entry.id.length).toBeGreaterThan(0);
+    expect(typeof entry.timestamp).toBe('number');
+    expect(entry.timestamp).toBeGreaterThan(0);
+    expect(entry.archived).toBe(false);
+  });
+
+  it('saveBriefing returns the new entry id', () => {
+    const { result } = renderHook(() => useBriefing());
+    let returnedId;
+    act(() => {
+      returnedId = result.current.saveBriefing('2026-04-13', makeBriefing());
+    });
+    expect(returnedId).toBe(result.current.current.id);
+  });
+
+  it('multiple saves on the same date create separate entries', () => {
+    const { result } = renderHook(() => useBriefing());
+    act(() => {
+      result.current.saveBriefing('2026-04-13', makeBriefing('First'));
+      result.current.saveBriefing('2026-04-13', makeBriefing('Second'));
+    });
+    const entriesForDate = result.current.history.filter((b) => b.date === '2026-04-13');
+    expect(entriesForDate).toHaveLength(2);
+    expect(entriesForDate[0].id).not.toBe(entriesForDate[1].id);
+    // Most recent should be first
+    expect(entriesForDate[0].briefing.executiveSummary).toBe('Second');
+    expect(entriesForDate[1].briefing.executiveSummary).toBe('First');
+  });
+
   it('keeps at most 90 past briefings in history', () => {
     const { result } = renderHook(() => useBriefing());
-    const empty = {
-      executiveSummary: 'x',
-      themes: [],
-      papers: [],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
-    };
+    const empty = makeBriefing('x');
     act(() => {
-      // Save 100 dated briefings. Dates generated from epoch so we
-      // deterministically exceed the 90-day window.
       for (let i = 0; i < 100; i++) {
         const d = new Date(Date.UTC(2025, 0, 1));
         d.setUTCDate(d.getUTCDate() + i);
@@ -56,14 +87,7 @@ describe('useBriefing', () => {
 
   it('persists generationMetadata on each saved entry', () => {
     const { result } = renderHook(() => useBriefing());
-    const briefing = {
-      executiveSummary: 'Test',
-      themes: [],
-      papers: [],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
-    };
+    const briefing = makeBriefing();
     const metadata = {
       profileSnapshot: 'my research interests...',
       filterModel: 'gemini-2.5-flash-lite',
@@ -85,8 +109,111 @@ describe('useBriefing', () => {
     expect(result.current.history[0].generationMetadata).toEqual(metadata);
   });
 
-  it('tolerates legacy entries without generationMetadata', () => {
-    // Seed localStorage with an entry that has no generationMetadata
+  it('saveBriefing without metadata arg omits the field from the stored entry', () => {
+    const { result } = renderHook(() => useBriefing());
+    act(() => {
+      result.current.saveBriefing('2026-04-11', makeBriefing('no-metadata'));
+    });
+    expect(result.current.current.date).toBe('2026-04-11');
+    expect(result.current.current.generationMetadata).toBeUndefined();
+  });
+
+  // --- deleteBriefing ---
+
+  it('deleteBriefing removes an entry by id', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id1, id2;
+    act(() => {
+      id1 = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      id2 = result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    });
+    expect(result.current.history).toHaveLength(2);
+    act(() => {
+      result.current.deleteBriefing(id1);
+    });
+    expect(result.current.history).toHaveLength(1);
+    expect(result.current.history[0].id).toBe(id2);
+  });
+
+  it('deleteBriefing clears current if the deleted entry is current', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id;
+    act(() => {
+      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    });
+    expect(result.current.current).not.toBeNull();
+    act(() => {
+      result.current.deleteBriefing(id);
+    });
+    expect(result.current.current).toBeNull();
+  });
+
+  it('deleteBriefing does not clear current if a different entry is deleted', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id1;
+    act(() => {
+      id1 = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    });
+    // current is now B
+    expect(result.current.current.briefing.executiveSummary).toBe('B');
+    act(() => {
+      result.current.deleteBriefing(id1);
+    });
+    expect(result.current.current).not.toBeNull();
+    expect(result.current.current.briefing.executiveSummary).toBe('B');
+  });
+
+  it('deleteBriefing persists to localStorage', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id;
+    act(() => {
+      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    });
+    act(() => {
+      result.current.deleteBriefing(id);
+    });
+    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-history'));
+    expect(stored).toHaveLength(1);
+    expect(stored[0].briefing.executiveSummary).toBe('B');
+  });
+
+  // --- toggleArchive ---
+
+  it('toggleArchive flips the archived flag', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id;
+    act(() => {
+      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    });
+    expect(result.current.history[0].archived).toBe(false);
+    act(() => {
+      result.current.toggleArchive(id);
+    });
+    expect(result.current.history[0].archived).toBe(true);
+    act(() => {
+      result.current.toggleArchive(id);
+    });
+    expect(result.current.history[0].archived).toBe(false);
+  });
+
+  it('toggleArchive persists to localStorage', () => {
+    const { result } = renderHook(() => useBriefing());
+    let id;
+    act(() => {
+      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    });
+    act(() => {
+      result.current.toggleArchive(id);
+    });
+    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-history'));
+    expect(stored[0].archived).toBe(true);
+  });
+
+  // --- Back-compat / migration ---
+
+  it('tolerates legacy entries without id/timestamp/archived and migrates them', () => {
     window.localStorage.setItem(
       'aparture-briefing-history',
       JSON.stringify([
@@ -105,24 +232,42 @@ describe('useBriefing', () => {
     );
     const { result } = renderHook(() => useBriefing());
     expect(result.current.history).toHaveLength(1);
-    expect(result.current.history[0].date).toBe('2026-04-10');
-    expect(result.current.history[0].generationMetadata).toBeUndefined();
+    const entry = result.current.history[0];
+    expect(entry.date).toBe('2026-04-10');
+    expect(entry.id).toBe('legacy-2026-04-10');
+    expect(typeof entry.timestamp).toBe('number');
+    expect(entry.timestamp).toBeGreaterThan(0);
+    expect(entry.archived).toBe(false);
+    expect(entry.generationMetadata).toBeUndefined();
   });
 
-  it('saveBriefing without metadata arg omits the field from the stored entry', () => {
+  it('migrates legacy current entry on read', () => {
+    window.localStorage.setItem(
+      'aparture-briefing-current',
+      JSON.stringify({
+        date: '2026-04-10',
+        briefing: { executiveSummary: 'legacy-current' },
+      })
+    );
     const { result } = renderHook(() => useBriefing());
-    const briefing = {
-      executiveSummary: 'no-metadata',
-      themes: [],
-      papers: [],
-      debates: [],
-      longitudinal: [],
-      proactiveQuestions: [],
+    expect(result.current.current.id).toBe('legacy-2026-04-10');
+    expect(result.current.current.archived).toBe(false);
+    expect(typeof result.current.current.timestamp).toBe('number');
+  });
+
+  it('does not re-migrate entries that already have all fields', () => {
+    const existing = {
+      id: 'my-uuid',
+      date: '2026-04-10',
+      timestamp: 1700000000000,
+      briefing: { executiveSummary: 'already migrated' },
+      archived: true,
     };
-    act(() => {
-      result.current.saveBriefing('2026-04-11', briefing);
-    });
-    expect(result.current.current.date).toBe('2026-04-11');
-    expect(result.current.current.generationMetadata).toBeUndefined();
+    window.localStorage.setItem('aparture-briefing-history', JSON.stringify([existing]));
+    const { result } = renderHook(() => useBriefing());
+    const entry = result.current.history[0];
+    expect(entry.id).toBe('my-uuid');
+    expect(entry.timestamp).toBe(1700000000000);
+    expect(entry.archived).toBe(true);
   });
 });
