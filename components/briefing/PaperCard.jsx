@@ -42,7 +42,7 @@ export default function PaperCard({
   return (
     <section className="paper-card">
       <span className={`score-badge${scoreHigh ? ' score-high' : ''}`}>
-        {paper.score.toFixed(1)}
+        {(paper.score ?? 0).toFixed(1)}
       </span>
       <h3 className="paper-title">{paper.title}</h3>
       <div className="paper-meta">

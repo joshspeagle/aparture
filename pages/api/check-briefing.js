@@ -130,7 +130,7 @@ export default async function handler(req, res) {
   const {
     briefing,
     papers,
-    briefingModel,
+    model: briefingModel,
     provider,
     apiKey: clientApiKey,
     password,

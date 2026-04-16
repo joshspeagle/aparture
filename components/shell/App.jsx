@@ -534,13 +534,14 @@ export default function App() {
   // Stable ref avoids reactContext churn on every render (setActiveView
   // identity is stable from useState, saveBriefing from useBriefing).
   const saveBriefingAndSwitchRef = useRef(null);
-  saveBriefingAndSwitchRef.current = (date, briefing, metadata) => {
-    const newId = saveBriefing(date, briefing, metadata);
+  saveBriefingAndSwitchRef.current = (date, briefing, metadata, options) => {
+    const newId = saveBriefing(date, briefing, metadata, options);
     setActiveView(`briefing:${newId}`);
     return newId;
   };
   const stableSaveBriefingAndSwitch = useCallback(
-    (date, briefing, metadata) => saveBriefingAndSwitchRef.current(date, briefing, metadata),
+    (date, briefing, metadata, options) =>
+      saveBriefingAndSwitchRef.current(date, briefing, metadata, options),
     []
   );
 
@@ -621,6 +622,10 @@ export default function App() {
 
       if (response.status === 401) {
         addError('Invalid password');
+        return;
+      }
+      if (!response.ok) {
+        addError('Authentication failed');
         return;
       }
 
@@ -831,8 +836,14 @@ export default function App() {
     for (const e of feedback.events) {
       if (!e.arxivId || (e.type !== 'star' && e.type !== 'dismiss')) continue;
       const entry = idx.get(e.arxivId) ?? { starred: false, dismissed: false };
-      if (e.type === 'star') entry.starred = true;
-      if (e.type === 'dismiss') entry.dismissed = true;
+      if (e.type === 'star') {
+        entry.starred = true;
+        entry.dismissed = false;
+      }
+      if (e.type === 'dismiss') {
+        entry.dismissed = true;
+        entry.starred = false;
+      }
       idx.set(e.arxivId, entry);
     }
     return idx;
@@ -1062,9 +1073,11 @@ export default function App() {
           onCycleVerdict={cycleFilterVerdict}
           onContinueAfterFilter={() => {
             pauseRef.current = false;
+            setProcessing((prev) => ({ ...prev, isPaused: false }));
           }}
           onContinueAfterReview={() => {
             pauseRef.current = false;
+            setProcessing((prev) => ({ ...prev, isPaused: false }));
           }}
           // Briefing card (generate button)
           synthesizing={synthesizing}

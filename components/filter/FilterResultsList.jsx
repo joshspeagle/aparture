@@ -46,7 +46,9 @@ function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onC
               marginTop: '4px',
             }}
           >
-            {paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')}
+            {(paper.authors?.length ?? 0) > 2
+              ? `${paper.authors[0]} et al.`
+              : (paper.authors ?? []).join(', ')}
           </p>
           {paper.filterSummary && (
             <p

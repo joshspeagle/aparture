@@ -41,9 +41,11 @@ export default function FullReportSidePanel({ open, onOpenChange, title, content
             className="briefing-prose"
             style={{ padding: 'var(--aparture-space-6) 0', maxWidth: 'none' }}
           >
-            {content.split('\n\n').map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
+            {String(content ?? '')
+              .split('\n\n')
+              .map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
           </article>
           <Dialog.Close asChild>
             <button
