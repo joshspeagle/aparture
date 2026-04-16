@@ -134,6 +134,7 @@ export default [
       'components/results/**/*.jsx',
       'components/notebooklm/**/*.jsx',
       'components/filter/**/*.jsx',
+      'components/run/**/*.jsx',
       'components/settings/**/*.jsx',
       'components/shell/**/*.jsx',
       'components/ui/**/*.jsx',

@@ -7,6 +7,7 @@ import BriefingView from '../briefing/BriefingView.jsx';
 import GenerationDetails from '../briefing/GenerationDetails.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
 import ProgressTracker from '../analyzer/ProgressTracker.jsx';
+import ProgressTimeline from '../run/ProgressTimeline.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
@@ -136,66 +137,65 @@ export default function MainArea({
     );
   }
 
-  // Pipeline view — ControlPanel, ProgressTracker, results, reports,
-  // filter results. This is a temporary view that will be replaced by
-  // the ProgressTimeline in core-2.
+  // Pipeline view — ProgressTimeline + ControlPanel + results + reports.
   if (activeView === 'pipeline') {
     return (
       <div className="config-surface" style={{ maxWidth: '900px' }}>
-        <ControlPanel
-          processing={processing}
-          testState={testState}
-          onStart={onStart}
-          onPause={onPause}
-          onResume={onResume}
-          onStop={onStop}
-          onReset={onReset}
-          onRunDryRun={onRunDryRun}
-          onRunMinimalTest={onRunMinimalTest}
-        />
-
-        <ProgressTracker
-          processing={processing}
-          testState={testState}
-          getStageDisplay={getStageDisplay}
-          getProgressPercentage={getProgressPercentage}
-        />
-
-        <AnalysisResultsList
-          results={results}
-          testState={testState}
-          processing={processing}
-          abstractOnlyPapers={abstractOnlyPapers}
-          renderPaperCard={renderPaperCard}
-        />
-
-        <DownloadReportCard
-          testState={testState}
-          processingTiming={processingTiming}
-          results={results}
-          processing={processing}
-          config={config}
-          onExport={onExport}
-        />
-
-        <BriefingCard
-          results={results}
-          testState={testState}
-          synthesizing={synthesizing}
-          synthesisError={synthesisError}
-          briefingCheckResult={briefingCheckResult}
-          briefingStage={briefingStage}
-          processing={processing}
-          onGenerate={onGenerateBriefing}
-        />
-
-        <FilterResultsList
-          filterResults={filterResults}
-          filterSortedPapers={filterSortedPapers}
-          testState={testState}
-          processing={processing}
+        <ProgressTimeline
           onCycleVerdict={onCycleVerdict}
-        />
+          pauseAfterFilter={config?.pauseAfterFilter ?? true}
+        >
+          {/* ControlPanel and ProgressTracker sit below the timeline */}
+          <div style={{ marginTop: 'var(--aparture-space-6)' }}>
+            <ControlPanel
+              processing={processing}
+              testState={testState}
+              onStart={onStart}
+              onPause={onPause}
+              onResume={onResume}
+              onStop={onStop}
+              onReset={onReset}
+              onRunDryRun={onRunDryRun}
+              onRunMinimalTest={onRunMinimalTest}
+            />
+          </div>
+
+          <AnalysisResultsList
+            results={results}
+            testState={testState}
+            processing={processing}
+            abstractOnlyPapers={abstractOnlyPapers}
+            renderPaperCard={renderPaperCard}
+          />
+
+          <DownloadReportCard
+            testState={testState}
+            processingTiming={processingTiming}
+            results={results}
+            processing={processing}
+            config={config}
+            onExport={onExport}
+          />
+
+          <BriefingCard
+            results={results}
+            testState={testState}
+            synthesizing={synthesizing}
+            synthesisError={synthesisError}
+            briefingCheckResult={briefingCheckResult}
+            briefingStage={briefingStage}
+            processing={processing}
+            onGenerate={onGenerateBriefing}
+          />
+
+          <FilterResultsList
+            filterResults={filterResults}
+            filterSortedPapers={filterSortedPapers}
+            testState={testState}
+            processing={processing}
+            onCycleVerdict={onCycleVerdict}
+          />
+        </ProgressTimeline>
       </div>
     );
   }
