@@ -1,5 +1,5 @@
-export default function Card({ className, children, ...rest }) {
-  const style = {
+export default function Card({ className, children, style: overrideStyle, ...rest }) {
+  const baseStyle = {
     background: 'var(--aparture-surface)',
     border: '1px solid var(--aparture-hairline)',
     padding: 'var(--aparture-space-6)',
@@ -7,7 +7,7 @@ export default function Card({ className, children, ...rest }) {
   };
 
   return (
-    <div style={style} className={className} {...rest}>
+    <div style={{ ...baseStyle, ...overrideStyle }} className={className} {...rest}>
       {children}
     </div>
   );

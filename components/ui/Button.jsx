@@ -4,6 +4,7 @@ export default function Button({
   className,
   children,
   type = 'button',
+  style: overrideStyle,
   ...rest
 }) {
   const base = {
@@ -45,7 +46,7 @@ export default function Button({
     <button
       type={type}
       disabled={disabled}
-      style={{ ...base, ...variants[variant] }}
+      style={{ ...base, ...variants[variant], ...overrideStyle }}
       className={className}
       {...rest}
     >

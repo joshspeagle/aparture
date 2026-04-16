@@ -1,7 +1,7 @@
 const CHEVRON_SVG =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' fill='none' stroke='%236b6862' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E";
 
-export default function Select({ className, children, ...rest }) {
+export default function Select({ className, children, style: overrideStyle, ...rest }) {
   const style = {
     background: 'var(--aparture-bg)',
     border: '1px solid var(--aparture-hairline)',
@@ -22,7 +22,7 @@ export default function Select({ className, children, ...rest }) {
   };
 
   return (
-    <select style={style} className={className} {...rest}>
+    <select style={{ ...style, ...overrideStyle }} className={className} {...rest}>
       {children}
     </select>
   );

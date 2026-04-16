@@ -71,9 +71,27 @@
   }
 }
 
-/* Programmatic theme override via data-theme attribute on <html>.
- * When useTheme sets an explicit theme (not 'auto'), this rule takes
- * precedence over the media query above. */
+/* Programmatic theme overrides via data-theme attribute on <html>.
+ * When useTheme sets an explicit theme (not 'auto'), these rules take
+ * precedence over the media query above. Both light and dark are needed
+ * because a user whose OS is in dark mode clicking "light" needs the
+ * light tokens to override the media query's dark tokens. */
+[data-theme=light] {
+  --aparture-bg: #fafaf7;
+  --aparture-surface: #f4f1ea;
+  --aparture-ink: #1a1a1a;
+  --aparture-mute: #6b6862;
+  --aparture-hairline: #d8d4ca;
+  --aparture-accent: #b31b1b;
+  --aparture-debate: #ede6d5;
+  --aparture-longitudinal: #e4e8ec;
+  --aparture-question: #efe8d8;
+  --aparture-sidebar-bg: #f4f1ea;
+  --aparture-sidebar-active: #ede6d5;
+  --aparture-hover: #ede6d5;
+  --aparture-focus-ring: #b31b1b;
+}
+
 [data-theme=dark] {
   --aparture-bg: #141211;
   --aparture-surface: #1f1c1a;

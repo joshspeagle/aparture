@@ -1,5 +1,5 @@
-export default function Input({ className, ...rest }) {
-  const style = {
+export default function Input({ className, style: overrideStyle, ...rest }) {
+  const baseStyle = {
     background: 'var(--aparture-bg)',
     border: '1px solid var(--aparture-hairline)',
     fontFamily: 'var(--aparture-font-sans)',
@@ -12,5 +12,5 @@ export default function Input({ className, ...rest }) {
     outline: 'none',
   };
 
-  return <input style={style} className={className} {...rest} />;
+  return <input style={{ ...baseStyle, ...overrideStyle }} className={className} {...rest} />;
 }

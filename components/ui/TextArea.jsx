@@ -1,5 +1,5 @@
-export default function TextArea({ className, ...rest }) {
-  const style = {
+export default function TextArea({ className, style: overrideStyle, ...rest }) {
+  const baseStyle = {
     background: 'var(--aparture-bg)',
     border: '1px solid var(--aparture-hairline)',
     fontFamily: 'var(--aparture-font-sans)',
@@ -14,5 +14,5 @@ export default function TextArea({ className, ...rest }) {
     minHeight: '120px',
   };
 
-  return <textarea style={style} className={className} {...rest} />;
+  return <textarea style={{ ...baseStyle, ...overrideStyle }} className={className} {...rest} />;
 }
