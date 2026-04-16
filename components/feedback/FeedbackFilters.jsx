@@ -1,3 +1,5 @@
+import Select from '../ui/Select.jsx';
+
 const TYPE_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'stars', label: '★ Stars' },
@@ -25,19 +27,41 @@ export default function FeedbackFilters({ filters, onFiltersChange }) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
-      <div className="inline-flex rounded-md border border-slate-700 overflow-hidden">
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 'var(--aparture-space-4)',
+        fontSize: 'var(--aparture-text-xs)',
+        color: 'var(--aparture-ink)',
+      }}
+    >
+      <div
+        style={{
+          display: 'inline-flex',
+          borderRadius: '4px',
+          border: '1px solid var(--aparture-hairline)',
+          overflow: 'hidden',
+        }}
+      >
         {TYPE_OPTIONS.map((opt) => {
           const active = filters.type === opt.value;
-          const classes = active
-            ? 'bg-slate-700 text-slate-100'
-            : 'text-slate-400 hover:text-slate-200';
           return (
             <button
               key={opt.value}
               type="button"
               onClick={() => handleType(opt.value)}
-              className={`px-3 py-1 ${classes}`}
+              data-active={active || undefined}
+              style={{
+                padding: '4px 12px',
+                background: active ? 'var(--aparture-hover)' : 'transparent',
+                color: active ? 'var(--aparture-ink)' : 'var(--aparture-mute)',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'inherit',
+              }}
             >
               {opt.label}
             </button>
@@ -45,22 +69,26 @@ export default function FeedbackFilters({ filters, onFiltersChange }) {
         })}
       </div>
 
-      <label className="inline-flex items-center gap-2 cursor-pointer">
+      <label
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--aparture-space-2)',
+          cursor: 'pointer',
+          color: 'var(--aparture-ink)',
+        }}
+      >
         <input type="checkbox" checked={filters.newOnly} onChange={handleNewOnly} />
         <span>New since last revision</span>
       </label>
 
-      <select
-        value={filters.dateRange}
-        onChange={handleDateRange}
-        className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-slate-200"
-      >
+      <Select value={filters.dateRange} onChange={handleDateRange} style={{ width: 'auto' }}>
         {DATE_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }

@@ -1,21 +1,41 @@
+import Button from '../ui/Button.jsx';
+
 export default function FeedbackHeader({ newCount, totalCount, onSuggestClick }) {
   const hasNew = newCount > 0;
   return (
-    <header className="flex items-center justify-between mb-4">
+    <header
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 'var(--aparture-space-4)',
+      }}
+    >
       <div>
-        <h2 className="text-base font-semibold text-slate-100">Feedback</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <h2
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-base)',
+            fontWeight: 600,
+            color: 'var(--aparture-ink)',
+            margin: 0,
+          }}
+        >
+          Feedback
+        </h2>
+        <p
+          style={{
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            marginTop: '2px',
+          }}
+        >
           {newCount} new since last revision · {totalCount} total
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onSuggestClick}
-        disabled={!hasNew}
-        className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-      >
+      <Button variant="primary" onClick={onSuggestClick} disabled={!hasNew}>
         Suggest improvements
-      </button>
+      </Button>
     </header>
   );
 }

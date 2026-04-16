@@ -23,18 +23,26 @@ export default function FeedbackPanel({ events, cutoff, onAddGeneralComment, onS
   const hasEvents = events.length > 0;
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-900/50 p-5 mb-6">
+    <section
+      style={{
+        background: 'var(--aparture-surface)',
+        border: '1px solid var(--aparture-hairline)',
+        borderRadius: '8px',
+        padding: 'var(--aparture-space-6)',
+        marginBottom: 'var(--aparture-space-6)',
+      }}
+    >
       <FeedbackHeader
         newCount={counts.newCount}
         totalCount={counts.totalCount}
         onSuggestClick={onSuggestClick}
       />
 
-      <div className="mb-4">
+      <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
         <GeneralCommentInput onSave={onAddGeneralComment} />
       </div>
 
-      <div className="mb-4">
+      <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
         <FeedbackFilters filters={filters} onFiltersChange={setFilters} />
       </div>
 
