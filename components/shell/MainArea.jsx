@@ -14,6 +14,7 @@ import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import PreviewPanel from '../profile/PreviewPanel.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
+import WelcomeView from '../welcome/WelcomeView.jsx';
 
 export default function MainArea({
   activeView,
@@ -198,35 +199,11 @@ export default function MainArea({
     );
   }
 
-  // Welcome view (placeholder — full WelcomeView is Task 7)
+  // Welcome view
   if (activeView === 'welcome') {
     return (
       <div className="briefing-surface">
-        <h1
-          style={{
-            fontFamily: 'var(--aparture-font-serif)',
-            fontSize: 'var(--aparture-text-2xl)',
-            fontWeight: 600,
-            color: 'var(--aparture-ink)',
-          }}
-        >
-          Welcome to{' '}
-          <span>
-            ap<span style={{ color: 'var(--aparture-accent)' }}>ar</span>ture
-          </span>
-        </h1>
-        <p
-          style={{
-            fontFamily: 'var(--aparture-font-serif)',
-            fontSize: 'var(--aparture-text-base)',
-            lineHeight: 1.65,
-            color: 'var(--aparture-ink)',
-            marginTop: 'var(--aparture-space-4)',
-          }}
-        >
-          A research-paper discovery tool for arXiv. Click <strong>+ New Briefing</strong> in the
-          sidebar to get started.
-        </p>
+        <WelcomeView />
       </div>
     );
   }

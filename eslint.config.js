@@ -137,6 +137,7 @@ export default [
       'components/settings/**/*.jsx',
       'components/shell/**/*.jsx',
       'components/ui/**/*.jsx',
+      'components/welcome/**/*.jsx',
       'hooks/**/*.js',
       'tests/component/**/*.jsx',
     ],
