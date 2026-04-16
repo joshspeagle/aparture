@@ -182,6 +182,11 @@ export default function Sidebar({
         isActive={activeView === 'settings'}
         onClick={() => onSelectView('settings')}
       />
+      <NavEntry
+        label="Pipeline"
+        isActive={activeView === 'pipeline'}
+        onClick={() => onSelectView('pipeline')}
+      />
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />

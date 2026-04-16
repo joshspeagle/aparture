@@ -1,7 +1,16 @@
 // components/shell/MainArea.jsx
 // Routes activeView to the correct content panel.
 
+import { Unlock } from 'lucide-react';
+import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
+import ControlPanel from '../analyzer/ControlPanel.jsx';
+import ProgressTracker from '../analyzer/ProgressTracker.jsx';
+import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
+import DownloadReportCard from '../results/DownloadReportCard.jsx';
+import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
+import FilterResultsList from '../filter/FilterResultsList.jsx';
+import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import PreviewPanel from '../profile/PreviewPanel.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
@@ -10,7 +19,7 @@ export default function MainArea({
   activeView,
   // For briefing views
   briefingHistory,
-  currentBriefing: _currentBriefing,
+  currentBriefing,
   quickSummariesById,
   fullReportsById,
   results,
@@ -21,7 +30,6 @@ export default function MainArea({
   // For profile view
   profile,
   updateProfile,
-  saveSuggested: _saveSuggested,
   revertToRevision,
   clearHistory,
   migrationNotice,
@@ -39,14 +47,48 @@ export default function MainArea({
   config,
   setConfig,
   processing,
-  // For briefing card (generate button) — wired up in later tasks
-  synthesizing: _synthesizing,
-  synthesisError: _synthesisError,
-  briefingCheckResult: _briefingCheckResult,
-  briefingStage: _briefingStage,
-  onGenerateBriefing: _onGenerateBriefing,
-  // For running state — wired up in later tasks
-  testState: _testState,
+  // Pipeline view
+  testState,
+  processingTiming,
+  filterResults,
+  filterSortedPapers,
+  abstractOnlyPapers,
+  renderPaperCard,
+  onStart,
+  onPause,
+  onResume,
+  onStop,
+  onReset,
+  onRunDryRun,
+  onRunMinimalTest,
+  onExport,
+  getStageDisplay,
+  getProgressPercentage,
+  onCycleVerdict,
+  // Briefing card (generate button)
+  synthesizing,
+  synthesisError,
+  briefingCheckResult,
+  briefingStage,
+  onGenerateBriefing,
+  // Feedback panel
+  feedbackCutoff,
+  onAddGeneralComment,
+  // NotebookLM
+  podcastDuration,
+  setPodcastDuration,
+  notebookLMModel,
+  setNotebookLMModel,
+  notebookLMGenerating,
+  notebookLMStatus,
+  notebookLMContent,
+  enableHallucinationCheck,
+  setEnableHallucinationCheck,
+  hallucinationWarning,
+  onGenerateNotebookLM,
+  onDownloadNotebookLM,
+  // Logout
+  onLogout,
 }) {
   // Profile view
   if (activeView === 'profile') {
@@ -77,6 +119,81 @@ export default function MainArea({
     return (
       <div className="config-surface">
         <SettingsPanel config={config} setConfig={setConfig} processing={processing} />
+        {/* Logout button at bottom of settings */}
+        <div style={{ marginTop: 'var(--aparture-space-6)' }}>
+          <button
+            onClick={onLogout}
+            className="px-3 py-2 bg-slate-700 rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2 text-sm"
+            style={{ color: 'var(--aparture-ink)' }}
+          >
+            <Unlock className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Pipeline view — ControlPanel, ProgressTracker, results, reports,
+  // filter results. This is a temporary view that will be replaced by
+  // the ProgressTimeline in core-2.
+  if (activeView === 'pipeline') {
+    return (
+      <div className="config-surface" style={{ maxWidth: '900px' }}>
+        <ControlPanel
+          processing={processing}
+          testState={testState}
+          onStart={onStart}
+          onPause={onPause}
+          onResume={onResume}
+          onStop={onStop}
+          onReset={onReset}
+          onRunDryRun={onRunDryRun}
+          onRunMinimalTest={onRunMinimalTest}
+        />
+
+        <ProgressTracker
+          processing={processing}
+          testState={testState}
+          getStageDisplay={getStageDisplay}
+          getProgressPercentage={getProgressPercentage}
+        />
+
+        <AnalysisResultsList
+          results={results}
+          testState={testState}
+          processing={processing}
+          abstractOnlyPapers={abstractOnlyPapers}
+          renderPaperCard={renderPaperCard}
+        />
+
+        <DownloadReportCard
+          testState={testState}
+          processingTiming={processingTiming}
+          results={results}
+          processing={processing}
+          config={config}
+          onExport={onExport}
+        />
+
+        <BriefingCard
+          results={results}
+          testState={testState}
+          synthesizing={synthesizing}
+          synthesisError={synthesisError}
+          briefingCheckResult={briefingCheckResult}
+          briefingStage={briefingStage}
+          processing={processing}
+          onGenerate={onGenerateBriefing}
+        />
+
+        <FilterResultsList
+          filterResults={filterResults}
+          filterSortedPapers={filterSortedPapers}
+          testState={testState}
+          processing={processing}
+          onCycleVerdict={onCycleVerdict}
+        />
       </div>
     );
   }
@@ -152,6 +269,37 @@ export default function MainArea({
           onDismiss={onDismiss}
           onAddComment={onAddComment}
         />
+
+        {/* Feedback panel below briefing */}
+        <div id="feedback-panel" style={{ marginTop: 'var(--aparture-space-6)' }}>
+          <FeedbackPanel
+            events={feedbackEvents}
+            cutoff={feedbackCutoff}
+            onAddGeneralComment={onAddGeneralComment}
+            onSuggestClick={onSuggestClick}
+          />
+        </div>
+
+        {/* NotebookLM card below feedback */}
+        <div style={{ marginTop: 'var(--aparture-space-6)' }}>
+          <NotebookLMCard
+            currentBriefing={currentBriefing}
+            testState={testState}
+            podcastDuration={podcastDuration}
+            setPodcastDuration={setPodcastDuration}
+            notebookLMModel={notebookLMModel}
+            setNotebookLMModel={setNotebookLMModel}
+            notebookLMGenerating={notebookLMGenerating}
+            notebookLMStatus={notebookLMStatus}
+            notebookLMContent={notebookLMContent}
+            enableHallucinationCheck={enableHallucinationCheck}
+            setEnableHallucinationCheck={setEnableHallucinationCheck}
+            hallucinationWarning={hallucinationWarning}
+            results={results}
+            onGenerate={onGenerateNotebookLM}
+            onDownload={onDownloadNotebookLM}
+          />
+        </div>
       </div>
     );
   }
