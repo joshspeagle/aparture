@@ -1,59 +1,9 @@
-/* Aparture briefing — reading surface typography and palette
+/* Aparture briefing — reading-surface typography inside .briefing-prose.
  *
- * The briefing uses a print-register reading surface (Source Serif 4)
- * inside the Linear/Notion-register chrome (Inter). Tokens below apply
- * only inside .briefing-prose.
+ * Consumes design tokens from styles/tokens.css. This file intentionally
+ * only defines rules scoped to .briefing-prose — global tokens live in
+ * tokens.css so the whole app can consume them.
  */
-
-:root {
-  /* Palette (light) */
-  --aparture-bg: #fafaf7;
-  --aparture-surface: #f4f1ea;
-  --aparture-ink: #1a1a1a;
-  --aparture-mute: #6b6862;
-  --aparture-hairline: #d8d4ca;
-  --aparture-accent: #b31b1b;
-  --aparture-debate: #ede6d5;
-  --aparture-longitudinal: #e4e8ec;
-  --aparture-question: #efe8d8;
-
-  /* Typography */
-  --aparture-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --aparture-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --aparture-font-mono: 'JetBrains Mono', ui-monospace, monospace;
-
-  /* Type scale */
-  --aparture-text-xs: 13px;
-  --aparture-text-sm: 14px;
-  --aparture-text-base: 17px;
-  --aparture-text-lg: 20px;
-  --aparture-text-xl: 24px;
-  --aparture-text-2xl: 32px;
-
-  /* Spacing */
-  --aparture-space-1: 4px;
-  --aparture-space-2: 8px;
-  --aparture-space-3: 12px;
-  --aparture-space-4: 16px;
-  --aparture-space-6: 24px;
-  --aparture-space-8: 32px;
-  --aparture-space-12: 48px;
-  --aparture-space-16: 64px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --aparture-bg: #141211;
-    --aparture-surface: #1f1c1a;
-    --aparture-ink: #e8e4dc;
-    --aparture-mute: #8a857c;
-    --aparture-hairline: #2e2a26;
-    --aparture-accent: #d94545;
-    --aparture-debate: #2a2520;
-    --aparture-longitudinal: #1e2427;
-    --aparture-question: #29231a;
-  }
-}
 
 .briefing-prose {
   font-family: var(--aparture-font-serif);
