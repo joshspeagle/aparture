@@ -34,6 +34,15 @@ export default async function handler(req, res) {
       },
     });
 
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('retry-after');
+      console.warn(`arXiv rate-limited (429)${retryAfter ? `, Retry-After: ${retryAfter}` : ''}`);
+      return res.status(429).json({
+        error: 'arXiv rate limit',
+        retryAfter: retryAfter ? Number(retryAfter) || null : null,
+      });
+    }
+
     if (!response.ok) {
       throw new Error(`arXiv API returned ${response.status}`);
     }
