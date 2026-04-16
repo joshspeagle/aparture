@@ -28,8 +28,15 @@ export function useBriefing() {
   const [current, setCurrent] = useState(readStoredCurrent);
   const [history, setHistory] = useState(readStoredHistory);
 
-  const saveBriefing = useCallback((date, briefing) => {
-    const entry = { date, briefing };
+  const saveBriefing = useCallback((date, briefing, generationMetadata) => {
+    // Omit the field entirely when no metadata is supplied so legacy
+    // callers don't end up with `generationMetadata: undefined` in
+    // the persisted JSON (which would be indistinguishable from a
+    // missing field anyway, but cleaner to leave out).
+    const entry =
+      generationMetadata !== undefined
+        ? { date, briefing, generationMetadata }
+        : { date, briefing };
     setCurrent(entry);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(CURRENT_KEY, JSON.stringify(entry));

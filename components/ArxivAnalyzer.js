@@ -571,8 +571,32 @@ function ArxivAnalyzer() {
     });
   }, []);
 
-  const handleGenerateBriefing = () =>
-    runBriefingGeneration({
+  const handleGenerateBriefing = () => {
+    // Phase B-prep: construct the generationMetadata snapshot at call
+    // time so the eventual briefing entry carries full provenance.
+    // The metadata is intentionally captured by value (snapshot of
+    // the current state) — subsequent edits to profile / settings do
+    // NOT retroactively change past briefings' recorded provenance.
+    const filterVerdictCounts = {
+      yes: filterResults.yes?.length ?? 0,
+      maybe: filterResults.maybe?.length ?? 0,
+      no: filterResults.no?.length ?? 0,
+    };
+    const generationMetadata = {
+      profileSnapshot: profile?.content ?? '',
+      filterModel: config?.filterModel ?? '',
+      scoringModel: config?.scoringModel ?? '',
+      pdfModel: config?.pdfModel ?? '',
+      briefingModel: config?.briefingModel ?? config?.pdfModel ?? '',
+      categories: [...(config?.selectedCategories ?? [])],
+      filterVerdictCounts,
+      feedbackCutoff: profile?.lastFeedbackCutoff ?? null,
+      briefingRetryOnYes: config.briefingRetryOnYes ?? true,
+      briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
+      pauseAfterFilter: config.pauseAfterFilter ?? true,
+      timestamp: new Date().toISOString(),
+    };
+    return runBriefingGeneration({
       results,
       briefingModel: config?.briefingModel,
       pdfModel: config?.pdfModel,
@@ -582,6 +606,7 @@ function ArxivAnalyzer() {
       password,
       briefingHistory,
       saveBriefing,
+      generationMetadata,
       setSynthesizing,
       setSynthesisError,
       setBriefingCheckResult,
@@ -589,6 +614,7 @@ function ArxivAnalyzer() {
       setQuickSummariesById,
       setFullReportsById,
     });
+  };
 
   // Get stage display name
   const getStageDisplay = () => {
