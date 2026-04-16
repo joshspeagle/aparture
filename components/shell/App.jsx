@@ -759,37 +759,117 @@ export default function App() {
   // --- Auth gate ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 text-white flex items-center justify-center p-6">
-        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-8 border border-slate-800 max-w-md w-full">
-          <div className="text-center mb-6">
-            <Lock className="w-12 h-12 mx-auto mb-4 text-blue-400" />
-            <h1 className="text-2xl font-bold mb-2">aparture</h1>
-            <p className="text-gray-400">Enter password to access</p>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'var(--aparture-bg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 'var(--aparture-space-6)',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--aparture-surface)',
+            border: '1px solid var(--aparture-hairline)',
+            borderRadius: '4px',
+            padding: 'var(--aparture-space-8)',
+            maxWidth: '400px',
+            width: '100%',
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: 'var(--aparture-space-6)' }}>
+            <Lock
+              className="w-12 h-12"
+              style={{
+                margin: '0 auto var(--aparture-space-4)',
+                display: 'block',
+                color: 'var(--aparture-accent)',
+              }}
+            />
+            <h1
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-2xl)',
+                fontWeight: 700,
+                color: 'var(--aparture-ink)',
+                marginBottom: '8px',
+              }}
+            >
+              aparture
+            </h1>
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                color: 'var(--aparture-mute)',
+              }}
+            >
+              Enter password to access
+            </p>
           </div>
 
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
             <div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
                 placeholder="Enter password"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'var(--aparture-bg)',
+                  border: '1px solid var(--aparture-hairline)',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: 'var(--aparture-ink)',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
               />
             </div>
 
             <button
               onClick={handleAuth}
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-medium hover:from-blue-600 hover:to-purple-600 transition-all"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: 'var(--aparture-accent)',
+                color: '#fff',
+                border: '1px solid var(--aparture-accent)',
+                borderRadius: '4px',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-sm)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+              }}
             >
               Access Analyzer
             </button>
           </div>
 
           {processing.errors.length > 0 && (
-            <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
-              <p className="text-red-300 text-sm">
+            <div
+              style={{
+                marginTop: 'var(--aparture-space-4)',
+                padding: 'var(--aparture-space-3)',
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: '4px',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: '#ef4444',
+                }}
+              >
                 {processing.errors[processing.errors.length - 1]}
               </p>
             </div>

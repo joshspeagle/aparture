@@ -2,32 +2,37 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import DiffPreview from '../../../components/profile/DiffPreview.jsx';
 
+// Helper: find spans whose style attribute contains a substring.
+// jsdom serialises inline styles as the raw `style` attribute string,
+// which is more reliable than the CSSStyleDeclaration shorthand getters.
+function findSpansByStyle(container, styleSubstr) {
+  return Array.from(container.querySelectorAll('span')).filter((el) => {
+    const attr = el.getAttribute('style') ?? '';
+    return attr.includes(styleSubstr);
+  });
+}
+
 describe('DiffPreview', () => {
   it('renders unchanged text when before === after', () => {
     const { container } = render(<DiffPreview before="hello world" after="hello world" />);
     expect(container.textContent).toContain('hello world');
-    // No added or removed tokens
-    expect(container.querySelector('.bg-green-900\\/30')).toBeNull();
-    expect(container.querySelector('.bg-red-900\\/30')).toBeNull();
+    expect(findSpansByStyle(container, 'rgba(34, 197, 94')).toHaveLength(0);
+    expect(findSpansByStyle(container, 'rgba(239, 68, 68')).toHaveLength(0);
   });
 
-  it('highlights added words with green class', () => {
+  it('highlights added words with green style', () => {
     const { container } = render(<DiffPreview before="hello" after="hello world" />);
-    const addedSpans = container.querySelectorAll('.bg-green-900\\/30');
+    const addedSpans = findSpansByStyle(container, 'rgba(34, 197, 94');
     expect(addedSpans.length).toBeGreaterThan(0);
-    const addedText = Array.from(addedSpans)
-      .map((s) => s.textContent)
-      .join('');
+    const addedText = addedSpans.map((s) => s.textContent).join('');
     expect(addedText).toMatch(/world/);
   });
 
-  it('highlights removed words with red class', () => {
+  it('highlights removed words with red style', () => {
     const { container } = render(<DiffPreview before="hello world" after="hello" />);
-    const removedSpans = container.querySelectorAll('.bg-red-900\\/30');
+    const removedSpans = findSpansByStyle(container, 'rgba(239, 68, 68');
     expect(removedSpans.length).toBeGreaterThan(0);
-    const removedText = Array.from(removedSpans)
-      .map((s) => s.textContent)
-      .join('');
+    const removedText = removedSpans.map((s) => s.textContent).join('');
     expect(removedText).toMatch(/world/);
   });
 
@@ -35,8 +40,8 @@ describe('DiffPreview', () => {
     const { container } = render(
       <DiffPreview before="I study flows" after="I study interpretability" />
     );
-    expect(container.querySelector('.bg-green-900\\/30')).not.toBeNull();
-    expect(container.querySelector('.bg-red-900\\/30')).not.toBeNull();
+    expect(findSpansByStyle(container, 'rgba(34, 197, 94').length).toBeGreaterThan(0);
+    expect(findSpansByStyle(container, 'rgba(239, 68, 68').length).toBeGreaterThan(0);
   });
 
   it('adds a title attribute to added spans matching a change excerpt', () => {

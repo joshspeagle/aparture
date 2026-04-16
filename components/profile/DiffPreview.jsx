@@ -11,14 +11,31 @@ export default function DiffPreview({ before, after, changes }) {
   const tokens = useMemo(() => diffWords(before ?? '', after ?? ''), [before, after]);
 
   return (
-    <div className="whitespace-pre-wrap rounded-md border border-slate-700 bg-slate-950 p-4 text-sm text-slate-200 font-serif leading-relaxed">
+    <div
+      style={{
+        whiteSpace: 'pre-wrap',
+        borderRadius: '4px',
+        border: '1px solid var(--aparture-hairline)',
+        background: 'var(--aparture-bg)',
+        padding: 'var(--aparture-space-4)',
+        fontFamily: 'var(--aparture-font-serif)',
+        fontSize: 'var(--aparture-text-sm)',
+        color: 'var(--aparture-ink)',
+        lineHeight: 1.6,
+      }}
+    >
       {tokens.map((token, idx) => {
         if (token.type === 'added') {
           const rationale = getRationaleFor(token, changes);
           return (
             <span
               key={idx}
-              className="bg-green-900/30 text-green-200 rounded-sm px-0.5"
+              style={{
+                background: 'rgba(34,197,94,0.12)',
+                color: '#22c55e',
+                borderRadius: '2px',
+                padding: '0 2px',
+              }}
               title={rationale ?? undefined}
             >
               {token.text}
@@ -27,7 +44,16 @@ export default function DiffPreview({ before, after, changes }) {
         }
         if (token.type === 'removed') {
           return (
-            <span key={idx} className="bg-red-900/30 text-red-300 line-through rounded-sm px-0.5">
+            <span
+              key={idx}
+              style={{
+                background: 'rgba(239,68,68,0.12)',
+                color: '#ef4444',
+                textDecoration: 'line-through',
+                borderRadius: '2px',
+                padding: '0 2px',
+              }}
+            >
               {token.text}
             </span>
           );
