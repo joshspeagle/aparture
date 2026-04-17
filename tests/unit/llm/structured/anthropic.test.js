@@ -157,4 +157,29 @@ describe('parseAnthropicResponse', () => {
     expect(result.tokensOut).toBe(0);
     expect(result.structured).toBeUndefined();
   });
+
+  it('surfaces cache_read_input_tokens and cache_creation_input_tokens when present', () => {
+    const out = parseAnthropicResponse({
+      content: [{ type: 'text', text: 'ok' }],
+      usage: {
+        input_tokens: 10,
+        output_tokens: 5,
+        cache_read_input_tokens: 900,
+        cache_creation_input_tokens: 100,
+      },
+    });
+    expect(out.tokensIn).toBe(10);
+    expect(out.tokensOut).toBe(5);
+    expect(out.cacheReadTok).toBe(900);
+    expect(out.cacheCreateTok).toBe(100);
+  });
+
+  it('omits cache token fields when provider does not report them', () => {
+    const out = parseAnthropicResponse({
+      content: [{ type: 'text', text: 'ok' }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+    expect(out.cacheReadTok).toBeUndefined();
+    expect(out.cacheCreateTok).toBeUndefined();
+  });
 });

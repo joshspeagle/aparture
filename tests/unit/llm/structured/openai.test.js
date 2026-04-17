@@ -49,4 +49,24 @@ describe('parseOpenAIResponse', () => {
     const result = parseOpenAIResponse(response, { expectStructured: true });
     expect(result.structured).toEqual({ headline: 'Big news' });
   });
+
+  it('surfaces cached_tokens from prompt_tokens_details when > 0', () => {
+    const out = parseOpenAIResponse({
+      choices: [{ message: { content: 'ok' } }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 50,
+        prompt_tokens_details: { cached_tokens: 60 },
+      },
+    });
+    expect(out.cacheReadTok).toBe(60);
+  });
+
+  it('omits cacheReadTok when cached_tokens is 0 or missing', () => {
+    const out = parseOpenAIResponse({
+      choices: [{ message: { content: 'ok' } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50 },
+    });
+    expect(out.cacheReadTok).toBeUndefined();
+  });
 });
