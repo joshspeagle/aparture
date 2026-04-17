@@ -237,7 +237,14 @@ export default async function handler(req, res) {
     if (correctionPrompt) {
       // Correction path: text-only, no PDF
       const result = await callModel(
-        { provider, model: modelApiId, prompt: correctionPrompt, apiKey },
+        {
+          provider,
+          model: modelApiId,
+          prompt: process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt,
+          cachePrefix: '',
+          cacheable: false,
+          apiKey,
+        },
         callMode
       );
       responseText = result.text;
@@ -304,11 +311,13 @@ export default async function handler(req, res) {
       const prompt = buildAnalysisPrompt(originalScore);
       const cacheable = provider === 'anthropic';
       // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
-      // tests. When the override is active, disable caching so the fixture hash
-      // keys only on {provider, model, prompt, apiKey} — a predictable value.
+      // tests. When the override is active (or when running in fixture mode),
+      // disable caching so the fixture hash keys only on
+      // {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+      const isFixture = callMode.mode === 'fixture';
       const finalPrompt = promptOverride ?? prompt;
-      const useCaching = cacheable && !promptOverride;
+      const useCaching = cacheable && !isFixture && !promptOverride;
 
       const result = await callModel(
         {

@@ -143,6 +143,7 @@ export default async function handler(req, res) {
   }
 
   const callMode = callModelMode ?? { mode: 'live' };
+  const isFixture = callMode.mode === 'fixture';
   const cacheable = provider === 'anthropic';
 
   try {
@@ -173,7 +174,7 @@ export default async function handler(req, res) {
       // keys only on {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
       const finalPrompt = promptOverride ?? batchPrompt;
-      const useCaching = cacheable && !promptOverride;
+      const useCaching = cacheable && !isFixture && !promptOverride;
 
       const result = await callModel(
         {

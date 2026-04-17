@@ -84,11 +84,14 @@ export default async function handler(req, res) {
       : fullPrompt.slice(splitIndex);
 
     // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
-    // tests. When active, disable caching so the fixture hash keys only on
-    // {provider, model, prompt, apiKey} — a predictable, stable value.
+    // tests. When active (or when running in fixture mode), disable caching so
+    // the fixture hash keys only on {provider, model, prompt, apiKey} — a
+    // predictable, stable value.
     const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+    const callMode = callModelMode ?? { mode: 'live' };
+    const isFixture = callMode.mode === 'fixture';
     const finalPrompt = promptOverride ?? cachePrefix + variableTail;
-    const useCaching = provider === 'anthropic' && !promptOverride;
+    const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;
 
     // Token budget pre-flight (estimate against the full prompt string)
     const estimatedTokens = estimateTokens({ provider, model: modelApiId, text: finalPrompt });
@@ -103,8 +106,6 @@ export default async function handler(req, res) {
     }
 
     const inputPaperIds = papers.map((p) => p.arxivId);
-
-    const callMode = callModelMode ?? { mode: 'live' };
 
     // First call
     const response = await callModel(
