@@ -35,6 +35,20 @@ function renderGuidePrompt(template, { themes, papers, duration, date }) {
     .replaceAll('{{date}}', date);
 }
 
+// Strip a leading/trailing code fence if the LLM wrapped its output in
+// triple-backticks. NotebookLM treats the whole file as a code block in
+// that case, which prevents the source from being parsed as text.
+// Exported for unit testing.
+export function stripCodeFence(text) {
+  const trimmed = text.trim();
+  const fenceOpen = /^```(?:markdown|md)?\s*\n/;
+  const fenceClose = /\n```\s*$/;
+  if (fenceOpen.test(trimmed) && fenceClose.test(trimmed)) {
+    return trimmed.replace(fenceOpen, '').replace(fenceClose, '').trim() + '\n';
+  }
+  return text;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -116,7 +130,8 @@ export default async function handler(req, res) {
       },
       callMode
     );
-    const discussionGuide = llmResponse.text ?? llmResponse.response?.text ?? '';
+    const rawGuide = llmResponse.text ?? llmResponse.response?.text ?? '';
+    const discussionGuide = stripCodeFence(rawGuide);
 
     const briefingMd = renderBriefingMarkdown(briefing, { date: runDate });
     const focusPrompt = buildFocusPrompt(briefing, podcastDuration);

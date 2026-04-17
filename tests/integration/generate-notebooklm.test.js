@@ -98,10 +98,18 @@ describe('generate-notebooklm API route (fixture mode)', () => {
 
     const focus = await zip.file('focus-prompt.txt').async('string');
     expect(focus).toContain('Target length: 20 minutes');
-    expect(focus).toContain('[P1] "Paper One" (2504.01234)');
+    // Focus prompt should point at the uploaded sources rather than
+    // re-enumerating them.
+    expect(focus).toContain('discussion-guide.md');
+    expect(focus).toContain('briefing.md');
+    // Depth-strategy language scaled to 20 minutes
+    expect(focus.toLowerCase()).toMatch(/deep-dive|prune|drop/);
 
     const guide = await zip.file('discussion-guide.md').async('string');
     expect(guide).toContain('Podcast Outline');
+    // Guide must not be wrapped in a code fence — NotebookLM treats the
+    // whole file as a code block otherwise and fails to parse the source.
+    expect(guide.startsWith('```')).toBe(false);
   });
 
   it('rejects missing password', async () => {
