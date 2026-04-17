@@ -47,13 +47,17 @@ export default async function handler(req, res) {
     notebookLMModel,
     provider,
     password,
-    apiKey,
+    apiKey: clientApiKey,
     date,
     callModelMode,
   } = req.body ?? {};
 
-  if (!checkPassword(password)) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  const callMode = callModelMode ?? { mode: 'live' };
+
+  // Auth gate first: validate password (if supplied) before any body
+  // checks so a wrong password reliably returns 401, not 400.
+  if (password !== undefined && !checkPassword(password)) {
+    return res.status(401).json({ error: 'invalid password' });
   }
   if (!briefing) {
     return res.status(400).json({ error: 'briefing is required' });
@@ -63,7 +67,6 @@ export default async function handler(req, res) {
   }
 
   const runDate = date ?? new Date().toISOString().slice(0, 10);
-  const callMode = callModelMode ?? { mode: 'live' };
 
   try {
     const modelCfg = MODEL_REGISTRY[notebookLMModel];
@@ -71,6 +74,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: `unknown notebookLMModel: ${notebookLMModel}` });
     }
     const resolvedProvider = provider ?? (modelCfg.provider ?? 'Google').toLowerCase();
+
+    // Resolve API key: accept client-supplied key, or fall back to env vars
+    // via password auth. Mirrors the pattern in pages/api/synthesize.js.
+    let apiKey = clientApiKey;
+    if (!apiKey && password) {
+      if (resolvedProvider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
+      else if (resolvedProvider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
+      else if (resolvedProvider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+    }
+    // Fixture mode bypasses the live API, so no key is required there.
+    if (!apiKey && callMode.mode !== 'fixture') {
+      return res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
+    }
+
+    // Resolve user-facing model ID to the provider's apiId, same as
+    // synthesize.js — callModel sends the apiId to the provider.
+    const modelApiId = modelCfg.apiId ?? notebookLMModel;
 
     const template = fs.readFileSync(GUIDE_PROMPT_PATH, 'utf8');
     const guidePrompt = renderGuidePrompt(template, {
@@ -90,7 +110,7 @@ export default async function handler(req, res) {
     const llmResponse = await callModel(
       {
         provider: resolvedProvider,
-        model: notebookLMModel,
+        model: modelApiId,
         prompt: finalPrompt,
         apiKey,
       },

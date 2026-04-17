@@ -1,8 +1,8 @@
 {
-  "hash": "c1d441f325e38b34fe67a290becae647",
+  "hash": "da3cd1af291b2829cd31b08b6d318cba",
   "input": {
     "apiKey": null,
-    "model": "gemini-3.1-pro",
+    "model": "gemini-3.1-pro-preview",
     "prompt": "NOTEBOOKLM_TEST_FIXTURE",
     "provider": "google"
   },
