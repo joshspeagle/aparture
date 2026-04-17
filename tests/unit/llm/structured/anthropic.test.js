@@ -52,6 +52,32 @@ describe('buildAnthropicRequest', () => {
     });
     expect(req.body.max_tokens).toBe(1024);
   });
+
+  it('produces a plain-string content field when cacheable is omitted (backward compat)', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-7',
+      prompt: 'Hello world',
+    });
+    expect(req.body.messages).toEqual([{ role: 'user', content: 'Hello world' }]);
+  });
+
+  it('produces a two-block content array with cache_control on the prefix block when cacheable is true', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-7',
+      prompt: 'Variable tail',
+      cacheable: true,
+      cachePrefix: 'Static prefix text',
+    });
+    expect(req.body.messages).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Static prefix text', cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: 'Variable tail' },
+        ],
+      },
+    ]);
+  });
 });
 
 describe('parseAnthropicResponse', () => {
