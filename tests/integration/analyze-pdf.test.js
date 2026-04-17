@@ -46,6 +46,7 @@ describe('analyze-pdf API route (fixture mode)', () => {
     process.env.APARTURE_TEST_PDF_OVERRIDE = 'ANALYZE_PDF_TEST_PDF_FIXTURE';
     const { req, res, getResponse } = createMockReqRes({
       password: 'test-pw',
+      apiKey: 'test-key',
       pdfUrl: 'https://arxiv.org/pdf/2504.00001',
       scoringCriteria: 'I study interpretability.',
       originalScore: 7.5,
@@ -75,6 +76,7 @@ describe('analyze-pdf API route (fixture mode)', () => {
     // Since the override is not set here, correctionPrompt is used as-is.
     const { req, res, getResponse } = createMockReqRes({
       password: 'test-pw',
+      apiKey: 'test-key',
       model: 'claude-haiku-4.5',
       correctionPrompt: 'Fix this JSON response.',
       callModelMode: { mode: 'fixture', fixturesDir },

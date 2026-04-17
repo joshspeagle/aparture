@@ -1,7 +1,7 @@
 {
-  "hash": "1ec101a42071bd3a5dcba42417c3f94c",
+  "hash": "bc942c6c4d4f76f7628d4e2dfc4e3cef",
   "input": {
-    "apiKey": null,
+    "apiKey": "test-key",
     "cacheable": false,
     "cachePrefix": "",
     "model": "claude-haiku-4-5",
