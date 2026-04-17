@@ -123,7 +123,7 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
 }
 
 export default function ProgressTimeline({
-  onCycleVerdict: _onCycleVerdict,
+  onSetVerdict: _onSetVerdict,
   pauseAfterFilter,
   pauseBeforeBriefing,
   onContinueAfterFilter,

@@ -1,13 +1,52 @@
 import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 
-function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onCycleVerdict }) {
-  const pillColors =
-    verdict === 'YES'
-      ? { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' }
-      : verdict === 'MAYBE'
-        ? { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' }
-        : { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' };
+const VERDICT_COLORS = {
+  YES: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
+  MAYBE: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' },
+  NO: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' },
+};
+
+function VerdictButton({ option, isActive, disabled, originalVerdict, onClick }) {
+  const colors = VERDICT_COLORS[option];
+  const wasOriginal = originalVerdict === option;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={
+        isActive
+          ? wasOriginal
+            ? `Filter said ${option}`
+            : `Currently ${option} (overridden)`
+          : `Set verdict to ${option}`
+      }
+      disabled={disabled || isActive}
+      style={{
+        padding: '2px 8px',
+        fontSize: '10px',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        borderRadius: '9999px',
+        border: `1px solid ${isActive ? colors.border : 'var(--aparture-hairline)'}`,
+        background: isActive ? colors.bg : 'transparent',
+        color: isActive ? colors.color : 'var(--aparture-mute)',
+        cursor: disabled ? 'not-allowed' : isActive ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        fontFamily: 'var(--aparture-font-sans)',
+        fontWeight: isActive ? 600 : 400,
+        transition: 'all 150ms ease',
+      }}
+    >
+      {option}
+      {isActive && wasOriginal === false && originalVerdict && (
+        <span style={{ marginLeft: '4px' }}>{'\u21C4'}</span>
+      )}
+    </button>
+  );
+}
+
+function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onSetVerdict }) {
   const overridden = paper.originalVerdict && paper.originalVerdict !== verdict;
 
   return (
@@ -77,34 +116,30 @@ function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onC
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => onCycleVerdict(paper.id, verdict)}
-          title={
-            overridden
-              ? `Filter originally said ${paper.originalVerdict}. Click to cycle.`
-              : 'Click to override the filter verdict (cycles YES \u2192 MAYBE \u2192 NO)'
-          }
-          disabled={processingIsRunning}
+        <div
           style={{
+            display: 'flex',
             flexShrink: 0,
-            padding: '2px 8px',
-            fontSize: '10px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            borderRadius: '9999px',
-            border: `1px solid ${pillColors.border}`,
-            background: pillColors.bg,
-            color: pillColors.color,
-            cursor: processingIsRunning ? 'not-allowed' : 'pointer',
-            opacity: processingIsRunning ? 0.5 : 1,
-            fontFamily: 'var(--aparture-font-sans)',
-            transition: 'all 150ms ease',
+            gap: '4px',
+            alignItems: 'center',
           }}
+          aria-label={
+            overridden
+              ? `Currently ${verdict} (filter said ${paper.originalVerdict}). Click YES, MAYBE, or NO to change.`
+              : `Currently ${verdict}. Click YES, MAYBE, or NO to override.`
+          }
         >
-          {verdict}
-          {overridden && <span style={{ marginLeft: '4px' }}>{'\u21C4'}</span>}
-        </button>
+          {['YES', 'MAYBE', 'NO'].map((option) => (
+            <VerdictButton
+              key={option}
+              option={option}
+              isActive={option === verdict}
+              disabled={processingIsRunning}
+              originalVerdict={paper.originalVerdict}
+              onClick={() => onSetVerdict(paper.id, verdict, option)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -115,7 +150,7 @@ export default function FilterResultsList({
   filterSortedPapers,
   testState,
   processing,
-  onCycleVerdict,
+  onSetVerdict,
 }) {
   const hasAny =
     filterResults.yes.length > 0 || filterResults.maybe.length > 0 || filterResults.no.length > 0;
@@ -223,7 +258,7 @@ export default function FilterResultsList({
                   verdict="YES"
                   borderColor="rgba(34,197,94,0.2)"
                   processingIsRunning={disableOverrides}
-                  onCycleVerdict={onCycleVerdict}
+                  onSetVerdict={onSetVerdict}
                 />
               ))}
             </div>
@@ -263,7 +298,7 @@ export default function FilterResultsList({
                   verdict="MAYBE"
                   borderColor="rgba(245,158,11,0.2)"
                   processingIsRunning={disableOverrides}
-                  onCycleVerdict={onCycleVerdict}
+                  onSetVerdict={onSetVerdict}
                 />
               ))}
             </div>
@@ -292,7 +327,7 @@ export default function FilterResultsList({
                   verdict="NO"
                   borderColor="rgba(239,68,68,0.2)"
                   processingIsRunning={disableOverrides}
-                  onCycleVerdict={onCycleVerdict}
+                  onSetVerdict={onSetVerdict}
                 />
               ))}
             </div>

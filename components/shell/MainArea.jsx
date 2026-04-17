@@ -63,7 +63,7 @@ export default function MainArea({
   onExport,
   getStageDisplay: _getStageDisplay,
   getProgressPercentage: _getProgressPercentage,
-  onCycleVerdict,
+  onSetVerdict,
   onContinueAfterFilter,
   onContinueAfterReview,
   // Briefing card (generate button)
@@ -152,7 +152,7 @@ export default function MainArea({
     return (
       <div className="config-surface" style={{ maxWidth: '900px' }}>
         <ProgressTimeline
-          onCycleVerdict={onCycleVerdict}
+          onSetVerdict={onSetVerdict}
           pauseAfterFilter={config?.pauseAfterFilter ?? true}
           pauseBeforeBriefing={config?.pauseBeforeBriefing ?? true}
           onContinueAfterFilter={onContinueAfterFilter}
@@ -179,7 +179,7 @@ export default function MainArea({
             filterSortedPapers={filterSortedPapers}
             testState={testState}
             processing={processing}
-            onCycleVerdict={onCycleVerdict}
+            onSetVerdict={onSetVerdict}
           />
 
           {/* Scored / analyzed papers */}

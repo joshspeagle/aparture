@@ -721,11 +721,10 @@ export default function App() {
   };
 
   // --- Filter verdict cycling ---
-  const cycleFilterVerdict = useCallback(
-    (paperId, currentVerdict) => {
-      const VERDICT_CYCLE = { YES: 'MAYBE', MAYBE: 'NO', NO: 'YES' };
+  const setFilterVerdict = useCallback(
+    (paperId, currentVerdict, nextVerdict) => {
+      if (currentVerdict === nextVerdict) return;
       const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
-      const nextVerdict = VERDICT_CYCLE[currentVerdict] ?? 'YES';
       setFilterResults((prev) => {
         const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
         const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
@@ -1073,7 +1072,7 @@ export default function App() {
           onExport={exportResults}
           getStageDisplay={getStageDisplay}
           getProgressPercentage={getProgressPercentage}
-          onCycleVerdict={cycleFilterVerdict}
+          onSetVerdict={setFilterVerdict}
           onContinueAfterFilter={() => {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));
