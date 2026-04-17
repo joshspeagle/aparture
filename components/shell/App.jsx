@@ -8,7 +8,7 @@ import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MODEL_REGISTRY } from '../../utils/models';
 import { runBriefingGeneration } from '../../lib/analyzer/briefingClient.js';
-import { downloadBlob, exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
+import { exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
 import { createAnalysisPipeline } from '../../lib/analyzer/pipeline.js';
 import { readInitialConfig, useAnalyzerPersistence } from '../../hooks/useAnalyzerPersistence.js';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
@@ -483,8 +483,6 @@ export default function App() {
     notebookLMStatus,
     notebookLMContent,
     notebookLMGenerating,
-    enableHallucinationCheck,
-    hallucinationWarning,
   } = useAnalyzerStore((s) => s.notebookLM);
   const {
     synthesizing,
@@ -505,7 +503,6 @@ export default function App() {
     setPodcastDuration,
     setNotebookLMModel,
     setNotebookLMContent,
-    setEnableHallucinationCheck,
     setSynthesizing,
     setSynthesisError,
     setBriefingCheckResult,
@@ -709,16 +706,6 @@ export default function App() {
 
   // --- Export handlers ---
   const exportResults = () => exportAnalysisReport({ results, processingTiming, config });
-
-  const downloadNotebookLM = () => {
-    if (!notebookLMContent) return;
-    const timestamp = new Date().toISOString().split('T')[0];
-    downloadBlob(
-      notebookLMContent,
-      `${timestamp}_notebooklm_${podcastDuration}min.md`,
-      'text/markdown'
-    );
-  };
 
   // --- Filter verdict cycling ---
   const setFilterVerdict = useCallback(
@@ -1101,11 +1088,7 @@ export default function App() {
           notebookLMGenerating={notebookLMGenerating}
           notebookLMStatus={notebookLMStatus}
           notebookLMContent={notebookLMContent}
-          enableHallucinationCheck={enableHallucinationCheck}
-          setEnableHallucinationCheck={setEnableHallucinationCheck}
-          hallucinationWarning={hallucinationWarning}
           onGenerateNotebookLM={generateNotebookLM}
-          onDownloadNotebookLM={downloadNotebookLM}
           // Logout
           onLogout={handleLogout}
         />

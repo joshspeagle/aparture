@@ -83,11 +83,7 @@ export default function MainArea({
   notebookLMGenerating,
   notebookLMStatus,
   notebookLMContent,
-  enableHallucinationCheck,
-  setEnableHallucinationCheck,
-  hallucinationWarning,
   onGenerateNotebookLM,
-  onDownloadNotebookLM,
   // Navigation (for paired briefing ↔ pipeline views)
   onNavigate,
   // Logout
@@ -297,7 +293,6 @@ export default function MainArea({
         <div style={{ marginTop: 'var(--aparture-space-6)' }}>
           <NotebookLMCard
             currentBriefing={currentBriefing}
-            testState={testState}
             podcastDuration={podcastDuration}
             setPodcastDuration={setPodcastDuration}
             notebookLMModel={notebookLMModel}
@@ -305,12 +300,8 @@ export default function MainArea({
             notebookLMGenerating={notebookLMGenerating}
             notebookLMStatus={notebookLMStatus}
             notebookLMContent={notebookLMContent}
-            enableHallucinationCheck={enableHallucinationCheck}
-            setEnableHallucinationCheck={setEnableHallucinationCheck}
-            hallucinationWarning={hallucinationWarning}
-            results={results}
-            onGenerate={onGenerateNotebookLM}
-            onDownload={onDownloadNotebookLM}
+            onGenerateNotebookLM={onGenerateNotebookLM}
+            processing={processing}
           />
         </div>
       </div>
