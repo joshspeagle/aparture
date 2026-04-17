@@ -60,8 +60,6 @@ export function initialState() {
       notebookLMStatus: '',
       notebookLMContent: null,
       notebookLMGenerating: false,
-      enableHallucinationCheck: true,
-      hallucinationWarning: null,
     },
     // --- briefingUI slice ---
     briefingUI: {
@@ -154,12 +152,6 @@ export const useAnalyzerStore = create((set) => ({
     set((state) => ({ notebookLM: { ...state.notebookLM, notebookLMContent: value } })),
   setNotebookLMGenerating: (value) =>
     set((state) => ({ notebookLM: { ...state.notebookLM, notebookLMGenerating: value } })),
-  setEnableHallucinationCheck: (value) =>
-    set((state) => ({
-      notebookLM: { ...state.notebookLM, enableHallucinationCheck: value },
-    })),
-  setHallucinationWarning: (value) =>
-    set((state) => ({ notebookLM: { ...state.notebookLM, hallucinationWarning: value } })),
 
   // --- briefingUI slice actions ---
   setSynthesizing: (value) =>

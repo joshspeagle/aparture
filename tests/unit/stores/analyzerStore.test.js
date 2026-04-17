@@ -114,8 +114,6 @@ describe('analyzerStore — notebookLM slice', () => {
     expect(notebookLM.notebookLMStatus).toBe('');
     expect(notebookLM.notebookLMContent).toBeNull();
     expect(notebookLM.notebookLMGenerating).toBe(false);
-    expect(notebookLM.enableHallucinationCheck).toBe(true);
-    expect(notebookLM.hallucinationWarning).toBeNull();
   });
 
   it('has per-field setters', () => {
@@ -125,16 +123,12 @@ describe('analyzerStore — notebookLM slice', () => {
     s.setNotebookLMStatus('running');
     s.setNotebookLMContent('markdown');
     s.setNotebookLMGenerating(true);
-    s.setEnableHallucinationCheck(false);
-    s.setHallucinationWarning({ issues: ['one'] });
     const s2 = useAnalyzerStore.getState();
     expect(s2.notebookLM.podcastDuration).toBe(30);
     expect(s2.notebookLM.notebookLMModel).toBe('claude-opus-4.6');
     expect(s2.notebookLM.notebookLMStatus).toBe('running');
     expect(s2.notebookLM.notebookLMContent).toBe('markdown');
     expect(s2.notebookLM.notebookLMGenerating).toBe(true);
-    expect(s2.notebookLM.enableHallucinationCheck).toBe(false);
-    expect(s2.notebookLM.hallucinationWarning).toEqual({ issues: ['one'] });
   });
 });
 
