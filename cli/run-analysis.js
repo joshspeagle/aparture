@@ -150,40 +150,6 @@ async function generateAndExtractNotebookLMBundle({ baseUrl, password, requestBo
 }
 
 /**
- * Find most recent files by date prefix in filename
- * @param {string} directory - Directory to search
- * @param {string} pattern - Filename pattern (e.g., 'aparture_analysis', 'notebooklm')
- * @returns {Promise<string|null>} - Path to most recent file, or null if not found
- */
-async function findMostRecentFile(directory, pattern) {
-  try {
-    const files = await fs.readdir(directory);
-
-    // Filter files matching pattern and extract date prefix
-    const matchingFiles = files
-      .filter((f) => f.includes(pattern))
-      .map((f) => {
-        const match = f.match(/^(\d{4}-\d{2}-\d{2})/);
-        return {
-          name: f,
-          date: match ? match[1] : null,
-          path: path.join(directory, f),
-        };
-      })
-      .filter((f) => f.date !== null)
-      .sort((a, b) => b.date.localeCompare(a.date)); // Sort descending by date
-
-    if (matchingFiles.length === 0) {
-      return null;
-    }
-
-    return matchingFiles[0].path;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Verify report file contents
  */
 async function verifyReport(filePath) {
