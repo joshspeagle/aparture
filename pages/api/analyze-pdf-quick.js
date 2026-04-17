@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'analyze-pdf-quick.md');
     const template = await fs.readFile(templatePath, 'utf8');
 
-    const prompt = template
+    const fullPrompt = template
       .replaceAll('{{title}}', paper.title ?? '')
       .replaceAll('{{authors}}', (paper.authors ?? []).join(', '))
       .replaceAll('{{arxivId}}', paper.arxivId)
@@ -54,13 +54,30 @@ export default async function handler(req, res) {
       .replaceAll('{{abstract}}', paper.abstract ?? '')
       .replaceAll('{{scoringJustification}}', paper.scoringJustification ?? '');
 
+    // The stable cache prefix is the template text before the first per-paper
+    // placeholder ({{title}}). The variable tail is the rendered paper content.
+    const firstSlotIdx = template.indexOf('{{title}}');
+    const cachePrefix = firstSlotIdx >= 0 ? template.slice(0, firstSlotIdx) : '';
+
     // Resolve user-facing model ID → apiId via MODEL_REGISTRY; fall through
     // unchanged if the caller already passed an apiId or an unknown value.
     const modelApiId = MODEL_REGISTRY[model]?.apiId ?? model;
 
+    const callMode = callModelMode ?? { mode: 'live' };
+    // Disable caching in fixture mode so the fixture hash stays keyed on the
+    // full rendered prompt only — the same shape the test's beforeAll seeded.
+    const isFixture = callMode.mode === 'fixture';
+    const useCaching = provider === 'anthropic' && !isFixture;
+
     const response = await callModel(
-      { provider, model: modelApiId, prompt, apiKey },
-      callModelMode ?? { mode: 'live' }
+      {
+        provider,
+        model: modelApiId,
+        prompt: useCaching ? fullPrompt.slice(cachePrefix.length) : fullPrompt,
+        apiKey,
+        ...(useCaching ? { cachePrefix, cacheable: true } : {}),
+      },
+      callMode
     );
 
     res.status(200).json({

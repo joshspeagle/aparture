@@ -163,12 +163,25 @@ export default async function handler(req, res) {
   try {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'check-briefing.md');
     const template = await fs.readFile(templatePath, 'utf8');
-    const prompt = template
+    const fullPrompt = template
       .replace('{{briefing}}', renderBriefingText(briefing))
       .replace('{{papers}}', renderPapersCorpus(papers));
-    const finalPrompt = process.env.APARTURE_TEST_CHECK_PROMPT_OVERRIDE ?? prompt;
 
+    // The stable cache prefix is the template text before {{briefing}} (the static
+    // instructions). The variable tail is the rendered briefing + papers content.
+    const briefingSlotIdx = template.indexOf('{{briefing}}');
+    const cachePrefix = briefingSlotIdx >= 0 ? template.slice(0, briefingSlotIdx) : '';
+
+    // APARTURE_TEST_CHECK_PROMPT_OVERRIDE replaces the full prompt for fixture-based
+    // tests. When active (or when running in fixture mode), disable caching so the
+    // fixture hash keys only on {provider, model, prompt, apiKey} — a stable value.
+    const promptOverride = process.env.APARTURE_TEST_CHECK_PROMPT_OVERRIDE;
     const callMode = callModelMode ?? { mode: 'live' };
+    const isFixture = callMode.mode === 'fixture';
+    const useCaching = provider === 'anthropic' && !promptOverride && !isFixture;
+    const finalPrompt = promptOverride ?? fullPrompt;
+    const variableTail = useCaching ? fullPrompt.slice(cachePrefix.length) : finalPrompt;
+
     const jsonSchema = checkBriefingJsonSchema();
 
     // First call
@@ -176,13 +189,14 @@ export default async function handler(req, res) {
       {
         provider,
         model: modelApiId,
-        prompt: finalPrompt,
+        prompt: useCaching ? variableTail : finalPrompt,
         apiKey,
         structuredOutput: {
           name: 'briefing_hallucination_check',
           description: 'Aparture briefing hallucination audit result',
           schema: jsonSchema,
         },
+        ...(useCaching ? { cachePrefix, cacheable: true } : {}),
       },
       callMode
     );

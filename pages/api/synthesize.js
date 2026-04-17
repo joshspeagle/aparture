@@ -61,19 +61,35 @@ export default async function handler(req, res) {
     // Load the synthesis prompt template
     const templatePath = path.resolve(process.cwd(), 'prompts', 'synthesis.md');
     const template = await fs.readFile(templatePath, 'utf8');
-    const prompt = renderSynthesisPrompt(template, {
-      profile,
-      papers,
-    });
+    // Build the full rendered prompt (template + profile + papers).
+    // cachePrefix = template-with-profile (stable for a given profile),
+    // variableTail = papers JSON block (changes every run).
+    const fullPrompt = renderSynthesisPrompt(template, { profile, papers });
+    // The split point is just before the papers JSON block: find the last
+    // occurrence of the papers marker in the rendered output by locating the
+    // boundary between the profile portion and the papers portion. We do this
+    // by rendering a version with an empty papers array to find the prefix length.
+    const prefixOnly = renderSynthesisPrompt(template, { profile, papers: [] });
+    // papers-section boundary = length of prefix-only up to the empty JSON "[]"
+    // We split at the start of the papers JSON (the "[" from JSON.stringify).
+    const splitIndex = prefixOnly.length - '[]'.length;
+    const cachePrefix = fullPrompt.slice(0, splitIndex);
+
     // Phase 1.5.1: optional retry hint from the client-side hallucination
     // check + retry flow. Appended to the prompt so the model knows this is
     // a second attempt and needs to ground claims more carefully.
-    const promptWithHint = retryHint
-      ? `${prompt}\n\n# Retry hint from validator\n\n${retryHint}`
-      : prompt;
-    const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? promptWithHint;
+    const variableTail = retryHint
+      ? `${fullPrompt.slice(splitIndex)}\n\n# Retry hint from validator\n\n${retryHint}`
+      : fullPrompt.slice(splitIndex);
 
-    // Token budget pre-flight
+    // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
+    // tests. When active, disable caching so the fixture hash keys only on
+    // {provider, model, prompt, apiKey} — a predictable, stable value.
+    const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+    const finalPrompt = promptOverride ?? cachePrefix + variableTail;
+    const useCaching = provider === 'anthropic' && !promptOverride;
+
+    // Token budget pre-flight (estimate against the full prompt string)
     const estimatedTokens = estimateTokens({ provider, model: modelApiId, text: finalPrompt });
     const preflight = budgetPreflight({ estimatedTokens, thresholds: budgetThresholds });
     if (preflight.action === 'block' && !allowOverBudget) {
@@ -94,13 +110,14 @@ export default async function handler(req, res) {
       {
         provider,
         model: modelApiId,
-        prompt: finalPrompt,
+        prompt: useCaching ? variableTail : finalPrompt,
         apiKey,
         structuredOutput: {
           name: 'briefing',
           description: 'Aparture daily research briefing',
           schema: toJsonSchema(),
         },
+        ...(useCaching ? { cachePrefix, cacheable: true } : {}),
       },
       callMode
     );

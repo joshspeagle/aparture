@@ -119,14 +119,26 @@ export default async function handler(req, res) {
       date: runDate,
     });
 
-    const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? guidePrompt;
+    // The stable cache prefix is the template text before the first variable
+    // placeholder ({{themes}}). The variable tail is the rendered themes/papers content.
+    const firstSlotIdx = template.indexOf('{{themes}}');
+    const cachePrefix = firstSlotIdx >= 0 ? template.slice(0, firstSlotIdx) : '';
+
+    // APARTURE_TEST_PROMPT_OVERRIDE replaces the full prompt for fixture-based
+    // tests. When active (or in fixture mode), disable caching so the fixture
+    // hash keys only on {provider, model, prompt, apiKey} — a stable value.
+    const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+    const isFixture = callMode.mode === 'fixture';
+    const useCaching = resolvedProvider === 'anthropic' && !promptOverride && !isFixture;
+    const finalPrompt = promptOverride ?? guidePrompt;
 
     const llmResponse = await callModel(
       {
         provider: resolvedProvider,
         model: modelApiId,
-        prompt: finalPrompt,
+        prompt: useCaching ? guidePrompt.slice(cachePrefix.length) : finalPrompt,
         apiKey,
+        ...(useCaching ? { cachePrefix, cacheable: true } : {}),
       },
       callMode
     );
