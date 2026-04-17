@@ -338,19 +338,16 @@ This persistent browser profile preserves your Google login.
 
 ## Custom Podcast Prompts
 
-Aparture uses custom prompts to guide podcast generation based on duration.
+Aparture generates a per-run **focus prompt** from today's briefing (themes + must-cite papers + duration) and packages it into the NotebookLM bundle as `focus-prompt.txt`. The CLI automation pastes this directly into NotebookLM's audio-customization textarea.
 
-### Prompts File
+### Tuning the prompts
 
-Edit `NOTEBOOKLM_PROMPTS.md` to customize:
+Two files drive podcast style:
 
-```markdown
-## 15-minute
+- `prompts/notebooklm-discussion-guide.md` — LLM template that produces `discussion-guide.md` in the bundle
+- `lib/notebooklm/buildFocusPrompt.js` — static template (briefing + duration → focus-prompt.txt)
 
-Focus on 5-7 top papers with moderate technical depth.
-Provide balanced coverage of methodology and results.
-Target 2-3 minutes per major paper...
-```
+Edits to either take effect on the next bundle generation; no rebuild needed.
 
 ### Available Durations
 
@@ -358,10 +355,9 @@ Target 2-3 minutes per major paper...
 - 10 minutes - Standard summary
 - 15 minutes - Detailed overview (default)
 - 20 minutes - Comprehensive discussion
-- 25 minutes - Extended analysis
 - 30 minutes - Deep dive
 
-The automation automatically selects the prompt based on your configured duration.
+The focus prompt names the target duration explicitly so NotebookLM can pace accordingly.
 
 ## Output Files
 

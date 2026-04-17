@@ -164,48 +164,23 @@ Configure podcast length in Aparture settings:
 
 ### Custom Prompts
 
-Aparture uses custom prompts to guide podcast generation. Prompts are defined in `NOTEBOOKLM_PROMPTS.md`:
+Aparture ships the NotebookLM bundle with a per-run **focus prompt** that the user pastes into NotebookLM's audio-customization textarea. The prompt is generated fresh for every briefing and names today's themes and the specific papers NotebookLM must cover.
 
-**5-minute prompt (excerpt):**
-
-```
-Focus on the top 3-5 most significant papers only. Keep technical
-depth appropriate for audio but maintain accuracy. Each paper should
-get 30-60 seconds of discussion maximum...
-```
-
-**15-minute prompt (excerpt):**
-
-```
-Provide a balanced overview covering:
-- 5-7 top papers with moderate technical depth
-- Key methodological approaches
-- Implications and connections between papers
-Target 2-3 minutes per major paper...
-```
-
-**30-minute prompt (excerpt):**
-
-```
-Create a comprehensive discussion covering:
-- Detailed analysis of top papers
-- Technical methodology discussion
-- Broader context and related work
-- Connections across papers
-Aim for 3-5 minutes per major paper...
-```
+The bundle's `discussion-guide.md` source is produced by an LLM call whose template lives at `prompts/notebooklm-discussion-guide.md`. The focus-prompt template itself lives at `lib/notebooklm/buildFocusPrompt.js`.
 
 ### Customizing Prompts
 
-Edit `NOTEBOOKLM_PROMPTS.md` to customize podcast style:
+Two places to tune podcast style:
+
+- **`prompts/notebooklm-discussion-guide.md`** — edit to reshape the podcast _outline_ (act structure, must-cite logic, conversation prompts). Takes effect on the next bundle generation; no rebuild needed.
+- **`lib/notebooklm/buildFocusPrompt.js`** — edit the template literal to reshape the _voicing_ of the podcast (tone, pacing, citation rules, commute framing). Same live-edit behavior.
 
 **Example customizations:**
 
-- Add domain-specific context
-- Adjust technical depth
+- Add domain-specific context to the citation rules (e.g. "always contrast ML methods with statistical baselines")
+- Adjust technical depth (e.g. "assume listener is a PhD student in cosmology")
 - Emphasize certain aspects (methodology, results, implications)
-- Change conversation style
-- Add humor or personality
+- Change conversation style, add humor or personality
 
 ::: tip Iterative refinement
 Generate a few podcasts with default prompts, then adjust based on what you want more/less of.

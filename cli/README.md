@@ -95,11 +95,6 @@ npm run test:notebooklm
   - Audio generation monitoring
   - Podcast download
 
-- **`notebooklm-prompts.js`** - Prompt parsing utilities
-  - Extracts duration from filename (e.g., "30min")
-  - Loads matching prompt from NOTEBOOKLM_PROMPTS.md
-  - Handles all supported durations (5min, 10min, 15min, 20min, 25min, 30min)
-
 - **`setup.js`** - Interactive configuration
   - Category selection
   - Model configuration
@@ -177,7 +172,7 @@ When you run `npm run analyze`, the CLI performs these steps automatically:
    - **Customization** (5-10 seconds)
      - Opens Audio Overview customization
      - Sets Deep Dive format, Default length
-     - Pastes custom prompt from NOTEBOOKLM_PROMPTS.md
+     - Pastes the dynamic focus prompt from the generated bundle
    - **Generation** (10-20 minutes)
      - Monitors progress with updates every 30 seconds
      - Waits for completion (up to 30 minute timeout)
@@ -390,7 +385,6 @@ cli/
 ├── run-analysis.js            # Main pipeline orchestrator
 ├── browser-automation.js      # Aparture automation
 ├── notebooklm-automation.js   # NotebookLM automation
-├── notebooklm-prompts.js      # Prompt parsing utilities
 ├── setup.js                   # Interactive configuration
 ├── server-manager.js          # Server lifecycle
 ├── config-manager.js          # Config management

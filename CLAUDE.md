@@ -128,7 +128,6 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `cli/server-manager.js` - Next.js development server lifecycle management
   - `cli/browser-automation.js` - Playwright-based browser automation wrapper
   - `cli/notebooklm-automation.js` - Google NotebookLM automation wrapper
-  - `cli/notebooklm-prompts.js` - Prompt parsing utilities
   - `cli/config-manager.js` - Configuration persistence
   - `cli/setup.js` - Interactive configuration UI
   - `cli/run-analysis.js` - Full production analysis automation
@@ -234,7 +233,6 @@ The `cli/` directory provides complete browser automation for unattended analysi
 - `server-manager.js` - Manages Next.js dev server lifecycle (start/stop/cleanup)
 - `browser-automation.js` - Playwright wrapper for Aparture UI automation
 - `notebooklm-automation.js` - Playwright wrapper for Google NotebookLM automation
-- `notebooklm-prompts.js` - Prompt parsing utilities for NOTEBOOKLM_PROMPTS.md
 - `config-manager.js` - Configuration persistence and management
 - `setup.js` - Interactive configuration UI for first-time setup
 - `run-analysis.js` - Full production analysis automation with podcast generation

@@ -259,7 +259,7 @@ class NotebookLMAutomation {
   /**
    * Generate audio overview with custom prompt
    * Opens customization menu, configures settings, and starts generation
-   * @param {string} customPrompt - The focus prompt from NOTEBOOKLM_PROMPTS.md
+   * @param {string} customPrompt - The focus prompt (generated per run from the briefing)
    * @param {string} duration - Duration indicator (e.g., "30min") - used for logging
    * @returns {Promise<void>}
    */
