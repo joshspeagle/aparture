@@ -74,6 +74,11 @@ describe('parseOpenAIResponse', () => {
     });
     expect(out.cacheReadTok).toBeUndefined();
   });
+
+  it('returns empty text when choices array is missing', () => {
+    const out = parseOpenAIResponse({});
+    expect(out.text).toBe('');
+  });
 });
 
 describe('buildOpenAIResponsesRequest', () => {
@@ -97,19 +102,37 @@ describe('buildOpenAIResponsesRequest', () => {
 });
 
 describe('parseOpenAIResponsesResponse', () => {
-  it('extracts output_text and token counts', () => {
-    const out = parseOpenAIResponsesResponse({
-      output_text: 'Result text.',
+  it('extracts text from output[].content[].text and token counts', () => {
+    const response = {
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'Result text.' }] }],
       usage: { input_tokens: 100, output_tokens: 50 },
-    });
+    };
+    const out = parseOpenAIResponsesResponse(response);
     expect(out.text).toBe('Result text.');
     expect(out.tokensIn).toBe(100);
     expect(out.tokensOut).toBe(50);
   });
 
-  it('defaults to empty string and zero tokens when fields are absent', () => {
-    const out = parseOpenAIResponsesResponse({});
-    expect(out.text).toBe('');
+  it('skips non-message items and reads the first message item', () => {
+    const response = {
+      output: [
+        { type: 'function_call', content: [] },
+        { type: 'message', content: [{ type: 'output_text', text: 'Hello from message.' }] },
+      ],
+      usage: { input_tokens: 20, output_tokens: 10 },
+    };
+    const out = parseOpenAIResponsesResponse(response);
+    expect(out.text).toBe('Hello from message.');
+  });
+
+  it('returns empty text when output array is missing', () => {
+    expect(parseOpenAIResponsesResponse({}).text).toBe('');
+  });
+
+  it('defaults to zero tokens when usage is absent', () => {
+    const out = parseOpenAIResponsesResponse({
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }],
+    });
     expect(out.tokensIn).toBe(0);
     expect(out.tokensOut).toBe(0);
   });
