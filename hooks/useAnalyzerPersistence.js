@@ -70,6 +70,8 @@ export const DEFAULT_CONFIG = {
   briefingModel: 'gemini-3.1-pro',
   pauseAfterFilter: true,
   pauseBeforeBriefing: true,
+  briefingRetryOnYes: true,
+  briefingRetryOnMaybe: false,
   maxAbstractDisplay: 500,
 };
 
