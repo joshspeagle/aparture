@@ -1,0 +1,14 @@
+{
+  "hash": "c1d441f325e38b34fe67a290becae647",
+  "input": {
+    "apiKey": null,
+    "model": "gemini-3.1-pro",
+    "prompt": "NOTEBOOKLM_TEST_FIXTURE",
+    "provider": "google"
+  },
+  "response": {
+    "text": "# Podcast Outline — 2026-04-16\n\n## Opening (~2 min)\nHook: Today's papers converge on interpretability.\nSetup: You care about circuit-level analysis.\n\n## Act 1 — Interpretability converges (~15 min)\nMust-cite papers: [P1]\nCore tension: How do heads compose?\nConversation prompts:\n  - How does [P1] frame multi-step reasoning?\n\n## Closing (~3 min)\nKey takeaway: Head-level analysis is converging.\nPapers worth flagging: [P1]\n",
+    "tokensIn": 100,
+    "tokensOut": 80
+  }
+}
