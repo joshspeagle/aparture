@@ -62,18 +62,19 @@ export default async function handler(req, res) {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'synthesis.md');
     const template = await fs.readFile(templatePath, 'utf8');
     // Build the full rendered prompt (template + profile + papers).
-    // cachePrefix = template-with-profile (stable for a given profile),
-    // variableTail = papers JSON block (changes every run).
+    // cachePrefix = template-prefix-with-profile (stable for a given profile),
+    // variableTail = papers JSON block + any template content after {{papers}}
+    // (changes every run).
     const fullPrompt = renderSynthesisPrompt(template, { profile, papers });
-    // The split point is just before the papers JSON block: find the last
-    // occurrence of the papers marker in the rendered output by locating the
-    // boundary between the profile portion and the papers portion. We do this
-    // by rendering a version with an empty papers array to find the prefix length.
-    const prefixOnly = renderSynthesisPrompt(template, { profile, papers: [] });
-    // papers-section boundary = length of prefix-only up to the empty JSON "[]"
-    // We split at the start of the papers JSON (the "[" from JSON.stringify).
-    const splitIndex = prefixOnly.length - '[]'.length;
-    const cachePrefix = fullPrompt.slice(0, splitIndex);
+    // Split at the {{papers}} slot in the raw template: everything before is
+    // the cacheable prefix (template instructions + the profile substitution);
+    // everything after is the variable tail. This is robust to template changes
+    // as long as the template still has a {{papers}} slot. The invariant
+    // `cachePrefix + variableTail === fullPrompt` holds byte-for-byte.
+    const papersSlotPos = template.indexOf('{{papers}}');
+    const templatePrefix = template.slice(0, papersSlotPos);
+    const cachePrefix = templatePrefix.replaceAll('{{profile}}', profile ?? '');
+    const splitIndex = cachePrefix.length;
 
     // Phase 1.5.1: optional retry hint from the client-side hallucination
     // check + retry flow. Appended to the prompt so the model knows this is

@@ -66,8 +66,11 @@ export default async function handler(req, res) {
     const callMode = callModelMode ?? { mode: 'live' };
     // Disable caching in fixture mode so the fixture hash stays keyed on the
     // full rendered prompt only — the same shape the test's beforeAll seeded.
+    // Also disable when APARTURE_TEST_PROMPT_OVERRIDE is set: that env flag
+    // forces a deterministic prompt for fixture lookups regardless of mode.
+    const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
     const isFixture = callMode.mode === 'fixture';
-    const useCaching = provider === 'anthropic' && !isFixture;
+    const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;
 
     const response = await callModel(
       {

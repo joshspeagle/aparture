@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     if (!modelCfg) {
       return res.status(400).json({ error: `unknown notebookLMModel: ${notebookLMModel}` });
     }
-    const resolvedProvider = provider ?? (modelCfg.provider ?? 'Google').toLowerCase();
+    const resolvedProvider = (provider ?? modelCfg.provider ?? 'Google').toLowerCase();
 
     // Resolve API key: accept client-supplied key, or fall back to env vars
     // via password auth. Mirrors the pattern in pages/api/synthesize.js.
