@@ -1,7 +1,9 @@
 {
-  "hash": "4a1798b058b2b1bc2cf083a12dc2da6a",
+  "hash": "1ec101a42071bd3a5dcba42417c3f94c",
   "input": {
     "apiKey": null,
+    "cacheable": false,
+    "cachePrefix": "",
     "model": "claude-haiku-4-5",
     "prompt": "Fix this JSON response.",
     "provider": "anthropic"

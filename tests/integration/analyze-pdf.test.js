@@ -71,8 +71,8 @@ describe('analyze-pdf API route (fixture mode)', () => {
   });
 
   it('returns analysis shape for the correction path', async () => {
-    // The explicit correctionPrompt branch passes the prompt through directly —
-    // no APARTURE_TEST_PROMPT_OVERRIDE substitution in this route branch.
+    // The explicit correctionPrompt branch uses APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt.
+    // Since the override is not set here, correctionPrompt is used as-is.
     const { req, res, getResponse } = createMockReqRes({
       password: 'test-pw',
       model: 'claude-haiku-4.5',
