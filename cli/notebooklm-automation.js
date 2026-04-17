@@ -214,74 +214,46 @@ class NotebookLMAutomation {
    * @param {string} notebooklmDocPath - Path to NotebookLM document
    * @returns {Promise<void>}
    */
-  async uploadFiles(reportPath, notebooklmDocPath) {
-    if (!this.page) {
-      throw new Error('Browser not launched. Call launch() first.');
+  /**
+   * Upload an arbitrary list of files as NotebookLM sources.
+   * @param {string[]} filePaths - absolute paths of files to upload
+   * @returns {Promise<void>}
+   */
+  async uploadFiles(filePaths) {
+    if (!this.page) throw new Error('Browser not launched. Call launch() first.');
+    if (!Array.isArray(filePaths) || filePaths.length === 0) {
+      throw new Error('uploadFiles: filePaths must be a non-empty array');
     }
 
-    try {
-      // Log the files being uploaded for debugging
-      const path = require('path');
-      console.log(`  Report file: ${path.basename(reportPath)}`);
-      console.log(`  NotebookLM document: ${path.basename(notebooklmDocPath)}`);
+    const path = require('path');
+    console.log(`  Uploading ${filePaths.length} files to NotebookLM:`);
+    for (const p of filePaths) console.log(`    - ${path.basename(p)}`);
 
-      // Verify files are different
-      if (reportPath === notebooklmDocPath) {
-        throw new Error('Error: reportPath and notebooklmDocPath are the same file!');
-      }
+    await this.page.waitForTimeout(3000);
 
-      // NotebookLM automatically opens "Add sources" modal after creating notebook
-      // Wait for the modal to be visible
-      await this.page.waitForTimeout(3000);
-
-      // Use Playwright's file chooser API to handle the file upload
-      // This works even if the file input is hidden
-      const [fileChooser] = await Promise.all([
-        this.page.waitForEvent('filechooser', { timeout: 5000 }),
-        // Click the upload area to trigger file chooser
-        this.page.click('text=/choose file/i').catch(() =>
-          this.page.click('text=/upload sources/i').catch(() =>
-            // If text clicks don't work, try clicking the upload icon/area
-            this.page.click('.dropzone, [class*="upload"], [class*="drop"]')
-          )
+    const [fileChooser] = await Promise.all([
+      this.page.waitForEvent('filechooser', { timeout: 5000 }),
+      this.page
+        .click('text=/choose file/i')
+        .catch(() =>
+          this.page
+            .click('text=/upload sources/i')
+            .catch(() => this.page.click('.dropzone, [class*="upload"], [class*="drop"]'))
         ),
-      ]);
+    ]);
 
-      // Set the files
-      console.log('  Uploading 2 files to NotebookLM...');
-      await fileChooser.setFiles([reportPath, notebooklmDocPath]);
+    await fileChooser.setFiles(filePaths);
+    await this.page.waitForTimeout(8000 + filePaths.length * 500);
 
-      // Wait for uploads to complete
-      console.log('  Waiting for file uploads to complete...');
-      await this.page.waitForTimeout(8000); // Give more time for uploads
-
-      // Verify uploads completed by checking for source count
-      try {
-        // Look for "2 sources" or similar text
-        await this.page.waitForSelector('text=/2/, text=/sources/i', {
-          timeout: 15000,
-          state: 'visible',
-        });
-        console.log('  ✓ Upload verification: Found source count indicator');
-      } catch {
-        console.log('  Warning: Could not confirm file upload completion');
-      }
-
-      // Close the modal if there's a close button
-      const closeButton = await this.page.$('button[aria-label*="Close"], [aria-label*="close"]');
-      if (closeButton) {
-        await closeButton.click();
-        await this.page.waitForTimeout(1000);
-      }
-
-      // Refresh the page after upload to ensure NotebookLM processes the sources
-      // This fixes the issue where the Audio Overview button stays disabled
-      console.log('  Refreshing page to process uploaded sources...');
-      await this.page.reload({ waitUntil: 'domcontentloaded' });
-      await this.page.waitForTimeout(3000); // Wait for page to fully load
-    } catch (error) {
-      throw new Error(`Failed to upload files: ${error.message}`);
+    const closeButton = await this.page.$('button[aria-label*="Close"], [aria-label*="close"]');
+    if (closeButton) {
+      await closeButton.click();
+      await this.page.waitForTimeout(1000);
     }
+
+    console.log('  Refreshing page to process uploaded sources...');
+    await this.page.reload({ waitUntil: 'domcontentloaded' });
+    await this.page.waitForTimeout(3000);
   }
 
   /**
