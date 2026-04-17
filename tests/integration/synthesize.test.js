@@ -26,6 +26,27 @@ function createMockReqRes(body) {
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/llm');
 
+describe('synthesize API route — auth + method guards', () => {
+  it('rejects missing/wrong password with 401', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      password: 'wrong',
+      profile: 'I study interpretability.',
+      papers: [],
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+    });
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+
+  it('rejects non-POST methods with 405', async () => {
+    const { req, res, getResponse } = createMockReqRes({});
+    req.method = 'GET';
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(405);
+  });
+});
+
 describe('synthesize API route (fixture mode)', () => {
   it('returns a validated briefing when the fixture is good', async () => {
     const { req, res, getResponse } = createMockReqRes({

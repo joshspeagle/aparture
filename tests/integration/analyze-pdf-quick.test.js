@@ -27,6 +27,27 @@ function createMockReqRes(body) {
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime');
 
+describe('analyze-pdf-quick API route — auth + method guards', () => {
+  it('rejects missing/wrong password with 401', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      password: 'wrong',
+      paper: { arxivId: '2504.99999', title: 'Test' },
+      fullReport: 'report text',
+      provider: 'anthropic',
+      model: 'claude-haiku-4-5',
+    });
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+
+  it('rejects non-POST methods with 405', async () => {
+    const { req, res, getResponse } = createMockReqRes({});
+    req.method = 'GET';
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(405);
+  });
+});
+
 describe('analyze-pdf-quick API route (fixture mode)', () => {
   beforeAll(async () => {
     // Build the prompt the handler will generate, hash it, and seed a fixture.

@@ -74,4 +74,11 @@ describe('parseGoogleResponse', () => {
     const result = parseGoogleResponse(response, { expectStructured: true });
     expect(result.structured).toEqual({ headline: 'Big news' });
   });
+
+  it('returns empty text and zero tokens when response is malformed', () => {
+    const out = parseGoogleResponse({});
+    expect(out.text).toBe('');
+    expect(out.tokensIn).toBe(0);
+    expect(out.tokensOut).toBe(0);
+  });
 });

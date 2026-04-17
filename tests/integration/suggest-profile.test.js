@@ -227,4 +227,24 @@ describe('suggest-profile API route (fixture mode)', () => {
     expect(statusCode).toBe(401);
     expect(jsonBody.error).toMatch(/apiKey|password/);
   });
+
+  it('rejects wrong password with 401', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      password: 'wrong-password',
+      currentProfile: PROFILE_NO_CHANGE,
+      feedback: FEEDBACK_NO_CHANGE,
+      briefingModel: 'claude-opus-4-6',
+      provider: 'anthropic',
+    });
+
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+
+  it('rejects non-POST methods with 405', async () => {
+    const { req, res, getResponse } = createMockReqRes({});
+    req.method = 'GET';
+    await handler(req, res);
+    expect(getResponse().statusCode).toBe(405);
+  });
 });
