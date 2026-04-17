@@ -652,40 +652,6 @@ export default function SettingsPanel({ config, setConfig, processing }) {
             </p>
           </div>
 
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-4)',
-              padding: 'var(--aparture-space-3)',
-              background: 'var(--aparture-bg)',
-              border: '1px solid var(--aparture-hairline)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                fontWeight: 500,
-                color: 'var(--aparture-mute)',
-                marginBottom: 'var(--aparture-space-2)',
-              }}
-            >
-              Briefing hallucination check
-            </p>
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                marginBottom: 'var(--aparture-space-3)',
-              }}
-            >
-              After a briefing is generated, a second model call audits it for unsupported claims.
-              If the check flags problems, the briefing is regenerated up to one additional time
-              based on the criteria below.
-            </p>
-          </div>
-
           {/* Review & confirmation */}
           <div
             style={{
@@ -737,22 +703,6 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 checked={config.pauseBeforeBriefing ?? true}
                 onChange={(e) =>
                   setConfig((prev) => ({ ...prev, pauseBeforeBriefing: e.target.checked }))
-                }
-                disabled={processing.isRunning}
-              />
-              <Checkbox
-                label="Auto-retry briefing if hallucination check returns YES"
-                checked={config.briefingRetryOnYes ?? true}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, briefingRetryOnYes: e.target.checked }))
-                }
-                disabled={processing.isRunning}
-              />
-              <Checkbox
-                label="Auto-retry briefing if hallucination check returns MAYBE"
-                checked={config.briefingRetryOnMaybe ?? false}
-                onChange={(e) =>
-                  setConfig((prev) => ({ ...prev, briefingRetryOnMaybe: e.target.checked }))
                 }
                 disabled={processing.isRunning}
               />
