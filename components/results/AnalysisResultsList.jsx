@@ -10,9 +10,17 @@ export default function AnalysisResultsList({
 }) {
   if (results.scoredPapers.length === 0 && results.finalRanking.length === 0) return null;
 
-  const showTwoSections =
-    results.finalRanking.length > 0 &&
-    (processing.stage === 'deep-analysis' || processing.stage === 'complete');
+  // Show the two-section view (deep-analyzed papers above, abstract-only
+  // below) once we've reached PDF analysis and through every stage that
+  // follows it (briefing review, synthesizing, etc.) — otherwise the
+  // panel collapses back to a flat abstract list once briefing kicks in.
+  const POST_PDF_STAGES = new Set([
+    'deep-analysis',
+    'complete',
+    'pre-briefing-review',
+    'synthesizing',
+  ]);
+  const showTwoSections = results.finalRanking.length > 0 && POST_PDF_STAGES.has(processing.stage);
 
   const testBadgeStyle = {
     marginLeft: '12px',
