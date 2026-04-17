@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildOpenAIRequest, parseOpenAIResponse } from '../../../../lib/llm/structured/openai.js';
+import {
+  buildOpenAIRequest,
+  buildOpenAIResponsesRequest,
+  parseOpenAIResponse,
+  parseOpenAIResponsesResponse,
+} from '../../../../lib/llm/structured/openai.js';
 
 describe('buildOpenAIRequest', () => {
   it('builds a plain text request', () => {
@@ -68,5 +73,44 @@ describe('parseOpenAIResponse', () => {
       usage: { prompt_tokens: 100, completion_tokens: 50 },
     });
     expect(out.cacheReadTok).toBeUndefined();
+  });
+});
+
+describe('buildOpenAIResponsesRequest', () => {
+  it('targets /v1/responses with input_file and input_text blocks', () => {
+    const req = buildOpenAIResponsesRequest({
+      model: 'gpt-5.4',
+      prompt: 'Analyze this paper.',
+      pdfBase64: 'CCCC',
+    });
+    expect(req.url).toBe('https://api.openai.com/v1/responses');
+    expect(req.body.input[0].role).toBe('user');
+    expect(req.body.input[0].content).toEqual([
+      {
+        type: 'input_file',
+        filename: 'research_paper.pdf',
+        file_data: 'data:application/pdf;base64,CCCC',
+      },
+      { type: 'input_text', text: 'Analyze this paper.' },
+    ]);
+  });
+});
+
+describe('parseOpenAIResponsesResponse', () => {
+  it('extracts output_text and token counts', () => {
+    const out = parseOpenAIResponsesResponse({
+      output_text: 'Result text.',
+      usage: { input_tokens: 100, output_tokens: 50 },
+    });
+    expect(out.text).toBe('Result text.');
+    expect(out.tokensIn).toBe(100);
+    expect(out.tokensOut).toBe(50);
+  });
+
+  it('defaults to empty string and zero tokens when fields are absent', () => {
+    const out = parseOpenAIResponsesResponse({});
+    expect(out.text).toBe('');
+    expect(out.tokensIn).toBe(0);
+    expect(out.tokensOut).toBe(0);
   });
 });
