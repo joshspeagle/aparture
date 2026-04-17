@@ -78,6 +78,43 @@ describe('buildAnthropicRequest', () => {
       },
     ]);
   });
+
+  it('produces a two-block content array with document block when pdfBase64 is provided', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-6',
+      prompt: 'Analyze this paper.',
+      pdfBase64: 'AAAA',
+    });
+    expect(req.body.messages[0].content).toEqual([
+      {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: 'AAAA' },
+      },
+      { type: 'text', text: 'Analyze this paper.' },
+    ]);
+  });
+
+  it('produces a three-block content array with cache_control then document then text when cacheable + pdfBase64', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-6',
+      prompt: 'Analyze this paper.',
+      pdfBase64: 'AAAA',
+      cacheable: true,
+      cachePrefix: 'Static scoring rubric.',
+    });
+    expect(req.body.messages[0].content).toEqual([
+      {
+        type: 'text',
+        text: 'Static scoring rubric.',
+        cache_control: { type: 'ephemeral' },
+      },
+      {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: 'AAAA' },
+      },
+      { type: 'text', text: 'Analyze this paper.' },
+    ]);
+  });
 });
 
 describe('parseAnthropicResponse', () => {
