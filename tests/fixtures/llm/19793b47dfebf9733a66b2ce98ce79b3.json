@@ -1,0 +1,15 @@
+{
+  "hash": "19793b47dfebf9733a66b2ce98ce79b3",
+  "input": {
+    "cacheable": false,
+    "cachePrefix": "",
+    "model": "claude-haiku-4-5",
+    "prompt": "RESCORE_ABSTRACTS_TEST_FIXTURE",
+    "provider": "anthropic"
+  },
+  "response": {
+    "text": "[{\"paperIndex\":1,\"adjustedScore\":7.5,\"adjustmentReason\":\"Score maintained; paper directly addresses interpretability research with solid methodological contribution.\",\"confidence\":\"HIGH\"},{\"paperIndex\":2,\"adjustedScore\":5.0,\"adjustmentReason\":\"Slightly reduced; overlap with stated interests is moderate and the novelty is limited relative to Paper A.\",\"confidence\":\"MEDIUM\"}]",
+    "tokensIn": 100,
+    "tokensOut": 60
+  }
+}
