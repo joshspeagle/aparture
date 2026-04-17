@@ -8,16 +8,7 @@ Aparture is a Next.js-based web application for multi-stage research paper disco
 
 ## Documentation
 
-📚 **Full documentation**: https://joshspeagle.github.io/aparture/
-
-The `docs/` directory contains comprehensive VitePress documentation covering:
-
-- **Getting Started**: Installation, setup, quick start
-- **User Guide**: Web interface, CLI automation, testing, reports
-- **Concepts**: Multi-stage analysis, arXiv categories, model selection, NotebookLM
-- **API Reference**: Commands, configuration, environment variables
-
-When questions arise about features, configuration, or usage, refer to the documentation first.
+📚 **Full user docs (VitePress):** [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — built from `docs/`. For features, configuration, or usage questions, check there first before the source.
 
 ## Commands
 
@@ -91,7 +82,7 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `components/briefing/` - Briefing reading view (BriefingView root + 10 leaf components) + `BriefingCard.jsx` + `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure including hallucination audit)
   - `components/filter/` - `FilterResultsList.jsx` with inline FilterResultRow + cycle-verdict pill for filter overrides
   - `components/notebooklm/` - `NotebookLMCard.jsx` (rendered as disclosure below briefing)
-  - `components/profile/` - Your Profile panel: YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview (StatusRow + PreviewPanel are unused legacy files)
+  - `components/profile/` - Your Profile panel: YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview
   - `components/feedback/` - Feedback panel: FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState + `eventMeta.js`
   - `components/results/` - results-list cards (AnalysisResultsList, DownloadReportCard)
   - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + `pauseBeforeBriefing` + briefing retry checkboxes)
@@ -159,15 +150,11 @@ When questions arise about features, configuration, or usage, refer to the docum
 - `temp/notebooklm-profile/` - Google NotebookLM session cookies (largest by far). **Do NOT delete** — losing it forces an interactive Google re-login on the next podcast run.
 - `temp/*.pdf`, `temp/individual/`, `temp/screenshots/`, `temp/test-screenshots/` - Cached PDFs and automation artifacts. Safe to prune freely.
 
-**Phase 2 migration:** per the design spec §5, both directories move to `~/aparture/{reports,cache}/` when Electron is introduced, so the repo root becomes source-only. Until then, treat them as local scratch space that happens to live inside the repo.
+**Phase 2 migration:** both directories move to `~/aparture/{reports,cache}/` when the Electron wrapper ships, so the repo root becomes source-only. Until then, treat them as local scratch space that happens to live inside the repo.
 
 ### API Integration
 
-The application integrates with multiple LLM APIs:
-
-- **Anthropic**: Claude models (Opus 4.6, Sonnet 4.5, Haiku 4.5)
-- **OpenAI**: GPT-5 models (GPT-5.2, Mini, Nano)
-- **Google**: Gemini models (3 Pro, 3 Flash, 2.5 Pro, 2.5 Flash, 2.5 Flash-Lite)
+The application integrates with Anthropic, OpenAI, and Google LLM APIs. See the **Model Information** section below for the current set of models, IDs, and pricing.
 
 **IMPORTANT**: All model names, IDs, and configurations are defined in `utils/models.js`. When adding or updating models:
 
@@ -429,45 +416,21 @@ The analysis pipeline lives in extracted modules under `lib/analyzer/` (see File
 
 ### CLI Automation
 
-The `cli/` directory provides complete browser automation for unattended analysis runs.
+The `cli/` directory provides complete browser automation for unattended analysis runs. See the File Structure section above for per-file responsibilities.
 
-**Core Components:**
-
-- `server-manager.js` - Manages Next.js dev server lifecycle (start/stop/cleanup)
-- `browser-automation.js` - Playwright wrapper for Aparture UI automation
-- `notebooklm-automation.js` - Playwright wrapper for Google NotebookLM automation
-- `config-manager.js` - Configuration persistence and management
-- `setup.js` - Interactive configuration UI for first-time setup
-- `run-analysis.js` - Full production analysis automation with podcast generation
-
-**Production Usage:**
+**Production usage** (settings persist in browser localStorage between runs; Google auth cached after first podcast generation):
 
 ```bash
-# First time: Configure settings interactively
-npm run setup
-
-# Run analysis (uses saved configuration)
+npm run setup              # First-time interactive configuration
 npm run analyze            # Full workflow: report + document + podcast
-npm run analyze:report     # Report only (skip NotebookLM features)
-npm run analyze:document   # Report + NotebookLM document (skip podcast)
-npm run analyze:podcast    # Podcast only (skip analysis, use existing files)
-
-# Testing
+npm run analyze:report     # Report only (skip NotebookLM)
+npm run analyze:document   # Report + NotebookLM doc (skip podcast)
+npm run analyze:podcast    # Podcast only (skip analysis, reuse existing files)
 npm run test:dryrun        # Mock API test
 npm run test:minimal       # Real API test (3 papers)
 ```
 
-**Features:**
-
-- **Persistent Configuration**: Settings saved in browser localStorage between runs
-- **Unattended Execution**: Fully automated from start to completion
-- **Multi-Stage Monitoring**: Tracks fetching → filtering → scoring → post-processing → pdf-analysis stages
-- **NotebookLM Integration**: Optional podcast-optimized document generation
-- **Podcast Automation**: Uploads files to NotebookLM and generates audio overview with custom prompts
-- **Google Authentication**: Interactive login on first podcast generation, cached thereafter
-- **Progress Screenshots**: Captures state at key milestones
-- **Report Verification**: Validates downloaded reports for completeness
-- **Cross-Platform**: Works on Windows, Linux, and WSL
+Tracks stages (fetching → filtering → scoring → post-processing → pdf-analysis), captures progress screenshots, and validates downloaded reports. Works on Windows, Linux, and WSL.
 
 ### Testing Features
 
