@@ -1,0 +1,16 @@
+{
+  "hash": "0199d9dfcd9e0830107db80f1b9c7759",
+  "input": {
+    "apiKey": null,
+    "cacheable": false,
+    "cachePrefix": "",
+    "model": "claude-haiku-4-5",
+    "prompt": "QUICK_FILTER_TEST_FIXTURE",
+    "provider": "anthropic"
+  },
+  "response": {
+    "text": "[{\"paperIndex\":1,\"verdict\":\"YES\",\"summary\":\"Paper A investigates AI interpretability.\",\"justification\":\"Directly aligns with interpretability research interests.\"},{\"paperIndex\":2,\"verdict\":\"MAYBE\",\"summary\":\"Paper B explores neural network behavior.\",\"justification\":\"Potentially relevant to interpretability depending on methodology.\"}]",
+    "tokensIn": 100,
+    "tokensOut": 50
+  }
+}

@@ -1,165 +1,8 @@
-const { MODEL_REGISTRY } = require('../../utils/models.js');
+import { callModel } from '../../lib/llm/callModel.js';
+import { MODEL_REGISTRY } from '../../utils/models.js';
 
-// Simple password check function
 function checkPassword(password) {
   return password === process.env.ACCESS_PASSWORD;
-}
-
-// Function to call different AI models for quick filtering
-async function callAIModel(modelId, prompt) {
-  const modelConfig = MODEL_REGISTRY[modelId];
-
-  if (!modelConfig) {
-    throw new Error(`Unsupported model: ${modelId}`);
-  }
-
-  const { apiId, provider } = modelConfig;
-
-  switch (provider) {
-    case 'Anthropic':
-      return await callClaude(apiId, prompt);
-    case 'OpenAI':
-      return await callOpenAI(apiId, prompt);
-    case 'Google':
-      return await callGemini(apiId, prompt);
-    default:
-      throw new Error(`Unsupported provider: ${provider}`);
-  }
-}
-
-// Claude API call
-async function callClaude(modelName, prompt) {
-  if (!process.env.CLAUDE_API_KEY) {
-    throw new Error('CLAUDE_API_KEY environment variable is not set');
-  }
-
-  const requestBody = {
-    model: modelName,
-    max_tokens: 5000, // Increased to match scoring stage for thinking tokens
-    messages: [{ role: 'user', content: prompt }],
-  };
-
-  console.log('Sending filter request to Anthropic:', {
-    model: modelName,
-    promptLength: prompt.length,
-  });
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.CLAUDE_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    console.error('Anthropic API Error:', response.status, responseText);
-    throw new Error(`Anthropic API error: ${response.status} - ${responseText}`);
-  }
-
-  const data = JSON.parse(responseText);
-  return data.content[0].text;
-}
-
-// OpenAI API call
-async function callOpenAI(modelName, prompt) {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY environment variable is not set');
-  }
-
-  const requestBody = {
-    model: modelName,
-    max_completion_tokens: 5000, // Increased to match scoring stage for thinking tokens
-    messages: [{ role: 'user', content: prompt }],
-  };
-
-  console.log('Sending filter request to OpenAI:', {
-    model: modelName,
-    promptLength: prompt.length,
-  });
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    console.error('OpenAI API Error:', response.status, responseText);
-    throw new Error(`OpenAI API error: ${response.status} - ${responseText}`);
-  }
-
-  const data = JSON.parse(responseText);
-
-  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-    console.error('Unexpected OpenAI response format:', data);
-    throw new Error('Unexpected response format from OpenAI API');
-  }
-
-  return data.choices[0].message.content;
-}
-
-// Google Gemini API call
-async function callGemini(modelName, prompt) {
-  if (!process.env.GOOGLE_AI_API_KEY) {
-    throw new Error('GOOGLE_AI_API_KEY environment variable is not set');
-  }
-
-  const requestBody = {
-    contents: [
-      {
-        parts: [{ text: prompt }],
-      },
-    ],
-    generationConfig: {
-      maxOutputTokens: 5000, // Increased to match scoring stage for thinking tokens
-    },
-  };
-
-  console.log('Sending filter request to Google AI:', {
-    model: modelName,
-    promptLength: prompt.length,
-  });
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    console.error('Google AI API Error:', response.status, responseText);
-    throw new Error(`Google AI API error: ${response.status} - ${responseText}`);
-  }
-
-  const data = JSON.parse(responseText);
-
-  if (
-    !data.candidates ||
-    !data.candidates[0] ||
-    !data.candidates[0].content ||
-    !data.candidates[0].content.parts
-  ) {
-    console.error('Unexpected Google AI response format:', data);
-    throw new Error('Unexpected response format from Google AI API');
-  }
-
-  return data.candidates[0].content.parts[0].text;
 }
 
 // Function to validate filter response structure
@@ -201,26 +44,13 @@ function validateFilterResponse(responseText, expectedCount) {
   }
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { papers, scoringCriteria, password, model, correctionPrompt } = req.body;
-
-  // Check password
-  if (!checkPassword(password)) {
-    return res.status(401).json({ error: 'Invalid password' });
-  }
-
-  try {
-    let prompt;
-
-    // Use correction prompt if provided, otherwise generate normal filtering prompt
-    if (correctionPrompt) {
-      prompt = correctionPrompt;
-    } else {
-      prompt = `You are a research assistant doing quick relevance screening of academic papers.
+/**
+ * Build the static cacheable prefix: instruction block + user profile.
+ * This portion is identical for every batch call with the same scoringCriteria,
+ * making it a good candidate for Anthropic prompt caching.
+ */
+function buildCachePrefix(scoringCriteria) {
+  return `You are a research assistant doing quick relevance screening of academic papers.
 
 Research Interests:
 ${scoringCriteria}
@@ -229,15 +59,6 @@ For each paper below, produce three things:
 1. A one-sentence SUMMARY of what the paper is actually about, so the user can tell at a glance whether the model understood it correctly.
 2. A VERDICT: YES (clearly relevant), NO (clearly not relevant), or MAYBE (possibly relevant, needs closer look).
 3. A one-sentence JUSTIFICATION explaining the verdict with reference to the research interests above. Be specific — "aligns with mechanistic interpretability" is better than "relevant".
-
-Papers to screen:
-${papers
-  .map(
-    (p, idx) => `Paper ${idx + 1}:
-Title: ${p.title}
-Abstract: ${p.abstract || 'No abstract available'}`
-  )
-  .join('\n\n')}
 
 FILTERING GUIDANCE:
 - YES: Papers that clearly align with the specified research interests
@@ -270,9 +91,103 @@ Respond ONLY with a valid JSON array in this exact format:
 ]
 
 Your entire response MUST ONLY be a single, valid JSON array.`;
-    }
+}
 
-    let responseText = await callAIModel(model, prompt);
+/**
+ * Build the variable per-batch tail: the list of papers to screen.
+ */
+function buildBatchPrompt(papers) {
+  return `Papers to screen:
+${papers
+  .map(
+    (p, idx) => `Paper ${idx + 1}:
+Title: ${p.title}
+Abstract: ${p.abstract || 'No abstract available'}`
+  )
+  .join('\n\n')}`;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const {
+    papers,
+    scoringCriteria,
+    password,
+    apiKey: clientApiKey,
+    model,
+    correctionPrompt,
+    callModelMode,
+  } = req.body ?? {};
+
+  // Resolve provider from model registry (needed before auth to pick env key)
+  const modelConfig = MODEL_REGISTRY[model];
+  const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
+  const modelApiId = modelConfig?.apiId ?? model;
+
+  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
+  let apiKey = clientApiKey;
+  if (!apiKey && password) {
+    if (!checkPassword(password)) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
+    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
+    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  }
+
+  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+    return res.status(401).json({ error: 'missing credentials' });
+  }
+
+  const callMode = callModelMode ?? { mode: 'live' };
+  const cacheable = provider === 'anthropic';
+
+  try {
+    let responseText;
+
+    if (correctionPrompt) {
+      // Correction path: pass the whole correction prompt as the variable tail,
+      // no caching (cache misses are fine here since corrections are rare).
+      const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt;
+      const result = await callModel(
+        {
+          provider,
+          model: modelApiId,
+          prompt: finalPrompt,
+          cachePrefix: '',
+          cacheable: false,
+          apiKey,
+        },
+        callMode
+      );
+      responseText = result.text;
+    } else {
+      // Normal path: split prompt into static prefix (cacheable) + variable tail.
+      const cachePrefix = buildCachePrefix(scoringCriteria ?? '');
+      const batchPrompt = buildBatchPrompt(papers ?? []);
+      // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
+      // tests. When the override is active, disable caching so the fixture hash
+      // keys only on {provider, model, prompt, apiKey} — a predictable value.
+      const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+      const finalPrompt = promptOverride ?? batchPrompt;
+      const useCaching = cacheable && !promptOverride;
+
+      const result = await callModel(
+        {
+          provider,
+          model: modelApiId,
+          prompt: finalPrompt,
+          cachePrefix: useCaching ? cachePrefix : '',
+          cacheable: useCaching,
+          apiKey,
+        },
+        callMode
+      );
+      responseText = result.text;
+    }
 
     // Clean up response text (remove markdown formatting if present)
     let cleanedText = responseText
@@ -281,7 +196,7 @@ Your entire response MUST ONLY be a single, valid JSON array.`;
       .trim();
 
     // Always validate response structure (not just on parse failure)
-    const validation = validateFilterResponse(cleanedText, papers.length);
+    const validation = validateFilterResponse(cleanedText, (papers ?? []).length);
 
     // If validation fails and this isn't already a correction attempt, try to correct
     if (!validation.isValid && !correctionPrompt) {
@@ -294,7 +209,7 @@ ${validation.errors.join('\n')}
 Original response:
 ${cleanedText}
 
-Please provide a corrected response with exactly ${papers.length} filter verdicts.
+Please provide a corrected response with exactly ${(papers ?? []).length} filter verdicts.
 Each item must have: paperIndex (number), verdict ("YES", "NO", or "MAYBE"), summary (non-empty string), justification (non-empty string).
 
 Your entire response MUST ONLY be a valid JSON array in this exact format:
@@ -307,10 +222,21 @@ Your entire response MUST ONLY be a valid JSON array in this exact format:
   }
 ]`;
 
-      // Try correction
-      const correctedResponse = await callAIModel(model, correctionRequest);
-      responseText = correctedResponse;
-      cleanedText = correctedResponse
+      // Try correction (no caching for corrections)
+      const finalCorrectionPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionRequest;
+      const correctedResult = await callModel(
+        {
+          provider,
+          model: modelApiId,
+          prompt: finalCorrectionPrompt,
+          cachePrefix: '',
+          cacheable: false,
+          apiKey,
+        },
+        callMode
+      );
+      responseText = correctedResult.text;
+      cleanedText = responseText
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
@@ -321,7 +247,7 @@ Your entire response MUST ONLY be a valid JSON array in this exact format:
       verdicts = JSON.parse(cleanedText);
 
       // Final validation even after correction
-      const finalValidation = validateFilterResponse(cleanedText, papers.length);
+      const finalValidation = validateFilterResponse(cleanedText, (papers ?? []).length);
       if (!finalValidation.isValid) {
         console.warn('Filter response still invalid after correction:', finalValidation.errors);
       }
