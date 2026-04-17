@@ -36,10 +36,11 @@
 
 const BrowserAutomation = require('./browser-automation');
 const NotebookLMAutomation = require('./notebooklm-automation');
-const { getPromptForFile, extractDurationFromFilename } = require('./notebooklm-prompts');
 const { ServerManager } = require('./server-manager');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const JSZip = require('jszip');
 
 // Parse command-line arguments
 const args = process.argv.slice(2);
@@ -102,6 +103,50 @@ async function readPassword() {
   } catch (error) {
     throw new Error(`Failed to read password: ${error.message}`);
   }
+}
+
+/**
+ * Fetch a NotebookLM bundle from the API, extract it to outDir, and
+ * return the list of upload paths + the focus prompt text.
+ *
+ * @param {Object} args
+ * @param {string} args.baseUrl - e.g. 'http://localhost:3000'
+ * @param {string} args.password - ACCESS_PASSWORD value
+ * @param {Object} args.requestBody - briefing, papers, podcastDuration, notebookLMModel, provider, date
+ * @param {string} args.outDir - directory to extract the ZIP into
+ * @returns {Promise<{ uploadPaths: string[], focusPrompt: string }>}
+ */
+async function generateAndExtractNotebookLMBundle({ baseUrl, password, requestBody, outDir }) {
+  const res = await fetch(`${baseUrl}/api/generate-notebooklm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...requestBody, password }),
+  });
+  if (!res.ok) {
+    let err = { error: `HTTP ${res.status}` };
+    try {
+      err = await res.json();
+    } catch {}
+    throw new Error(err.error ?? `bundle request failed with ${res.status}`);
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  const zip = await JSZip.loadAsync(buf);
+
+  fsSync.mkdirSync(outDir, { recursive: true });
+  const uploadPaths = [];
+  for (const [relPath, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    const outPath = path.join(outDir, relPath);
+    fsSync.mkdirSync(path.dirname(outPath), { recursive: true });
+    fsSync.writeFileSync(outPath, Buffer.from(await entry.async('nodebuffer')));
+    if (relPath.endsWith('.md') && relPath !== 'INSTRUCTIONS.md') {
+      uploadPaths.push(outPath);
+    }
+  }
+
+  const focusPromptPath = path.join(outDir, 'focus-prompt.txt');
+  const focusPrompt = fsSync.readFileSync(focusPromptPath, 'utf8');
+  return { uploadPaths, focusPrompt };
 }
 
 /**
@@ -169,54 +214,66 @@ async function verifyReport(filePath) {
 }
 
 /**
- * Run podcast-only workflow using existing report and NotebookLM files
+ * Run podcast-only workflow using an existing extracted NotebookLM bundle directory.
+ * Looks for the most recent date directory under temp/notebooklm-bundle/.
  */
 async function runPodcastOnly() {
   let notebookLM = null;
 
   try {
     console.log('\n=== Aparture: Podcast-Only Mode ===\n');
-    console.log('Finding most recent report and NotebookLM document...\n');
 
-    // Find most recent files
-    const reportFile = await findMostRecentFile(CONFIG.downloadDir, 'arxiv_analysis');
-    const notebookLMFile = await findMostRecentFile(CONFIG.downloadDir, 'notebooklm');
+    // Find most recent extracted bundle directory under temp/notebooklm-bundle/
+    const bundleRoot = path.join(process.cwd(), 'temp', 'notebooklm-bundle');
+    let bundleDir = null;
+    let datePrefix = null;
 
-    if (!reportFile) {
-      throw new Error('No analysis report found in reports/ directory');
-    }
-    if (!notebookLMFile) {
-      throw new Error('No NotebookLM document found in reports/ directory');
-    }
-
-    // Extract dates and verify they match
-    const reportDate = path.basename(reportFile).match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
-    const notebookDate = path.basename(notebookLMFile).match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
-
-    console.log(`Found report: ${path.basename(reportFile)}`);
-    console.log(`Found NotebookLM document: ${path.basename(notebookLMFile)}`);
-
-    if (reportDate !== notebookDate) {
-      console.log(`\n⚠️  WARNING: Files are from different dates!`);
-      console.log(`  Report date: ${reportDate}`);
-      console.log(`  NotebookLM date: ${notebookDate}`);
-      console.log(`  This may indicate mismatched files from different analysis runs.`);
-      console.log(`  Continuing anyway, but you may want to verify these are the correct files.\n`);
-    } else {
-      console.log(`✓ Files are from the same analysis (${reportDate})\n`);
+    try {
+      const entries = await fs.readdir(bundleRoot);
+      const dateDirs = entries
+        .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e))
+        .sort()
+        .reverse();
+      if (dateDirs.length > 0) {
+        datePrefix = dateDirs[0];
+        bundleDir = path.join(bundleRoot, datePrefix);
+      }
+    } catch {
+      // bundleRoot doesn't exist yet
     }
 
-    // Verify files exist and are readable
-    const reportStats = await fs.stat(reportFile);
-    const notebookStats = await fs.stat(notebookLMFile);
+    if (!bundleDir) {
+      throw new Error(
+        'No extracted NotebookLM bundle found in temp/notebooklm-bundle/. ' +
+          'Run the full analysis first (npm run analyze) to generate the bundle.'
+      );
+    }
 
-    console.log(`Report size: ${Math.round(reportStats.size / 1024)} KB`);
-    console.log(`NotebookLM document size: ${Math.round(notebookStats.size / 1024)} KB\n`);
+    console.log(`Found bundle directory: ${bundleDir}\n`);
 
-    // Extract date prefix for naming
-    const reportBasename = path.basename(reportFile);
-    const dateMatch = reportBasename.match(/^(\d{4}-\d{2}-\d{2})/);
-    const datePrefix = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0];
+    // Collect upload paths: all .md files except INSTRUCTIONS.md
+    const bundleFiles = await fs.readdir(bundleDir);
+    const uploadPaths = bundleFiles
+      .filter((f) => f.endsWith('.md') && f !== 'INSTRUCTIONS.md')
+      .map((f) => path.join(bundleDir, f));
+
+    if (uploadPaths.length === 0) {
+      throw new Error('Bundle directory contains no uploadable .md files');
+    }
+
+    // Read focus prompt
+    const focusPromptPath = path.join(bundleDir, 'focus-prompt.txt');
+    let focusPrompt;
+    try {
+      focusPrompt = await fs.readFile(focusPromptPath, 'utf8');
+    } catch {
+      throw new Error('focus-prompt.txt not found in bundle directory: ' + bundleDir);
+    }
+
+    console.log(`Upload files (${uploadPaths.length}):`);
+    uploadPaths.forEach((p) => console.log(`  ${path.basename(p)}`));
+    console.log(`Focus prompt: ${focusPrompt.length} characters\n`);
+
     const notebookName = `${datePrefix}_aparture`;
 
     console.log('Starting podcast generation...\n');
@@ -244,8 +301,8 @@ async function runPodcastOnly() {
     );
 
     // Upload files
-    console.log('\nStep 4: Uploading report and NotebookLM document...');
-    await notebookLM.uploadFiles(reportFile, notebookLMFile);
+    console.log('\nStep 4: Uploading bundle files...');
+    await notebookLM.uploadFiles(uploadPaths);
     log('Files uploaded successfully');
 
     // Take screenshot after file upload
@@ -253,19 +310,13 @@ async function runPodcastOnly() {
       path.join(CONFIG.screenshotDir, 'notebooklm-files-uploaded.png')
     );
 
-    // Extract duration and get appropriate prompt
+    // Configure podcast generation
     console.log('\nStep 5: Configuring podcast generation...');
-    const duration = extractDurationFromFilename(notebookLMFile);
-    console.log(`  Podcast duration target: ${duration}`);
+    console.log(`  Focus prompt: ${focusPrompt.length} characters`);
 
-    const customPrompt = await getPromptForFile(notebookLMFile);
-    console.log(
-      `  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`
-    );
-
-    // Generate audio overview with customization
-    console.log('  Configuring audio overview (Deep Dive, Default length)...');
-    await notebookLM.generateAudioOverview(customPrompt, duration);
+    // Generate audio overview with focus prompt
+    console.log('  Configuring audio overview (Deep Dive)...');
+    await notebookLM.generateAudioOverview(focusPrompt);
     log('Audio generation started');
 
     // Take screenshot of customization dialog (captured during generateAudioOverview)
@@ -317,9 +368,9 @@ async function runPodcastOnly() {
     console.log('='.repeat(70));
 
     console.log('\n=== Summary ===');
-    console.log('Input files:');
-    console.log(`  Report: ${reportFile}`);
-    console.log(`  NotebookLM document: ${notebookLMFile}`);
+    console.log('Input bundle:');
+    console.log(`  Directory: ${bundleDir}`);
+    console.log(`  Files: ${uploadPaths.length} uploaded`);
     console.log('\nOutput:');
     console.log(`  Podcast: ${podcastFile}`);
     console.log(`  Duration: ${formatDuration(podcastDuration)}`);
@@ -574,57 +625,77 @@ async function runAnalysis() {
 
     log(`Report verified (${verification.size} bytes, ${Math.round(verification.size / 1024)} KB)`);
 
-    // Step 12: Generate NotebookLM document (optional)
-    let notebookLMFile = null;
+    // Step 12: Generate NotebookLM bundle (optional)
+    // Read briefing + papers + config from localStorage, then call the API directly
+    // to get a ZIP bundle, extract it, and record the upload paths + focus prompt.
+    let notebookLMBundle = null; // { uploadPaths, focusPrompt, bundleDir, datePrefix }
     if (CONFIG.generateNotebookLM) {
-      console.log('\nStep 12: Generating NotebookLM document...');
-      console.log('  Note: Using duration and model settings from UI configuration');
+      console.log('\nStep 12: Generating NotebookLM bundle via API...');
 
       try {
-        // Check if NotebookLM generation is available
-        const isAvailable = await browser.isNotebookLMAvailable();
-        if (!isAvailable) {
-          console.log(
-            '  ⚠ NotebookLM generation not available (no papers analyzed or feature disabled)'
-          );
-        } else {
-          // Start generation
-          await browser.generateNotebookLM();
-          log('NotebookLM generation started');
+        // Read state persisted by the pipeline into localStorage
+        const rawState = await browser.getLocalStorage('arxivAnalyzerState');
+        const rawBriefing = await browser.getLocalStorage('aparture-briefing-current');
 
-          // Wait for completion
+        const appState = rawState ? JSON.parse(rawState) : {};
+        const briefingEntry = rawBriefing ? JSON.parse(rawBriefing) : null;
+
+        const briefing = briefingEntry?.briefing ?? null;
+        const papers = appState?.results?.finalRanking ?? [];
+        const podcastDurationVal = appState?.notebookLM?.duration ?? 20;
+        const notebookLMModelVal =
+          appState?.notebookLM?.model ?? appState?.config?.notebookLMModel ?? 'gemini-3.1-pro';
+
+        if (!briefing) {
+          console.log('  ⚠ No briefing found in localStorage — skipping NotebookLM bundle');
+          console.log('  Tip: Ensure the briefing generation step completed before this step');
+        } else if (papers.length === 0) {
+          console.log('  ⚠ No analyzed papers found in localStorage — skipping NotebookLM bundle');
+        } else {
+          const reportBasename = path.basename(downloadedFile);
+          const dateMatch = reportBasename.match(/^(\d{4}-\d{2}-\d{2})/);
+          const datePrefix = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0];
+          const bundleDir = path.join(process.cwd(), 'temp', 'notebooklm-bundle', datePrefix);
+
+          console.log(`  Briefing: ${briefing.title ?? '(untitled)'}`);
+          console.log(`  Papers: ${papers.length}`);
+          console.log(`  Model: ${notebookLMModelVal}, Duration: ${podcastDurationVal} min`);
+          console.log(`  Output dir: ${bundleDir}`);
+
           const notebookLMStartTime = Date.now();
-          await browser.waitForNotebookLMComplete({
-            timeout: CONFIG.notebookLMTimeout,
-            pollInterval: 2000,
+          const { uploadPaths, focusPrompt } = await generateAndExtractNotebookLMBundle({
+            baseUrl: server.getBaseUrl(),
+            password,
+            requestBody: {
+              briefing,
+              papers,
+              podcastDuration: podcastDurationVal,
+              notebookLMModel: notebookLMModelVal,
+              date: datePrefix,
+            },
+            outDir: bundleDir,
           });
           const notebookLMDuration = Date.now() - notebookLMStartTime;
-          log(`NotebookLM generation completed in ${formatDuration(notebookLMDuration)}`);
+          log(`NotebookLM bundle generated in ${formatDuration(notebookLMDuration)}`);
+          log(`Bundle extracted: ${uploadPaths.length} uploadable files → ${bundleDir}`);
 
-          // Download the NotebookLM document
-          notebookLMFile = await browser.downloadNotebookLM(CONFIG.downloadDir);
-          log(`NotebookLM document downloaded: ${notebookLMFile}`);
-
-          // Take screenshot of NotebookLM completion
-          await browser.takeScreenshot(path.join(CONFIG.screenshotDir, 'notebooklm-complete.png'), {
-            fullPage: true,
-          });
-          log('Screenshot captured: notebooklm-complete.png');
+          notebookLMBundle = { uploadPaths, focusPrompt, bundleDir, datePrefix };
         }
       } catch (error) {
-        console.log(`  ⚠ NotebookLM generation failed: ${error.message}`);
+        console.log(`  ⚠ NotebookLM bundle generation failed: ${error.message}`);
         console.log('  Continuing with analysis report only...');
       }
     } else {
       console.log('\nStep 12: Skipping NotebookLM generation (--skip-notebooklm flag set)');
     }
 
-    // Step 13: Upload to NotebookLM and generate podcast (optional)
+    // Step 13: Upload bundle to NotebookLM and generate podcast (optional)
     let podcastFile = null;
-    if (CONFIG.generatePodcast && notebookLMFile) {
-      console.log('\nStep 13: Uploading to NotebookLM and generating podcast...');
+    if (CONFIG.generatePodcast && notebookLMBundle) {
+      console.log('\nStep 13: Uploading bundle to NotebookLM and generating podcast...');
       console.log('  Note: This requires Google authentication and may take 10-20 minutes');
 
+      const { uploadPaths, focusPrompt, bundleDir: _bundleDir, datePrefix } = notebookLMBundle;
       const notebookLM = new NotebookLMAutomation();
 
       try {
@@ -637,10 +708,6 @@ async function runAnalysis() {
         await notebookLM.ensureAuthenticated({ timeout: 120000 });
         log('Authenticated with Google');
 
-        // Extract date prefix from report filename for consistent naming
-        const reportBasename = path.basename(downloadedFile);
-        const dateMatch = reportBasename.match(/^(\d{4}-\d{2}-\d{2})/);
-        const datePrefix = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0];
         const notebookName = `${datePrefix}_aparture`;
 
         // Create notebook
@@ -653,18 +720,10 @@ async function runAnalysis() {
           path.join(CONFIG.screenshotDir, 'notebooklm-notebook-created.png')
         );
 
-        // Upload files
-        console.log('  Uploading report and NotebookLM document...');
-        console.log(`    Report (downloadedFile): ${path.basename(downloadedFile)}`);
-        console.log(`    NotebookLM doc (notebookLMFile): ${path.basename(notebookLMFile)}`);
-
-        // Verify files are different before uploading
-        if (downloadedFile === notebookLMFile) {
-          console.log('  ERROR: Both files are the same! This is a bug.');
-          throw new Error('downloadedFile and notebookLMFile are the same path');
-        }
-
-        await notebookLM.uploadFiles(downloadedFile, notebookLMFile);
+        // Upload bundle files
+        console.log(`  Uploading ${uploadPaths.length} bundle files...`);
+        uploadPaths.forEach((p) => console.log(`    ${path.basename(p)}`));
+        await notebookLM.uploadFiles(uploadPaths);
         log('Files uploaded successfully');
 
         // Take screenshot after file upload
@@ -672,22 +731,12 @@ async function runAnalysis() {
           path.join(CONFIG.screenshotDir, 'notebooklm-files-uploaded.png')
         );
 
-        // Extract duration and get appropriate prompt
-        const duration = extractDurationFromFilename(notebookLMFile);
-        console.log(`  Podcast duration target: ${duration}`);
+        console.log(`  Focus prompt: ${focusPrompt.length} characters`);
 
-        const customPrompt = await getPromptForFile(notebookLMFile);
-        console.log(
-          `  Custom prompt loaded from NOTEBOOKLM_PROMPTS.md (${customPrompt.length} characters)`
-        );
-
-        // Generate audio overview with customization
-        console.log('  Configuring audio overview (Deep Dive, Default length)...');
-        await notebookLM.generateAudioOverview(customPrompt, duration);
+        // Generate audio overview with focus prompt
+        console.log('  Configuring audio overview (Deep Dive)...');
+        await notebookLM.generateAudioOverview(focusPrompt);
         log('Audio generation started');
-
-        // Take screenshot of customization dialog (captured during generateAudioOverview)
-        log('Screenshot captured: notebooklm-customization-dialog.png');
 
         // Take screenshot of generation start
         await notebookLM.takeScreenshot(
@@ -729,7 +778,9 @@ async function runAnalysis() {
         log('NotebookLM browser closed');
       } catch (error) {
         console.log(`  ⚠ Podcast generation failed: ${error.message}`);
-        console.log('  You can manually upload the files to NotebookLM to generate the podcast');
+        console.log(
+          '  You can manually upload the bundle files to NotebookLM to generate the podcast'
+        );
 
         // Take error screenshot
         try {
@@ -745,9 +796,9 @@ async function runAnalysis() {
           // Ignore close errors
         }
       }
-    } else if (CONFIG.generatePodcast && !notebookLMFile) {
-      console.log('\nStep 13: Skipping podcast generation (no NotebookLM document available)');
-      console.log('  Tip: Remove --skip-notebooklm flag to generate podcast');
+    } else if (CONFIG.generatePodcast && !notebookLMBundle) {
+      console.log('\nStep 13: Skipping podcast generation (no NotebookLM bundle available)');
+      console.log('  Tip: Remove --skip-notebooklm flag to generate the bundle');
     } else {
       console.log('\nStep 13: Skipping podcast generation (--skip-podcast flag set)');
     }
@@ -775,15 +826,15 @@ async function runAnalysis() {
     console.log('  ✓ Progress monitoring through all stages');
     console.log('  ✓ Comprehensive report generation');
     console.log('  ✓ Report downloaded and verified');
-    if (notebookLMFile) {
-      console.log('  ✓ NotebookLM document generated and downloaded');
+    if (notebookLMBundle) {
+      console.log('  ✓ NotebookLM bundle generated and extracted');
     }
     if (podcastFile) {
       console.log('  ✓ Podcast generated via NotebookLM and downloaded');
     }
     console.log(`\nReport saved to: ${downloadedFile}`);
-    if (notebookLMFile) {
-      console.log(`NotebookLM document saved to: ${notebookLMFile}`);
+    if (notebookLMBundle) {
+      console.log(`NotebookLM bundle saved to: ${notebookLMBundle.bundleDir}`);
     }
     if (podcastFile) {
       console.log(`Podcast saved to: ${podcastFile}`);
