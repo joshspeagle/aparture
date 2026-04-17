@@ -30,6 +30,28 @@ describe('buildGoogleRequest', () => {
       properties: { headline: { type: 'string' } },
     });
   });
+
+  it('produces a single text part when no pdfBase64', () => {
+    const req = buildGoogleRequest({
+      model: 'gemini-2.5-flash',
+      prompt: 'Hello.',
+      apiKey: 'KEY',
+    });
+    expect(req.body.contents[0].parts).toEqual([{ text: 'Hello.' }]);
+  });
+
+  it('appends an inlineData part after the text part when pdfBase64 is provided', () => {
+    const req = buildGoogleRequest({
+      model: 'gemini-2.5-flash',
+      prompt: 'Analyze this.',
+      apiKey: 'KEY',
+      pdfBase64: 'BBBB',
+    });
+    expect(req.body.contents[0].parts).toEqual([
+      { text: 'Analyze this.' },
+      { inlineData: { mimeType: 'application/pdf', data: 'BBBB' } },
+    ]);
+  });
 });
 
 describe('parseGoogleResponse', () => {
