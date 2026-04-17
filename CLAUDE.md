@@ -101,8 +101,8 @@ When questions arise about features, configuration, or usage, refer to the docum
     - `mockApi.js` - MockAPITester class. DI constructor takes `{abortControllerRef, pauseRef, waitForResume}`.
     - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing (with generationMetadata including hallucination verdict/justification/flaggedClaims) → last-run cache. Called automatically at the end of the pipeline's `startProcessing`.
     - `exportReport.js` - `buildReportMarkdown()` + `downloadBlob()` + `exportAnalysisReport()` glue.
-  - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live-mode call to the terminal (`Sending request to <Provider>: {model, promptLength, structured}`).
-  - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai)
+  - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live-mode call to the terminal (`Sending request to <Provider>: {model, promptLength, structured, cacheable?, hasPdf?}`), plus a follow-up `[<provider> cache] read=N create=N` line when the response reports cache-hit tokens.
+  - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai). Each adapter accepts optional `pdfBase64` for native PDF content blocks and `cacheable`/`cachePrefix` for Anthropic prompt caching.
   - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
   - `lib/profile/` - **Phase 1.5** profile utilities (migrations, diff, feedbackCap, suggestPrompt)
 - `prompts/` - **Phase 1** editable LLM prompt templates
@@ -295,11 +295,37 @@ Phase 1 added a cross-paper synthesis stage and a magazine-quality briefing UI, 
 
 **To tune synthesis quality:** edit `prompts/synthesis.md`. Changes take effect on the next `/api/synthesize` call — no rebuild needed. The 150-line prompt is the single most important quality knob for Phase 1.
 
-**To add a new LLM provider:** add an entry to `lib/llm/providers.js`, create `lib/llm/structured/<provider>.js` following the existing anthropic/google/openai template, and add a branch in `lib/llm/callModel.js`. ~100 lines of new code.
+**To add a new LLM provider:** add an entry to `lib/llm/providers.js`, create `lib/llm/structured/<provider>.js` with `build*Request` + `parse*Response` following the existing anthropic/google/openai templates (including optional `pdfBase64` + `cacheable`/`cachePrefix` handling if the provider supports them), add a branch in `lib/llm/callModel.js`, and add a unit test file under `tests/unit/llm/structured/`. ~150-200 lines of new code.
 
 **To change briefing visual design:** edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the React components, so color changes propagate without touching `.jsx`.
 
 **Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a new fixture, run the helper at `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests. The entire suite runs in ~30s and costs $0 because no real LLM calls are made.
+
+**Test escape hatches:**
+
+- `APARTURE_TEST_PROMPT_OVERRIDE` env var — when set, routes substitute the variable portion of the prompt with the override value so fixture hashes become deterministic regardless of input content. Routes also disable caching when this is set (so `cachePrefix`/`cacheable` fields are absent from the hashed input object).
+- `_testPdfBase64` body field on `pages/api/analyze-pdf.js` — active only when `NODE_ENV === 'test'`. Injects PDF bytes directly, bypassing the Playwright / reCAPTCHA download path. Minimal fixture PDF at `tests/fixtures/pdf/minimal.pdf`.
+- Expect occasional vitest worker-pool timeout "errors" in WSL environments — they're infrastructure flakes, not test failures. The test count and pass/fail summary are authoritative.
+
+### LLM Dispatcher + Prompt Caching (April 2026)
+
+All 9 LLM-calling API routes go through `lib/llm/callModel.js`. No route calls a provider API directly anymore — the legacy inline `callClaude` / `callOpenAI` / `callGemini` helpers are gone. When adding a new LLM call, always route it through `callModel`.
+
+**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template text + user profile) and a variable `prompt` (per-batch/per-call content). When `cacheable: true` is passed to `callModel`, the Anthropic adapter (`lib/llm/structured/anthropic.js`) emits a multi-block `content` array with `cache_control: {type: 'ephemeral'}` on the prefix block. The invariant `cachePrefix + prompt === fullRenderedPrompt` must hold byte-for-byte — test each route's split logic against a known-good rendering. OpenAI caches automatically when prompt prefixes repeat, no code changes needed. Google caching is not enabled.
+
+**PDF content blocks.** All 3 adapters accept an optional `pdfBase64` input field. When present: Anthropic emits `{type: 'document', source: {type: 'base64', ...}}`, Google emits `{inlineData: {mimeType: 'application/pdf', ...}}` in `parts`, OpenAI switches to `/v1/responses` via `buildOpenAIResponsesRequest` (different shape from Chat Completions — parses `response.output[].content[].text`, not `output_text`).
+
+**Cache-hit measurement.** `callModel` surfaces `cacheReadTok` / `cacheCreateTok` in its normalized return (Anthropic from `usage.cache_read_input_tokens` + `cache_creation_input_tokens`; OpenAI from `usage.prompt_tokens_details.cached_tokens`). The dispatcher logs them as `[anthropic cache] read=N create=N` so cache effectiveness is observable during a run.
+
+**Route pattern (canonical example: `pages/api/synthesize.js`):**
+
+- Accept `apiKey` (BYOK) OR `password` (env lookup per provider), validated before body checks
+- Resolve `provider` (lowercased) from `MODEL_REGISTRY[model]?.provider` before auth
+- Compute `const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` — all three conditions required
+- Use conditional spread when calling: `...(useCaching ? { cachePrefix, cacheable: true } : {})` so the fields don't appear in the input object (and thus the fixture hash) when caching is off
+- Accept `callModelMode` from `req.body` and pass as second arg to `callModel` (enables fixture-mode tests)
+
+**Design docs** (gitignored, local-only): `docs/superpowers/specs/2026-04-17-llm-dispatcher-migration-caching-design.md`, `docs/superpowers/specs/2026-04-17-analyze-pdf-dispatcher-migration-design.md`, and matching plans at `docs/superpowers/plans/2026-04-17-*.md`.
 
 ### Phase 1.5 Additions
 
