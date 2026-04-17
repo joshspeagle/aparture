@@ -1,0 +1,14 @@
+{
+  "hash": "4a1798b058b2b1bc2cf083a12dc2da6a",
+  "input": {
+    "apiKey": null,
+    "model": "claude-haiku-4-5",
+    "prompt": "Fix this JSON response.",
+    "provider": "anthropic"
+  },
+  "response": {
+    "text": "{\"summary\":\"Corrected summary for this research paper spanning multiple paragraphs of technical content.\\n\\nThe second paragraph elaborates on methodology and experimental design in adequate detail.\",\"keyFindings\":\"The key findings demonstrate statistically significant improvements over prior baselines on three benchmark datasets.\",\"methodology\":\"The methodology employs a transformer-based architecture with attention mechanisms adapted for the specific domain.\",\"limitations\":\"The primary limitation is computational cost, which may prohibit application to very large-scale datasets without further optimization.\",\"relevanceAssessment\":\"The corrected analysis confirms moderate relevance to the stated research interests, consistent with the original abstract assessment of 6.0/10.\",\"updatedScore\":6.0}",
+    "tokensIn": 300,
+    "tokensOut": 80
+  }
+}
