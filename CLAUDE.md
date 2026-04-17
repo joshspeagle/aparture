@@ -91,7 +91,7 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `components/briefing/` - Briefing reading view (BriefingView root + 10 leaf components) + `BriefingCard.jsx` + **Phase B** `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure)
   - `components/filter/` - `FilterResultsList.jsx` with inline FilterResultRow + cycle-verdict pill (restyled to warm palette)
   - `components/notebooklm/` - `NotebookLMCard.jsx` (restyled to warm palette, rendered as disclosure below briefing)
-  - `components/profile/` - Your Profile panel (YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview; StatusRow + PreviewPanel are unused legacy files) — all restyled to warm palette with UI primitives
+  - `components/profile/` - Your Profile panel (YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview) — all restyled to warm palette with UI primitives
   - `components/feedback/` - Feedback panel (FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState) + `eventMeta.js` — all restyled to warm palette
   - `components/results/` - results-list cards (AnalysisResultsList, DownloadReportCard) — restyled to warm palette
   - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + `pauseBeforeBriefing` + briefing retry checkboxes) — restyled to warm palette
@@ -118,7 +118,7 @@ When questions arise about features, configuration, or usage, refer to the docum
   - `hooks/useTheme.js` - **Phase B** light/dark/auto theme switching; reads/writes `aparture-theme` localStorage key, applies `data-theme` attribute to `<html>`
 - `stores/` - **Phase B** Zustand state management
   - `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `useAnalyzerStore.getState()` directly.
-- `tests/` - Vitest test suite (325 tests across 50 files, fully fixture-based)
+- `tests/` - Vitest test suite (394 tests across 62 files, fully fixture-based)
   - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
   - `tests/component/` - React component tests via @testing-library/react
   - `tests/integration/` - API route handler tests with fixture-mode callModel
