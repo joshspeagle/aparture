@@ -1,14 +1,14 @@
 # Writing a good profile
 
-Your **profile** is a block of natural-language prose that describes what you work on, what methods you care about, and what you _don't_ want to see. It's the single most important input to Aparture. Every pipeline stage reads it — the quick filter, abstract scoring, post-processing, PDF analysis, briefing synthesis, NotebookLM generation — and every Suggest-Improvements call uses it as the baseline for proposed changes.
+Your profile is a block of natural-language prose describing what you work on, what methods you care about, and what you don't want to see. It's the primary input to Aparture: every pipeline stage reads it (quick filter, abstract scoring, post-processing, PDF analysis, briefing synthesis, NotebookLM generation), and every Suggest-Improvements call uses it as the baseline for proposed changes.
 
-This page is about writing one that works. It's not long — most useful profiles are 150-300 words — but getting the right 200 words takes some thought.
+This page is about writing one that works. Most useful profiles are 150-300 words, so it doesn't take long — but getting the right 200 words takes some thought.
 
-## What a profile IS (and isn't)
+## What a profile is
 
-A profile is a **description of research interests in prose**. Not a list of keywords. Not a set of rules. Not instructions to the LLM.
+A profile is a description of research interests in prose. It's not a keyword list, a set of hard rules, or a block of instructions for the LLM — it's the kind of paragraph you'd write if another researcher asked "what do you work on?"
 
-The LLM reads your profile the way a well-intentioned collaborator would read it: to understand who you are, what you work on, what's adjacent to your work, and what you explicitly don't care about. You don't need to be clever. You don't need to anticipate how the LLM will interpret specific words. You just need to write what you'd tell another researcher who asked "what do you work on?"
+The LLM reads it the way a well-intentioned collaborator would: to understand who you are, what you work on, what's adjacent to your work, and what you explicitly don't care about. You don't need to be clever or to anticipate how the LLM interprets specific words. Writing plainly is usually enough.
 
 ## What reads your profile
 
@@ -21,11 +21,11 @@ It's worth knowing where your profile actually lands:
 - **Briefing synthesis** (Stage 5) — the big one. Uses your profile (plus your starred/dismissed papers and comments) to produce the executive summary, themes, and "why it matters" paragraphs.
 - **Suggest-Improvements** — uses your profile as the baseline; proposes diffs against it based on your accumulated feedback.
 
-So every time you refine the profile, all of these downstream stages get a better input. A good profile is leveraged many times per run.
+Every refinement to the profile improves all of these downstream stages. A good profile is leveraged many times per run.
 
 ## What to include
 
-Four things to think about:
+Four things to think about.
 
 ### Methods you care about
 
@@ -37,7 +37,7 @@ Be specific enough that the system can tell the difference between methods you u
 
 Where do you apply those methods? "Galaxy population inference." "NLP for clinical notes." "Protein structure prediction." "High-frequency trading."
 
-Methods + applications together define the intersection where your interests live. A paper on transformers in genomics is different from a paper on transformers in NLP is different from a paper on transformer theory.
+Methods + applications together define the intersection where your interests live. A paper on transformers in genomics is different from a paper on transformers in NLP, and both are different from a paper on transformer theory.
 
 ### Breadth and depth preferences
 
@@ -55,13 +55,13 @@ Anti-interests are especially useful when your field overlaps with a much larger
 
 ## What to leave out
 
-Things that sound like they'd help but actually make profiles worse:
+Some things sound like they'd help but actually make profiles worse:
 
 - **Rigid rules.** "Always include papers from authors X, Y, Z." "Never include papers with more than 10 authors." These are brittle and the LLM may interpret them too literally or too loosely.
-- **Keyword lists.** "Keywords: neural networks, deep learning, transformers, attention, optimization." These tell the filter what tokens to match on, but miss the argument-level understanding that makes abstract scoring useful. A paper about transformers for optimization is different from a paper about optimization of transformers.
+- **Keyword lists.** "Keywords: neural networks, deep learning, transformers, attention, optimization." These tell the filter what tokens to match on but miss the argument-level understanding that makes abstract scoring useful. A paper about transformers for optimization is different from a paper about optimization of transformers.
 - **Instructions to the LLM.** "Be strict about relevance." "Prefer papers with code." "Include anything that mentions X." The LLM is already doing that kind of inference from your described interests; re-stating it as instruction just makes the profile noisier.
 - **References to other users, teams, or profiles.** "Similar to Alice's research." These don't travel across context.
-- **Negotiation language.** "I guess I'd be okay with…" — the LLM takes ambiguity seriously; make affirmative statements.
+- **Negotiation language.** "I guess I'd be okay with…" — the LLM takes ambiguity seriously, so make affirmative statements.
 
 ## Two worked examples
 
@@ -91,7 +91,7 @@ Things that sound like they'd help but actually make profiles worse:
 > - Vision-only deep-learning papers
 > - Reinforcement learning
 
-Why this works: it names the intersection (Bayesian + galaxy populations + cosmology) unambiguously, lists concrete methods, flags the adjacency rule explicitly, and uses anti-interests to cut out the noisy neighbors (pure theory, vision, RL) that a naive filter might otherwise surface.
+Why this works: it names the intersection (Bayesian + galaxy populations + cosmology) unambiguously, lists concrete methods, flags the adjacency rule explicitly, and uses anti-interests to cut out the noisy neighbours (pure theory, vision, RL) that a naive filter might otherwise surface.
 
 ### Broad profile (interdisciplinary, ~200 words)
 
@@ -124,7 +124,7 @@ Why this works: it names the intersection (Bayesian + galaxy populations + cosmo
 > - Quantum-computing ML papers unless they show real empirical gains
 > - Reviews and position papers
 
-Why this works: it covers three subfields without pretending they're unified; it uses a consistent "when it introduces X, not when it just does Y" pattern to discriminate within each subfield; and its anti-interests carve out the three largest neighbors (CV, NLP, quantum) that would otherwise dominate the output.
+Why this works: it covers three subfields without pretending they're unified; it uses a consistent "when it introduces X, not when it just does Y" pattern to discriminate within each subfield; and its anti-interests carve out the three largest neighbours (CV, NLP, quantum) that would otherwise dominate the output.
 
 ## Anti-patterns
 
@@ -137,7 +137,7 @@ A few failure modes to watch for.
 > analysis, fine-tuning, pretraining, in-context learning, instruction tuning,
 > RLHF, DPO, LoRA, PEFT.
 
-This is a list of search terms. The filter will match on tokens but won't understand the _hierarchy_ or the _argument_. You'll get papers that mention these words in passing, and miss papers that are deeply about these topics but use different terminology (e.g. "mixture-of-experts routing" when you meant "transformers").
+This is a list of search terms. The filter will match on tokens but won't understand the _hierarchy_ or the _argument_. You'll get papers that mention these words in passing and miss papers that are deeply about these topics but use different terminology (e.g. "mixture-of-experts routing" when you meant "transformers").
 
 **Better:** write sentences that explain your actual interests. "I work on efficient fine-tuning methods for large language models, especially parameter-efficient approaches like LoRA and QLoRA. I also follow instruction-tuning and preference-learning methods (RLHF, DPO)."
 
@@ -148,7 +148,7 @@ This is a list of search terms. The filter will match on tokens but won't unders
 > I'm interested in applications in biology, but I don't really care about
 > pure biology papers.
 
-Each sentence is fine; together they're incoherent. The LLM will either pick one signal and ignore the others, or average them into vague noise. When you notice contradiction in your profile, either pick one direction or state the tension explicitly: "I work at the intersection of deep learning and classical statistics — papers that bridge both are the most interesting; pure-statistics or pure-ML papers are only relevant if they offer methods that generalize."
+Each sentence is fine; together they're incoherent. The LLM will either pick one signal and ignore the others, or average them into vague noise. When you notice contradiction in your profile, either pick one direction or state the tension explicitly: "I work at the intersection of deep learning and classical statistics — papers that bridge both are the most interesting; pure-statistics or pure-ML papers are only relevant if they offer methods that generalise."
 
 ### Over-specification
 
@@ -169,9 +169,11 @@ To review or restore an old version:
 3. Pick a timestamped snapshot. A diff preview shows you the difference from your current profile.
 4. Click to revert, or close to keep your current version.
 
-There's also a **Clear history** button for when your history has accumulated too much clutter. It wipes all revisions — current profile stays intact.
+There's also a **Clear history** button for when your history has accumulated too much clutter. It wipes all revisions — the current profile stays intact.
 
-Revert is non-destructive in the sense that it just swaps the current version; the reverted-from version stays in history. You can always flip back.
+::: info
+Revert is non-destructive: it just swaps the current version, and the reverted-from version stays in history. You can always flip back.
+:::
 
 ## Next
 
