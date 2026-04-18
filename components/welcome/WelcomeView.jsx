@@ -18,7 +18,18 @@ export default function WelcomeView() {
       >
         Welcome to{' '}
         <span>
-          ap<span style={{ color: 'var(--aparture-accent)' }}>ar</span>ture
+          Ap
+          <span
+            style={{
+              color: 'var(--aparture-accent)',
+              fontWeight: 700,
+              borderBottom: '3px solid var(--aparture-accent)',
+              paddingBottom: '2px',
+            }}
+          >
+            ar
+          </span>
+          ture
         </span>
       </h1>
 

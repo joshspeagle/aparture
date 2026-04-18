@@ -135,8 +135,17 @@ export default function Sidebar({
             color: 'var(--aparture-ink)',
           }}
         >
-          <span>ap</span>
-          <span style={{ color: 'var(--aparture-accent)' }}>ar</span>
+          <span>Ap</span>
+          <span
+            style={{
+              color: 'var(--aparture-accent)',
+              fontWeight: 700,
+              borderBottom: '2px solid var(--aparture-accent)',
+              paddingBottom: '1px',
+            }}
+          >
+            ar
+          </span>
           <span>ture</span>
         </div>
       </div>
