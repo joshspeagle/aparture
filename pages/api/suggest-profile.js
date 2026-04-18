@@ -3,18 +3,25 @@ import path from 'node:path';
 import { z } from 'zod';
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
-import { renderSuggestPrompt } from '../../lib/profile/suggestPrompt.js';
+import {
+  renderSuggestPrompt,
+  validateNonOverlappingChanges,
+} from '../../lib/profile/suggestPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
-// Zod schema for the suggested profile structured output
+// Zod schema for the per-hunk suggested profile structured output.
+const SuggestProfileChangeSchema = z.object({
+  id: z.string().min(1),
+  rationale: z.string().min(1),
+  edit: z.object({
+    type: z.enum(['replace', 'insert', 'delete']),
+    anchor: z.string().min(1),
+    content: z.string().optional().default(''),
+  }),
+});
+
 const SuggestedProfileSchema = z.object({
-  revisedProfile: z.string(),
-  changes: z.array(
-    z.object({
-      excerpt: z.string(),
-      rationale: z.string(),
-    })
-  ),
+  changes: z.array(SuggestProfileChangeSchema),
   noChangeReason: z.string().optional(),
 });
 
@@ -23,17 +30,25 @@ const SuggestedProfileSchema = z.object({
 function suggestedProfileJsonSchema() {
   return {
     type: 'object',
-    required: ['revisedProfile', 'changes'],
+    required: ['changes'],
     properties: {
-      revisedProfile: { type: 'string' },
       changes: {
         type: 'array',
         items: {
           type: 'object',
-          required: ['excerpt', 'rationale'],
+          required: ['id', 'rationale', 'edit'],
           properties: {
-            excerpt: { type: 'string' },
+            id: { type: 'string' },
             rationale: { type: 'string' },
+            edit: {
+              type: 'object',
+              required: ['type', 'anchor'],
+              properties: {
+                type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
+                anchor: { type: 'string' },
+                content: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -41,6 +56,11 @@ function suggestedProfileJsonSchema() {
     },
   };
 }
+
+// Hint appended to the prompt on overlap retry. Kept as a module-level constant
+// so integration tests can construct the same retry prompt to seed fixtures.
+export const OVERLAP_RETRY_HINT =
+  '\n\nYour previous response had overlapping or unanchored changes. Produce strictly non-overlapping atomic changes whose anchors appear verbatim in the current profile.';
 
 function buildRepairPrompt({ originalSuggestion, errors }) {
   return [
@@ -52,8 +72,19 @@ function buildRepairPrompt({ originalSuggestion, errors }) {
     'The following validation errors were detected:',
     errors.map((e) => `- ${e}`).join('\n'),
     '',
-    'Please emit a corrected suggestion that (a) conforms to the schema {revisedProfile: string, changes: [{excerpt, rationale}], noChangeReason?: string}, (b) preserves the original intent and content as much as possible while fixing the errors, (c) does not invent new feedback events. Respond with the corrected structured suggestion.',
+    'Please emit a corrected suggestion that (a) conforms to the schema {changes: [{id, rationale, edit: {type, anchor, content}}], noChangeReason?: string}, (b) preserves the original intent and content as much as possible while fixing the errors, (c) does not invent new feedback events. Respond with the corrected structured suggestion.',
   ].join('\n');
+}
+
+function formatValidationDetails(details) {
+  const parts = [];
+  if (details.missingAnchors?.length) {
+    parts.push(`missingAnchors=[${details.missingAnchors.join(', ')}]`);
+  }
+  if (details.overlappingIds?.length) {
+    parts.push(`overlappingIds=[${details.overlappingIds.join(', ')}]`);
+  }
+  return parts.join(' ');
 }
 
 export default async function handler(req, res) {
@@ -128,6 +159,11 @@ export default async function handler(req, res) {
     const variableTail = useCaching ? fullPrompt.slice(cachePrefix.length) : finalPrompt;
 
     const jsonSchema = suggestedProfileJsonSchema();
+    const structuredOutput = {
+      name: 'suggested_profile',
+      description: 'Aparture suggested research profile revision',
+      schema: jsonSchema,
+    };
 
     // First call
     const response = await callModel(
@@ -136,11 +172,7 @@ export default async function handler(req, res) {
         model: modelApiId,
         prompt: useCaching ? variableTail : finalPrompt,
         apiKey,
-        structuredOutput: {
-          name: 'suggested_profile',
-          description: 'Aparture suggested research profile revision',
-          schema: jsonSchema,
-        },
+        structuredOutput,
         ...(useCaching ? { cachePrefix, cacheable: true } : {}),
       },
       callMode
@@ -154,75 +186,144 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Validate
+    // Schema validation (first pass)
     const firstCheck = SuggestedProfileSchema.safeParse(response.structured);
+    let data;
+    let totalTokensIn = response.tokensIn;
+    let totalTokensOut = response.tokensOut;
+    let repaired = false;
+    let firstErrors = null;
+
     if (firstCheck.success) {
-      const data = firstCheck.data;
-      res.status(200).json({
-        revisedProfile: data.revisedProfile,
-        changes: data.changes,
-        noChangeReason: data.noChangeReason,
-        tokensIn: response.tokensIn,
-        tokensOut: response.tokensOut,
-        repaired: false,
+      data = firstCheck.data;
+    } else {
+      // Two-pass schema repair
+      firstErrors = firstCheck.error.issues.map((i) => `schema: ${i.path.join('.')} ${i.message}`);
+      const repairPrompt = buildRepairPrompt({
+        originalSuggestion: response.structured,
+        errors: firstErrors,
       });
-      return;
-    }
-
-    // Two-pass repair
-    const firstErrors = firstCheck.error.issues.map(
-      (i) => `schema: ${i.path.join('.')} ${i.message}`
-    );
-    const repairPrompt = buildRepairPrompt({
-      originalSuggestion: response.structured,
-      errors: firstErrors,
-    });
-
-    const repaired = await callModel(
-      {
-        provider,
-        model: modelApiId,
-        prompt: repairPrompt,
-        apiKey,
-        structuredOutput: {
-          name: 'suggested_profile',
-          description: 'Aparture suggested research profile revision',
-          schema: jsonSchema,
+      const repairedResp = await callModel(
+        {
+          provider,
+          model: modelApiId,
+          prompt: repairPrompt,
+          apiKey,
+          structuredOutput,
         },
-      },
-      callMode
-    );
-
-    if (!repaired?.structured) {
-      res.status(500).json({
-        error: 'repair callModel returned no structured output',
-        originalValidationErrors: firstErrors,
-      });
-      return;
-    }
-
-    const secondCheck = SuggestedProfileSchema.safeParse(repaired.structured);
-    if (!secondCheck.success) {
-      const secondErrors = secondCheck.error.issues.map(
-        (i) => `schema: ${i.path.join('.')} ${i.message}`
+        callMode
       );
-      res.status(500).json({
-        error: 'suggest-profile validation failed after repair',
-        originalValidationErrors: firstErrors,
-        repairValidationErrors: secondErrors,
+      if (!repairedResp?.structured) {
+        res.status(500).json({
+          error: 'repair callModel returned no structured output',
+          originalValidationErrors: firstErrors,
+        });
+        return;
+      }
+      const secondCheck = SuggestedProfileSchema.safeParse(repairedResp.structured);
+      if (!secondCheck.success) {
+        const secondErrors = secondCheck.error.issues.map(
+          (i) => `schema: ${i.path.join('.')} ${i.message}`
+        );
+        res.status(500).json({
+          error: 'suggest-profile validation failed after repair',
+          originalValidationErrors: firstErrors,
+          repairValidationErrors: secondErrors,
+        });
+        return;
+      }
+      data = secondCheck.data;
+      totalTokensIn += repairedResp.tokensIn ?? 0;
+      totalTokensOut += repairedResp.tokensOut ?? 0;
+      repaired = true;
+    }
+
+    // Non-overlap validation (if empty changes, skip — no edits to validate)
+    const overlapCheck =
+      data.changes.length === 0
+        ? { ok: true }
+        : validateNonOverlappingChanges(data.changes, currentProfile);
+
+    if (!overlapCheck.ok) {
+      // Retry once with an overlap-specific hint appended to the prompt.
+      const retryPromptRendered = fullPrompt + OVERLAP_RETRY_HINT;
+      const retryFinalPrompt = promptOverride
+        ? promptOverride + OVERLAP_RETRY_HINT
+        : retryPromptRendered;
+      // Caching disabled on retry: the appended hint changes every run and
+      // there is no benefit in paying for a rare-path cache write.
+      const retryResponse = await callModel(
+        {
+          provider,
+          model: modelApiId,
+          prompt: retryFinalPrompt,
+          apiKey,
+          structuredOutput,
+        },
+        callMode
+      );
+
+      if (!retryResponse?.structured) {
+        res.status(422).json({
+          error: 'CHANGES_OVERLAP_UNRESOLVABLE',
+          details: overlapCheck,
+          retryError: 'retry callModel returned no structured output',
+        });
+        return;
+      }
+
+      const retryCheck = SuggestedProfileSchema.safeParse(retryResponse.structured);
+      if (!retryCheck.success) {
+        const retryErrors = retryCheck.error.issues.map(
+          (i) => `schema: ${i.path.join('.')} ${i.message}`
+        );
+        res.status(422).json({
+          error: 'CHANGES_OVERLAP_UNRESOLVABLE',
+          details: overlapCheck,
+          retryValidationErrors: retryErrors,
+        });
+        return;
+      }
+
+      const retryData = retryCheck.data;
+      const retryOverlap =
+        retryData.changes.length === 0
+          ? { ok: true }
+          : validateNonOverlappingChanges(retryData.changes, currentProfile);
+
+      if (!retryOverlap.ok) {
+        res.status(422).json({
+          error: 'CHANGES_OVERLAP_UNRESOLVABLE',
+          details: retryOverlap,
+          firstAttempt: {
+            overlap: overlapCheck,
+            summary: formatValidationDetails(overlapCheck),
+          },
+        });
+        return;
+      }
+
+      res.status(200).json({
+        changes: retryData.changes,
+        noChangeReason: retryData.noChangeReason,
+        tokensIn: totalTokensIn + (retryResponse.tokensIn ?? 0),
+        tokensOut: totalTokensOut + (retryResponse.tokensOut ?? 0),
+        repaired,
+        retried: true,
+        ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),
       });
       return;
     }
 
-    const data = secondCheck.data;
+    // First response (possibly repaired) passed both schema and overlap checks.
     res.status(200).json({
-      revisedProfile: data.revisedProfile,
       changes: data.changes,
       noChangeReason: data.noChangeReason,
-      tokensIn: response.tokensIn,
-      tokensOut: response.tokensOut,
-      repaired: true,
-      originalValidationErrors: firstErrors,
+      tokensIn: totalTokensIn,
+      tokensOut: totalTokensOut,
+      repaired,
+      retried: false,
+      ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),
     });
   } catch (err) {
     res.status(500).json({ error: 'suggest-profile failed', details: String(err?.message ?? err) });

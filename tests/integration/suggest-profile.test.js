@@ -33,17 +33,25 @@ const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime');
 function suggestedProfileJsonSchema() {
   return {
     type: 'object',
-    required: ['revisedProfile', 'changes'],
+    required: ['changes'],
     properties: {
-      revisedProfile: { type: 'string' },
       changes: {
         type: 'array',
         items: {
           type: 'object',
-          required: ['excerpt', 'rationale'],
+          required: ['id', 'rationale', 'edit'],
           properties: {
-            excerpt: { type: 'string' },
+            id: { type: 'string' },
             rationale: { type: 'string' },
+            edit: {
+              type: 'object',
+              required: ['type', 'anchor'],
+              properties: {
+                type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
+                anchor: { type: 'string' },
+                content: { type: 'string' },
+              },
+            },
           },
         },
       },
@@ -130,7 +138,8 @@ async function seedFixture({ profile, feedback, response }) {
 
 describe('suggest-profile API route (fixture mode)', () => {
   beforeAll(async () => {
-    // Fixture for the "happy path with changes" test
+    // Fixture for the "happy path with changes" test. The anchor must appear
+    // verbatim in PROFILE_WITH_CHANGES so the non-overlap validator resolves it.
     await seedFixture({
       profile: PROFILE_WITH_CHANGES,
       feedback: FEEDBACK_WITH_CHANGES,
@@ -139,13 +148,16 @@ describe('suggest-profile API route (fixture mode)', () => {
         tokensIn: 250,
         tokensOut: 80,
         structured: {
-          revisedProfile:
-            'I study mechanistic interpretability of large language models with a focus on attention heads, including circuit-level multi-step reasoning analysis.',
           changes: [
             {
-              excerpt: 'including circuit-level multi-step reasoning analysis',
+              id: 'c1',
               rationale:
                 'Based on the star on 2504.01234 (circuit-level reasoning) and the general comment requesting more circuit-level interpretability work.',
+              edit: {
+                type: 'insert',
+                anchor: 'attention heads',
+                content: ', including circuit-level multi-step reasoning analysis',
+              },
             },
           ],
         },
@@ -161,7 +173,6 @@ describe('suggest-profile API route (fixture mode)', () => {
         tokensIn: 220,
         tokensOut: 60,
         structured: {
-          revisedProfile: PROFILE_NO_CHANGE,
           changes: [],
           noChangeReason:
             'The starred paper is already within the circuit-level attention head analysis area covered by the profile. No new research direction is implied by this feedback.',
@@ -184,11 +195,15 @@ describe('suggest-profile API route (fixture mode)', () => {
     const { statusCode, jsonBody } = getResponse();
 
     expect(statusCode).toBe(200);
-    expect(jsonBody.revisedProfile).toContain('circuit-level');
     expect(jsonBody.changes).toHaveLength(1);
-    expect(jsonBody.changes[0].excerpt).toContain('circuit-level');
+    expect(jsonBody.changes[0]).toHaveProperty('id');
+    expect(jsonBody.changes[0]).toHaveProperty('edit');
+    expect(jsonBody.changes[0].edit.type).toBe('insert');
+    expect(jsonBody.changes[0].edit.anchor).toBe('attention heads');
+    expect(jsonBody.changes[0].edit.content).toContain('circuit-level');
     expect(jsonBody.changes[0].rationale).toContain('2504.01234');
     expect(jsonBody.repaired).toBe(false);
+    expect(jsonBody.retried).toBe(false);
     expect(jsonBody.noChangeReason).toBeUndefined();
   });
 
@@ -206,10 +221,10 @@ describe('suggest-profile API route (fixture mode)', () => {
     const { statusCode, jsonBody } = getResponse();
 
     expect(statusCode).toBe(200);
-    expect(jsonBody.revisedProfile).toBe(PROFILE_NO_CHANGE);
     expect(jsonBody.changes).toEqual([]);
     expect(jsonBody.noChangeReason).toContain('circuit-level attention head analysis');
     expect(jsonBody.repaired).toBe(false);
+    expect(jsonBody.retried).toBe(false);
   });
 
   it('rejects requests with neither apiKey nor password', async () => {
