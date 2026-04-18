@@ -10,6 +10,9 @@ export default defineConfig({
   // Enable dark mode toggle
   appearance: 'dark',
 
+  // Exclude gitignored local-only working directories from the build
+  srcExclude: ['superpowers/**', 'node_modules/**'],
+
   ignoreDeadLinks: [
     // Ignore localhost URLs (examples in documentation)
     /^https?:\/\/localhost/
