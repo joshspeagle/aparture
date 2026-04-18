@@ -1,6 +1,6 @@
 # Google (Gemini) API key
 
-Google AI Studio is the **recommended first-run provider** for Aparture. The free tier covers the entire Budget preset end-to-end — a brand-new user can run a full analysis without spending a cent, as long as they stick to the Gemini Flash family and stay inside daily request allowances.
+Google AI Studio is the recommended first-run provider for Aparture. The free tier covers the entire Budget preset end-to-end, so a brand-new user can run a full analysis without spending anything, as long as they stick to the Gemini Flash family and stay inside the daily request allowances.
 
 Setup takes 2 minutes. No credit card required.
 
@@ -20,10 +20,10 @@ Steps:
 2. Sign in with your Google account if prompted.
 3. Accept the Google AI Studio terms of service on first visit.
 4. Click **Create API key**.
-5. Choose whether to create the key inside an existing Google Cloud project or let AI Studio create a new one. For first-time users, **"Create API key in new project"** is correct — it provisions a minimal Cloud project with no billing attached.
+5. Choose whether to create the key inside an existing Google Cloud project or let AI Studio create a new one. For first-time users, **"Create API key in new project"** is the right choice — it provisions a minimal Cloud project with no billing attached.
 6. The dialog shows the full key. **Copy it immediately** — later you can only see the masked form.
 
-Key format: `AIzaSy<33 chars>`. Standard Google API-key format (same shape as Maps, Gemini, and other Google APIs).
+Key format: `AIzaSy<33 chars>`. Standard Google API-key format, same shape as Maps, Gemini, and other Google APIs.
 
 ## 2. Add to `.env.local`
 
@@ -33,13 +33,15 @@ Open `.env.local` in the project root and add:
 GOOGLE_AI_API_KEY=AIzaSy-your-actual-key-here
 ```
 
-Note the env var name is `GOOGLE_AI_API_KEY` (not `GEMINI_API_KEY` or `GOOGLE_API_KEY`). Rules:
+Note that the env var name is `GOOGLE_AI_API_KEY`, not `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
+
+Rules:
 
 - No quotes, no spaces around `=`.
 - One key per line. Comments start with `#` at column 0.
 - **Restart `npm run dev`** after editing — `.env.local` is read once at dev-server startup.
 
-You also need `ACCESS_PASSWORD` set in the same file. See [reference/environment](/reference/environment).
+You'll also need `ACCESS_PASSWORD` set in the same file. See [reference/environment](/reference/environment).
 
 ## 3. Free tier scope
 
@@ -54,22 +56,24 @@ Five of the six Gemini models Aparture knows about are free-tier eligible:
 | Gemini 2.5 Flash              | Free of charge           |
 | Gemini 2.5 Flash-Lite         | Free of charge           |
 
-The **Budget preset** uses Flash + Flash-Lite throughout, so it costs nothing on the free tier. The **Balanced preset** uses Gemini 3.1 Pro for deep PDF analysis + briefing, which is paid-only — you'll need to upgrade to Tier 1 (below) to use it.
+The **Budget preset** uses Flash and Flash-Lite throughout, so it costs nothing on the free tier. The **Balanced preset** uses Gemini 3.1 Pro for deep PDF analysis and briefing, which is paid-only — you'll need to upgrade to Tier 1 (below) to use it.
 
-**Two caveats on the free tier:**
+::: warning Two caveats on the free tier
 
-1. **Rate limits apply.** Google used to publish per-model RPM/TPM/RPD tables; as of 2026 those have moved behind sign-in. The live dashboard is at **[aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit?timeRange=last-28-days)** — log in and check your current limits. Based on historical allowances, a 25 papers/day Budget run fires ~95 requests/day and fits comfortably; a 250 papers/day run fires 300+/day and may trip RPD caps on Flash.
+1. **Rate limits apply.** Google used to publish per-model RPM/TPM/RPD tables; as of 2026 those have moved behind sign-in. The live dashboard is at [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit?timeRange=last-28-days) — log in and check your current limits. Based on historical allowances, a 25-papers/day Budget run fires ~95 requests/day and fits comfortably; a 250-papers/day run fires 300+/day and may trip RPD caps on Flash.
 
-2. **Free-tier users cannot opt out of data-for-training.** Google may train on your prompts and responses. **If your profile contains proprietary or sensitive research notes, this is a real concern** — upgrade to paid Tier 1 ($10 prepaid credit) to enable opt-out, or use a non-sensitive profile for free-tier usage.
+2. **Free-tier users cannot opt out of data-for-training.** Google may train on your prompts and responses. If your profile contains proprietary or sensitive research notes, upgrade to paid Tier 1 ($10 prepaid credit) to enable opt-out, or use a non-sensitive profile for free-tier usage.
+
+:::
 
 ## 4. When you need billing
 
 You'll hit a free-tier wall when any of:
 
-1. You select **Gemini 3.1 Pro Preview** for any stage (Balanced or Quality preset).
+1. You select Gemini 3.1 Pro Preview for any stage (Balanced or Quality preset).
 2. You exceed daily RPD on a Flash model (typical for 250+ papers/day).
 3. You need to opt out of data-for-training.
-4. Your workload needs higher RPM/TPM than free tier allows.
+4. Your workload needs higher RPM/TPM than the free tier allows.
 
 ### Upgrading to Tier 1
 
@@ -108,7 +112,7 @@ Daily cost:
 
 **Monthly projections** (30 daily runs): ~$46 at 25/day, ~$56 at 100/day, ~$58 at 250/day.
 
-The cost flattens at higher paper volumes because Stage 3 + Briefing (the expensive Pro calls) are capped at top-N regardless of input. Scaling from 25 to 250 papers/day only adds ~$0.40/day.
+The cost flattens at higher paper volumes because Stage 3 + Briefing (the expensive Pro calls) are capped at top-N regardless of input. Scaling from 25 to 250 papers/day only adds about $0.40/day.
 
 ### Budget preset (free tier)
 
@@ -120,7 +124,7 @@ Same pipeline but with Flash-family models throughout — Flash-Lite filter, Fla
 | 100        | $0.00 (watch daily RPD)                   |
 | 250        | $0.00 at pricing, but likely hits RPD cap |
 
-This is the single strongest argument for Google AI as the first-run provider: a fresh account can run Aparture's full end-to-end pipeline without spending anything, as long as it stays in the Budget preset.
+This is the main argument for Google AI as the first-run provider: a fresh account can run Aparture's full end-to-end pipeline without spending anything, as long as it stays in the Budget preset.
 
 ## 6. Verify
 
@@ -130,12 +134,12 @@ If the key is invalid you'll see `"Google API key not found"` (env var missing o
 
 ## Common gotchas
 
-1. **`.env.local` restart.** Next.js reads `.env.local` at startup; restart `npm run dev` after editing.
+1. **Forgot to restart `npm run dev`.** Next.js reads `.env.local` at startup; restart after editing.
 2. **Missed the key at creation.** Only visible once. Create a new one from the same AI Studio page if you missed it.
 3. **Wrong env var name.** It's `GOOGLE_AI_API_KEY`, not `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
-4. **Rate-limit numbers are gated behind sign-in.** The public docs no longer publish RPM/TPM/RPD tables. Check **[aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit)** for your current limits.
+4. **Rate-limit numbers are gated behind sign-in.** The public docs no longer publish RPM/TPM/RPD tables. Check [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit) for your current limits.
 5. **Free tier trains on your data.** Unavoidable on the free tier. If your profile is sensitive, upgrade to Tier 1 or use a non-sensitive stand-in profile.
-6. **Preview models have tighter limits.** Gemini 3.x previews have smaller RPM/TPM than the 2.5 stable counterparts. For production-grade reliability consider 2.5-stable variants.
+6. **Preview models have tighter limits.** Gemini 3.x previews have smaller RPM/TPM than the 2.5 stable counterparts. For production-grade reliability, consider the 2.5-stable variants.
 7. **Picking Balanced on free tier fails silently.** If you select a Gemini 3.1 Pro-based preset but haven't enabled billing, the route returns `PERMISSION_DENIED` mid-run. Either enable billing or switch to the Budget preset.
 
 ---
