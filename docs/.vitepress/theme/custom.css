@@ -62,6 +62,22 @@ html .VPHero .name .hero-name .ar-highlight {
   border-bottom: 2px solid var(--arxiv-red);
 }
 
+/* Nav-bar site title — "Aparture" with red "ar" */
+.aparture-navbar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
+  line-height: 1;
+}
+
+.aparture-navbar-title .ar-highlight {
+  color: var(--arxiv-red);
+  font-weight: 700;
+  padding-bottom: 1px;
+  border-bottom: 2px solid var(--arxiv-red);
+}
+
 /* Landing page feature callout cards — explicit 2x2 on desktop */
 .landing-cards {
   display: grid;

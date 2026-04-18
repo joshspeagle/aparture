@@ -19,7 +19,9 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
+    // Styled "Aparture" (with red "ar") is rendered by theme/Layout.vue via the
+    // nav-bar-title-before slot. Default plain-text siteTitle is hidden.
+    siteTitle: false,
 
     nav: [
       { text: 'Home', link: '/' },
