@@ -2,9 +2,9 @@
 
 If you're coming from your [first briefing](/getting-started/first-briefing), here's what those two pauses during the run were actually for.
 
-Aparture's pipeline has two **review gates** — optional pauses where the run halts and shows you intermediate results before committing to the next (more expensive) stage. Both are on by default. Both are skippable. Both exist to save you tokens and catch bad runs before they snowball.
+Aparture's pipeline has two review gates — optional pauses where the run halts and shows you intermediate results before committing to the next (more expensive) stage. Both are on by default, both are skippable, and both exist to save you tokens and catch bad runs before they snowball.
 
-This page covers what each gate shows you, what to do there, and when you should turn them off (or back on).
+This page covers what each gate shows you, what to do there, and when to turn them off (or back on).
 
 ## Gate 1 — after the quick filter
 
@@ -12,7 +12,7 @@ This page covers what each gate shows you, what to do there, and when you should
 
 The quick filter (Stage 2) is cheap: a small model runs YES/NO/MAYBE triage on every paper fetched from arXiv. It takes seconds and costs fractions of a cent per paper. Its job is to reduce volume before you spend real tokens on scoring and deep analysis.
 
-When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage completes. The progress timeline shows "Filter complete — review results before scoring:" and the main area fills in with the **filter results list** — papers grouped into three buckets: YES, MAYBE, NO.
+When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage completes. The progress timeline shows "Filter complete — review results before scoring:" and the main area fills in with the filter results list, with papers grouped into three buckets: YES, MAYBE, NO.
 
 ### What you see
 
@@ -27,17 +27,17 @@ Above the list is the `Continue to scoring →` button. Clicking it advances the
 
 ### What to do there
 
-**If the filter got something right, do nothing.** Most verdicts will be correct — the filter is decent at its job.
+If the filter got something right, do nothing. Most verdicts will be correct — the filter is decent at its job.
 
-**If the filter got something wrong, click a pill to override.** Moving a paper from NO to YES or MAYBE brings it into scoring (which you likely want if you think it's actually relevant). Moving a paper from YES to NO excludes it from scoring (saves you tokens on something you already know isn't a fit).
+If the filter got something wrong, click a pill to override. Moving a paper from NO to YES or MAYBE brings it into scoring, which you likely want if you think it's actually relevant. Moving a paper from YES to NO excludes it from scoring, saving you tokens on something you already know isn't a fit.
 
-Every override is recorded as a `filter-override` feedback event. These events feed into Suggest-Improvements as scope-calibration signals: "the profile may be too narrow" (NO → YES overrides) or "too broad" (YES → NO overrides). So overriding isn't just a one-off fix — it shapes future profile refinements.
+Every override is recorded as a `filter-override` feedback event. These events feed into Suggest-Improvements as scope-calibration signals: "the profile may be too narrow" (NO → YES overrides) or "too broad" (YES → NO overrides). So overriding isn't just a one-off fix — it shapes future profile refinements too.
 
 See [Giving feedback → filter overrides](/using/giving-feedback#filter-overrides-the-verdict-pills-at-gate-1) for details on the click-cycle and override semantics.
 
 ### When to override, practically
 
-A few patterns that come up:
+A few patterns come up repeatedly:
 
 - **The filter dismisses a paper that's adjacent to your interests but not a direct match.** Override to MAYBE, see if deep analysis supports it. This is the most common case.
 - **The filter accepts a paper whose abstract is mostly marketing.** Override to NO to skip spending tokens on a likely dud.
@@ -55,7 +55,7 @@ When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before sy
 
 ### What to do there
 
-**Star papers you care about, dismiss ones you don't.** Both signals flow into the synthesis prompt. Starred papers anchor themes and get the richest "why it matters" treatment; dismissed papers get deprioritized or explained away; everything else gets treatment based on its relevance score.
+Star papers you care about, dismiss ones you don't. Both signals flow into the synthesis prompt. Starred papers anchor themes and get the richest "why it matters" treatment; dismissed papers get deprioritised or explained away; everything else gets treatment based on its relevance score.
 
 You can also leave comments with `+ comment` — these get incorporated into the paper's "why it matters" paragraph in the briefing.
 
@@ -72,7 +72,7 @@ Both gates are on by default because they catch bad runs early — especially us
 After 5-10 successful briefings, you might find the gates more friction than signal. At that point, consider turning one or both off:
 
 - **Turn off `pauseAfterFilter` first.** The filter is usually right enough that override-saving is marginal after a while, and scoring is cheap anyway.
-- **Keep `pauseBeforeBriefing` on longer.** This is where your stars/dismisses steer the synthesis. If you're not adding feedback, the briefing gets generic.
+- **Keep `pauseBeforeBriefing` on longer.** This is where your stars and dismisses steer the synthesis. If you're not adding feedback, the briefing gets generic.
 - **Once you're confident, turn off both.** Runs become fully unattended: click Start, come back in 5-10 minutes, read the briefing.
 
 There's no harm in leaving both on permanently if you like the workflow. The gates are UI-only — they don't cost tokens.
@@ -85,7 +85,7 @@ Three signals that a gate is worth turning back on:
 - **You added new arXiv categories.** Similar reason: you haven't built a mental model of what comes through the filter in those categories yet.
 - **You switched to a much cheaper (or much more expensive) model.** Model behavior changes. The first few runs with a new model are worth watching.
 
-Generally: re-enable gates when you're in learning mode, disable them when you're in harvesting mode.
+The general rule: re-enable gates when you're in learning mode, disable them when you're in harvesting mode.
 
 ## Where to toggle them
 
@@ -96,7 +96,9 @@ Both gates live in **Settings** (under the sidebar nav). Scroll to **Review & co
 
 Toggles are disabled while a pipeline run is in progress (you can't change gate behavior mid-run). Changes take effect on the next run.
 
-There's no way to toggle them per-run; it's a global setting. If you want a one-off unattended run, toggle both off, run, then toggle back on.
+::: info
+There's no per-run toggle — it's a global setting. For a one-off unattended run, toggle both off, run, then toggle back on.
+:::
 
 ## Next
 
