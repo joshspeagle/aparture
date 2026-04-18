@@ -1,9 +1,26 @@
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-import { chromium } from 'playwright';
 import path from 'path';
 import fs from 'fs';
+
+// Playwright is an optional dependency. It's only needed when arXiv serves a
+// reCAPTCHA page instead of the PDF bytes. If it's not installed, we return a
+// dedicated error code so the pipeline can skip the paper gracefully rather
+// than failing the whole run.
+async function tryImportPlaywright() {
+  try {
+    const mod = await import('playwright');
+    return mod;
+  } catch {
+    return null;
+  }
+}
+
+// Sentinel error thrown inside the download path when reCAPTCHA is detected
+// but Playwright isn't available. Caught by the handler's top-level try/catch
+// so we can return a structured 422 response instead of a generic 500.
+const PLAYWRIGHT_UNAVAILABLE_ERR = 'PLAYWRIGHT_UNAVAILABLE_RECAPTCHA';
 
 // Helper function to detect if response is HTML (reCAPTCHA) instead of PDF
 function isPDFResponse(buffer) {
@@ -22,7 +39,7 @@ function isPDFResponse(buffer) {
 // - Separate profiles prevent locking conflicts
 // - Each Playwright instance establishes its own arXiv session by visiting abstract page first
 // - No cookie sharing needed - each instance independently bypasses reCAPTCHA
-async function downloadPDFWithPlaywright(pdfUrl) {
+async function downloadPDFWithPlaywright(chromium, pdfUrl) {
   console.log('Attempting PDF download via Playwright (reCAPTCHA bypass)...');
 
   // Use separate profile for PDF downloads to avoid conflicts with main automation
@@ -289,9 +306,19 @@ export default async function handler(req, res) {
             sizeKB: (pdfBuffer.byteLength / 1024).toFixed(2),
           });
         } catch (fetchError) {
-          // If direct fetch failed or got reCAPTCHA, try Playwright fallback
+          // If direct fetch failed or got reCAPTCHA, try Playwright fallback.
+          // Playwright is an optional dependency — if it's not installed we
+          // raise a sentinel error so the handler's catch block can return a
+          // structured 422 response rather than a generic 500.
           console.warn(`Direct fetch failed (${fetchError.message}), using Playwright fallback...`);
-          pdfBuffer = await downloadPDFWithPlaywright(pdfUrl);
+          const playwrightMod = await tryImportPlaywright();
+          if (!playwrightMod?.chromium) {
+            console.warn(
+              'Playwright unavailable — skipping paper. Install with: npx playwright install chromium'
+            );
+            throw new Error(PLAYWRIGHT_UNAVAILABLE_ERR);
+          }
+          pdfBuffer = await downloadPDFWithPlaywright(playwrightMod.chromium, pdfUrl);
           usedPlaywright = true;
         }
 
@@ -417,6 +444,17 @@ Your entire response MUST ONLY be a valid JSON object in this exact format:
       rawResponse: responseText,
     });
   } catch (error) {
+    // Graceful degradation: PDF requires reCAPTCHA bypass but Playwright is
+    // not installed. Return a structured 422 so the pipeline can skip this
+    // paper and aggregate the skip in the run summary, rather than logging
+    // it as a hard error.
+    if (error?.message === PLAYWRIGHT_UNAVAILABLE_ERR) {
+      return res.status(422).json({
+        error: PLAYWRIGHT_UNAVAILABLE_ERR,
+        arxivId: req.body?.arxivId,
+        title: req.body?.title,
+      });
+    }
     console.error('Error analyzing PDF:', error);
     res.status(500).json({
       error: 'Failed to analyze PDF',
