@@ -554,3 +554,52 @@ When updating documentation or code, verify current model names and pricing via:
 The web UI is built around a sidebar + main-area layout with a warm unified palette (Source Serif 4 + Inter + arXiv red), light/dark theme toggle (via `hooks/useTheme.js` and `data-theme` on `<html>`), component primitives in `components/ui/`, and Zustand state management in `stores/analyzerStore.js`. Briefings are archived with a 90-day rolling window including search/filter/delete/archive (see `hooks/useBriefing.js` + `lib/briefing/filterBriefings.js`). Each briefing carries provenance via `GenerationDetails.jsx` (profile snapshot, model IDs, filter verdicts, hallucination audit). A persistent `WelcomeView.jsx` serves as the getting-started reference. Pipeline pause gates (`pauseAfterFilter`, `pauseBeforeBriefing`) are configurable in `SettingsPanel.jsx`.
 
 **Out of scope / deferred to Phase 2:** Electron packaging, responsive/mobile layout, keyboard shortcuts, daily scheduler/automation, cloud sync.
+
+## Documentation maintenance
+
+Aparture has two user-facing doc surfaces: the README and the VitePress docs site at `docs/`. Keep them in sync with the code. Rules below trigger doc updates when specific code areas change.
+
+### Split rule
+
+- **README is thin.** One-paragraph pitch, hero screenshot, 5-line Quickstart, links into `docs/`. No feature lists, no walkthroughs, no deployment guides. If content is authoritative, it lives in `docs/`.
+- **`docs/` is the source of truth** for everything else: install, API keys, briefing anatomy, pipeline, feedback loop, settings, troubleshooting, env vars, prompt files.
+- Change something in one place → check the other.
+
+### Trigger → impacted docs
+
+| Code area / artifact                                          | Impacted docs                                                                     |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `utils/models.js` (model registry, pricing)                   | `concepts/model-selection.md` · `getting-started/api-keys.md` (hub pricing)       |
+| `lib/analyzer/pipeline.js` (stages, handlers)                 | `concepts/pipeline.md` · `using/review-gates.md` · `using/tuning-the-pipeline.md` |
+| `prompts/synthesis.md`                                        | `concepts/briefing-anatomy.md` · `reference/prompts.md`                           |
+| Any file in `prompts/`                                        | `reference/prompts.md`                                                            |
+| `lib/synthesis/validator.js` (schema)                         | `concepts/briefing-anatomy.md`                                                    |
+| `pages/api/*` (if env-var usage changes)                      | `reference/environment.md`                                                        |
+| Any new `process.env.*` lookup                                | `reference/environment.md`                                                        |
+| `components/briefing/*`                                       | `using/reading-a-briefing.md`                                                     |
+| `components/feedback/*`                                       | `using/giving-feedback.md`                                                        |
+| `components/profile/*`                                        | `using/writing-a-profile.md` · `using/refining-over-time.md`                      |
+| `components/run/*` + review-gate UIs                          | `using/review-gates.md`                                                           |
+| Settings panel                                                | `using/tuning-the-pipeline.md`                                                    |
+| `lib/notebooklm/*`                                            | `add-ons/podcast.md`                                                              |
+| `pages/api/analyze-pdf.js` (Playwright behavior)              | `getting-started/install.md` · `reference/troubleshooting.md`                     |
+| `components/profile/DiffPreview.jsx` + `/api/suggest-profile` | `using/refining-over-time.md`                                                     |
+
+### Screenshot policy
+
+- One hero screenshot on `docs/index.md` (briefing view).
+- No inline UI screenshots elsewhere except where UX is genuinely hard to describe in words (e.g., the filter-override pill's click-cycle).
+- Stale screenshots get refreshed or removed — don't document pixels you could describe.
+
+### Research notes
+
+- Major doc work produces research notes in `docs/superpowers/research/` (gitignored, pattern-matches `specs/` and `plans/`).
+- External info carries a "snapshot taken YYYY-MM-DD" footer.
+- Notes are working artifacts, not canonical docs. They inform page writing; they don't ship.
+
+### When NOT to update docs
+
+- Internal refactors with no user-visible behavior change
+- Bug fixes for behavior users weren't aware of
+- Test additions or fixture changes
+- `docs/superpowers/**` changes (all gitignored)
