@@ -14,61 +14,53 @@ hero:
       link: https://github.com/joshspeagle/aparture
 ---
 
-Aparture is a local web app for daily arXiv monitoring. Describe your research interests in natural language, point it at the categories you read, and it produces a cross-paper briefing — an editorial lead, priority-ordered themes, and per-paper reports — tuned to your profile. You keep refining over time by starring, dismissing, and commenting on what you see; your profile learns from the feedback.
+Aparture is a local web app for daily arXiv monitoring using LLMs. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to what you said you care about.
+
+The tool is designed to be used over weeks rather than once. You star papers you liked, dismiss ones that missed the mark, and leave comments where you have specific reactions; those signals feed a profile-refinement flow that proposes edits you can accept or reject individually. Over time, the briefings get closer to what you actually want to see.
+
+Aparture isn't a general-purpose search tool — it doesn't index arXiv's backlog, only looks at what's fresh in the categories you chose, and won't push back on your dismissals (except occasionally if a dismissed paper is central to a theme).
 
 <div class="landing-cards">
 
 <div class="landing-card">
 
-### For researchers
+### Your profile, your taxonomy
 
-Daily arXiv monitoring in natural language. No keyword lists, no taxonomy gymnastics — write what you care about, and the pipeline does the rest.
-
-</div>
-
-<div class="landing-card">
-
-### Briefings, not reports
-
-Cross-paper synthesis tuned to your interests. An editorial lead, priority-ordered themes with arguments, and per-paper cards with pitches and relevance — not just a list of summaries.
+Write your interests as plain prose, not a keyword list. No taxonomies, no schemas, no tuning sliders — the LLM reads what you wrote and uses that to score and filter.
 
 </div>
 
 <div class="landing-card">
 
-### You stay in the loop
+### Briefings, not summaries
 
-Star, dismiss, override, comment. Your feedback feeds back into the profile, so next week's briefing reflects what you actually care about.
+Each run produces one structured reading piece: an editorial lead, themes, and per-paper cards. Designed to help you decide what to actually open, not just produce a list.
 
 </div>
 
 <div class="landing-card">
 
-### Claude, GPT, or Gemini
+### A tight feedback loop
 
-Use whatever you have keys for. Mix providers across stages — cheap model for filtering, premium model for briefing synthesis.
+Star, dismiss, or comment on what you see. Those signals accumulate, and the suggest-improvements flow proposes concrete profile edits you can accept or reject per-change.
+
+</div>
+
+<div class="landing-card">
+
+### Bring your own models
+
+Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across stages — cheap model for filtering, stronger model for synthesis. All keys stay in your local `.env.local`.
 
 </div>
 
 </div>
 
-## New here?
+## Where to start
 
-Walk the recipe in order — most people get to their first briefing in 30-45 minutes.
+New? Walk the Get Started section in order: [Install](/getting-started/install) → [API keys](/getting-started/api-keys) → [Verify](/getting-started/verify-setup) → [Your first briefing](/getting-started/first-briefing). Most people get to their first run in 30–45 minutes.
 
-1. **[Install](/getting-started/install)** — Node, the repo, optional Playwright.
-2. **[API keys](/getting-started/api-keys)** — pick a provider, create a key, paste into `.env.local`.
-3. **[Verify setup](/getting-started/verify-setup)** — Dry Run (free) + Minimal API Test (~$0.01-0.05).
-4. **[Your first briefing](/getting-started/first-briefing)** — a narrated 10-minute run through the UI.
-
-## Already set up?
-
-Jump into the daily-use guides:
-
-- [Reading a briefing](/using/reading-a-briefing) — the view you'll stare at every morning.
-- [Giving feedback](/using/giving-feedback) — star, dismiss, override, comment.
-- [Writing a good profile](/using/writing-a-profile) — the highest-leverage input you control.
-- [Refining over time](/using/refining-over-time) — the suggest-improvements loop.
+Already have a briefing on screen? The [Guide](/using/reading-a-briefing) is the main daily reference — [Reading a briefing](/using/reading-a-briefing), [Giving feedback](/using/giving-feedback), [Writing a good profile](/using/writing-a-profile), [Refining over time](/using/refining-over-time) — and [Concepts](/concepts/pipeline) goes deeper into how the pipeline actually works.
 
 ## License
 
