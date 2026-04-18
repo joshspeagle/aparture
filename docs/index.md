@@ -16,8 +16,6 @@ hero:
 
 Aparture is a local web app for daily arXiv monitoring. Describe your research interests in natural language, point it at the categories you read, and it produces a cross-paper briefing — an editorial lead, priority-ordered themes, and per-paper reports — tuned to your profile. You keep refining over time by starring, dismissing, and commenting on what you see; your profile learns from the feedback.
 
-<img src="/aparture/screenshots/briefing-hero.png" alt="A rendered Aparture briefing" style="display:block; max-width:100%; margin:2rem auto; border-radius:8px;" />
-
 <div class="landing-cards">
 
 <div class="landing-card">
