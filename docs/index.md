@@ -77,7 +77,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 <a class="step-card" href="/aparture/getting-started/verify-setup.html">
   <span class="step-number">STEP 03</span>
   <h4>Verify setup</h4>
-  <p>Dry run (free) and Minimal API Test (~$0.01–0.05).</p>
+  <p>Dry run (free) and Minimal API Test (~$0.20–$1 on paid tiers).</p>
 </a>
 
 <a class="step-card" href="/aparture/getting-started/first-briefing.html">
@@ -88,7 +88,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 
 </div>
 
-Already have Aparture running? The [Guide](/using/reading-a-briefing) covers daily use — reading briefings, giving feedback, writing a profile, refining over time — and [Concepts](/concepts/pipeline) goes deeper into how the pipeline, briefings, and model selection actually work under the hood.
+Already have Aparture running? The [Guide](/using/reading-a-briefing) covers daily use — reading briefings, giving feedback, writing a profile, refining over time — [Concepts](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
 
 <div class="landing-footer">
 
