@@ -9,6 +9,7 @@ import PipelineArchiveView from '../briefing/PipelineArchiveView.jsx';
 import Button from '../ui/Button.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
 import ProgressTimeline from '../run/ProgressTimeline.jsx';
+import ReCaptchaSummaryCard from '../run/ReCaptchaSummaryCard.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
@@ -17,6 +18,7 @@ import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
+import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 
 export default function MainArea({
   activeView,
@@ -89,6 +91,11 @@ export default function MainArea({
   // Logout
   onLogout,
 }) {
+  // End-of-run summary: papers skipped because Playwright isn't installed.
+  // Read once so the pipeline view can render ReCaptchaSummaryCard below
+  // DownloadReportCard.
+  const skippedDueToRecaptcha = useAnalyzerStore((s) => s.skippedDueToRecaptcha);
+
   // Profile view
   if (activeView === 'profile') {
     return (
@@ -196,6 +203,10 @@ export default function MainArea({
             config={config}
             onExport={onExport}
           />
+
+          {/* End-of-run summary for papers skipped when Playwright is
+              unavailable. Returns null when empty. */}
+          <ReCaptchaSummaryCard skipped={skippedDueToRecaptcha} />
 
           <BriefingCard
             results={results}

@@ -6,6 +6,7 @@
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
+import PlaywrightNotice from './PlaywrightNotice.jsx';
 
 // Map internal pipeline stages to timeline stage indices.
 // Pipeline stages: idle → fetching → Filtering → initial-scoring → selecting → deep-analysis → synthesizing → complete
@@ -133,6 +134,7 @@ export default function ProgressTimeline({
   const processing = useAnalyzerStore((s) => s.processing);
   const filterResults = useAnalyzerStore((s) => s.filterResults);
   const results = useAnalyzerStore((s) => s.results);
+  const skippedDueToRecaptcha = useAnalyzerStore((s) => s.skippedDueToRecaptcha);
 
   const currentIndex = resolveStageIndex(processing.stage);
   const isRunning = processing.isRunning;
@@ -270,6 +272,29 @@ export default function ProgressTimeline({
                         </Button>
                       )}
                     </Card>
+                  </div>
+                )}
+
+                {/* Playwright-unavailable notices — rendered inline inside the
+                    PDF-analysis stage detail area, one per skipped paper. */}
+                {stageKey === 'analyze' && skippedDueToRecaptcha.length > 0 && (
+                  <div
+                    style={{
+                      marginLeft: '40px',
+                      marginTop: 'var(--aparture-space-2)',
+                      marginBottom: 'var(--aparture-space-2)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--aparture-space-2)',
+                    }}
+                  >
+                    {skippedDueToRecaptcha.map((paper) => (
+                      <PlaywrightNotice
+                        key={paper.id ?? paper.arxivId}
+                        arxivId={paper.arxivId}
+                        title={paper.title}
+                      />
+                    ))}
                   </div>
                 )}
 
