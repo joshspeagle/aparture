@@ -2,11 +2,11 @@
 
 Once you've got a working profile and a handful of briefings under your belt, you'll probably want to tune the pipeline itself — which models run at which stages, how many papers survive each filter, and which optional stages run at all. All of this lives in the **Settings** panel (sidebar → Settings).
 
-This page walks through the knobs, what each one affects, and how to think about cost-vs-quality trade-offs.
+This page walks through the knobs, what each affects, and how to think about the cost-vs-quality trade-offs.
 
 ## The mental model
 
-The pipeline is a **6-stage waterfall**. Every stage narrows the set of papers before the next stage runs. Cheap stages filter loosely; expensive stages only see the survivors. Cost per paper grows by roughly 10-100x as you go down the stack:
+The pipeline is a 6-stage waterfall. Every stage narrows the set of papers before the next stage runs — cheap stages filter loosely, expensive stages only see the survivors. Cost per paper grows by roughly 10-100x as you go down the stack:
 
 - **Stage 1 (fetch)** — free (arXiv API).
 - **Stage 2 (quick filter)** — ~$0.0001-0.0003 per paper.
@@ -35,7 +35,7 @@ Three principles for model selection:
 
 ### 1. Spend on what reads the most
 
-PDF analysis reads entire papers — often 10,000-25,000 tokens each. That's where a good model pays off: correct scoring, nuanced summaries, fewer hallucinations downstream. Upgrade `pdfModel` before upgrading anything else.
+PDF analysis reads entire papers, often 10,000-25,000 tokens each. That's where a good model pays off: correct scoring, nuanced summaries, fewer hallucinations downstream. Upgrade `pdfModel` before upgrading anything else.
 
 Briefing synthesis reads all the final-round papers plus your profile. It benefits from a capable model too, but it's one call per run — cheaper to upgrade than PDF analysis.
 
@@ -43,11 +43,11 @@ Briefing synthesis reads all the final-round papers plus your profile. It benefi
 
 The quick filter runs on every fetched paper (often 100-500 per day). A fast, cheap model here is exactly right — it only needs to say "plausibly relevant" or "plausibly not." `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` are all good choices.
 
-Same logic applies to scoring: you're running it on dozens to hundreds of papers, and you're mostly ranking within them. A mid-tier model is usually enough. `gemini-3-flash` or `claude-sonnet-4.6` works well.
+Same logic applies to scoring: you're running it on dozens to hundreds of papers and mostly ranking within them. A mid-tier model is usually enough. `gemini-3-flash` or `claude-sonnet-4.6` works well.
 
 ### 3. Mixing providers is fine
 
-Nothing in Aparture requires all stages to use the same provider. A common pattern: Gemini Flash-Lite for filtering (speed + price), Claude Sonnet for scoring (strong reasoning on abstracts), Claude Opus for PDF analysis (best-in-class long-context reading), and Gemini for briefing synthesis (good structured-output + fast).
+Nothing in Aparture requires all stages to use the same provider. A common pattern: Gemini Flash-Lite for filtering (speed and price), Claude Sonnet for scoring (strong reasoning on abstracts), Claude Opus for PDF analysis (best-in-class long-context reading), and Gemini for briefing synthesis (good structured-output, fast).
 
 See [Model selection](/concepts/model-selection) for the full model registry and three preset configs (Budget, Balanced, Premium).
 
@@ -75,17 +75,17 @@ Lower them when:
 
 ## Score thresholds
 
-Three thresholds control which papers advance between stages:
+Three thresholds control which papers advance between stages.
 
 ### Filter verdicts to advance
 
-In Settings, under **Quick Filter**, you can choose which verdicts move on to scoring (default: YES + MAYBE). If you set this to YES-only, you save tokens on borderline papers — but you also risk missing genuinely interesting MAYBE papers.
+In Settings, under **Quick Filter**, you can choose which verdicts move on to scoring (default: YES + MAYBE). If you set this to YES-only, you save tokens on borderline papers but also risk missing genuinely interesting MAYBE papers.
 
 ### Score threshold for PDF analysis
 
 The **Relevance threshold** setting (default: usually 5.0 or higher) determines the minimum score required to advance from Stage 3 (abstract scoring) to Stage 4 (PDF analysis). Papers below this score are never PDF-analysed, so they appear in the briefing as "abstract-only" entries.
 
-Setting this higher (7, 8) means fewer PDFs get read — lower cost, but you might miss papers with boring abstracts and interesting content. Setting it lower (3, 4) means more PDFs get read — higher cost, but broader coverage.
+Setting this higher (7, 8) means fewer PDFs get read — lower cost, but you might miss papers with boring abstracts and interesting content. Setting it lower (3, 4) means more PDFs get read — higher cost, broader coverage.
 
 ### Max deep analysis
 
@@ -109,7 +109,7 @@ Keep it on for production runs where ranking quality matters.
 
 ## Quick filter toggle
 
-**Quick filter mode** (default: **on**) controls whether Stage 2 runs at all. If you turn it off, every fetched paper goes directly to abstract scoring — skipping the cheap pre-filter entirely.
+**Quick filter mode** (default: **on**) controls whether Stage 2 runs at all. If you turn it off, every fetched paper goes directly to abstract scoring, skipping the cheap pre-filter entirely.
 
 Turn off quick filter when:
 
@@ -138,13 +138,13 @@ Out of the box, Aparture ships with a **Balanced** configuration:
 - Pause gates on, retry-on-YES on, retry-on-MAYBE on.
 - Max deep analysis: 30.
 
-This is a good baseline for most users. It prioritizes signal quality over cost but isn't extravagant.
+This is a good baseline for most users. It prioritises signal quality over cost without being extravagant.
 
-From there, a few common adjustments:
+From there, a few common adjustments.
 
 ### If you're cost-sensitive
 
-Switch filter and scoring models to the cheapest Flash-Lite or Nano tier. Drop Max Deep Analysis to 10-15. Turn off post-processing. Turn off retry-on-MAYBE. Keep retry-on-YES (rare but important).
+Switch filter and scoring models to the cheapest Flash-Lite or Nano tier. Drop Max Deep Analysis to 10-15. Turn off post-processing. Turn off retry-on-MAYBE. Keep retry-on-YES (rare but worth keeping).
 
 Estimated daily cost: ~$0.50-1.00 for a 100-paper run.
 
@@ -162,7 +162,7 @@ Turn off both pause gates. Consider turning off the hallucination-retry checkbox
 
 Every briefing archives the full configuration in its **Generation details** panel (the collapsible disclosure below the briefing). When you're looking at an old briefing and wondering "was this the one where I used Claude Opus for PDFs?", open Generation details and check the model IDs.
 
-This is also useful when troubleshooting: if a run produced a weird briefing, the Generation details show you exactly which models + settings were in effect. Compare against a good run to isolate the variable.
+This is also useful when troubleshooting: if a run produced a weird briefing, the Generation details show you exactly which models and settings were in effect. Compare against a good run to isolate the variable.
 
 ## Next
 
