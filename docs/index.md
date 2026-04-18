@@ -14,15 +14,14 @@ hero:
       link: https://github.com/joshspeagle/aparture
 ---
 
-Aparture is a local web app for daily arXiv monitoring using LLMs. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to what you said you care about.
+Aparture is a local web app for daily arXiv monitoring using LLMs. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile.
 
-The tool is designed to be used over weeks rather than once. You star papers you liked, dismiss ones that missed the mark, and leave comments where you have specific reactions; those signals feed a profile-refinement flow that proposes edits you can accept or reject individually. Over time, the briefings get closer to what you actually want to see.
-
-Aparture isn't a general-purpose search tool — it doesn't index arXiv's backlog, only looks at what's fresh in the categories you chose, and won't push back on your dismissals (except occasionally if a dismissed paper is central to a theme).
+It's designed to be used over weeks rather than once: you star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. Those signals feed into a profile-refinement flow that proposes edits you can accept or reject individually, so the briefings gradually converge on what you actually want to see.
 
 <div class="landing-cards">
 
 <div class="landing-card">
+<div class="landing-icon">📝</div>
 
 ### Your profile, your taxonomy
 
@@ -31,6 +30,7 @@ Write your interests as plain prose, not a keyword list. No taxonomies, no schem
 </div>
 
 <div class="landing-card">
+<div class="landing-icon">📰</div>
 
 ### Briefings, not summaries
 
@@ -39,6 +39,7 @@ Each run produces one structured reading piece: an editorial lead, themes, and p
 </div>
 
 <div class="landing-card">
+<div class="landing-icon">🔁</div>
 
 ### A tight feedback loop
 
@@ -47,6 +48,7 @@ Star, dismiss, or comment on what you see. Those signals accumulate, and the sug
 </div>
 
 <div class="landing-card">
+<div class="landing-icon">🧩</div>
 
 ### Bring your own models
 
@@ -56,20 +58,42 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 
 </div>
 
-## Where to start
+## Get started
 
-New? Walk the Get Started section in order: [Install](/getting-started/install) → [API keys](/getting-started/api-keys) → [Verify](/getting-started/verify-setup) → [Your first briefing](/getting-started/first-briefing). Most people get to their first run in 30–45 minutes.
+<div class="step-cards">
 
-Already have a briefing on screen? The [Guide](/using/reading-a-briefing) is the main daily reference — [Reading a briefing](/using/reading-a-briefing), [Giving feedback](/using/giving-feedback), [Writing a good profile](/using/writing-a-profile), [Refining over time](/using/refining-over-time) — and [Concepts](/concepts/pipeline) goes deeper into how the pipeline actually works.
+<a class="step-card" href="/aparture/getting-started/install.html">
+  <span class="step-number">STEP 01</span>
+  <h4>Install</h4>
+  <p>Node, the repo, optional Playwright. About 5 minutes.</p>
+</a>
 
-## License
+<a class="step-card" href="/aparture/getting-started/api-keys.html">
+  <span class="step-number">STEP 02</span>
+  <h4>API keys</h4>
+  <p>Pick a provider, create a key, paste into <code>.env.local</code>.</p>
+</a>
 
-MIT.
+<a class="step-card" href="/aparture/getting-started/verify-setup.html">
+  <span class="step-number">STEP 03</span>
+  <h4>Verify setup</h4>
+  <p>Dry run (free) and Minimal API Test (~$0.01–0.05).</p>
+</a>
 
-## Acknowledgements
+<a class="step-card" href="/aparture/getting-started/first-briefing.html">
+  <span class="step-number">STEP 04</span>
+  <h4>Your first briefing</h4>
+  <p>A narrated 10-minute walk through the UI, end to end.</p>
+</a>
 
-Built in collaboration with Claude.
+</div>
 
----
+Already have Aparture running? The [Guide](/using/reading-a-briefing) covers daily use — reading briefings, giving feedback, writing a profile, refining over time — and [Concepts](/concepts/pipeline) goes deeper into how the pipeline, briefings, and model selection actually work under the hood.
 
-_Originally built to help the author ([Josh Speagle](https://joshspeagle.com/)) manage daily paper monitoring across cs, stat, and astro-ph. Still optimized for researcher-first workflows._
+<div class="landing-footer">
+
+MIT License · Built in collaboration with Claude · [Report an issue](https://github.com/joshspeagle/aparture/issues)
+
+_Originally built to help the author ([Josh Speagle](https://joshspeagle.com/)) manage daily paper monitoring across cs, stat, and astro-ph._
+
+</div>

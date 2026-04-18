@@ -62,18 +62,25 @@ html .VPHero .name .hero-name .ar-highlight {
   border-bottom: 2px solid var(--arxiv-red);
 }
 
-/* Landing page callout cards */
+/* Landing page feature callout cards — explicit 2x2 on desktop */
 .landing-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem;
-  margin: 2.5rem 0 3rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin: 3rem 0;
+}
+
+@media (max-width: 640px) {
+  .landing-cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .landing-card {
-  padding: 1.5rem 1.75rem;
+  padding: 1.75rem 1.75rem 1.5rem;
   border: 1px solid var(--vp-c-divider);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--vp-c-bg-soft);
   transition:
     border-color 0.2s ease,
@@ -84,19 +91,27 @@ html .VPHero .name .hero-name .ar-highlight {
 .landing-card:hover {
   border-color: var(--arxiv-red);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(179, 27, 27, 0.08);
+  box-shadow: 0 6px 16px rgba(179, 27, 27, 0.08);
+}
+
+.landing-card .landing-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-bottom: 0.85rem;
 }
 
 .landing-card h3 {
-  margin-top: 0 !important;
-  margin-bottom: 0.6rem !important;
-  padding-top: 0 !important;
-  border-top: none !important;
-  font-size: 1.1rem;
+  margin: 0 0 0.6rem !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: 1.15rem;
   letter-spacing: -0.01em;
+  color: var(--vp-c-text-1);
 }
 
-.landing-card h3::before {
+.landing-card h3::before,
+.landing-card h3 .header-anchor {
+  display: none !important;
   content: none !important;
 }
 
@@ -113,4 +128,96 @@ html .VPHero .name .hero-name .ar-highlight {
 
 .landing-card code {
   font-size: 0.85em;
+}
+
+/* Get-started step cards — explicit 2x2 on desktop, whole card is a link */
+.step-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0 3rem;
+}
+
+@media (max-width: 640px) {
+  .step-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.step-card {
+  display: block;
+  padding: 1.25rem 1.5rem 1.3rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+  text-decoration: none !important;
+  color: inherit !important;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.step-card:hover {
+  border-color: var(--arxiv-red);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(179, 27, 27, 0.08);
+}
+
+.step-card .step-number {
+  font-family:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  color: var(--arxiv-red);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.step-card h4 {
+  margin: 0 0 0.3rem !important;
+  padding: 0 !important;
+  border: none !important;
+  font-size: 1.05rem;
+  color: var(--vp-c-text-1);
+  letter-spacing: -0.01em;
+}
+
+.step-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--vp-c-text-2);
+  line-height: 1.5;
+}
+
+.step-card code {
+  font-size: 0.85em;
+  padding: 0.1rem 0.35rem;
+  background: var(--vp-c-default-soft);
+  border-radius: 4px;
+}
+
+/* Compact landing-page footer */
+.landing-footer {
+  margin: 3.5rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  font-size: 0.9rem;
+}
+
+.landing-footer p {
+  margin: 0.6rem 0;
+  line-height: 1.55;
+}
+
+.landing-footer p:last-child {
+  font-style: italic;
+  opacity: 0.85;
+  font-size: 0.85rem;
+}
+
+.landing-footer a {
+  color: var(--arxiv-red);
 }
