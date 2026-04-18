@@ -18,9 +18,9 @@ export const BriefingSchema = z.object({
 });
 ```
 
-Three top-level fields. All required. No optional fields. Everything else you see in a briefing — the quick-summary inline panels, the full-report side panel, the generation-metadata disclosure — is passed into the renderer as separate props, not validated by the schema, and not produced by the synthesis LLM call.
+Three top-level fields, all required, no optional fields. Everything else you see in a briefing — the quick-summary inline panels, the full-report side panel, the generation-metadata disclosure — is passed into the renderer as separate props, not validated by the schema, and not produced by the synthesis LLM call.
 
-That separation matters: the briefing object itself is stable and portable (it could be serialised to JSON and re-rendered somewhere else tomorrow), while the ancillary data can evolve without breaking the contract.
+That separation is deliberate: the briefing object itself is stable and portable (it could be serialised to JSON and re-rendered somewhere else tomorrow), while the ancillary data can evolve without breaking the contract.
 
 ## Section 1: the executive summary
 
@@ -56,7 +56,7 @@ That separation matters: the briefing object itself is stable and portable (it c
 > - `argument`: a 2–4 sentence paragraph explaining why these papers belong together and what the user should take away. This is editorial writing, not a section header. If papers within the theme are in tension or build on each other, say so here — **debates belong inside themes, not in a separate section.**
 > - `paperIds`: the arxivIds of the papers in this theme. Every paper in `papers` should appear in at least one theme.
 
-Note the deliberate decision on debates: prior versions of Aparture had separate `DebateBlock` and `LongitudinalBlock` components. Those were removed in favour of handling tensions and longitudinal observations **inside a theme's `argument` field**, where they're naturally grounded in the papers being grouped.
+The last bullet above reflects a deliberate design choice: prior versions of Aparture had separate `DebateBlock` and `LongitudinalBlock` components. Those were removed in favour of handling tensions and longitudinal observations **inside a theme's `argument` field**, where they're naturally grounded in the papers being grouped.
 
 **Schema fields.**
 
@@ -149,7 +149,7 @@ And the sourcing discipline the prompt enforces:
 > - If you are uncertain whether a claim is supported, omit it rather than state it. The briefing is better short and accurate than long and embellished.
 > - Cross-paper claims in `themes.argument` must be supported by content in at least two of the cited papers.
 
-These constraints are the main reason Aparture's briefings are worth reading. The hallucination audit in stage 5 exists to catch the cases where the LLM violates them anyway.
+Those constraints are most of the reason Aparture's briefings are worth reading. The hallucination audit in stage 5 exists to catch the cases where the LLM violates them anyway.
 
 ## Validation flow
 
@@ -165,10 +165,10 @@ If step 3 flags hallucinations and the matching retry flag is enabled, synthesis
 
 ## Where to tune what
 
-- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. The 150-line prompt is the single biggest quality knob in the system — changes take effect on the next `/api/synthesize` call with no rebuild. See [Prompts](/reference/prompts).
+- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. The ~150-line prompt is the biggest quality lever in the system — changes take effect on the next `/api/synthesize` call with no rebuild. See [Prompts](/reference/prompts).
 - **Change how it looks.** Edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the React components, so colour changes propagate without touching `.jsx`.
 - **Change the hallucination audit's sensitivity.** Edit `prompts/check-briefing.md`. Also hot-reloadable.
-- **Add a new briefing section.** Two-part change: extend `BriefingSchema` in `lib/synthesis/schema.js` to add the field, then update the prompt to produce it, then add a render component under `components/briefing/` and wire it into `BriefingView.jsx`.
+- **Add a new briefing section.** Two-part change: extend `BriefingSchema` in `lib/synthesis/schema.js` to add the field, update the prompt to produce it, and add a render component under `components/briefing/` wired into `BriefingView.jsx`.
 
 ## Next steps
 
