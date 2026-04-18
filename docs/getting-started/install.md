@@ -1,19 +1,19 @@
 # Install
 
-Aparture is a Next.js app that runs locally. This page walks through installing Node.js, cloning the repo, and getting a working dev server on macOS, Linux, Windows, or WSL2. The whole thing takes 10-15 minutes on a clean machine.
+Aparture is a Next.js app that runs locally. This page walks through installing Node.js, cloning the repo, and getting a working dev server on macOS, Linux, Windows, or WSL2. On a clean machine, expect 10–15 minutes from start to finish.
 
 ## Prerequisites
 
-- **Node.js 22 LTS.** Next.js 14 supports Node 18.17+, but Node 18 is end-of-life and Node 20 reaches EOL on 2026-04-30. Use Node 22 unless you have a specific reason not to.
-- **Git.** For cloning the repo.
-- **~1 GB of disk.** `node_modules` is ~500 MB; Playwright's Chromium adds another ~300 MB if you choose to install it.
-- **A shell you're comfortable in.** macOS/Linux work fine with bash or zsh. On Windows, either PowerShell or WSL2 works, though WSL2 is meaningfully faster (see §1d).
+- **Node.js.** Version 20 or 22 both work. The examples below use Node 22.
+- **Git** for cloning the repository.
+- **~1 GB of disk.** `node_modules` is about 500 MB. Another 300 MB if you install Playwright for the reCAPTCHA fallback (optional, see §3).
+- **A shell you're comfortable in.** Bash or zsh on macOS and Linux, PowerShell or WSL2 on Windows. WSL2 is Microsoft's Linux-on-Windows environment; it tends to be faster than native PowerShell for Node-based dev work.
 
-## 1. Install Node 22 LTS
+## 1. Install Node
 
 ### macOS
 
-The recommended approach is [nvm](https://github.com/nvm-sh/nvm), which lets you switch Node versions per-project without sudo.
+Install with [nvm](https://github.com/nvm-sh/nvm), which lets you switch Node versions per project without sudo.
 
 ```bash
 # Xcode CLI tools (git, make, clang)
@@ -34,7 +34,7 @@ node -v   # should print v22.x.x
 
 ### Linux (Ubuntu/Debian, Fedora, Arch)
 
-Same nvm approach. It's worth avoiding distro packages (`apt install nodejs`) since they pin you to whatever version the distro happens to ship.
+Same nvm approach. Distro packages (`apt install nodejs`) tend to lag behind, so nvm is the simpler path.
 
 ```bash
 # Build deps (native modules need these)
@@ -51,7 +51,7 @@ nvm alias default 22
 
 ### Windows (native PowerShell)
 
-The recommended tool here is [fnm](https://github.com/Schniz/fnm), which is faster than nvm-windows and installs via winget.
+On Windows, [fnm](https://github.com/Schniz/fnm) is the cleanest Node manager. It installs via winget.
 
 ```powershell
 # Install fnm
@@ -63,23 +63,23 @@ winget install Schniz.fnm
 fnm install 22
 fnm default 22
 
-# Enable Windows long paths (required — node_modules trees are deep).
+# Enable Windows long paths (node_modules trees are deep).
 # Run as Administrator:
 New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
   -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
 git config --global core.longpaths true
 ```
 
-::: tip Windows Defender can cripple npm install
-If `npm install` takes more than a few minutes, Windows Defender is almost certainly scanning `node_modules` as it's written. Add exclusions for your dev tree, `%APPDATA%\npm-cache`, and `node.exe` — installs drop from ~10 minutes to ~1-3.
+::: tip Windows Defender can slow npm install dramatically
+If `npm install` takes more than a few minutes, Windows Defender is probably scanning `node_modules` as it's written. Adding exclusions for your dev tree, `%APPDATA%\npm-cache`, and `node.exe` usually drops install time from ~10 minutes to ~1–3.
 :::
 
 ### WSL2 (Ubuntu on Windows)
 
-WSL2 is meaningfully faster than native Windows for Next.js development, so use it if you can.
+If you're on Windows and don't mind a Linux shell, WSL2 is the faster option.
 
-::: warning Keep the repo on the Linux filesystem
-Keep the repo at `~/projects/...`, not `/mnt/c/...`. Cross-filesystem I/O is the single biggest WSL2 footgun — `npm run dev` can take 60+ seconds to start if the repo lives on `/mnt/c`.
+::: tip Keep the repo on the Linux filesystem
+Keep the repo at `~/projects/...` inside WSL, not under `/mnt/c/...`. Cross-filesystem I/O is slow, and `npm run dev` can take 60+ seconds to start if the repo lives on a Windows path.
 :::
 
 ```powershell
@@ -110,22 +110,17 @@ cp .env.local.example .env.local
 npm install
 ```
 
-`npm install` pulls ~700 packages (~500 MB), which takes 1-3 minutes on a clean machine.
+`npm install` pulls roughly 700 packages (~500 MB) and takes 1–3 minutes on a clean machine.
 
-You now have a `.env.local` file to fill in on the [API keys page](/getting-started/api-keys). Don't start the dev server yet — it will fail without at least one API key.
+You now have a `.env.local` file to fill in on the [API keys page](/getting-started/api-keys). Don't start the dev server yet. It will fail without at least one API key.
 
-## 3. Playwright (optional)
+## 3. Playwright (optional fallback for reCAPTCHA)
 
-Playwright is used to bypass arXiv's reCAPTCHA during PDF downloads. It is genuinely optional — Aparture works fine without it, and most of the pipeline doesn't touch PDFs at all.
+Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
 
-If you skip Playwright:
+Without Playwright, affected papers get a notification in the run log and skip the deep-analysis stage. They still appear in the briefing based on their abstract-level score, with a note that the full PDF wasn't available. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, NotebookLM generation) works regardless.
 
-- Direct PDF downloads (the ones that don't trigger reCAPTCHA) still work.
-- Papers that do hit reCAPTCHA get a notification in the run log and are skipped from deep analysis (Stage 3).
-- Those papers still appear in the briefing based on their abstract-level score, with a note that deep analysis was unavailable.
-- Quick filter, abstract scoring, and briefing synthesis all work regardless.
-
-Install it if you expect to analyse 10+ papers per day and want full PDF coverage:
+Install it if you'd like the fallback available:
 
 ```bash
 npx playwright install chromium
@@ -134,8 +129,8 @@ npx playwright install chromium
 npx playwright install-deps chromium
 ```
 
-::: warning Don't delete the Playwright profile
-The first PDF download after install may prompt reCAPTCHA interactively in a headed browser. Solve it once and Playwright caches the session in `temp/playwright-profile/`. Deleting that folder forces a re-solve on the next run.
+::: tip Don't delete the Playwright profile
+The first PDF download that hits reCAPTCHA may prompt you to solve it interactively in a headed browser. Once you solve it, Playwright caches the session in `temp/playwright-profile/` and subsequent runs proceed without prompts. Deleting that folder forces a re-solve on the next affected paper.
 :::
 
 ## 4. Verify the toolchain
@@ -146,34 +141,32 @@ Before moving on, confirm everything installed cleanly:
 node -v                       # v22.x.x
 npm -v                        # 10.x or 11.x
 npm run lint                  # ESLint passes
-npm test                      # Vitest — ~400 tests, ~30s, $0 (fixture-based)
+npm test                      # Vitest, ~400 tests, ~30s, $0 (fixture-based)
 ```
 
-If all four pass, the local setup is ready. `npm run dev` still won't work — you need at least one API key in `.env.local` first.
+If all four pass, the local setup is ready. `npm run dev` still won't work until you've added at least one API key in `.env.local`.
 
 ## Common gotchas
 
 **macOS**
 
-- `npm install` fails with `gyp ERR! not found: python` — run `brew install python@3.12`.
-- `EACCES` on global install — you installed Node via Homebrew instead of nvm. Never use `sudo npm install -g`; reinstall Node via nvm.
+- `EACCES` on global install: you likely installed Node via Homebrew instead of nvm. Avoid `sudo npm install -g`; reinstall Node via nvm.
 
 **Linux**
 
-- `Error: Cannot find module` after `nvm install` — shell init didn't load. Check that `~/.bashrc` has the nvm block and that you sourced it.
-- Playwright chromium missing `libnss3.so` — run `npx playwright install-deps chromium` (needs sudo).
+- `Error: Cannot find module` after `nvm install`: your shell init didn't load nvm. Check that `~/.bashrc` contains the nvm block and that you sourced it (or just open a new terminal).
+- Playwright complains about `libnss3.so`: run `npx playwright install-deps chromium` (needs sudo).
 
 **Windows native**
 
-- `ENAMETOOLONG` during `npm install` — long paths aren't enabled. Re-run the §1 step, and `git config --global core.longpaths true`.
-- `.env.local` values appear `undefined` — CRLF line endings. Re-save with LF. VS Code shows the current endings in the bottom-right status bar; click to switch.
+- `ENAMETOOLONG` during `npm install`: long paths aren't enabled. Re-run the long-paths step from §1 and set `git config --global core.longpaths true`.
 
 **WSL2**
 
-- `npm run dev` takes 60+ seconds to start — the repo is under `/mnt/c`. Move it to `~/projects/` on the Linux filesystem.
-- `localhost:3000` doesn't load from a Windows browser — WSL2 port-forwarding takes a few seconds on first start. If it persists, run `wsl --shutdown` and reopen.
+- `npm run dev` takes 60+ seconds to start: the repo is probably under `/mnt/c/...`. Move it to `~/projects/` on the Linux filesystem.
+- `localhost:3000` doesn't load from a Windows browser: WSL2 port-forwarding can take a few seconds on first start. If it persists, run `wsl --shutdown` from PowerShell and reopen.
 
-More symptom-to-fix pairs will live on the [troubleshooting](/reference/troubleshooting) page once it lands.
+For issues that come up after the dev server starts (API errors, rate limits, reCAPTCHA on runs), see the [troubleshooting](/reference/troubleshooting) page.
 
 ## Next
 
