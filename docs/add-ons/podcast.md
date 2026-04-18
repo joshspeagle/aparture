@@ -1,18 +1,14 @@
 # Generating a podcast
 
-Aparture can't create audio directly, but it can build a bundle that [NotebookLM](https://notebooklm.google.com) turns into a commute-length podcast with two hosts discussing the day's papers. The flow is: download a bundle from the briefing view, upload it to NotebookLM, paste a focus prompt, pick a duration, generate.
+Aparture can't create audio directly, but it can build a bundle that [NotebookLM](https://notebooklm.google.com) turns into a commute-length podcast with two hosts discussing the day's papers. The flow: download a bundle from the briefing view, upload it to NotebookLM, paste a focus prompt, pick a duration, generate.
 
 This page covers what's in the bundle, how to upload it, and how to tune the podcast style.
 
 ## Is this worth setting up?
 
-The podcast flow is **completely optional**. You never need it to use Aparture. A lot of users skip it entirely and just read their briefings.
+The podcast flow is completely optional. You never need it to use Aparture, and plenty of users skip it entirely and just read their briefings.
 
-It's worth trying if:
-
-- You commute or exercise regularly and want to keep up with papers passively.
-- You retain information better from audio than from text.
-- You want to share a briefing with a co-author who isn't in the app.
+It's worth trying if you commute or exercise regularly and want to keep up with papers passively, if you retain information better from audio than text, or if you want to share a briefing with a co-author who isn't in the app.
 
 It's probably not worth it if you only read papers at a desk and don't want another tool in your workflow.
 
@@ -23,9 +19,9 @@ Once a briefing exists, the **NotebookLM** card appears below the briefing in th
 - **`briefing.md`** — the full briefing (executive summary, themes, paper cards) as a single markdown source document for NotebookLM.
 - **`discussion-guide.md`** — a podcast outline generated from the briefing. Structures theme emphasis, paper-by-paper talking points, and pacing suggestions scaled to the target duration. This is the main "content" source for NotebookLM.
 - **One `.md` per paper** — each paper's deep-analysis full report, as its own source document. NotebookLM treats these as additional sources to pull details from during discussion.
-- **`focus-prompt.txt`** — a short prompt you paste into NotebookLM's audio-customization textarea. Tells the hosts what to emphasize, how deep to go, and how to pace the conversation.
+- **`focus-prompt.txt`** — a short prompt you paste into NotebookLM's audio-customisation textarea. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation.
 
-The bundle is all plain markdown + text files, so you can inspect it before uploading.
+The bundle is all plain markdown and text files, so you can inspect it before uploading.
 
 ## Generating the bundle
 
@@ -39,7 +35,7 @@ When it's done, you'll get a downloaded ZIP file named something like `aparture-
 
 ## Uploading to NotebookLM
 
-NotebookLM doesn't have an API, so this is a **manual upload flow**. Expect about 2-3 minutes of clicking.
+NotebookLM doesn't have an API, so this is a manual upload flow. Expect about 2-3 minutes of clicking.
 
 1. Unzip the bundle locally.
 2. Open [notebooklm.google.com](https://notebooklm.google.com) in a browser. Sign in with a Google account if needed.
@@ -67,7 +63,7 @@ The prompt is generated at bundle-build time, so it already reflects the specifi
 
 ## Tuning podcast style
 
-Two places to tune podcast output, and they behave differently:
+Two places to tune podcast output, and they behave differently.
 
 ### `prompts/notebooklm-discussion-guide.md` — the outline template (hot-reloadable)
 
