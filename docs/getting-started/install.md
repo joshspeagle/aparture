@@ -166,8 +166,6 @@ If all four pass, the local setup is ready. `npm run dev` still won't work until
 - `npm run dev` takes 60+ seconds to start: the repo is probably under `/mnt/c/...`. Move it to `~/projects/` on the Linux filesystem.
 - `localhost:3000` doesn't load from a Windows browser: WSL2 port-forwarding can take a few seconds on first start. If it persists, run `wsl --shutdown` from PowerShell and reopen.
 
-For issues that come up after the dev server starts (API errors, rate limits, reCAPTCHA on runs), see the [troubleshooting](/reference/troubleshooting) page.
-
 ## Next
 
 [Add at least one API key →](/getting-started/api-keys)
