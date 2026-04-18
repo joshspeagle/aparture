@@ -152,9 +152,22 @@ export default function SuggestDialog({
     return selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
   }
 
-  function handleAccept() {
-    const joinedRationale = response.changes.map((c) => `\u2022 ${c.rationale}`).join('\n');
-    onAccept(response.revisedProfile, joinedRationale, computeCutoff());
+  function handleApply({ acceptedIds, resultText }) {
+    const acceptedChanges = response.changes.filter((c) => acceptedIds.includes(c.id));
+    const joinedRationale = acceptedChanges.map((c) => `\u2022 ${c.rationale}`).join('\n');
+    // Log acceptance metadata for future telemetry (no-op when window is absent).
+    if (typeof window !== 'undefined' && window.__aparture?.logEvent) {
+      try {
+        window.__aparture.logEvent('suggest-profile.accepted', {
+          totalChanges: response.changes.length,
+          acceptedCount: acceptedIds.length,
+          acceptedIds,
+        });
+      } catch {
+        // Swallow telemetry errors — never block the apply flow.
+      }
+    }
+    onAccept(resultText, joinedRationale, computeCutoff());
     onClose();
   }
 
@@ -367,9 +380,10 @@ export default function SuggestDialog({
                   </div>
                 </div>
                 <DiffPreview
-                  before={profile}
-                  after={response.revisedProfile}
+                  currentProfile={profile}
                   changes={response.changes}
+                  onApply={handleApply}
+                  onCancel={onClose}
                 />
               </div>
             )}
@@ -450,16 +464,7 @@ export default function SuggestDialog({
               </Button>
             )}
 
-            {resultMode === 'changes' && (
-              <>
-                <Button variant="secondary" onClick={onClose}>
-                  Reject
-                </Button>
-                <Button variant="primary" onClick={handleAccept}>
-                  Accept
-                </Button>
-              </>
-            )}
+            {resultMode === 'changes' && null}
 
             {resultMode === 'no-change' && (
               <Button variant="primary" onClick={handleNoChangeDismiss}>
