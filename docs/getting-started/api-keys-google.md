@@ -128,7 +128,7 @@ This is the main argument for Google AI as the first-run provider: a fresh accou
 
 ## 6. Verify
 
-After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. On the free tier this costs $0. On paid Tier 1 with Balanced models, expect ~$0.01-0.05 on 5 test papers.
+After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. On the free tier this costs $0. On paid Tier 1 with Balanced models, expect ~$0.20–$0.50 on 5 test papers, since the minimal test runs the full pipeline (including PDF analysis).
 
 If the key is invalid you'll see `"Google API key not found"` (env var missing or misspelled) or HTTP 401 (`UNAUTHENTICATED`).
 

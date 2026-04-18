@@ -3,7 +3,7 @@
 Two checkpoint tests sit between "I added my key to `.env.local`" and "I'm ready for a real run." Use them in order — the second is only enabled after the first passes.
 
 - **Dry Run** exercises the full pipeline with mocked LLM responses, validating UI flow and the pipeline's error-recovery paths. Cost: $0.
-- **Minimal API Test** runs 5 fixed test papers through real API calls, validating that your key authenticates and that the provider responds. Cost: ~$0.01-0.05 (free on Google's free tier).
+- **Minimal API Test** runs 5 fixed test papers through the full pipeline with real API calls — filter, score, PDF analysis, briefing synthesis, and hallucination check — validating that your key authenticates and that the provider responds end-to-end. Cost: ~$0.20–$1 on paid tiers depending on your model choices (free on Google's free tier).
 
 Both are UI-driven — you'll find them in the Control Panel after starting the dev server.
 
@@ -76,7 +76,7 @@ The Minimal Test button unlocks only after Dry Run completes successfully. This 
 
 Duration: 30-120 seconds, dominated by API latency and model processing.
 
-Cost: ~$0.01-0.05 on paid tiers (roughly 5-6 LLM calls total). $0 on Google's free tier.
+Cost: ~$0.20–$1 on paid tiers depending on your model choices. The PDF analysis stage dominates — 5 real papers get fetched and read in full. Google's free tier covers the whole run at $0.
 
 You'll see:
 

@@ -131,7 +131,7 @@ See [concepts/model-selection](/concepts/model-selection) for the full tuning gu
 
 ## 8. Verify
 
-After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. Expect ~$0.01-0.05 spend on 5 test papers.
+After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. Expect ~$0.30–$0.80 spend on OpenAI's Balanced defaults, since the minimal test runs the full pipeline (including PDF analysis) on 5 papers.
 
 Quick curl sanity-check before running Aparture:
 

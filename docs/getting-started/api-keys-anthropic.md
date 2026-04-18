@@ -20,7 +20,7 @@ Some accounts get routed through **photo-ID verification via Persona**, typicall
 
 New accounts receive ~$5 in free API credits, which is enough to:
 
-- Run Aparture's [Minimal API Test](/getting-started/verify-setup) (under $0.05).
+- Run Aparture's [Minimal API Test](/getting-started/verify-setup) (typically $0.50–$1 on Anthropic's Balanced defaults — the test runs the full pipeline including PDF analysis on 5 papers).
 - Try a few 25-paper runs using the Balanced preset (~$2.60/run — see pricing below).
 
 This is a one-time starter credit, not a recurring free tier. Once it's consumed the API stops until you purchase more. The minimum top-up is $5, which activates Tier 1.
@@ -133,7 +133,7 @@ See [concepts/model-selection](/concepts/model-selection) for the full tuning gu
 
 ## 8. Verify
 
-After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. If the key is valid, you'll see real API calls succeed against Anthropic — expect ~$0.01-0.05 spend on 5 test papers.
+After restarting `npm run dev`, run the [Minimal API Test](/getting-started/verify-setup) from the UI. If the key is valid, you'll see real API calls succeed against Anthropic — expect ~$0.50–$1 spend, since the minimal test runs the full pipeline (including PDF analysis) on 5 papers.
 
 If the key is invalid you'll see `"Anthropic API key not found"` (env var missing or misspelled) or HTTP 401 (key is malformed or revoked).
 

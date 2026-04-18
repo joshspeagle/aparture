@@ -84,7 +84,7 @@ Per-run cost stays roughly flat from 25 to 250 papers. Requires a $5 prepaid dep
 
 1. Paste it into `.env.local` under the correct variable name (see the table above).
 2. Restart `npm run dev` if it's already running — Next.js reads `.env.local` at server startup, not per-request.
-3. Run the [Minimal API Test](/getting-started/verify-setup) to confirm the key authenticates. This takes ~30 seconds and costs about $0.01-0.05 on paid tiers, or $0 on Google's free tier.
+3. Run the [Minimal API Test](/getting-started/verify-setup) to confirm the key authenticates. This exercises the full pipeline on 5 papers and costs ~$0.20–$1 on paid tiers depending on your model choices (free on Google's free tier).
 
 ---
 
