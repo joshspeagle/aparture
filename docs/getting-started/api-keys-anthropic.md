@@ -1,6 +1,6 @@
 # Anthropic (Claude) API key
 
-Claude models (Opus 4.7, Sonnet 4.6, Haiku 4.5) give Aparture the highest-quality PDF analysis and briefing synthesis, and Anthropic is the one provider where prompt caching is explicitly wired in. Repeated runs share a cached prefix, so your actual cost is typically 20-40% below sticker.
+Claude models (Opus 4.7, Sonnet 4.6, Haiku 4.5) give Aparture the highest-quality PDF analysis and briefing synthesis among the three providers, and Anthropic is the one provider where prompt caching is explicitly wired in. Repeated runs share a cached prefix, so actual cost is typically 20-40% below the sticker price.
 
 Use this page if you want to run Aparture on Claude. If you're not sure which provider to pick, start with [Google AI](/getting-started/api-keys-google) — it has a free tier.
 
@@ -11,36 +11,38 @@ Signup page: **[platform.claude.com](https://platform.claude.com/)** (the old `c
 Requirements:
 
 - Email (or Google/GitHub SSO).
-- **SMS-capable mobile phone.** VoIP numbers (Google Voice, burner apps) are rejected. The verified number cannot be changed later — treat this as durable account setup.
+- **SMS-capable mobile phone.** VoIP numbers (Google Voice, burner apps) are rejected, and the verified number cannot be changed later — treat this as durable account setup.
 - Organization name (can be "Personal"). Anthropic asks for industry + use case, but these don't gate API access.
 
-Optional (triggered by risk signals — VPN, region mismatch, rapid signup cadence): **photo-ID verification via Persona.** Most individual researchers won't hit it. If you do, expect a 5-10 minute flow with government ID + selfie.
+Some accounts get routed through **photo-ID verification via Persona**, typically triggered by risk signals like a VPN, region mismatch, or rapid signup cadence. Most individual researchers don't hit it. If you do, expect a 5-10 minute flow with a government ID and selfie.
 
 ## 2. Billing status
 
-**New accounts receive ~$5 in free API credits.** No credit card required to start. That's enough to:
+New accounts receive ~$5 in free API credits, which is enough to:
 
 - Run Aparture's [Minimal API Test](/getting-started/verify-setup) (under $0.05).
 - Try a few 25-paper runs using the Balanced preset (~$2.60/run — see pricing below).
 
-This is a one-time starter credit, not a recurring free tier. Once it's consumed the API stops until you purchase more. The minimum top-up is **$5**, which activates Tier 1.
+This is a one-time starter credit, not a recurring free tier. Once it's consumed the API stops until you purchase more. The minimum top-up is $5, which activates Tier 1.
 
+::: warning Starter credit expires
 Anthropic's starter credit has an expiration (typically 14-30 days). If you signed up months ago without using it, check **Settings → Billing → Credit history** before debugging "my free credits aren't working".
+:::
 
 ## 3. Create an API key
 
-Exact menu path: **platform.claude.com → Settings (left nav) → API Keys → Create Key**.
+Menu path: **platform.claude.com → Settings (left nav) → API Keys → Create Key**.
 
 1. Click **Settings** in the left sidebar.
 2. Click **API Keys** in the submenu.
 3. Click **Create Key** (top-right).
 4. Fill in the dialog:
-   - **Name:** Something distinguishable like `aparture-dev`. Shows up in Usage logs.
-   - **Workspace:** Default workspace is fine for solo use.
+   - **Name:** something distinguishable like `aparture-dev`. This shows up in Usage logs.
+   - **Workspace:** the default workspace is fine for solo use.
    - **Key type:** Standard.
-   - **Spending limit:** Optional per-key monthly cap. For a personal Aparture key, $20-50 is a reasonable safety net.
+   - **Spending limit:** optional per-key monthly cap. For a personal Aparture key, $20-50 is a reasonable safety net.
 5. Click **Create Key**.
-6. **Copy the key immediately.** The full key is shown exactly once. If you close the dialog without copying, revoke and recreate — Anthropic shows only a masked preview afterward.
+6. **Copy the key immediately.** The full key is shown exactly once. If you close the dialog without copying, revoke and recreate — Anthropic shows only a masked preview afterwards.
 
 Key format: `sk-ant-api03-<~90 chars>-AAAA`. The `sk-ant-` prefix is the stable identifier Aparture uses for provider validation.
 
@@ -58,28 +60,23 @@ Rules:
 - One key per line. Comments start with `#` at column 0.
 - **Restart `npm run dev`** after editing — `.env.local` is read once at dev-server startup, and hot-reload is unreliable.
 
-You also need `ACCESS_PASSWORD` set in the same file. See [reference/environment](/reference/environment) for the full list.
+You'll also need `ACCESS_PASSWORD` set in the same file. See [reference/environment](/reference/environment) for the full list.
 
 ## 5. Set spend caps
 
-Aparture can run up tens of dollars per day in hands-off mode. Spend caps are **strongly recommended**.
+Aparture can run up tens of dollars per day in hands-off mode, so spend caps are strongly recommended.
 
-Three levels of control:
+::: tip Use per-key spending limits
+For a hands-off Aparture deployment, the per-key spending limit (finest-grained, set at key creation or edited later) is the one to actually use. Organization-wide and workspace caps are broader safety nets, but a per-key cap means a runaway Aparture run can't drain your other Anthropic work.
+:::
 
-**Organization-wide cap** (broadest)
-**Settings → Limits → Spend limits → Change Limit**
+There are three levels of control:
 
-Set this below your tier ceiling. On Tier 1 (ceiling $100/month), a cap of $25 is a safe starting point.
+**Organization-wide cap** (broadest) — **Settings → Limits → Spend limits → Change Limit**. Set this below your tier ceiling. On Tier 1 (ceiling $100/month), a cap of $25 is a safe starting point.
 
-**Per-key spending limit** (finest-grained)
-**Settings → API Keys → [click key row] → Edit → Spending limit**
+**Per-key spending limit** (finest-grained) — **Settings → API Keys → [click key row] → Edit → Spending limit**. Can be set at key creation (step 3 above) or edited later.
 
-Can be set at key creation (step 3 above) or edited later. This is the one to use for a hands-off Aparture deployment.
-
-**Per-workspace cap** (team/multi-key setups)
-**Settings → Workspaces → [workspace] → Limits → Change Limit**
-
-Workspace caps must be ≤ org cap. You cannot set a limit on the default workspace — it always matches the org cap.
+**Per-workspace cap** (team/multi-key setups) — **Settings → Workspaces → [workspace] → Limits → Change Limit**. Workspace caps must be ≤ org cap. You cannot set a limit on the default workspace — it always matches the org cap.
 
 ## 6. Rate-limit tiers
 
@@ -91,14 +88,18 @@ New accounts start on **Tier 1** the moment they have credit (starter or paid):
 | Sonnet 4.x (pooled) | 50  | 30,000           | 8,000             |
 | Haiku 4.5           | 50  | 50,000           | 10,000            |
 
-**Tier 1 trap: Opus 4.x on PDF analysis.** A single PDF call can consume ~60k input tokens. At 30k ITPM, Aparture can only issue one Opus PDF call every ~2 minutes. A 20-paper Stage 3 pass takes ~40 minutes on Tier 1 just from rate limits.
+::: warning Tier 1 ITPM trap on Opus PDF analysis
+A single PDF call can consume ~60k input tokens. At 30k ITPM, Aparture can only issue one Opus PDF call every ~2 minutes, so a 20-paper Stage 3 pass takes ~40 minutes on Tier 1 purely from rate limits.
+:::
 
-**Two ways around it:**
+Two ways around the ITPM trap:
 
 1. **Advance to Tier 2** ($40 cumulative purchase). Tier 2 = 1,000 RPM, 450k ITPM. A 250-paper run fits without rate pauses. Advancement is automatic — no approval wait.
-2. **Use Sonnet 4.6 for `pdfModel` instead** — Sonnet shares Opus's pooled limit but uses ~half the tokens per call, and Tier 1 Sonnet runs usually complete in reasonable time.
+2. **Use Sonnet 4.6 for `pdfModel` instead.** Sonnet shares Opus's pooled limit but uses roughly half the tokens per call, and Tier 1 Sonnet runs usually complete in reasonable time.
 
-**Prompt caching to the rescue.** Aparture enables Anthropic prompt caching on all supported routes. **Cached input tokens do NOT count toward ITPM.** A well-cached run effectively processes 2-5× the token volume within the same rate limit. Confirm caching is working by grepping the dev-server terminal for `[anthropic cache] read=N` — if `read` is `>0` on call 2+, caching is hitting.
+::: info Prompt caching to the rescue
+Aparture enables Anthropic prompt caching on all supported routes. Cached input tokens do not count toward ITPM, so a well-cached run effectively processes 2-5× the token volume within the same rate limit. Confirm caching is working by grepping the dev-server terminal for `[anthropic cache] read=N` — if `read` is `>0` on call 2+, caching is hitting.
+:::
 
 ## 7. Pricing for a Balanced-config run on Anthropic
 
@@ -118,13 +119,13 @@ Daily cost (no caching savings applied — worst case):
 | 100        | $0.22   | $1.20   | $7.50   | $0.07              | $0.35          | **~$9.34**    |
 | 250        | $0.55   | $3.00   | $18.75  | $0.18              | $0.35          | **~$22.83**   |
 
-Stage 3 dominates cost at all volumes. Real-world caching knocks 20-30% off these figures on runs after the first.
+Stage 3 dominates cost at every volume. Real-world caching takes 20-30% off these figures on runs after the first.
 
 **Monthly projections** (30 daily runs): ~$78 at 25/day, ~$280 at 100/day, ~$685 at 250/day. A solo researcher at 25-100 papers/day fits comfortably in Tier 1 ($100 cap) to Tier 2 ($500 cap).
 
 **Cost-cutting levers:**
 
-- Switch `pdfModel` to Sonnet 4.6 → Stage 3 drops ~40% with modest quality hit.
+- Switch `pdfModel` to Sonnet 4.6 → Stage 3 drops ~40% with a modest quality hit.
 - Switch `briefingModel` to Sonnet 4.6 → fixed briefing cost drops to ~$0.20/run.
 - Use Haiku 4.5 for Stage 2 scoring → Stage 2 drops ~66%.
 
@@ -138,10 +139,10 @@ If the key is invalid you'll see `"Anthropic API key not found"` (env var missin
 
 ## Common gotchas
 
-1. **`.env.local` restart.** The #1 "my key isn't working" issue. Next.js reads `.env.local` at startup; after editing, Ctrl-C and restart `npm run dev`.
+1. **Forgot to restart `npm run dev`.** The single most common "my key isn't working" issue. Next.js reads `.env.local` at startup; after editing, Ctrl-C and restart.
 2. **Copied only a masked preview.** The full key is shown exactly once at creation. If you missed it, revoke and recreate — there's no "show full key" button.
 3. **Tier 1 ITPM trap.** If Aparture seems stuck on Stage 3 for a new account, it's the 30k ITPM cap. Solution above (§6).
-4. **VPN + signup.** Using a VPN during signup is a common trigger for Persona ID verification. Turn off your VPN during initial signup if you don't want the photo-ID flow.
+4. **VPN during signup.** Using a VPN at signup time is a common trigger for Persona ID verification. Turn off your VPN during initial signup if you'd rather skip the photo-ID flow.
 5. **Starter credit expired.** The $5 starter credit expires in 14-30 days. Check **Settings → Billing → Credit history**.
 6. **Workspace vs. default keys.** You don't need workspaces for solo use. Keys created inside a workspace only work for calls tagged to that workspace's spend bucket.
 
