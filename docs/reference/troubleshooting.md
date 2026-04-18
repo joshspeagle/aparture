@@ -1,6 +1,50 @@
 # Troubleshooting
 
-Most Aparture problems fall into one of four buckets depending on when they show up: install-time, first-launch, mid-run, or briefing-time. This page walks through each in order, with a master symptom table at the top for quick jumps.
+Most Aparture problems fall into one of four buckets depending on when they show up: install-time, first-launch, mid-run, or briefing-time. Use the cards below to jump to the right section, or scan the master symptom table for a direct lookup.
+
+<div class="landing-cards">
+
+<div class="landing-card">
+
+### Install-time
+
+`npm install` fails, Playwright won't download Chromium, Node is too old, proxy / cache errors.
+
+[Go to install-time issues →](#install-time-issues)
+
+</div>
+
+<div class="landing-card">
+
+### First-launch
+
+Port 3000 in use, `.env.local` edits don't take effect, `ACCESS_PASSWORD` mismatch, API key format problems.
+
+[Go to first-launch issues →](#first-launch-issues)
+
+</div>
+
+<div class="landing-card">
+
+### Mid-run
+
+arXiv rate limits, reCAPTCHA on PDF downloads, provider 429s, context-window overflow, cost spikes, stuck stages.
+
+[Go to mid-run issues →](#mid-run-issues)
+
+</div>
+
+<div class="landing-card">
+
+### Briefing-time
+
+Synthesis schema failures, hallucination audit flagged YES, repeated retries.
+
+[Go to briefing-time issues →](#briefing-time-issues)
+
+</div>
+
+</div>
 
 If your symptom isn't here, [file an issue](https://github.com/joshspeagle/aparture/issues) with the relevant terminal + browser-console output.
 
@@ -97,7 +141,9 @@ Then retry the Playwright install.
 PLAYWRIGHT_DOWNLOAD_HOST=https://your-mirror npx playwright install chromium
 ```
 
-**Playwright is optional.** If you skip it, Aparture will run fine — you just won't have the reCAPTCHA fallback for PDF downloads. Affected papers get a per-paper notice and are ranked by abstract only. See [Install](/getting-started/install) for the trade-off.
+::: info Playwright is optional
+If you skip it, Aparture will run fine — you just won't have the reCAPTCHA fallback for PDF downloads. Affected papers get a per-paper notice and are ranked by abstract only. See [Install](/getting-started/install) for the trade-off.
+:::
 
 ---
 
@@ -127,7 +173,9 @@ netstat -ano | findstr :3000
 
 Edits to `.env.local` often _don't_ hot-reload on Next.js 14. The dev server reads the file once at startup and caches the values. You change `CLAUDE_API_KEY`, the change "doesn't take effect," and every request keeps using the old value silently.
 
-**Always restart `npm run dev` after editing `.env.local`.** Ctrl-C in the terminal, then re-run.
+::: warning Always restart after editing `.env.local`
+Ctrl-C in the terminal running `npm run dev`, then re-run. Env-file hot-reload is unreliable on Next 14.
+:::
 
 Location rules:
 
@@ -182,19 +230,19 @@ If the key looks right but still fails, verify it authenticates by running the [
 arXiv rate limit: exhausted 3 retries
 ```
 
-arXiv caps metadata fetches at **one request per 3 seconds across all your machines**. The rate limit is endpoint-wide, so parallelizing across categories doesn't help — Aparture's fetch path already serializes with a 3-second delay.
+arXiv caps metadata fetches at **one request per 3 seconds across all your machines**. The rate limit is endpoint-wide, so parallelising across categories doesn't help — Aparture's fetch path already serialises with a 3-second delay.
 
 You'll hit this when:
 
 - You run two Aparture analyses concurrently (from two browser tabs, or from a CLI run alongside a web run).
-- You selected many categories (the serialized fetch simply takes longer; three retries at 5/15/45 seconds isn't long enough).
+- You selected many categories (the serialised fetch simply takes longer; three retries at 5 / 15 / 45 seconds isn't long enough).
 - arXiv is rate-limiting your IP from other unrelated traffic.
 
 **Fix:** wait ~5 minutes, then rerun with fewer categories. Don't run two analyses concurrently. If you see persistent 503s rather than 429s, check [arxiv.org](https://arxiv.org) for maintenance announcements.
 
 ### reCAPTCHA on PDF downloads
 
-arXiv's PDF endpoint starts serving reCAPTCHA HTML after ~10-20 rapid downloads. Aparture detects this automatically (the response doesn't start with `%PDF-`) and falls back to a Playwright browser session, which uses a persistent cookie jar at `temp/playwright-profile/` to bypass the challenge.
+arXiv's PDF endpoint starts serving reCAPTCHA HTML after ~10–20 rapid downloads. Aparture detects this automatically (the response doesn't start with `%PDF-`) and falls back to a Playwright browser session, which uses a persistent cookie jar at `temp/playwright-profile/` to bypass the challenge.
 
 **With Playwright installed.** The fallback fires transparently. In the terminal you'll see:
 
@@ -204,7 +252,7 @@ Attempting PDF download via Playwright (reCAPTCHA bypass)...
 PDF downloaded via Playwright: 123456 bytes
 ```
 
-The first call after a fresh `temp/playwright-profile/` may take 5-10 seconds while the browser launches and solves the challenge interactively. Subsequent calls reuse the profile and are fast.
+The first call after a fresh `temp/playwright-profile/` may take 5–10 seconds while the browser launches and solves the challenge interactively. Subsequent calls reuse the profile and are fast.
 
 **If Playwright itself is blocked.** Rare — usually means the persistent profile has been invalidated. Delete it and rerun:
 
@@ -215,7 +263,9 @@ npm run dev
 
 The first PDF download will re-solve the challenge.
 
-**Never delete `temp/notebooklm-profile/`** — that's a Google session for podcast generation, not arXiv. Losing it forces an interactive Google re-login.
+::: danger Never delete `temp/notebooklm-profile/`
+That's a Google session for podcast generation, not arXiv. Losing it forces an interactive Google re-login on the next podcast run.
+:::
 
 ### reCAPTCHA without Playwright
 
@@ -237,15 +287,15 @@ See [Install → Playwright](/getting-started/install#playwright-optional) for t
 
 ### Provider rate limits
 
-Every provider has multiple flavors of rate limit, each with a different fix:
+Every provider has multiple flavours of rate limit, each with a different fix.
 
-**Anthropic 429** (`anthropic request failed (429)`). Three sub-flavors:
+**Anthropic 429** (`anthropic request failed (429)`). Three sub-flavours:
 
 - **Input/output token limit** — you burned through the tokens-per-minute cap. Wait 60 seconds, reduce `filterBatchSize` / `scoringBatchSize`, or switch to a higher-tier key.
 - **Requests-per-minute** — fewer but longer calls would help; increase batch sizes so you make fewer requests.
 - **Acceleration limit** — Anthropic throttles sharp usage spikes. Ramp up slowly with small runs before large ones.
 
-**OpenAI 429** (`openai request failed (429)`). Two sub-flavors:
+**OpenAI 429** (`openai request failed (429)`). Two sub-flavours:
 
 - **"Rate limit reached for requests"** — transient; back off and retry. Aparture's built-in retry loop handles this automatically up to 3 times.
 - **"You exceeded your current quota"** — billing issue, not transient. Log into [platform.openai.com](https://platform.openai.com) and check usage limits + billing status.
@@ -295,9 +345,9 @@ Pipeline appears frozen for > 5 minutes with no terminal output.
 
 **If not paused:** open the browser devtools → Network tab. Look for a pending request to `/api/*`:
 
-- `synthesize` pending > 5 min → the briefing model hung (rare, 1M-context Anthropic requests have a 10-min TCP timeout). Refresh the page and retry with a smaller `maxDeepAnalysis` or a different `briefingModel`.
-- `analyze-pdf` pending > 2 min → likely Playwright hung. Check `temp/playwright-profile/` isn't corrupted (delete + rerun).
-- No pending request → the pipeline may have crashed silently. Check the terminal for an exception trace; if none, reload the browser.
+- `synthesize` pending > 5 min — the briefing model hung (rare, 1M-context Anthropic requests have a 10-min TCP timeout). Refresh the page and retry with a smaller `maxDeepAnalysis` or a different `briefingModel`.
+- `analyze-pdf` pending > 2 min — likely Playwright hung. Check `temp/playwright-profile/` isn't corrupted (delete + rerun).
+- No pending request — the pipeline may have crashed silently. Check the terminal for an exception trace; if none, reload the browser.
 
 ---
 
@@ -320,7 +370,7 @@ The synthesis response didn't match the briefing schema, and the repair pass (a 
    - `required field missing` — model returned a partial object. Retry usually works.
    - `model did not return structured output` — the provider silently fell back to plain text. Seen with Google models on complex schemas. Switch to Anthropic or OpenAI for briefing.
 
-**Token budget block.** Occasionally you'll see `synthesis prompt exceeds token budget` (400). This means the estimated token count is above the configured threshold. Shorten your profile, reduce `maxDeepAnalysis`, or pass `allowOverBudget: true` (not currently surfaced in the UI — requires editing the request).
+**Token budget block.** Occasionally you'll see `synthesis prompt exceeds token budget` (400). The estimated token count is above the configured threshold. Shorten your profile, reduce `maxDeepAnalysis`, or pass `allowOverBudget: true` (not currently surfaced in the UI — requires editing the request).
 
 ### Hallucination-retry loop
 
@@ -328,7 +378,9 @@ After briefing synthesis, Aparture runs a separate LLM call to audit the briefin
 
 **What triggers a retry.** In Settings → Review & confirmation, you can enable "Retry on YES" and/or "Retry on MAYBE." If the audit verdict matches an enabled setting, Aparture calls synthesis a second time with a retry hint and re-runs the audit.
 
-**Only one retry per briefing, ever.** This is deliberate — preventing infinite loops at the cost of allowing one stuck YES verdict to stand. If the retry also flags, you see the second briefing's audit result.
+::: info Only one retry per briefing, ever
+Retries cap at one to prevent runaway loops — at the cost of allowing one stuck YES verdict to stand. If the retry also flags, you see the second briefing's audit result and that's the end of it.
+:::
 
 **When to accept a flagged briefing.** The audit surfaces specific claims in the `flaggedClaims` list. Click the disclosure and read them. If they're phrased cautiously, reflect a reasonable synthesis from the papers, or are just the model being conservative, the briefing is probably fine. If they're genuinely unsupported, switch `briefingModel` to a stronger one and rerun.
 
@@ -338,7 +390,7 @@ After briefing synthesis, Aparture runs a separate LLM call to audit the briefin
 
 ## How to read the logs
 
-Most signal lives in the terminal where `npm run dev` is running. The browser console also helps.
+Most of the signal lives in the terminal where `npm run dev` is running. The browser console also helps.
 
 ### Browser console (devtools)
 
@@ -372,7 +424,7 @@ The terminal running `npm run dev` shows everything the backend logs.
 
 - `Proxying arXiv request: <query>` — every arXiv metadata fetch.
 - `arXiv rate-limited (429), Retry-After: X` — rate-limit with the server's backoff value.
-- `[anthropic] API error 429: { ... }` / `[openai] API error 400: { ... }` / `[google] API error 503: { ... }` — raw provider error text (server-side only; the client sees a sanitized `<provider> request failed (<status>)`).
+- `[anthropic] API error 429: { ... }` / `[openai] API error 400: { ... }` / `[google] API error 503: { ... }` — raw provider error text (server-side only; the client sees a sanitised `<provider> request failed (<status>)`).
 - `Initial PDF analysis response validation failed: [<errors>]` — correction pass triggered.
 - `PDF analysis response still invalid after correction: [<errors>]` — backend correction failed; client still has 3 more retries.
 
