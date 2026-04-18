@@ -10,7 +10,7 @@ Every prompt Aparture sends to an LLM lives in one of two places. Knowing which 
 
 ## Hot-reloadable prompts (`prompts/*.md`)
 
-Five files. All of these accept `{{placeholder}}` substitutions, rendered by the calling API route before dispatch.
+Five files. All of them accept `{{placeholder}}` substitutions, rendered by the calling API route before dispatch.
 
 | File                                     | What it controls                                                       | Placeholders                                                                                            | When it's called                                                                             | Sanity check                                                                            |
 | ---------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -20,7 +20,7 @@ Five files. All of these accept `{{placeholder}}` substitutions, rendered by the
 | `prompts/suggest-profile.md`             | Suggest Improvements — profile refinement from feedback events         | `{{profile}}`, `{{feedback}}`                                                                           | User clicks "Suggest Improvements" via `/api/suggest-profile`                                | Add varied feedback; click Suggest; check whether proposals feel on-target              |
 | `prompts/notebooklm-discussion-guide.md` | NotebookLM podcast outline — themes/papers/duration-scaled depth       | `{{themes}}`, `{{papers}}`, `{{duration}}`, `{{date}}`                                                  | User clicks "Generate Podcast" via `/api/generate-notebooklm`                                | Generate a podcast; listen for theme balance + transition smoothness                    |
 
-::: tip Change takes effect immediately
+::: tip Changes land immediately
 Edits to any file in `prompts/` land on the next API call that reads them. No rebuild, no restart, no deploy — just save the file and run the relevant flow. This is the fastest iteration loop in the codebase.
 :::
 
@@ -44,7 +44,7 @@ Eight locations. These are either structural scoring rubrics that shape the pipe
 If you want to change a user-visible behaviour, here's which file to reach for.
 
 **"The briefings don't feel editorial enough / themes are bland / pitches are weak."**
-Edit `prompts/synthesis.md`. This is the single largest lever in the entire system. Start by reading the full prompt — it's ~150 lines and very specific about what each field should sound like. Small edits (one extra bullet in the `onelinePitch` guidance, one extra example in the theme-title section) often have visible effects.
+Edit `prompts/synthesis.md`. This is the largest lever in the entire system. Start by reading the full prompt — it's ~150 lines and very specific about what each field should sound like. Small edits (one extra bullet in the `onelinePitch` guidance, one extra example in the theme-title section) often have visible effects.
 
 **"The podcasts drift off-topic / cover too many papers shallowly / feel rushed."**
 Edit `prompts/notebooklm-discussion-guide.md`. This controls theme structure, pruning rules, and the conversation scaffolding NotebookLM reads. Duration-scaled depth (how many papers get deep-dives vs. brief mentions) is encoded here.
@@ -67,7 +67,7 @@ The quick-filter, abstract-scoring, and re-scoring prompts are baked into JS fun
 
 - **Consistency across runs.** Scoring rubrics are quality-sensitive and affect every paper ever processed. Accidental edits from a local experiment would bleed into every briefing's provenance metadata.
 - **They're rarely adjusted.** The rubrics define "what does a 7 mean vs. a 9" — once calibrated, changing them invalidates comparisons against past briefings.
-- **Restart-cost is negligible.** Updating a scoring rubric is an intentional pipeline change, not a tuning cycle. The dev-server restart time is the right UX for that frequency.
+- **Restart-cost is negligible.** Updating a scoring rubric is an intentional pipeline change, not a tuning cycle. A dev-server restart is the right UX for that frequency.
 
 If you do need to change a scoring rubric, edit the prompt in its `pages/api/*.js` file, restart the dev server (`npm run dev`), and run a small test batch to verify the new scale produces calibrated output.
 
