@@ -14,9 +14,9 @@ hero:
       link: https://github.com/joshspeagle/aparture
 ---
 
-Aparture is a local web app for daily arXiv monitoring. Describe your research interests in natural language, point it at the categories you read, and it produces a cross-paper briefing — themes, debates, longitudinal observations, and per-paper reports — tuned to your profile. You keep refining over time by starring, dismissing, and commenting on what you see; your profile learns from the feedback.
+Aparture is a local web app for daily arXiv monitoring. Describe your research interests in natural language, point it at the categories you read, and it produces a cross-paper briefing — an editorial lead, priority-ordered themes, and per-paper reports — tuned to your profile. You keep refining over time by starring, dismissing, and commenting on what you see; your profile learns from the feedback.
 
-![A rendered Aparture briefing](/screenshots/briefing-hero.png)
+<img src="/aparture/screenshots/briefing-hero.png" alt="A rendered Aparture briefing" style="display:block; max-width:100%; margin:2rem auto; border-radius:8px;" />
 
 <div class="landing-cards">
 
@@ -32,7 +32,7 @@ Daily arXiv monitoring in natural language. No keyword lists, no taxonomy gymnas
 
 ### Briefings, not reports
 
-Cross-paper synthesis tuned to your interests. Debates between papers, longitudinal observations, question-of-the-day — not just a list of summaries.
+Cross-paper synthesis tuned to your interests. An editorial lead, priority-ordered themes with arguments, and per-paper cards with pitches and relevance — not just a list of summaries.
 
 </div>
 
