@@ -163,3 +163,4 @@ docs/superpowers/
 
 # Runtime-generated test fixtures (re-seeded on each test run via beforeAll)
 tests/fixtures/llm/runtime/
+tests/fixtures/llm/runtime-overlap/

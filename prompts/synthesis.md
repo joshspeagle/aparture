@@ -76,7 +76,6 @@ Each paper card has:
   - For medium-score papers: be honest about the relevance. "This is adjacent to your work on X, but the core contribution is in Y."
   - For dismissed papers: keep brief. Acknowledge the dismissal and explain only if there is a genuine reason to include it despite the user's signal.
   - When comments exist: integrate them. The user's own words should shape your framing.
-- `figures`: an array of figure objects if relevant (may be empty).
 
 # Style and voice
 

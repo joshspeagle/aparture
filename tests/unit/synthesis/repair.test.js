@@ -13,7 +13,6 @@ describe('repairBriefing', () => {
           score: 5,
           onelinePitch: 'p',
           whyMatters: 'w',
-          figures: [],
         },
       ],
     };
@@ -39,7 +38,6 @@ describe('repairBriefing', () => {
           score: 5,
           onelinePitch: 'p',
           whyMatters: 'w',
-          figures: [],
         },
       ],
     };
@@ -75,7 +73,6 @@ describe('repairBriefing', () => {
           score: 5,
           onelinePitch: 'p',
           whyMatters: 'w',
-          figures: [],
         },
       ],
     };

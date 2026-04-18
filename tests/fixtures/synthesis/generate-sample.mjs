@@ -41,7 +41,6 @@ const briefing = {
         'A mechanistic account of how attention heads compose into multi-step reasoning circuits.',
       whyMatters:
         'Directly grounded in your stated interest in mechanistic interpretability of large language models.',
-      figures: [],
     },
     {
       arxivId: '2504.02345',
@@ -50,7 +49,6 @@ const briefing = {
       onelinePitch:
         'Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.',
       whyMatters: 'Tests the framing from your March 3 starred paper on circuit sparsity.',
-      figures: [],
     },
   ],
 };

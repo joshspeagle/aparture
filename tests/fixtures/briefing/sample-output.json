@@ -13,16 +13,14 @@
       "title": "Circuit-level analysis of reasoning",
       "score": 9.2,
       "onelinePitch": "A mechanistic account of how attention heads compose into multi-step reasoning circuits.",
-      "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability.",
-      "figures": []
+      "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability."
     },
     {
       "arxivId": "2504.02345",
       "title": "Head pruning ablations",
       "score": 8.5,
       "onelinePitch": "Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.",
-      "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity.",
-      "figures": []
+      "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity."
     }
   ]
 }

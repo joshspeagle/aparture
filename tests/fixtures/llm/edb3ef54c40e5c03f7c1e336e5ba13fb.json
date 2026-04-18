@@ -1,5 +1,5 @@
 {
-  "hash": "4740f67ac09121f2b24dcd20abbfed35",
+  "hash": "edb3ef54c40e5c03f7c1e336e5ba13fb",
   "input": {
     "provider": "anthropic",
     "model": "claude-opus-4-6",
@@ -56,23 +56,6 @@
                 },
                 "whyMatters": {
                   "type": "string"
-                },
-                "figures": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "caption": {
-                        "type": "string"
-                      },
-                      "description": {
-                        "type": "string"
-                      },
-                      "page": {
-                        "type": "integer"
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -98,16 +81,14 @@
           "title": "Circuit-level analysis of reasoning",
           "score": 9.2,
           "onelinePitch": "A mechanistic account of how attention heads compose into multi-step reasoning circuits.",
-          "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability of large language models.",
-          "figures": []
+          "whyMatters": "Directly grounded in your stated interest in mechanistic interpretability of large language models."
         },
         {
           "arxivId": "2504.02345",
           "title": "Head pruning ablations",
           "score": 8.5,
           "onelinePitch": "Ablation evidence that only a small subset of attention heads matter for task-specific reasoning.",
-          "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity.",
-          "figures": []
+          "whyMatters": "Tests the framing from your March 3 starred paper on circuit sparsity."
         }
       ]
     },

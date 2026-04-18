@@ -20,7 +20,6 @@ describe('BriefingSchema', () => {
           onelinePitch:
             'A mechanistic account of how attention heads compose into reasoning steps.',
           whyMatters: 'Grounded in your stated interest in mechanistic interpretability.',
-          figures: [],
         },
         {
           arxivId: '2504.02345',
@@ -29,7 +28,6 @@ describe('BriefingSchema', () => {
           onelinePitch:
             'Ablation evidence that only a small subset of attention heads matter for task X.',
           whyMatters: 'Directly tests the framing from your March 3 starred paper.',
-          figures: [],
         },
       ],
     };
