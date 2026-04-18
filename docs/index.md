@@ -8,63 +8,78 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /getting-started/installation
+      link: /getting-started/install
     - theme: alt
       text: View on GitHub
       link: https://github.com/joshspeagle/aparture
-
-features:
-  - icon: 📊
-    title: Adaptive Scoring
-    details: 0-10 scale relevance tailored to your specific research interests with detailed justifications
-  - icon: 🔍
-    title: Multi-stage Filtering
-    details: Progressive refinement from quick filter → abstract scoring → deep PDF analysis
-  - icon: 📄
-    title: Deep PDF Analysis
-    details: Full content analysis of top papers with vision support for figures and equations
-  - icon: 🤖
-    title: Multiple LLM Support
-    details: Claude, ChatGPT, and Gemini models for flexible analysis
-  - icon: 🎙️
-    title: Podcast Generation
-    details: Auto-generate AI podcasts via NotebookLM integration
-  - icon: ⚙️
-    title: CLI Automation
-    details: Fully automated daily workflow with unattended execution
 ---
 
-## What is Aparture?
+Aparture is a local web app for daily arXiv monitoring. Describe your research interests in natural language, point it at the categories you read, and it produces a cross-paper briefing — themes, debates, longitudinal observations, and per-paper reports — tuned to your profile. You keep refining over time by starring, dismissing, and commenting on what you see; your profile learns from the feedback.
 
-**Aparture** is a multi-stage research paper discovery and analysis tool that uses large language models (LLMs) to search through arXiv and find the preprints that matter for your research interests.
+![A rendered Aparture briefing](/screenshots/briefing-hero.png)
 
-Designed to handle daily monitoring of multiple categories (cs, stat, astro-ph), Aparture helps researchers efficiently keep up with literature across diverse fields.
+<div class="landing-cards">
 
-### Key Features
+<div class="landing-card">
 
-- **Adaptive relevance scoring** - 0-10 scale tailored to your specific research interests
-- **Multi-stage filtering** - Progressive refinement from quick filter → scoring → deep PDF analysis
-- **Multiple LLM providers** - Claude (Anthropic), ChatGPT (OpenAI), and Gemini (Google) support
-- **Full PDF analysis** - Deep summaries with vision support for figures and equations
-- **Podcast generation** - Auto-create audio overviews via NotebookLM integration
-- **Complete automation** - Unattended daily workflows via CLI
+### For researchers
 
-See [Model Selection](/concepts/model-selection) for detailed model comparisons and pricing.
+Daily arXiv monitoring in natural language. No keyword lists, no taxonomy gymnastics — write what you care about, and the pipeline does the rest.
 
-## Getting Started
+</div>
 
-New to Aparture? Follow this path:
+<div class="landing-card">
 
-1. **[Installation →](/getting-started/installation)** (5 min) - Install dependencies and Playwright
-2. **[Setup →](/getting-started/setup)** (10 min) - Configure API keys and environment
-3. **[Quick Start →](/getting-started/quick-start)** (5 min) - Run your first analysis
+### Briefings, not reports
 
-Already set up? Jump to:
+Cross-paper synthesis tuned to your interests. Debates between papers, longitudinal observations, question-of-the-day — not just a list of summaries.
 
-- **[Web Interface Guide →](/user-guide/web-interface)** - Interactive analysis
-- **[CLI Automation →](/user-guide/cli-automation)** - Automated daily runs
-- **[Testing →](/user-guide/testing)** - Dry run and minimal tests
+</div>
+
+<div class="landing-card">
+
+### You stay in the loop
+
+Star, dismiss, override, comment. Your feedback feeds back into the profile, so next week's briefing reflects what you actually care about.
+
+</div>
+
+<div class="landing-card">
+
+### Claude, GPT, or Gemini
+
+Use whatever you have keys for. Mix providers across stages — cheap model for filtering, premium model for briefing synthesis.
+
+</div>
+
+</div>
+
+## New here?
+
+Walk the recipe in order — most people get to their first briefing in 30-45 minutes.
+
+1. **[Install](/getting-started/install)** — Node, the repo, optional Playwright.
+2. **[API keys](/getting-started/api-keys)** — pick a provider, create a key, paste into `.env.local`.
+3. **[Verify setup](/getting-started/verify-setup)** — Dry Run (free) + Minimal API Test (~$0.01-0.05).
+4. **[Your first briefing](/getting-started/first-briefing)** — a narrated 10-minute run through the UI.
+
+## Already set up?
+
+Jump into the daily-use guides:
+
+- [Reading a briefing](/using/reading-a-briefing) — the view you'll stare at every morning.
+- [Giving feedback](/using/giving-feedback) — star, dismiss, override, comment.
+- [Writing a good profile](/using/writing-a-profile) — the highest-leverage input you control.
+- [Refining over time](/using/refining-over-time) — the suggest-improvements loop.
 
 ## License
 
-MIT License
+MIT.
+
+## Acknowledgements
+
+Built in collaboration with Claude.
+
+---
+
+_Originally built to help the author ([Josh Speagle](https://joshspeagle.com/)) manage daily paper monitoring across cs, stat, and astro-ph. Still optimized for researcher-first workflows._
