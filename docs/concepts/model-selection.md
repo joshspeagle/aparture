@@ -1,556 +1,184 @@
-# Model Selection
+# Model selection
 
-Choosing the right AI models for each stage of analysis.
+Choosing a model for each pipeline stage is where most of your cost and quality decisions live. This page covers the current lineup, what each stage benefits from, and three example configurations you can copy.
 
-## Available Models
+## The model slots
 
-Aparture supports models from three providers:
+Aparture's config exposes five independent model slots. You don't have to change all of them — sensible defaults are set on first run — but every slot can be swapped per run without touching code.
+
+| Slot                  | What it drives                                                 | Default                 |
+| --------------------- | -------------------------------------------------------------- | ----------------------- |
+| `filterModel`         | Stage 2 quick filter (YES/MAYBE/NO triage)                     | `gemini-2.5-flash-lite` |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                | `gemini-3-flash`        |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                    | `gemini-3-flash`        |
+| `pdfModel`            | Stage 4 deep PDF analysis                                      | `gemini-3.1-pro`        |
+| `briefingModel`       | Stage 5 synthesis + hallucination check + Suggest Improvements | `gemini-3.1-pro`        |
+
+There's also a `notebookLMModel` slot for the optional podcast-document generator; no default (you pick one when you generate a podcast).
+
+## Current lineup
+
+The authoritative source is `utils/models.js`. As of 2026-04-17, the registry holds 17 models across three providers:
 
 ### Anthropic (Claude)
 
-**Claude Opus 4.6** - Most capable
+**Current:**
 
-- **Best for**: PDF analysis, complex reasoning, agentic tasks
-- **Speed**: Slow
-- **Cost**: Highest
-- **Context**: 200K tokens (1M beta)
-- **Vision**: Excellent
+| User-facing ID      | API ID              | Context | Input / Output per MTok | Vision | Adaptive thinking |
+| ------------------- | ------------------- | ------- | ----------------------- | ------ | ----------------- |
+| `claude-opus-4.7`   | `claude-opus-4-7`   | 1M      | $5 / $25                | Yes    | **Yes**           |
+| `claude-opus-4.6`   | `claude-opus-4-6`   | 1M      | $5 / $25                | Yes    | No                |
+| `claude-sonnet-4.6` | `claude-sonnet-4-6` | 1M      | $3 / $15                | Yes    | No                |
+| `claude-haiku-4.5`  | `claude-haiku-4-5`  | 200k    | $1 / $5                 | Yes    | No                |
 
-**Claude Sonnet 4.5** - Balanced
+**Legacy (still available, but prefer the current row above):**
 
-- **Best for**: Abstract scoring, general use
-- **Speed**: Medium
-- **Cost**: Medium
-- **Context**: 200K tokens
-- **Vision**: Good
+| User-facing ID      | API ID                      | Context | Input / Output per MTok |
+| ------------------- | --------------------------- | ------- | ----------------------- |
+| `claude-opus-4.5`   | `claude-opus-4-5`           | 200k    | ~$5 / ~$25              |
+| `claude-opus-4.1`   | `claude-opus-4-1`           | 200k    | ~$5 / ~$25              |
+| `claude-sonnet-4.5` | `claude-sonnet-4-5`         | 200k    | ~$3 / ~$15              |
+| `claude-haiku-3.5`  | `claude-3-5-haiku-20241022` | 200k    | ~$1 / ~$5               |
 
-**Claude Haiku 4.5** - Fast, intelligent & cheap
+### OpenAI (GPT-5.4 family)
 
-- **Best for**: Quick filtering, batch processing, coding
-- **Speed**: Fast
-- **Cost**: Low
-- **Context**: 200K tokens
-- **Vision**: Good
+| User-facing ID | API ID         | Context | Vision |
+| -------------- | -------------- | ------- | ------ |
+| `gpt-5.4`      | `gpt-5.4`      | 1M      | Yes    |
+| `gpt-5.4-mini` | `gpt-5.4-mini` | 400k    | Yes    |
+| `gpt-5.4-nano` | `gpt-5.4-nano` | 400k    | Yes    |
 
-### OpenAI (ChatGPT)
+### Google (Gemini 3.x previews + 2.5 stable)
 
-**GPT-5.2** - High quality
+**Preview (Gemini 3.x):**
 
-- **Best for**: Any stage, comprehensive analysis
-- **Speed**: Medium
-- **Cost**: High
-- **Context**: 400K tokens
-- **Vision**: Excellent
+| User-facing ID          | API ID                          | Vision |
+| ----------------------- | ------------------------------- | ------ |
+| `gemini-3.1-pro`        | `gemini-3.1-pro-preview`        | Yes    |
+| `gemini-3-flash`        | `gemini-3-flash-preview`        | Yes    |
+| `gemini-3.1-flash-lite` | `gemini-3.1-flash-lite-preview` | Yes    |
 
-**GPT-5 Mini** - Balanced
+**Stable (Gemini 2.5):**
 
-- **Best for**: Abstract scoring, moderate complexity
-- **Speed**: Fast
-- **Cost**: Medium
-- **Context**: 400K tokens
-- **Vision**: Good
+| User-facing ID          | API ID                  | Vision |
+| ----------------------- | ----------------------- | ------ |
+| `gemini-2.5-pro`        | `gemini-2.5-pro`        | Yes    |
+| `gemini-2.5-flash`      | `gemini-2.5-flash`      | Yes    |
+| `gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | Yes    |
 
-**GPT-5 Nano** - Efficient
+All 17 models support PDF content blocks, so any of them can drive stage 4. Speed and price are the real differentiators.
 
-- **Best for**: Quick filtering, simple tasks
-- **Speed**: Very fast
-- **Cost**: Low
-- **Context**: 400K tokens
-- **Vision**: Basic
+## Per-stage recommendations
 
-### Google (Gemini)
+Each stage has different pressure on the model. Matching the model to the pressure is how you keep quality up and costs down.
 
-**Gemini 3 Pro (Preview)** - Most powerful
+**`filterModel` — fast, cheap, directional.** Stage 2 only needs three-bucket triage with a short justification. The prompt is ~50–150 tokens per paper and you'll call it on every paper fetched. Optimise for throughput and cost.
 
-- **Best for**: Complex analysis, deep reasoning
-- **Speed**: Medium
-- **Cost**: High
-- **Context**: 1M tokens
-- **Vision**: Excellent
+- Good picks: `gemini-2.5-flash-lite`, `gemini-3.1-flash-lite`, `claude-haiku-4.5`, `gpt-5.4-nano`.
+- Overkill: anything more expensive than Haiku. You're triaging, not deciding.
 
-**Gemini 3 Flash (Preview)** - Pro-level at Flash pricing
+**`scoringModel` — careful, calibrated, still batch-friendly.** Stage 3 assigns a 0–10 score with a justification based on the full abstract. Calibration matters because downstream stages use these scores. Still cheap per paper, but more thought required than filtering.
 
-- **Best for**: Filtering, scoring, general use
-- **Speed**: Fast
-- **Cost**: Medium-low
-- **Context**: 1M tokens
-- **Vision**: Good
+- Good picks: `gemini-3-flash`, `claude-sonnet-4.6`, `gpt-5.4-mini`.
+- Works in a pinch: Haiku 4.5 or Flash-Lite if your profile is very clear-cut.
 
-**Gemini 2.5 Pro** - Premium (Stable)
+**`postProcessingModel` — same or stronger than scoringModel.** Stage 3.5 compares top papers head-to-head, so calibration matters more than raw throughput. Most users set it to the same model as `scoringModel`.
 
-- **Best for**: Complex analysis, reasoning
-- **Speed**: Medium
-- **Cost**: High
-- **Context**: 1M tokens
-- **Vision**: Excellent
+**`pdfModel` — quality-sensitive, vision-capable, the most expensive slot.** Stage 4 reads full PDFs (figures, equations, tables) and writes a structured deep analysis that will end up in the briefing. This is where spending more usually pays off.
 
-**Gemini 2.5 Flash** - Efficient (Stable)
+- Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`.
+- Budget fallback: `gemini-3-flash` or `gemini-2.5-pro` if you're cost-constrained.
 
-- **Best for**: Most stages, good balance
-- **Speed**: Fast
-- **Cost**: Low
-- **Context**: 1M tokens
-- **Vision**: Good
+**`briefingModel` — editorial judgment + long context.** Stage 5 writes the executive summary, themes, and paper cards. It needs to hold all your profile, the day's papers' quick summaries + deep analyses, and recent briefing history in one context. Quality correlates with what the user actually reads.
 
-**Gemini 2.5 Flash-Lite** - Budget (Stable)
+- Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`.
+- Budget fallback: `gemini-3-flash` works if you don't mind slightly less polished prose.
 
-- **Best for**: Quick filtering, high volume
-- **Speed**: Very fast
-- **Cost**: Very low
-- **Context**: 1M tokens
-- **Vision**: Basic
+## Three example configurations
 
-::: info Context window
-All models have sufficient context for Aparture's needs. Paper abstracts are typically <500 tokens, and PDFs rarely exceed 50K tokens.
-:::
+Per-paper cost estimates are rough (token counts vary with profile length and abstract length). Briefing-level costs assume 10 papers in the final round.
 
-## Recommended Configurations
+### Budget (Google Flash-Lite + Flash)
 
-### Budget Configuration
+All-Google, preview models, cheapest realistic path. Good for high-volume categories where you're willing to accept slightly rougher briefings.
 
-**Goal**: Minimize costs while maintaining acceptable quality
+| Slot                  | Model                   |
+| --------------------- | ----------------------- |
+| `filterModel`         | `gemini-2.5-flash-lite` |
+| `scoringModel`        | `gemini-2.5-flash`      |
+| `postProcessingModel` | `gemini-2.5-flash`      |
+| `pdfModel`            | `gemini-3-flash`        |
+| `briefingModel`       | `gemini-3-flash`        |
 
-```
-Quick Filter: Claude Haiku 4.5
-Abstract Scoring: Gemini Flash
-PDF Analysis: Claude Sonnet 4.5
-NotebookLM: Claude Opus 4.6 (fixed)
-```
+**Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$0.30–0.80.
 
-**Daily cost** (30 papers, 10 PDFs):
+### Balanced (Aparture default)
 
-- Quick Filter: ~$0.05
-- Abstract Scoring: ~$0.20
-- PDF Analysis: ~$1.50
-- NotebookLM: ~$0.30
-- **Total**: ~$2.05/day
+Gemini Flash-Lite for triage, Gemini 3 Flash for scoring, Gemini 3.1 Pro for the expensive stages. This is what `DEFAULT_CONFIG` ships with.
 
-**Pros:**
+| Slot                  | Model                   |
+| --------------------- | ----------------------- |
+| `filterModel`         | `gemini-2.5-flash-lite` |
+| `scoringModel`        | `gemini-3-flash`        |
+| `postProcessingModel` | `gemini-3-flash`        |
+| `pdfModel`            | `gemini-3.1-pro`        |
+| `briefingModel`       | `gemini-3.1-pro`        |
 
-- Very affordable for daily use
-- Reasonable quality
-- Fast processing
+**Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$0.80–2.00.
 
-**Cons:**
+### Premium (Claude throughout)
 
-- Lower scoring accuracy
-- Less detailed PDF analyses
-- May miss subtle relevance
+All-Anthropic. Haiku 4.5 for triage, Sonnet 4.6 for scoring, Opus 4.7 for deep analysis and briefing. The briefing stage benefits most from Opus's adaptive thinking (see below).
 
-### Balanced Configuration (Recommended)
+| Slot                  | Model               |
+| --------------------- | ------------------- |
+| `filterModel`         | `claude-haiku-4.5`  |
+| `scoringModel`        | `claude-sonnet-4.6` |
+| `postProcessingModel` | `claude-sonnet-4.6` |
+| `pdfModel`            | `claude-opus-4.7`   |
+| `briefingModel`       | `claude-opus-4.7`   |
 
-**Goal**: Best quality-to-cost ratio
+**Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$3.00–8.00.
 
-```
-Quick Filter: Claude Haiku 4.5
-Abstract Scoring: Claude Sonnet 4.5
-PDF Analysis: Claude Opus 4.6
-NotebookLM: Claude Opus 4.6 (fixed)
-```
+Anthropic prompt caching (automatically enabled in Aparture for Anthropic calls) reduces the repeated-prefix cost significantly on runs that share a profile — expect the second run of the day to cost noticeably less than the first. Watch the terminal for `[anthropic cache] read=N create=N` lines to confirm cache hits.
 
-**Daily cost** (30 papers, 10 PDFs):
+## Adaptive thinking on Anthropic
 
-- Quick Filter: ~$0.05
-- Abstract Scoring: ~$0.60
-- PDF Analysis: ~$3.00
-- NotebookLM: ~$0.30
-- **Total**: ~$3.95/day
+Claude Opus 4.7 supports **adaptive thinking** — the model can allocate more internal reasoning tokens for complex tasks and fewer for straightforward ones. Aparture passes `thinking: {type: "adaptive"}` on all Anthropic calls, so when you pick Opus 4.7 you get it automatically.
 
-**Pros:**
+**What it does in practice.** On hard synthesis tasks (ambiguous themes, dense papers, conflicting signals), Opus 4.7 takes longer and produces better-reasoned output. On simple tasks it behaves like Opus 4.6.
 
-- Excellent scoring accuracy
-- High-quality PDF analyses
-- Reliable relevance detection
+**When it matters.** Primarily for `briefingModel` and `pdfModel`, where you're asking for editorial judgment or structured deep analysis. Less impactful for the filter or scoring stages, where decisions are more mechanical.
 
-**Cons:**
+**Cost implication.** Thinking tokens count against your output-token bill, so Opus 4.7 runs can cost noticeably more than Opus 4.6 on the same inputs — but the quality difference usually justifies it for the briefing.
 
-- Moderate cost
-- Slower than budget config
+Aparture sets `maxTokens: 16000` by default for Anthropic calls to give thinking room to breathe.
 
-### Premium Configuration
+## Mixing providers across stages
 
-**Goal**: Maximum quality, cost secondary
+Nothing requires you to stick with one provider. A common pattern is:
 
-```
-Quick Filter: Claude Sonnet 4.5
-Abstract Scoring: Claude Opus 4.6
-PDF Analysis: Claude Opus 4.6
-NotebookLM: Claude Opus 4.6 (fixed)
-```
+- **Google for the cheap stages** (`filterModel`, `scoringModel`) because Flash and Flash-Lite are hard to beat on cost.
+- **Claude Opus or GPT-5.4 for the expensive stages** (`pdfModel`, `briefingModel`) for quality.
 
-**Daily cost** (30 papers, 10 PDFs):
+This gets you most of Google's throughput advantage on the volumes that matter for cost, and most of Anthropic or OpenAI's quality on the stages that matter for output.
 
-- Quick Filter: ~$0.15
-- Abstract Scoring: ~$2.00
-- PDF Analysis: ~$3.00
-- NotebookLM: ~$0.30
-- **Total**: ~$5.45/day
+**Trade-off to know about.** Each provider needs its own API key in `.env.local`. If you mix three providers, you need all three keys. The auth check in each API route reads the env-var key matching the chosen model's provider, so the only thing that breaks when a key is missing is the stage using that provider's model.
 
-**Pros:**
+## When the previews change
 
-- Best possible quality
-- Nuanced understanding
-- Detailed justifications
+Gemini 3.x models are currently marked `-preview` in their API IDs. The user-facing IDs (`gemini-3.1-pro`, `gemini-3-flash`, `gemini-3.1-flash-lite`) will stay stable when Google graduates them, but the API IDs will change. `utils/models.js` handles the mapping, so upgrades are a one-file change.
 
-**Cons:**
+---
 
-- Expensive for daily use
-- Slower processing
-- Diminishing returns on some stages
+**Snapshot taken:** 2026-04-17. Model lineup and pricing from `utils/models.js`. Check provider docs for current prices before making large-volume decisions:
 
-### Speed-Optimized Configuration
+- Anthropic: [platform.claude.com/docs/en/docs/about-claude/models](https://platform.claude.com/docs/en/docs/about-claude/models)
+- OpenAI: [developers.openai.com/api/docs/models](https://developers.openai.com/api/docs/models)
+- Google: [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models)
 
-**Goal**: Fastest possible analysis
+## Next steps
 
-```
-Quick Filter: Gemini Flash-Lite
-Abstract Scoring: Gemini Flash
-PDF Analysis: GPT-5 Mini
-NotebookLM: Claude Opus 4.6 (fixed)
-```
-
-**Daily cost** (30 papers, 10 PDFs):
-
-- Quick Filter: ~$0.02
-- Abstract Scoring: ~$0.15
-- PDF Analysis: ~$1.80
-- NotebookLM: ~$0.30
-- **Total**: ~$2.27/day
-
-**Analysis time**: ~50% faster than balanced
-
-**Pros:**
-
-- Very fast completion
-- Low cost
-- Good enough for many use cases
-
-**Cons:**
-
-- Lower quality scoring
-- Less detailed analyses
-
-## Stage-Specific Recommendations
-
-### Quick Filter (Stage 1)
-
-**Purpose**: Fast YES/NO/MAYBE classification
-
-**Best models:**
-
-1. **Claude Haiku 4.5** - Best balance of speed and accuracy
-2. **Gemini Flash-Lite** - Fastest, cheapest
-3. **GPT-5 Nano** - Good alternative
-
-**Don't use:**
-
-- ❌ Opus/GPT-5.2 - Overkill for simple task
-- ❌ Sonnet/GPT-5 Mini - Unnecessary cost
-
-**Why it matters:**
-
-- Processes all papers (high volume)
-- Simple binary decision
-- Cost adds up quickly
-
-### Abstract Scoring (Stage 2)
-
-**Purpose**: Detailed relevance scoring (0-10)
-
-**Best models:**
-
-1. **Claude Sonnet 4.5** - Best balance (recommended)
-2. **Claude Opus 4.6** - Highest quality
-3. **GPT-5.2** - Excellent alternative
-
-**Good alternatives:**
-
-- Gemini Flash - Budget option
-- GPT-5 Mini - Fast and decent
-
-**Don't use:**
-
-- ❌ Haiku/Nano/Flash-Lite - Too simple for nuanced scoring
-
-**Why it matters:**
-
-- Core filtering step
-- Determines which papers get deep analysis
-- Quality directly impacts results
-
-### PDF Analysis (Stage 3)
-
-**Purpose**: Deep analysis of full papers
-
-**Best models:**
-
-1. **Claude Opus 4.6** - Best vision + reasoning (recommended)
-2. **GPT-5.2** - Excellent alternative
-3. **Gemini 3 Pro** - Good for long papers
-
-**Acceptable alternatives:**
-
-- Claude Sonnet 4.5 - Budget option
-- GPT-5 Mini - Fast budget option
-
-**Don't use:**
-
-- ❌ Haiku/Nano/Flash-Lite - Insufficient for deep analysis
-
-**Why it matters:**
-
-- Most expensive stage (long context)
-- Creates value-add summaries
-- Vision capability important for figures/equations
-
-### Post-Processing (Optional)
-
-**Purpose**: Re-score papers for consistency
-
-**Best models:**
-
-- Same as Abstract Scoring
-- **Recommended**: Claude Sonnet 4.5 or Opus 4.6
-
-**Note**: This stage compares papers side-by-side, so use a high-quality model.
-
-### NotebookLM Document Generation
-
-**Fixed**: Claude Opus 4.6
-
-This stage requires the highest quality model to create well-structured, podcast-optimized documents. The model is not configurable.
-
-## Cost Analysis
-
-### Cost Breakdown (Typical Daily Run)
-
-**Assumptions:**
-
-- 30 papers fetched
-- Quick Filter enabled (20 pass to scoring)
-- 10 papers selected for PDF analysis
-- Average PDF size: 2.5 MB (~40K tokens)
-
-**Budget Config**: $2.05/day
-
-```
-Quick Filter (Haiku):     $0.05
-Abstract Scoring (Flash): $0.20
-PDF Analysis (Sonnet):    $1.50
-NotebookLM (Opus):        $0.30
-```
-
-**Balanced Config**: $3.95/day
-
-```
-Quick Filter (Haiku):     $0.05
-Abstract Scoring (Sonnet):$0.60
-PDF Analysis (Opus):      $3.00
-NotebookLM (Opus):        $0.30
-```
-
-**Premium Config**: $5.45/day
-
-```
-Quick Filter (Sonnet):    $0.15
-Abstract Scoring (Opus):  $2.00
-PDF Analysis (Opus):      $3.00
-NotebookLM (Opus):        $0.30
-```
-
-### Annual Costs
-
-| Configuration | Daily | Monthly | Annual |
-| ------------- | ----- | ------- | ------ |
-| Budget        | $2.05 | $61.50  | $738   |
-| Balanced      | $3.95 | $118.50 | $1,422 |
-| Premium       | $5.45 | $163.50 | $1,962 |
-
-::: tip Quick Filter saves money
-Enabling Quick Filter can reduce abstract scoring costs by 40-60% by pre-filtering irrelevant papers.
-:::
-
-## Quality Considerations
-
-### Scoring Consistency
-
-**Problem**: Different batches may get different scores
-
-**Impact**: Paper with score 7 in batch 1 might score 6 in batch 2
-
-**Solutions:**
-
-1. **Enable Post-Processing** - Re-scores papers for consistency
-2. **Use higher-quality models** - Opus/GPT-5.2 more consistent than Haiku/Nano
-3. **Smaller batches** - More API calls but better consistency
-
-**Model rankings** (consistency):
-
-1. Claude Opus 4.6 (most consistent)
-2. GPT-5.2
-3. Claude Sonnet 4.5
-4. Gemini Pro
-5. Others (less consistent)
-
-### Justification Quality
-
-**What makes good justifications:**
-
-- Specific references to paper content
-- Clear reasoning for score
-- Comparison to research criteria
-- Mentions of key contributions
-
-**Model rankings** (justification quality):
-
-1. Claude Opus 4.6 (most detailed)
-2. GPT-5.2
-3. Claude Sonnet 4.5
-4. Gemini Pro
-5. Others (more generic)
-
-### Vision Capability
-
-**Importance**: Papers with complex figures, equations, diagrams
-
-**Vision rankings:**
-
-1. Claude Opus 4.6 (excellent)
-2. GPT-5.2 (excellent)
-3. Gemini Pro (very good)
-4. Claude Sonnet 4.5 (good)
-5. Others (basic)
-
-**When vision matters:**
-
-- Machine learning (architecture diagrams)
-- Mathematics (equations, proofs)
-- Experimental sciences (plots, data)
-
-**When vision matters less:**
-
-- Theory papers (text-heavy)
-- Reviews (narrative)
-- Position papers (conceptual)
-
-## Switching Models
-
-### Testing Different Models
-
-**Recommended approach:**
-
-1. Run minimal test with different configurations
-2. Compare score distributions and justifications
-3. Check cost vs. quality trade-off
-4. Select based on your priorities
-
-**Example test:**
-
-```bash
-# Test 1: Budget config
-npm run test:minimal
-mv reports/minimal.md reports/test_budget.md
-
-# Test 2: Balanced config (change settings in UI)
-npm run test:minimal
-mv reports/minimal.md reports/test_balanced.md
-
-# Compare results
-diff reports/test_budget.md reports/test_balanced.md
-```
-
-### When to Change Models
-
-**Upgrade to better models:**
-
-- Too many false negatives (missing relevant papers)
-- Scores seem inconsistent
-- Justifications too generic
-- PDF analyses lacking depth
-
-**Downgrade to cheaper models:**
-
-- Costs too high for daily use
-- Current quality exceeds needs
-- Fast turnaround more important
-- High paper volume with good filtering
-
-## API Key Requirements
-
-**Minimum** (single provider):
-
-- Anthropic (Claude) API key only
-- Use Claude models for all stages
-
-**Recommended** (two providers):
-
-- Anthropic + OpenAI or Google
-- Flexibility to optimize each stage
-
-**Maximum** (all three):
-
-- Anthropic + OpenAI + Google
-- Full flexibility, redundancy if one is down
-
-::: info Model availability
-Aparture gracefully handles missing API keys by showing only available models in dropdowns.
-:::
-
-## Provider Comparison
-
-### Anthropic (Claude)
-
-**Strengths:**
-
-- Best vision capability
-- Excellent reasoning
-- Strong consistency
-- Great for research tasks
-
-**Weaknesses:**
-
-- Slower than competitors
-- Higher cost (Opus)
-- Rate limits on free tier
-
-**Best for**: PDF analysis, high-quality scoring
-
-### OpenAI (ChatGPT)
-
-**Strengths:**
-
-- Fast response times
-- Good quality across models
-- Reliable API
-- Strong vision (GPT-5.2)
-
-**Weaknesses:**
-
-- Less detailed than Claude Opus
-- Higher cost than Gemini
-- Stricter content policies
-
-**Best for**: Balanced speed and quality
-
-### Google (Gemini)
-
-**Strengths:**
-
-- Largest context window (1M)
-- Very fast (Flash models)
-- Lowest cost (Flash-Lite)
-- Good for high volume
-
-**Weaknesses:**
-
-- Less consistent than Claude/GPT
-- Justifications more generic
-- Newer, less proven
-
-**Best for**: Budget configurations, quick filtering
-
-## Next Steps
-
-- [Understand multi-stage analysis →](/concepts/multi-stage-analysis)
-- [Test different configurations →](/user-guide/testing)
-- [Learn about CLI automation →](/user-guide/cli-automation)
+- [The pipeline →](/concepts/pipeline) — see which stage each slot drives.
+- [API keys →](/getting-started/api-keys) — set up the keys you'll need for the providers you chose.
+- [Tuning the pipeline →](/using/tuning-the-pipeline) — adjust thresholds, batch sizes, and review gates alongside your model choices.
