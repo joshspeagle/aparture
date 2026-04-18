@@ -365,6 +365,7 @@ More categories = longer fetching:
 
 ## Next Steps
 
-- [Understanding multi-stage analysis →](/concepts/multi-stage-analysis)
+- [Understanding the pipeline →](/concepts/pipeline)
+- [Briefing anatomy →](/concepts/briefing-anatomy)
 - [Choosing the right models →](/concepts/model-selection)
-- [Configure your first analysis →](/getting-started/quick-start)
+- [Generate your first briefing →](/getting-started/first-briefing)
