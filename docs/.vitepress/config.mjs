@@ -113,7 +113,7 @@ export default defineConfig({
 
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2025 Josh Speagle. Created in collaboration with Claude.'
+      copyright: 'Copyright © 2025–2026 Josh Speagle. Created in collaboration with Claude.'
     },
 
     search: {

@@ -61,3 +61,56 @@ html .VPHero .name .hero-name .ar-highlight {
   padding-bottom: 1px;
   border-bottom: 2px solid var(--arxiv-red);
 }
+
+/* Landing page callout cards */
+.landing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin: 2.5rem 0 3rem;
+}
+
+.landing-card {
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.landing-card:hover {
+  border-color: var(--arxiv-red);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(179, 27, 27, 0.08);
+}
+
+.landing-card h3 {
+  margin-top: 0 !important;
+  margin-bottom: 0.6rem !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.landing-card h3::before {
+  content: none !important;
+}
+
+.landing-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--vp-c-text-2);
+  line-height: 1.55;
+}
+
+.landing-card p:not(:last-child) {
+  margin-bottom: 0.6rem;
+}
+
+.landing-card code {
+  font-size: 0.85em;
+}
