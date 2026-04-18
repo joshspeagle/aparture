@@ -20,51 +20,85 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Getting Started', link: '/getting-started/installation' },
-      { text: 'Guide', link: '/user-guide/web-interface' },
-      { text: 'API', link: '/api-reference/commands' }
+      { text: 'Get Started', link: '/getting-started/install' },
+      { text: 'Guide', link: '/using/reading-a-briefing' },
+      { text: 'Concepts', link: '/concepts/pipeline' },
+      { text: 'Reference', link: '/reference/environment' }
     ],
 
     sidebar: {
       '/getting-started/': [
         {
-          text: 'Getting Started',
+          text: 'Get Started',
           items: [
-            { text: 'Installation', link: '/getting-started/installation' },
-            { text: 'Setup', link: '/getting-started/setup' },
-            { text: 'Quick Start', link: '/getting-started/quick-start' }
+            { text: 'Install', link: '/getting-started/install' },
+            { text: 'API keys', link: '/getting-started/api-keys', collapsed: false, items: [
+              { text: 'Anthropic', link: '/getting-started/api-keys-anthropic' },
+              { text: 'OpenAI',    link: '/getting-started/api-keys-openai' },
+              { text: 'Google AI', link: '/getting-started/api-keys-google' },
+            ] },
+            { text: 'Verify your setup', link: '/getting-started/verify-setup' },
+            { text: 'Your first briefing', link: '/getting-started/first-briefing' },
           ]
         }
       ],
-      '/user-guide/': [
+      '/using/': [
         {
-          text: 'User Guide',
+          text: 'Using Aparture',
           items: [
-            { text: 'Web Interface', link: '/user-guide/web-interface' },
-            { text: 'CLI Automation', link: '/user-guide/cli-automation' },
-            { text: 'Testing', link: '/user-guide/testing' },
-            { text: 'Reports & Outputs', link: '/user-guide/reports' }
+            { text: 'Reading a briefing',     link: '/using/reading-a-briefing' },
+            { text: 'Giving feedback',        link: '/using/giving-feedback' },
+            { text: 'Review gates',           link: '/using/review-gates' },
+            { text: 'Writing a good profile', link: '/using/writing-a-profile' },
+            { text: 'Refining over time',     link: '/using/refining-over-time' },
+            { text: 'Tuning the pipeline',    link: '/using/tuning-the-pipeline' },
+          ]
+        },
+        {
+          text: 'Add-ons',
+          items: [
+            { text: 'Generating a podcast', link: '/add-ons/podcast' },
+          ]
+        }
+      ],
+      '/add-ons/': [
+        // Mirror /using/ sidebar so add-ons URL keeps context
+        {
+          text: 'Using Aparture',
+          items: [
+            { text: 'Reading a briefing',     link: '/using/reading-a-briefing' },
+            { text: 'Giving feedback',        link: '/using/giving-feedback' },
+            { text: 'Review gates',           link: '/using/review-gates' },
+            { text: 'Writing a good profile', link: '/using/writing-a-profile' },
+            { text: 'Refining over time',     link: '/using/refining-over-time' },
+            { text: 'Tuning the pipeline',    link: '/using/tuning-the-pipeline' },
+          ]
+        },
+        {
+          text: 'Add-ons',
+          items: [
+            { text: 'Generating a podcast', link: '/add-ons/podcast' },
           ]
         }
       ],
       '/concepts/': [
         {
-          text: 'Concepts',
+          text: 'Under the Hood',
           items: [
-            { text: 'Multi-Stage Analysis', link: '/concepts/multi-stage-analysis' },
-            { text: 'arXiv Categories', link: '/concepts/arxiv-categories' },
-            { text: 'Model Selection', link: '/concepts/model-selection' },
-            { text: 'NotebookLM Integration', link: '/concepts/notebooklm' }
+            { text: 'The pipeline',     link: '/concepts/pipeline' },
+            { text: 'Briefing anatomy', link: '/concepts/briefing-anatomy' },
+            { text: 'Model selection',  link: '/concepts/model-selection' },
+            { text: 'arXiv categories', link: '/concepts/arxiv-categories' },
           ]
         }
       ],
-      '/api-reference/': [
+      '/reference/': [
         {
-          text: 'API Reference',
+          text: 'Reference',
           items: [
-            { text: 'CLI Commands', link: '/api-reference/commands' },
-            { text: 'Configuration', link: '/api-reference/configuration' },
-            { text: 'Environment Variables', link: '/api-reference/environment' }
+            { text: 'Environment variables', link: '/reference/environment' },
+            { text: 'Prompt files',          link: '/reference/prompts' },
+            { text: 'Troubleshooting',       link: '/reference/troubleshooting' },
           ]
         }
       ]
