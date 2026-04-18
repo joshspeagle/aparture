@@ -42,7 +42,7 @@ Each theme contains one or more paper cards. A card gives you everything you nee
 - **Title** — the paper's full title, linking to arxiv.org.
 - **ArXiv ID** — the arXiv identifier, linked to the abstract page.
 - **One-line pitch** — a 15-25 word italic sell of the paper's argument or contribution. Not a summary; a pitch. "What would this paper say if it were selling itself in one sentence?"
-- **Why it matters** — a 2-4 sentence paragraph grounded in *your profile* and your *engagement signals*. This is where starred papers get the richest treatment; dismissed papers get short, honest acknowledgement; and normal papers get a relevance argument against your stated interests.
+- **Why it matters** — a 2-4 sentence paragraph grounded in _your profile_ and your _engagement signals_. This is where starred papers get the richest treatment; dismissed papers get short, honest acknowledgement; and normal papers get a relevance argument against your stated interests.
 - **Action buttons** — `→ quick summary`, `→ full report`, `☆ star`, `⊘ dismiss`, `+ comment`. The first two expand content (see below); the last three are feedback (see [Giving feedback](/using/giving-feedback)).
 
 ## The two expansions
