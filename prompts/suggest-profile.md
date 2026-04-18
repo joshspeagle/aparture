@@ -24,22 +24,49 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
 
 5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas already well-covered by the profile, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous — return an empty `changes` array and fill `noChangeReason` with a short explanation. Forcing a change when none is warranted is worse than no change.
 
+## Output granularity — ATOMIC, NON-OVERLAPPING CHANGES
+
+Each entry in your `changes` array must be:
+
+1. **Semantically atomic.** One logical edit per entry. If two improvements would affect the same sentence or clause, merge them into a single entry with a combined rationale.
+2. **Non-overlapping with every other entry.** The text range each change modifies (identified by its `anchor`) must not overlap with any other change's anchor range. Sort your changes top-to-bottom by position in the profile to verify.
+3. **Anchor-resolvable.** The `anchor` must appear **verbatim**, character-for-character, in the current profile. Do not paraphrase or normalize whitespace.
+
+Edit types:
+
+- `replace` — the `anchor` text is replaced wholesale by `content`.
+- `insert` — `content` is inserted **immediately after** `anchor` (anchor itself is preserved).
+- `delete` — the `anchor` text is removed. `content` should be empty.
+
+Example of BAD (overlapping):
+
+- Change 1: replace "I am interested in X and Y" with "I am interested in X, Y, and Z"
+- Change 2: replace "interested in X and Y" with "interested in X and Y and Z"
+
+Example of GOOD (merged):
+
+- Single change: replace "I am interested in X and Y" with "I am interested in X, Y, and Z"
+
 ## Output format
 
 Return structured JSON:
 
 {
-"revisedProfile": "string — the full revised profile text",
 "changes": [
 {
-"excerpt": "string — the specific phrase or sentence that changed",
-"rationale": "string — why, citing specific feedback events"
+"id": "string — short stable identifier unique within this response (e.g. \"c1\", \"c2\")",
+"rationale": "string — one sentence explaining why, citing specific feedback events",
+"edit": {
+"type": "replace" | "insert" | "delete",
+"anchor": "string — verbatim substring of the current profile",
+"content": "string — new text for replace/insert; empty string for delete"
+}
 }
 ],
 "noChangeReason": "string — optional, only if changes is empty"
 }
 
-If `changes` is non-empty, `revisedProfile` must contain the changes. If `changes` is empty, `revisedProfile` should equal the current profile and `noChangeReason` must be provided.
+If `changes` is empty, `noChangeReason` must be provided.
 
 ## Examples
 
