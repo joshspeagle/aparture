@@ -90,6 +90,14 @@ export function initialState() {
       saveBriefing: null,
       briefingHistory: null,
     },
+    // --- skippedDueToRecaptcha slice ---
+    // Per-run aggregation of papers whose PDF download hit reCAPTCHA when
+    // Playwright is unavailable. The pipeline pushes an entry here for each
+    // such paper and continues the run (the paper stays in results with
+    // `pdfAnalysisSkipReason: 'recaptcha-no-playwright'`). Cleared on every
+    // new run-start. Consumed by PlaywrightNotice (per-paper in the
+    // ProgressTimeline) and ReCaptchaSummaryCard (end-of-run summary).
+    skippedDueToRecaptcha: [],
   };
 }
 
@@ -174,6 +182,20 @@ export const useAnalyzerStore = create((set) => ({
   // --- reactContext slice actions ---
   setReactContext: (updater) =>
     set((state) => ({ reactContext: applyPatch(state.reactContext, updater) })),
+
+  // --- skippedDueToRecaptcha slice actions ---
+  addSkippedDueToRecaptcha: (paper) =>
+    set((state) => ({
+      skippedDueToRecaptcha: [
+        ...state.skippedDueToRecaptcha,
+        {
+          id: paper.id,
+          arxivId: paper.arxivId,
+          title: paper.title,
+        },
+      ],
+    })),
+  clearSkippedDueToRecaptcha: () => set({ skippedDueToRecaptcha: [] }),
 
   // --- reset (primarily for tests) ---
   // Explicit reset action. Calling set() with an object shallow-merges
