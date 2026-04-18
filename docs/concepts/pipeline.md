@@ -43,7 +43,7 @@ Every run passes through the same waterfall. Each stage reads the output of the 
 └──────────────────┘  15–60 s · ~$0.05–0.30 per briefing
 ```
 
-Two optional pause gates give you a chance to steer before expensive work runs. Both are on by default and can be toggled in Settings → Review & confirmation.
+Two optional pause gates let you steer the run before expensive work happens. Both are on by default and can be toggled in Settings → Review & confirmation.
 
 ## Stage 1: fetch papers
 
@@ -61,7 +61,7 @@ Two optional pause gates give you a chance to steer before expensive work runs. 
 
 ## Stage 2: quick filter
 
-**What it does.** Batches papers and asks a fast, cheap model to give each one a YES / MAYBE / NO verdict against your research profile, along with a one-sentence summary and justification. This is triage, not scoring — the goal is to drop the papers that are clearly not relevant before the more expensive stages run. Can be disabled entirely with `useQuickFilter: false`.
+**What it does.** Batches papers and asks a fast, cheap model to give each one a YES / MAYBE / NO verdict against your research profile, along with a one-sentence summary and justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. Can be disabled entirely with `useQuickFilter: false`.
 
 You can override any verdict in the review-gate UI. Overrides are recorded as `filter-override` feedback events and feed into the Suggest Improvements flow as a "profile may be too narrow or too broad" signal.
 
@@ -107,7 +107,7 @@ You can override any verdict in the review-gate UI. Overrides are recorded as `f
 
 ## Stage 4: analyze PDFs
 
-**What it does.** For the top N papers (default: 30 via `maxDeepAnalysis`), fetches the full PDF from arXiv and asks a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, a final relevance score. Both the pre-PDF and final scores are preserved so you can see how the PDF moved the needle.
+**What it does.** For the top N papers (default: 30 via `maxDeepAnalysis`), fetches the full PDF from arXiv and asks a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, a final relevance score. Both the pre-PDF and final scores are preserved, so you can see how much the PDF moved the score.
 
 PDFs are downloaded sequentially with a 2-second delay between requests to respect arXiv's rate limits. If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
 
@@ -149,7 +149,7 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 ## The hallucination-retry loop
 
-The audit step is not an afterthought — it runs every time, and the result is persisted in the briefing's `generationMetadata` so you can see what was checked and what was flagged.
+The audit step runs every time, and the result is persisted in the briefing's `generationMetadata` so you can see what was checked and what was flagged.
 
 ```
           ┌─────────────────────┐
@@ -191,7 +191,11 @@ Two checkboxes in Settings → Review & confirmation control when retries fire:
 - **`briefingRetryOnYes`** — retry on a confident hallucination verdict.
 - **`briefingRetryOnMaybe`** — retry on an uncertain verdict too (more cautious, more expensive).
 
-When a retry runs, the synthesis prompt gets a retry hint summarising the flagged claims, and the audit runs again on the retried briefing. The flagged claims from the final pass are shown as a collapsible disclosure in the briefing UI so you can see what the auditor flagged, even if you trust the briefing anyway.
+When a retry runs, the synthesis prompt gets a retry hint summarising the flagged claims, and the audit runs again on the retried briefing. Flagged claims from the final pass are shown as a collapsible disclosure in the briefing UI, so you can see what the auditor flagged even if you decide to trust the briefing anyway.
+
+::: tip Only one retry per briefing
+The retry path fires at most once — a design choice to avoid runaway loops at the cost of accepting one stuck verdict. If the retry also flags, the second briefing is what you see.
+:::
 
 ## Reading this alongside the UI
 
@@ -204,7 +208,7 @@ When a retry runs, the synthesis prompt gets a retry hint summarising the flagge
 - **Skip a stage?** Toggle `useQuickFilter` or `enableScorePostProcessing` in Settings. Both stages are safe to skip when your profile is narrow and well-calibrated.
 - **Pick a different model per stage?** The config exposes `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, and `briefingModel` as independent slots. See [Model selection](/concepts/model-selection) for recommended combinations.
 - **Tune the briefing output?** Edit `prompts/synthesis.md` — it takes effect on the next run, no rebuild needed. See [Prompts](/reference/prompts).
-- **Understand what stars and dismissals do?** They're fed to synthesis as engagement signals and become part of the briefing's framing. See [Giving feedback](/using/giving-feedback).
+- **Understand what stars and dismissals do?** They feed synthesis as engagement signals and become part of the briefing's framing. See [Giving feedback](/using/giving-feedback).
 
 ## Next steps
 
