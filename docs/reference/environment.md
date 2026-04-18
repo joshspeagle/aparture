@@ -13,7 +13,9 @@ GOOGLE_AI_API_KEY=
 # PORT=3001
 ```
 
-**Loading semantics.** Next.js reads `.env.local` once at dev-server startup. Hot-reload for env files is unreliable on Next 14. If you edit `.env.local` while `npm run dev` is running, restart it (Ctrl-C, re-run) to pick up the change.
+::: warning Restart after editing
+Next.js reads `.env.local` once at dev-server startup. Hot-reload for env files is unreliable on Next 14. If you edit `.env.local` while `npm run dev` is running, restart it (Ctrl-C, re-run) to pick up the change.
+:::
 
 ## Required
 
@@ -26,9 +28,9 @@ GOOGLE_AI_API_KEY=
 | Default  | None — API routes reject all requests if unset                    |
 | Example  | `ACCESS_PASSWORD=correct-horse-battery-staple`                    |
 
-The password that gates access to every Aparture API route. Every request from the web UI sends this in the `password` field; routes compare it to `process.env.ACCESS_PASSWORD` and return `401 Invalid password` on mismatch. Never exposed to the browser.
+The password that gates every Aparture API route. Every request from the web UI sends this in the `password` field; routes compare it to `process.env.ACCESS_PASSWORD` and return `401 Invalid password` on mismatch. Never exposed to the browser.
 
-Strength guidance: use a long random string (12+ characters). This isn't enterprise auth — it's a speed bump that keeps casual visitors from hitting your unprotected dev-server instance. For public-internet deployments (not the intended use case today), wrap Aparture behind a real auth layer.
+Strength guidance: use a long random string (12+ characters). This is not enterprise auth — it's a speed bump that keeps casual visitors from hitting your unprotected dev-server instance. For public-internet deployments (not the intended use case today), wrap Aparture behind a real auth layer.
 
 ## API keys (at least one required)
 
@@ -45,7 +47,7 @@ All three are read at request time (not cached at startup), so provider selectio
 | Default  | Anthropic models unavailable if unset                               |
 | Example  | `CLAUDE_API_KEY=sk-ant-api03-...`                                   |
 
-Anthropic (Claude) API key. Prefix: `sk-ant-`. See [api-keys-anthropic](/getting-started/api-keys-anthropic) for signup + key creation.
+Anthropic (Claude) API key. Prefix: `sk-ant-`. See [api-keys-anthropic](/getting-started/api-keys-anthropic) for signup and key creation.
 
 ### `OPENAI_API_KEY`
 
@@ -95,7 +97,9 @@ Set automatically by `next dev` / `next start` / `npm test`. You usually don't s
 
 ## Test-only escape hatches
 
-These are used by the Vitest integration-test suite to make fixture hashes deterministic. They're unconditionally active when set — if you set them in a real dev environment, the API routes will substitute stub values into every prompt, which is obviously not useful for real runs. Never set these in a production `.env.local`.
+::: danger Do not set these in a real dev environment
+These are used by the Vitest integration-test suite to make fixture hashes deterministic. They're unconditionally active when set — if you set them in a real dev environment, the API routes will substitute stub values into every prompt, which is obviously not useful for real runs.
+:::
 
 ### `APARTURE_TEST_PROMPT_OVERRIDE`
 
@@ -106,7 +110,7 @@ These are used by the Vitest integration-test suite to make fixture hashes deter
 | Default | Unset in normal use                                                                                                                        |
 | Example | `'SCORE_ABSTRACTS_TEST_FIXTURE'` (literal string)                                                                                          |
 
-When set, replaces the variable portion of LLM prompts with this literal value before hashing. Makes fixture hashes deterministic regardless of paper content. Also disables Anthropic prompt caching (`cachePrefix`/`cacheable` omitted from the hashed input object) so fixture keys don't depend on caching state. Used via `beforeEach` in integration tests.
+When set, replaces the variable portion of LLM prompts with this literal value before hashing. Makes fixture hashes deterministic regardless of paper content. Also disables Anthropic prompt caching (`cachePrefix`/`cacheable` omitted from the hashed input object), so fixture keys don't depend on caching state. Used via `beforeEach` in integration tests.
 
 ### `APARTURE_TEST_PDF_OVERRIDE`
 
