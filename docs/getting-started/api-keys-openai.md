@@ -1,8 +1,8 @@
 # OpenAI (GPT) API key
 
-GPT models (GPT-5.4, 5.4 Mini, 5.4 Nano) give Aparture a cost-flat profile: the expensive PDF and briefing calls are capped at top-N regardless of input volume, so a 250-paper Balanced run costs about the same as a 25-paper Balanced run (~$2-3). OpenAI has no free trial — you need a $5 prepaid deposit to activate API access.
+This page walks through getting an OpenAI API key and wiring it into Aparture so the pipeline can call GPT models (GPT-5.4, 5.4 Mini, 5.4 Nano). If you're not sure which provider to pick, start with [Google AI](/getting-started/api-keys-google). It has a free tier.
 
-Use this page if you want to run Aparture on GPT. If you're not sure which provider to pick, start with [Google AI](/getting-started/api-keys-google) — it has a free tier.
+Two things specific to OpenAI worth knowing up front: there's no free trial, so you'll need a $5 minimum prepaid deposit before any API call goes through. And Balanced-preset cost stays roughly flat from 25 to 250 papers/day (~$1.40–$2.80), because the expensive PDF and briefing stages are capped at top-N regardless of input. OpenAI's platform caches repeated prompt prefixes automatically, so real cost with a warm cache typically runs 20–40% below list.
 
 ## 1. Sign up
 

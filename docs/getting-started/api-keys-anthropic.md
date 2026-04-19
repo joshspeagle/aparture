@@ -1,8 +1,8 @@
 # Anthropic (Claude) API key
 
-Claude models (Opus 4.7, Sonnet 4.6, Haiku 4.5) give Aparture the highest-quality PDF analysis and briefing synthesis among the three providers, and Anthropic is the one provider where prompt caching is explicitly wired in. Repeated runs share a cached prefix, so actual cost is typically 20-40% below the sticker price.
+This page walks through getting an Anthropic API key and wiring it into Aparture so the pipeline can call Claude models (Opus 4.7, Sonnet 4.6, Haiku 4.5). If you're not sure which provider to pick, start with [Google AI](/getting-started/api-keys-google). It has a free tier.
 
-Use this page if you want to run Aparture on Claude. If you're not sure which provider to pick, start with [Google AI](/getting-started/api-keys-google) — it has a free tier.
+Two things specific to Anthropic worth knowing up front: Aparture has prompt caching wired in explicitly for Anthropic calls, so repeated runs with the same profile typically come in 20–40% below list price. New accounts also get a one-time ~$5 starter credit on signup, which is enough to run the Minimal API Test and a couple of small real runs before any top-up is needed.
 
 ## 1. Sign up
 

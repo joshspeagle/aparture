@@ -60,7 +60,7 @@ The **Budget preset** uses Flash and Flash-Lite throughout, so it costs nothing 
 
 ::: warning Two caveats on the free tier
 
-1. **Rate limits apply.** Google used to publish per-model RPM/TPM/RPD tables; as of 2026 those have moved behind sign-in. The live dashboard is at [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit?timeRange=last-28-days) — log in and check your current limits. Based on historical allowances, a 25-papers/day Budget run fires ~95 requests/day and fits comfortably; a 250-papers/day run fires 300+/day and may trip RPD caps on Flash.
+1. **Rate limits apply.** Google used to publish per-model RPM/TPM/RPD tables. As of 2026, per-model live numbers have moved behind sign-in, visible at the [AI Studio dashboard](https://aistudio.google.com/) after you log in. The general [Gemini API rate-limits page](https://ai.google.dev/gemini-api/docs/rate-limits) still describes the free-tier structure at a high level. Based on historical allowances, a 25-papers/day Budget run fires ~95 requests/day and fits comfortably; a 250-papers/day run fires 300+/day and may trip daily caps on Flash.
 
 2. **Free-tier users cannot opt out of data-for-training.** Google may train on your prompts and responses. If your profile contains proprietary or sensitive research notes, upgrade to paid Tier 1 ($10 prepaid credit) to enable opt-out, or use a non-sensitive profile for free-tier usage.
 
@@ -137,11 +137,11 @@ If the key is invalid you'll see `"Google API key not found"` (env var missing o
 1. **Forgot to restart `npm run dev`.** Next.js reads `.env.local` at startup; restart after editing.
 2. **Missed the key at creation.** Only visible once. Create a new one from the same AI Studio page if you missed it.
 3. **Wrong env var name.** It's `GOOGLE_AI_API_KEY`, not `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
-4. **Rate-limit numbers are gated behind sign-in.** The public docs no longer publish RPM/TPM/RPD tables. Check [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit) for your current limits.
+4. **Rate-limit numbers are gated behind sign-in.** Per-model RPM/TPM/RPD numbers aren't in the public docs anymore. Sign in at [aistudio.google.com](https://aistudio.google.com/) and look at the rate-limit panel for your current limits.
 5. **Free tier trains on your data.** Unavoidable on the free tier. If your profile is sensitive, upgrade to Tier 1 or use a non-sensitive stand-in profile.
 6. **Preview models have tighter limits.** Gemini 3.x previews have smaller RPM/TPM than the 2.5 stable counterparts. For production-grade reliability, consider the 2.5-stable variants.
 7. **Picking Balanced on free tier fails silently.** If you select a Gemini 3.1 Pro-based preset but haven't enabled billing, the route returns `PERMISSION_DENIED` mid-run. Either enable billing or switch to the Budget preset.
 
 ---
 
-_Snapshot taken 2026-04-17. Google's pricing and billing tier structure may change. Verify current pricing at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) and per-model rate limits at [aistudio.google.com/rate-limit](https://aistudio.google.com/rate-limit) before committing to production volumes._
+_Snapshot taken 2026-04-17. Google's pricing and billing tier structure may change. Verify current pricing at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) and check your current per-model rate limits by signing in at [aistudio.google.com](https://aistudio.google.com/) before committing to production volumes._

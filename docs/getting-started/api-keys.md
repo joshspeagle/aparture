@@ -1,90 +1,111 @@
 # API keys
 
-Aparture routes LLM calls through Anthropic (Claude), OpenAI (GPT), or Google (Gemini). You need at least one provider key to run the pipeline, and you can mix providers across stages — the default config already does.
+Aparture routes LLM calls through Anthropic (Claude), OpenAI (GPT), or Google (Gemini). You need at least one provider key to run the pipeline. You can mix providers across stages (the default config already does), and you can add more providers later without reconfiguring anything else.
 
 ## TL;DR
 
-One key is enough to start; add more later if you want to mix. If you're picking your first provider and have no particular preference, **start with Google AI** — its free tier covers Aparture's Budget preset end-to-end, with no credit card required. See [Google (Gemini)](/getting-started/api-keys-google).
+Pick one provider to start. If you have no strong preference, **start with Google AI** — its free tier covers Aparture's Budget preset end-to-end, and no credit card is required.
 
-The workflow for any provider is the same: get a key, add it to `.env.local` under the right variable name, then verify with the [Minimal API Test](/getting-started/verify-setup).
+## Pick a provider
 
-## Which provider?
-
-|                              | Anthropic (Claude)                                  | OpenAI (GPT)                                              | Google (Gemini)                                                  |
-| ---------------------------- | --------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Free tier**                | ~$5 starter credit, one-time                        | None                                                      | Yes — covers Budget preset                                       |
-| **Billing to start**         | Not required for starter credit                     | $5 minimum deposit                                        | Not required for free tier                                       |
-| **Key format**               | `sk-ant-api03-...`                                  | `sk-proj-...`                                             | `AIzaSy...`                                                      |
-| **Env var**                  | `CLAUDE_API_KEY`                                    | `OPENAI_API_KEY`                                          | `GOOGLE_AI_API_KEY`                                              |
-| **Speed (typical)**          | Fast; rate-limit trap on Tier 1 ITPM                | Fast on paid tiers                                        | Fastest on Flash-family                                          |
-| **Quality (PDF stage)**      | Highest on Opus 4.7                                 | Highest on GPT-5.4                                        | Strong on Gemini 3.1 Pro                                         |
-| **Prompt caching wired in?** | Yes                                                 | Automatic                                                 | Not yet                                                          |
-| **Signup page**              | [platform.claude.com](https://platform.claude.com/) | [platform.openai.com](https://platform.openai.com/signup) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-
-## Pricing at a glance
-
-Cost estimates for a daily Aparture run using the **Balanced preset** (Flash-Lite filter → Flash scoring → Pro-class PDF + briefing), computed per provider using each provider's native Balanced-tier models.
-
-| Papers/day | Anthropic (Balanced) | OpenAI (Balanced) | Google (Balanced) | Google (Budget)                   |
-| ---------- | -------------------- | ----------------- | ----------------- | --------------------------------- |
-| 25         | ~$2.60               | ~$1.37            | ~$1.53            | **$0.00**                         |
-| 100        | ~$9.34               | ~$2.03            | ~$1.86            | **$0.00** (watch RPD)             |
-| 250        | ~$22.83              | ~$2.79            | ~$1.94            | **$0.00** at pricing; may hit RPD |
-
-Per-provider details are on the pages below. The broad-strokes takeaways:
-
-- Google's Budget preset costs nothing on the free tier, as long as you stay inside the daily request-per-day (RPD) allowances. That makes it ideal for learning the tool.
-- OpenAI's Balanced config scales more or less flatly with volume (~$2-3 per run whether you analyse 25 or 250 papers), because the expensive Pro-tier calls are capped at top-N regardless of input.
-- Anthropic's Balanced config is the most expensive of the three because it uses Claude Opus 4.7 for both PDF analysis and briefing synthesis. Switching the PDF slot to Sonnet 4.6 drops cost by ~30% with a modest quality hit.
-
-All three providers support prompt caching (Anthropic explicitly, OpenAI automatically, Google via manual cache — not yet wired in Aparture). Real-world costs with warm caches typically run 20-40% below the table above.
-
-## Can I run completely free?
-
-Yes, on Google's Budget preset. The Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts) is listed as "Free of charge" for free-tier accounts. The only Gemini model that isn't free is **Gemini 3.1 Pro Preview**, so if you pick the Balanced or Quality preset you'll need to enable billing.
-
-Two caveats on the Google free tier worth knowing up front:
-
-1. **Daily request caps (RPD) apply.** A 25-papers/day Budget run fits comfortably; a 250-papers/day run may trip the cap. The live numbers are in the [AI Studio rate-limit dashboard](https://aistudio.google.com/rate-limit).
-2. **Free-tier users cannot opt out of training-data collection.** If your profile contains sensitive or proprietary research notes, upgrade to paid Tier 1 (a $10 prepaid credit) to enable opt-out.
-
-## Per-provider setup
-
-Pick one to start. You can add the others later without restarting the project.
+The current-generation models from all three providers are broadly comparable on the tasks Aparture performs. The main decision is about cost structure and setup friction, not model quality.
 
 <div class="landing-cards">
 
 <div class="landing-card">
 
-### Google Gemini — start here
+### Google Gemini
 
-Free tier covers the Budget preset end-to-end. Recommended for first-time users unless you're specifically evaluating Claude or GPT. [Google setup →](/getting-started/api-keys-google)
+Free tier covers the **Budget preset** end-to-end, and no credit card is needed to start. Running the **Balanced preset** requires enabling billing (Gemini 3.1 Pro is paid-only) and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
 
-</div>
-
-<div class="landing-card">
-
-### Anthropic Claude — highest quality
-
-Best PDF analysis and briefing synthesis, with prompt caching wired in so repeated runs cost less than the sticker price suggests. [Anthropic setup →](/getting-started/api-keys-anthropic)
+[Set up Google AI →](/getting-started/api-keys-google)
 
 </div>
 
 <div class="landing-card">
 
-### OpenAI GPT — flat-rate scaling
+### Anthropic Claude
 
-Per-run cost stays roughly flat from 25 to 250 papers. Requires a $5 prepaid deposit to activate the API (no free trial). [OpenAI setup →](/getting-started/api-keys-openai)
+New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing. Balanced-preset runs are ~$2.60 at 25 papers/day and scale with volume (Opus is used in the heavier stages).
+
+[Set up Anthropic →](/getting-started/api-keys-anthropic)
+
+</div>
+
+<div class="landing-card">
+
+### OpenAI GPT
+
+Requires a $5 minimum prepaid deposit to activate API access (no free trial). Balanced-preset cost stays roughly flat from 25 to 250 papers/day (~$1.40–$2.80), because the expensive PDF and briefing stages are capped at top-N regardless of input. OpenAI caches repeated prompt prefixes automatically.
+
+[Set up OpenAI →](/getting-started/api-keys-openai)
 
 </div>
 
 </div>
 
-## After you have a key
+## After you get your key
 
-1. Paste it into `.env.local` under the correct variable name (see the table above).
-2. Restart `npm run dev` if it's already running — Next.js reads `.env.local` at server startup, not per-request.
-3. Run the [Minimal API Test](/getting-started/verify-setup) to confirm the key authenticates. This exercises the full pipeline on 5 papers and costs ~$0.20–$1 on paid tiers depending on your model choices (free on Google's free tier).
+Whichever provider you picked, the steps back in Aparture are the same:
+
+1. Open `.env.local` in the project root and paste the key under the right variable name:
+   - `CLAUDE_API_KEY=sk-ant-api03-...` for Anthropic
+   - `OPENAI_API_KEY=sk-proj-...` for OpenAI
+   - `GOOGLE_AI_API_KEY=AIzaSy...` for Google
+2. Restart `npm run dev` if it was already running. Next.js reads `.env.local` once at server startup.
+3. Run the [Minimal API Test](/getting-started/verify-setup) from the UI. That's a 5-paper end-to-end test that confirms your key authenticates and the pipeline runs cleanly. It costs ~$0.20–$1 on paid tiers and is free on Google's free tier.
+
+That's it. Your key is working; you can generate your first briefing.
+
+## What's a preset?
+
+Aparture ships with three model presets you pick between in the UI. Each preset controls which model runs at each pipeline stage:
+
+- **Budget** — the cheapest small/mid model at every stage. Fast, inexpensive, good for learning the tool or for high-volume runs. This is the preset that stays free on Google's free tier.
+- **Balanced** — a small model for filtering and scoring, and a larger model for PDF analysis and briefing synthesis. The default out of the box.
+- **Quality** — the strongest model each provider offers, used across all stages. Noticeably more expensive, and in most cases marginally better rather than dramatically so.
+
+The cost numbers below use the Balanced preset. Each per-provider page has the full model lineup and costs for all three presets.
+
+## Pricing at a glance (Balanced preset)
+
+Cost per daily run, by provider and paper volume:
+
+| Papers/day | Anthropic | OpenAI | Google (Balanced) | Google (Budget)                   |
+| ---------- | --------- | ------ | ----------------- | --------------------------------- |
+| 25         | ~$2.60    | ~$1.37 | ~$1.53            | **$0.00**                         |
+| 100        | ~$9.34    | ~$2.03 | ~$1.86            | **$0.00** (watch daily caps)      |
+| 250        | ~$22.83   | ~$2.79 | ~$1.94            | **$0.00** at pricing; may hit cap |
+
+Three things the table says concisely:
+
+- Google's Budget preset stays free within the daily request caps, which makes it ideal for learning the tool or for routine low-volume reading.
+- OpenAI's Balanced cost is roughly flat from 25 to 250 papers/day because the expensive stages are capped at top-N regardless of input.
+- Anthropic's Balanced cost grows with volume because Opus is used for both PDF analysis and briefing. Switching the PDF slot to Sonnet drops cost significantly with a modest quality hit.
+
+Caching takes another 20–40% off these numbers on repeated runs with the same profile. Aparture caches explicitly on Anthropic routes; OpenAI's platform caches automatically; Google caching isn't wired in yet.
+
+## Can I run completely free?
+
+Yes, on Google's Budget preset. The Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts) is free for free-tier accounts, and the Budget preset stays within that family. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which the Balanced and Quality presets use for the heavier stages.
+
+Two caveats worth knowing up front:
+
+1. **Daily request caps apply on the free tier.** A 25-papers/day Budget run fits comfortably; a 250-papers/day run can trip the cap. Your current per-model limits are visible at the [AI Studio dashboard](https://aistudio.google.com/) after signing in, or documented generally at the [Gemini API rate-limits page](https://ai.google.dev/gemini-api/docs/rate-limits).
+2. **Free-tier users cannot opt out of training-data collection.** If your profile contains sensitive research notes, upgrade to paid Tier 1 (a $10 prepaid credit) to enable opt-out. More details are on the [Google setup page](/getting-started/api-keys-google).
+
+## Reference: provider table
+
+Quick lookup for key formats, env-var names, and signup URLs:
+
+|                             | Anthropic (Claude)                                  | OpenAI (GPT)                                              | Google (Gemini)                                                  |
+| --------------------------- | --------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Free tier**               | ~$5 starter credit, one-time                        | None                                                      | Yes (covers Budget preset)                                       |
+| **Billing to start**        | Not required for starter credit                     | $5 minimum deposit                                        | Not required for free tier                                       |
+| **Key format**              | `sk-ant-api03-...`                                  | `sk-proj-...`                                             | `AIzaSy...`                                                      |
+| **Env var in `.env.local`** | `CLAUDE_API_KEY`                                    | `OPENAI_API_KEY`                                          | `GOOGLE_AI_API_KEY`                                              |
+| **Prompt caching**          | Wired in explicitly                                 | Automatic                                                 | Not yet wired in                                                 |
+| **Signup page**             | [platform.claude.com](https://platform.claude.com/) | [platform.openai.com](https://platform.openai.com/signup) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 
 ---
 
