@@ -21,18 +21,18 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 
 ## Quick reference
 
-| Variable                                | Required            | Read by                                          | Default                                |
-| --------------------------------------- | ------------------- | ------------------------------------------------ | -------------------------------------- |
-| `ACCESS_PASSWORD`                       | Yes                 | Every route in `pages/api/`                      | None — unset means every request 401s  |
+| Variable                                | Required                  | Read by                                             | Default                               |
+| --------------------------------------- | ------------------------- | --------------------------------------------------- | ------------------------------------- |
+| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                         | None — unset means every request 401s |
 | `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js` | Anthropic models unavailable if unset |
 | `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js` | OpenAI models unavailable if unset    |
 | `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js` | Google models unavailable if unset    |
-| `PORT`                                  | No                  | Next.js CLI (not read from source)               | `3000`                                 |
-| `NODE_ENV`                              | No                  | `pages/api/analyze-pdf.js` (test escape hatch)   | `development` (set by Next)            |
-| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only           | Most LLM-calling routes · `lib/llm/callModel.js` | Unset                                  |
-| `APARTURE_TEST_PDF_OVERRIDE`            | Test only           | `lib/llm/callModel.js`                           | Unset                                  |
-| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only           | `pages/api/suggest-profile.js`                   | Unset                                  |
-| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only           | `pages/api/check-briefing.js`                    | Unset                                  |
+| `PORT`                                  | No                        | Next.js CLI (not read from source)                  | `3000`                                |
+| `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)      | `development` (set by Next)           |
+| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`    | Unset                                 |
+| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                              | Unset                                 |
+| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                      | Unset                                 |
+| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                       | Unset                                 |
 
 ## Required
 
@@ -116,7 +116,7 @@ Variant of `APARTURE_TEST_PROMPT_OVERRIDE` scoped to `pages/api/check-briefing.j
 
 ### `_testPdfBase64` (request body field, not env var)
 
-Not an environment variable — a request body field on `POST /api/analyze-pdf`, gated by `NODE_ENV === 'test'`. When present and gated in, the route injects the provided base64 PDF bytes directly and skips the arXiv download path (no HTTP fetch, no Playwright, no reCAPTCHA handling). Used by `tests/integration/analyze-pdf.test.js` with the minimal fixture PDF at `tests/fixtures/pdf/minimal.pdf`.
+Not an environment variable — a request body field on `POST /api/analyze-pdf`, gated by `NODE_ENV === 'test'`. When present and gated in, the route injects the provided base64 PDF bytes directly and skips the arXiv download path entirely: the HTTP fetch, the Playwright fallback, and the reCAPTCHA handling are all bypassed. Used by `tests/integration/analyze-pdf.test.js` with the minimal fixture PDF at `tests/fixtures/pdf/minimal.pdf`.
 
 ## File format rules
 
