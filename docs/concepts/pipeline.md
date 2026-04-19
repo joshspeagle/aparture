@@ -229,7 +229,7 @@ The **briefing** is the editorial product: synthesis LLM output with an executiv
 
 The **Download Report** is a flat markdown export compiled by `lib/analyzer/exportReport.js` from Stage 4's per-paper deep-analysis outputs. It has no editorial framing, no theme grouping, no profile-shaped "why it matters" — just the raw technical write-ups stitched together, one after another, with scores and metadata. No LLM call happens at export time; it's a deterministic compile of cached outputs. The card surfaces as soon as Stage 4 finishes, which means **it's visible during the pre-briefing pause** — you can export the technical detail without waiting on or running briefing synthesis at all.
 
-Neither depends on the other existing. Rule of thumb: you'll read a briefing, you'll archive or share a report. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
+Neither depends on the other existing. In day-to-day use, the briefing is what you read; the report is mostly useful for archival or for handing someone a self-contained file. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
 
 ## Reading this alongside the UI
 
