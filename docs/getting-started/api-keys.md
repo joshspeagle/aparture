@@ -49,7 +49,7 @@ Aparture splits work across five LLM slots — filter, scoring, PDF analysis, br
 
 Throughout these docs, **Balanced** means: a weak-but-fast model for filtering, a medium model for abstract scoring, a strong-but-slower model for PDF analysis and briefing synthesis, and the weak/fast model again for per-paper quick-summary compression. It's the default shape of the app out of the box, and the configuration the cost tables below assume.
 
-For a narrated end-to-end tour of what each stage actually does in the UI, see [Your first briefing](/getting-started/first-briefing).
+For a narrated end-to-end tour of what each stage actually does in the UI, see [Your first briefing](/using/first-briefing).
 
 ## Cost at a glance
 

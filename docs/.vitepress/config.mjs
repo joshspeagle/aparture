@@ -43,7 +43,6 @@ export default defineConfig({
               { text: 'OpenAI',    link: '/getting-started/api-keys-openai' },
             ] },
             { text: 'Verify your setup', link: '/getting-started/verify-setup' },
-            { text: 'Your first briefing', link: '/getting-started/first-briefing' },
           ]
         }
       ],
@@ -51,11 +50,12 @@ export default defineConfig({
         {
           text: 'Using Aparture',
           items: [
+            { text: 'Your first briefing',    link: '/using/first-briefing' },
             { text: 'Reading a briefing',     link: '/using/reading-a-briefing' },
             { text: 'Giving feedback',        link: '/using/giving-feedback' },
-            { text: 'Review gates',           link: '/using/review-gates' },
             { text: 'Writing a good profile', link: '/using/writing-a-profile' },
             { text: 'Refining over time',     link: '/using/refining-over-time' },
+            { text: 'Review gates',           link: '/using/review-gates' },
             { text: 'Tuning the pipeline',    link: '/using/tuning-the-pipeline' },
           ]
         },
@@ -71,11 +71,12 @@ export default defineConfig({
         {
           text: 'Using Aparture',
           items: [
+            { text: 'Your first briefing',    link: '/using/first-briefing' },
             { text: 'Reading a briefing',     link: '/using/reading-a-briefing' },
             { text: 'Giving feedback',        link: '/using/giving-feedback' },
-            { text: 'Review gates',           link: '/using/review-gates' },
             { text: 'Writing a good profile', link: '/using/writing-a-profile' },
             { text: 'Refining over time',     link: '/using/refining-over-time' },
+            { text: 'Review gates',           link: '/using/review-gates' },
             { text: 'Tuning the pipeline',    link: '/using/tuning-the-pipeline' },
           ]
         },

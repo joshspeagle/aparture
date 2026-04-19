@@ -60,7 +60,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 
 ## Get started
 
-<div class="step-cards">
+<div class="step-cards step-cards-3">
 
 <a class="step-card" href="/aparture/getting-started/install.html">
   <span class="step-number">STEP 01</span>
@@ -80,15 +80,15 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
   <p>Dry run (free) and Minimal API Test (~$0.20–$1 on paid tiers).</p>
 </a>
 
-<a class="step-card" href="/aparture/getting-started/first-briefing.html">
-  <span class="step-number">STEP 04</span>
-  <h4>Your first briefing</h4>
-  <p>A narrated 10-minute walk through the UI, end to end.</p>
-</a>
-
 </div>
 
-Already have Aparture running? The [Guide](/using/reading-a-briefing) covers daily use — reading briefings, giving feedback, writing a profile, refining over time — [Concepts](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
+<a class="step-card step-card-cta" href="/aparture/using/first-briefing.html">
+  <span class="step-number">READY TO RUN</span>
+  <h4>Start using Aparture →</h4>
+  <p>A narrated 10-minute walk through your first real briefing, end to end.</p>
+</a>
+
+Already have Aparture running? The [Guide](/using/first-briefing) covers daily use — running briefings, reading them, giving feedback, writing a profile, refining over time — [Concepts](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
 
 <div class="landing-footer">
 

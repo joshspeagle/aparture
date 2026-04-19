@@ -1,6 +1,6 @@
 # Review gates
 
-If you're coming from your [first briefing](/getting-started/first-briefing), here's what those two pauses during the run were actually for.
+If you're coming from your [first briefing](/using/first-briefing), here's what those two pauses during the run were actually for.
 
 Aparture's pipeline has two review gates — optional pauses where the run halts and shows you intermediate results before committing to the next (more expensive) stage. Both are on by default, both are skippable, and both exist to save you tokens and catch bad runs before they snowball.
 

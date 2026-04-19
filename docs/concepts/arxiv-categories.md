@@ -370,4 +370,4 @@ More categories = longer fetching:
 - [Understanding the pipeline →](/concepts/pipeline)
 - [Briefing anatomy →](/concepts/briefing-anatomy)
 - [Choosing the right models →](/concepts/model-selection)
-- [Generate your first briefing →](/getting-started/first-briefing)
+- [Generate your first briefing →](/using/first-briefing)

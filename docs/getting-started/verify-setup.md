@@ -140,4 +140,4 @@ When both tests pass:
 - The **Download Report** card offers a separate markdown export of the same run. Briefing and report are two different outputs: the Briefing is what you read in the UI, the Report is what you save to disk if you want a standalone file.
 - The terminal log shows a clean sequence of `Sending request to ...` lines per stage, no red errors, and no repeated `API error 429` or validation-failed messages.
 
-At that point, you're ready for a real run. Next: [your first briefing](/getting-started/first-briefing).
+Your environment is solid. When you're ready to run the pipeline on your own profile and produce a real briefing, continue to the Guide: [Your first briefing →](/using/first-briefing).
