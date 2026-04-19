@@ -1,6 +1,6 @@
 # Review gates
 
-If you've gone through a run or two, you've already seen both gates in action — the pipeline halts after the filter completes and again before briefing synthesis, each time showing you intermediate results. Both are on by default, both are skippable per click, and both can be turned off entirely once you stop catching things at them.
+If you've gone through a run or two, you've already seen both gates in action — the pipeline halts after the filter completes and again before briefing synthesis, each time showing you intermediate results. Both gates are on by default. You can click through any single one without turning it off, and both can be disabled entirely in Settings once you stop catching things at them.
 
 This page covers what each gate shows, what to do there, and when it's worth turning one or the other off.
 
@@ -68,7 +68,7 @@ When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before sy
 
 Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest *"why it matters"* treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
 
-The crucial difference between Gate 2 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future briefings — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest the profile revision sees.
+The difference between Gate 2 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
 
 Click <span class="ui-action">Continue to briefing →</span> when you're done. Synthesis runs, then the hallucination audit runs, then the briefing renders on its own page. The results list stays interactive while synthesis is in flight.
 
@@ -92,7 +92,7 @@ Three situations in which flipping a gate back on tends to pay off:
 - **You added new arXiv categories.** You haven't built a mental model of what comes through the filter in those categories yet.
 - **You switched to a much cheaper (or much more capable) model.** Model behaviour changes, and the first few runs with a new model are worth watching.
 
-The general rule: re-enable gates when you're in learning mode, disable them when you're in harvesting mode.
+Broadly, the gates are worth having on while you're still calibrating the pipeline to your interests, and worth disabling once a few runs in a row have landed well without intervention.
 
 ## Where to toggle them
 
