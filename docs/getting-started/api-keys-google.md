@@ -87,27 +87,27 @@ Google updates preview pricing periodically and the 3.x tier is still beta, so v
 
 ### Worked calculation: Balanced at 100 input papers (paid Tier 1)
 
-Reference case: 100 fetched papers, ~50 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 
 | Stage                    | Model                 | Input tokens | Output tokens | Cost                                     |
 | ------------------------ | --------------------- | ------------ | ------------- | ---------------------------------------- |
 | Filter (100 abstracts)   | Gemini 3.1 Flash-Lite | ~40,000      | ~5,000        | 40k × $0.25 / MTok + 5k × $1.50 = ~$0.02 |
 | Scoring (50 abstracts)   | Gemini 3 Flash        | ~40,000      | ~7,500        | 40k × $0.50 + 7.5k × $3 = ~$0.04         |
-| PDF analysis (10 papers) | Gemini 3.1 Pro        | ~180,000     | ~20,000       | 180k × $2 + 20k × $12 = ~$0.60           |
-| Quick summaries (10)     | Gemini 3.1 Flash-Lite | ~15,000      | ~4,000        | 15k × $0.25 + 4k × $1.50 = ~$0.01        |
-| Briefing synthesis       | Gemini 3.1 Pro        | ~6,000       | ~2,500        | 6k × $2 + 2.5k × $12 = ~$0.04            |
-| Hallucination audit      | Gemini 3.1 Pro        | ~4,000       | ~500          | 4k × $2 + 0.5k × $12 = ~$0.01            |
-| **Total, list price**    |                       |              |               | **~$0.72**                               |
+| PDF analysis (20 papers) | Gemini 3.1 Pro        | ~360,000     | ~40,000       | 360k × $2 + 40k × $12 = ~$1.20           |
+| Quick summaries (20)     | Gemini 3.1 Flash-Lite | ~30,000      | ~8,000        | 30k × $0.25 + 8k × $1.50 = ~$0.02        |
+| Briefing synthesis       | Gemini 3.1 Pro        | ~10,000      | ~3,500        | 10k × $2 + 3.5k × $12 = ~$0.06           |
+| Hallucination audit      | Gemini 3.1 Pro        | ~6,000       | ~800          | 6k × $2 + 0.8k × $12 = ~$0.02            |
+| **Total, list price**    |                       |              |               | **~$1.36**                               |
 
 Google doesn't wire in Aparture's prompt caching, so repeat runs pay the same list price.
 
 ### Scaling to other input volumes
 
-Stages 2 and 3 scale linearly with input volume, but at Gemini's paid-tier Flash pricing they stay well under $0.15 even at 250 papers. Stage 4 scales with how many papers you deep-analyse — default cap is `maxDeepAnalysis = 30`, but most runs stay well below that:
+Filter and scoring scale linearly with input volume, but at Gemini's paid-tier Flash pricing they stay well under $0.15 even at 250 papers. Stage 4 scales with how many papers you deep-analyse — the default cap is `maxDeepAnalysis = 30`, which binds at higher input volumes:
 
 - **50 papers in** (10 PDFs): ~$0.70 list / all free on Flash-only free tier
-- **100 papers in** (10 PDFs): ~$0.72 list (reference case above)
-- **250 papers in** (30 PDFs, at cap): ~$2.15 list — PDF analysis plateaus; filter + scoring barely budge
+- **100 papers in** (20 PDFs): ~$1.35 list (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$2.05 list — PDF analysis plateaus at the cap; filter + scoring barely budge
 
 ### Free tier (2.5-stable throughout)
 

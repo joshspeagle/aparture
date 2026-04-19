@@ -94,27 +94,27 @@ OpenAI updates pricing periodically. Verify current rates at [developers.openai.
 
 ### Worked calculation: Balanced at 100 input papers
 
-Reference case: 100 fetched papers, ~50 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 
 | Stage                    | Model        | Input tokens | Output tokens | Cost                                     |
 | ------------------------ | ------------ | ------------ | ------------- | ---------------------------------------- |
 | Filter (100 abstracts)   | GPT-5.4 Nano | ~40,000      | ~5,000        | 40k × $0.20 / MTok + 5k × $1.25 = ~$0.01 |
 | Scoring (50 abstracts)   | GPT-5.4 Mini | ~40,000      | ~7,500        | 40k × $0.75 + 7.5k × $4.50 = ~$0.06      |
-| PDF analysis (10 papers) | GPT-5.4      | ~180,000     | ~20,000       | 180k × $2.50 + 20k × $15 = ~$0.75        |
-| Quick summaries (10)     | GPT-5.4 Nano | ~15,000      | ~4,000        | 15k × $0.20 + 4k × $1.25 = ~$0.01        |
-| Briefing synthesis       | GPT-5.4      | ~6,000       | ~2,500        | 6k × $2.50 + 2.5k × $15 = ~$0.05         |
-| Hallucination audit      | GPT-5.4      | ~4,000       | ~500          | 4k × $2.50 + 0.5k × $15 = ~$0.02         |
-| **Total, list price**    |              |              |               | **~$0.90**                               |
+| PDF analysis (20 papers) | GPT-5.4      | ~360,000     | ~40,000       | 360k × $2.50 + 40k × $15 = ~$1.50        |
+| Quick summaries (20)     | GPT-5.4 Nano | ~30,000      | ~8,000        | 30k × $0.20 + 8k × $1.25 = ~$0.02        |
+| Briefing synthesis       | GPT-5.4      | ~10,000      | ~3,500        | 10k × $2.50 + 3.5k × $15 = ~$0.08        |
+| Hallucination audit      | GPT-5.4      | ~6,000       | ~800          | 6k × $2.50 + 0.8k × $15 = ~$0.03         |
+| **Total, list price**    |              |              |               | **~$1.70**                               |
 
-With automatic caching on repeat runs (same profile, same category set), the stable prefix of each prompt drops to 10% of list input pricing, so repeat runs land at **~$0.60–$0.70 per run** after the first.
+With automatic caching on repeat runs (same profile, same category set), the stable prefix of each prompt drops to 10% of list input pricing, so repeat runs land at **~$1.15–1.25 per run** after the first.
 
 ### Scaling to other input volumes
 
-Stages 2 and 3 scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — default cap is `maxDeepAnalysis = 30`, but most runs stay well below that:
+Filter and scoring scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — the default cap is `maxDeepAnalysis = 30`, which binds at higher input volumes:
 
 - **50 papers in** (10 PDFs): ~$0.87 list / ~$0.60 with caching
-- **100 papers in** (10 PDFs): ~$0.90 list / ~$0.65 with caching (reference case above)
-- **250 papers in** (30 PDFs, at cap): ~$2.65 list / ~$1.95 with caching — PDF analysis plateaus; filter + scoring become the delta
+- **100 papers in** (20 PDFs): ~$1.70 list / ~$1.20 with caching (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$2.60 list / ~$1.85 with caching — PDF analysis plateaus at the cap; filter + scoring keep growing
 
 ## 8. Common gotchas
 

@@ -89,29 +89,29 @@ Current (April 2026) list pricing for every Anthropic model in Aparture's regist
 
 ### Worked calculation: Balanced at 100 input papers
 
-Reference case: 100 fetched papers, ~50 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 
 | Stage                    | Model      | Input tokens | Output tokens | Cost                               |
 | ------------------------ | ---------- | ------------ | ------------- | ---------------------------------- |
 | Filter (100 abstracts)   | Haiku 4.5  | ~40,000      | ~5,000        | 40k × $1 / MTok + 5k × $5 = ~$0.07 |
 | Scoring (50 abstracts)   | Sonnet 4.6 | ~40,000      | ~7,500        | 40k × $3 + 7.5k × $15 = ~$0.23     |
-| PDF analysis (10 papers) | Opus 4.7   | ~180,000     | ~20,000       | 180k × $5 + 20k × $25 = ~$1.40     |
-| Quick summaries (10)     | Haiku 4.5  | ~15,000      | ~4,000        | 15k × $1 + 4k × $5 = ~$0.04        |
-| Briefing synthesis       | Opus 4.7   | ~6,000       | ~2,500        | 6k × $5 + 2.5k × $25 = ~$0.09      |
-| Hallucination audit      | Opus 4.7   | ~4,000       | ~500          | 4k × $5 + 0.5k × $25 = ~$0.03      |
-| **Total, list price**    |            |              |               | **~$1.86**                         |
+| PDF analysis (20 papers) | Opus 4.7   | ~360,000     | ~40,000       | 360k × $5 + 40k × $25 = ~$2.80     |
+| Quick summaries (20)     | Haiku 4.5  | ~30,000      | ~8,000        | 30k × $1 + 8k × $5 = ~$0.07        |
+| Briefing synthesis       | Opus 4.7   | ~10,000      | ~3,500        | 10k × $5 + 3.5k × $25 = ~$0.14     |
+| Hallucination audit      | Opus 4.7   | ~6,000       | ~800          | 6k × $5 + 0.8k × $25 = ~$0.05      |
+| **Total, list price**    |            |              |               | **~$3.36**                         |
 
-The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~10,000 tokens total and the PDF-analysis stage lands at ~$1.15 instead of ~$1.40.
+The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~20,000 tokens total and the PDF-analysis stage lands at ~$2.30 instead of ~$2.80.
 
-With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$1.30–1.50 per run** after the first.
+With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$2.30–2.70 per run** after the first.
 
 ### Scaling to other input volumes
 
-Stages 2 and 3 scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — default cap is `maxDeepAnalysis = 30`, but most runs stay well below that:
+Filter and scoring scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — the default cap is `maxDeepAnalysis = 30`, which binds at higher input volumes:
 
-- **50 papers in** (10 PDFs): ~$1.70 list / ~$1.20 with caching
-- **100 papers in** (10 PDFs): ~$1.85 list / ~$1.30 with caching (reference case above)
-- **250 papers in** (30 PDFs, at cap): ~$5.45 list / ~$3.80 with caching — PDF analysis plateaus; filter + scoring become the delta
+- **50 papers in** (10 PDFs): ~$1.75 list / ~$1.20 with caching
+- **100 papers in** (20 PDFs): ~$3.35 list / ~$2.30 with caching (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$5.20 list / ~$3.65 with caching — PDF analysis plateaus at the cap; filter + scoring keep growing
 
 For authoritative pricing verify against Anthropic's [models page](https://platform.claude.com/docs/en/docs/about-claude/models) and [pricing page](https://claude.com/pricing) before committing to real spend.
 
