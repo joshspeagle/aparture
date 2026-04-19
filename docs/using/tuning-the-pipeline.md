@@ -23,11 +23,14 @@ Each stage has its own model slot. The defaults (as of April 2026) are all Googl
 
 | Slot              | Setting label      | Default                           | What it does                                         |
 | ----------------- | ------------------ | --------------------------------- | ---------------------------------------------------- |
-| `filterModel`     | Filter Model       | `gemini-2.5-flash-lite`           | Stage 2: YES/NO/MAYBE on abstracts                   |
-| `scoringModel`    | Scoring Model      | `gemini-3-flash`                  | Stage 3: 0-10 score with justification               |
-| `pdfModel`        | PDF Analysis Model | `gemini-3.1-pro`                  | Stage 4: deep PDF read                               |
-| `briefingModel`   | Briefing Model     | `gemini-3.1-pro`                  | Stage 5: cross-paper synthesis + hallucination check |
-| `notebookLMModel` | NotebookLM Model   | (set when you generate a podcast) | Optional: NotebookLM bundle generation               |
+| `filterModel`       | Filter Model            | `gemini-2.5-flash-lite`           | Stage 2: YES/NO/MAYBE on abstracts                                                |
+| `scoringModel`      | Scoring Model           | `gemini-3-flash`                  | Stage 3: 0-10 score with justification                                            |
+| `pdfModel`          | PDF Analysis Model      | `gemini-3.1-pro`                  | Stage 4: deep PDF read                                                            |
+| `briefingModel`     | Briefing Model          | `gemini-3.1-pro`                  | Stage 5: cross-paper synthesis + hallucination check                              |
+| `quickSummaryModel` | Quick-summary Model     | `gemini-3.1-flash-lite`           | Briefing prep: per-paper text compression, parallel fan-out just before synthesis |
+| `notebookLMModel`   | NotebookLM Model        | (set when you generate a podcast) | Optional: NotebookLM bundle generation                                            |
+
+The `quickSummaryModel` slot also has a companion `quickSummaryConcurrency` integer (default 5, clamped 1–20) that controls how many of those calls fire in parallel. Lower it if you're on a rate-limited tier; raise it on generous tiers to cut wall-clock time.
 
 Each dropdown lives in the **Model Slots** section of Settings. All slots are disabled while a pipeline run is in progress.
 

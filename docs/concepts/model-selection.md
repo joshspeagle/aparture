@@ -4,17 +4,20 @@ Choosing a model for each pipeline stage is where most of your cost and quality 
 
 ## The model slots
 
-Aparture's config exposes five independent model slots. You don't have to change all of them — sensible defaults are set on first run — but every slot can be swapped per run without touching code.
+Aparture's config exposes six independent model slots. You don't have to change all of them — sensible defaults are set on first run — but every slot can be swapped per run without touching code.
 
-| Slot                  | What it drives                                                 | Default                 |
-| --------------------- | -------------------------------------------------------------- | ----------------------- |
-| `filterModel`         | Stage 2 quick filter (YES/MAYBE/NO triage)                     | `gemini-2.5-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                | `gemini-3-flash`        |
-| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                    | `gemini-3-flash`        |
-| `pdfModel`            | Stage 4 deep PDF analysis                                      | `gemini-3.1-pro`        |
-| `briefingModel`       | Stage 5 synthesis + hallucination check + Suggest Improvements | `gemini-3.1-pro`        |
+| Slot                  | What it drives                                                                           | Default                 |
+| --------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
+| `filterModel`         | Stage 2 quick filter (YES/MAYBE/NO triage)                                               | `gemini-2.5-flash-lite` |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                          | `gemini-3-flash`        |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                              | `gemini-3-flash`        |
+| `pdfModel`            | Stage 4 deep PDF analysis                                                                | `gemini-3.1-pro`        |
+| `briefingModel`       | Stage 5 synthesis + hallucination check + Suggest Improvements                           | `gemini-3.1-pro`        |
+| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs in parallel just before synthesis  | `gemini-3.1-flash-lite` |
 
-There's also a `notebookLMModel` slot for the optional podcast-document generator; no default (you pick one when you generate a podcast).
+There's also a `notebookLMModel` slot for the optional podcast-document generator; no default (you pick one when you generate a podcast). Its companion knob `quickSummaryConcurrency` (default 5, clamped 1–20) controls how many quick-summary calls fire in parallel.
+
+The `quickSummaryModel` defaults to a small cross-provider Flash-Lite model because the work is just text compression (the full PDF report is already text by the time it hits this stage). If you're running a single-provider setup and don't want the extra API-key dependency, swap `quickSummaryModel` to a small model in your chosen provider — quick-summary failures are non-fatal, so a missing key silently drops the inline-expansion feature without breaking the briefing.
 
 ## Current lineup
 
@@ -109,6 +112,7 @@ All-Google, preview models, cheapest realistic path. Good for high-volume catego
 | `postProcessingModel` | `gemini-2.5-flash`      |
 | `pdfModel`            | `gemini-3-flash`        |
 | `briefingModel`       | `gemini-3-flash`        |
+| `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
 **Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$0.30–0.80.
 
@@ -123,6 +127,7 @@ Gemini Flash-Lite for triage, Gemini 3 Flash for scoring, Gemini 3.1 Pro for the
 | `postProcessingModel` | `gemini-3-flash`        |
 | `pdfModel`            | `gemini-3.1-pro`        |
 | `briefingModel`       | `gemini-3.1-pro`        |
+| `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
 **Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$0.80–2.00.
 
@@ -137,8 +142,11 @@ All-Anthropic. Haiku 4.5 for triage, Sonnet 4.6 for scoring, Opus 4.7 for deep a
 | `postProcessingModel` | `claude-sonnet-4.6` |
 | `pdfModel`            | `claude-opus-4.7`   |
 | `briefingModel`       | `claude-opus-4.7`   |
+| `quickSummaryModel`   | `claude-haiku-4.5`  |
 
 **Ballpark cost for a 50-paper run, 10 into deep analysis, 1 briefing:** ~$3.00–8.00.
+
+The Premium row switches `quickSummaryModel` to Haiku so the entire run stays within Anthropic (no Google key required). The app default of `gemini-3.1-flash-lite` works fine too — and is slightly cheaper — if you're willing to keep a Google key alongside your Anthropic one.
 
 ::: tip Anthropic prompt caching
 Aparture enables Anthropic's prompt caching automatically on every Anthropic call. On runs that share a profile, repeated-prefix cost drops substantially — expect the second run of the day to cost noticeably less than the first. Watch the terminal for `[anthropic cache] read=N create=N` lines to confirm cache hits.
