@@ -49,10 +49,12 @@ Emit exactly this structure (substituting the placeholders). The number of Acts 
 
 # Podcast Outline — {{date}}
 
-## Opening (~2 min)
+## Opening (~30–60 seconds — content-first)
 
-Hook: <one sentence pulled from or inspired by the briefing's executive summary>
-Setup: <who the listener is and why this week's papers matter>
+Hook: <one sentence, pulled from or inspired by the briefing's executive summary. A technical observation or argument, NOT a greeting or show introduction>
+Setup: <one sentence of context — why today's papers matter, anchored in the hook>
+
+_Note to the podcast model: the opening is a substantive hook, not a preamble. No "welcome back", no "today we're looking at", no format-setting. The first words are about the papers._
 
 ## Act 1 — <theme 1 title> (~X min)
 
@@ -75,7 +77,7 @@ Brief nods to papers that didn't fit the main arc but deserve a sentence.
 
 - [P#] "<title>" — <one-line reason to mention>
 
-## Closing (~2 min)
+## Closing (~30–60 seconds)
 
 Key takeaway: <one sentence>
 Papers worth flagging for deep reading: [P#], [P#]

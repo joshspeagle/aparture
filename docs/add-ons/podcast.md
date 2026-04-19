@@ -52,6 +52,15 @@ When it finishes, you'll have a 5–30 minute audio overview in the notebook. Pl
 Google revises the NotebookLM interface periodically. Button names and panel locations drift. The bundle's `INSTRUCTIONS.md` is the version of these steps that ships with your bundle; if something doesn't match, trust that one over this page.
 :::
 
+::: warning NotebookLM ignores the target duration
+The Audio Overview setting (Shorter / Default / Longer) is NotebookLM's own pacing knob, and it overrides the duration target in the focus prompt more often than not. Expect:
+
+- **Default:** typically 60–80% of the target (a 30-min prompt often yields ~20 min).
+- **Longer:** typically 130–170% of the target (a 30-min prompt often yields ~45 min).
+
+Pick the setting that's closer to what you actually want, then accept the ±30% variance. The focus prompt asks the hosts to prioritise keeping the number of papers and depth intact when length is stretched or compressed, rather than dropping content.
+:::
+
 ## What the focus prompt does
 
 The focus prompt is what distinguishes a generic "read the sources aloud" podcast from one that sounds like two researchers talking through the day's papers. It carries:
@@ -86,6 +95,12 @@ For the full prompt reference, see [Reference: prompts](/reference/prompts).
 **The audio sounds generic.** Usually the focus prompt wasn't pasted, or it was pasted into the wrong text box. The <span class="ui-action">Customize</span> → text-box flow is what shapes the podcast; without it, NotebookLM produces a default-tone summary.
 
 **The hosts skip a paper you wanted covered.** At shorter durations, the outline prunes aggressively by score. Star the paper in the briefing, re-generate the bundle, and re-upload. Starred papers get priority in the discussion guide.
+
+**Length is way off target.** NotebookLM's Audio Overview setting controls pacing more than the focus prompt does — see the warning box in the upload section. Pick Shorter / Default / Longer to get closer to your target and accept ±30% variance.
+
+**The hosts spend the first minute or two on preamble and banter.** The focus prompt explicitly tells the hosts to skip greetings, agenda-setting, and meta-narration about the format, but NotebookLM sometimes inserts them anyway. The longer the Audio Overview setting, the worse this tends to be. Shorter tier has less runway for filler.
+
+**The hosts repeatedly announce what they'll do instead of doing it** ("we'll cite arXiv IDs today", "we'll keep this conversational", etc.). Same root cause as banter — NotebookLM sometimes meta-narrates despite the focus prompt telling it not to. A shorter Audio Overview setting usually cuts this down because there's less time to fill.
 
 **NotebookLM hits a context limit or truncates.** Too many sources can do this. Try uploading only `briefing.md` and `discussion-guide.md`, dropping the per-paper reports. NotebookLM can usually infer enough from the briefing alone.
 
