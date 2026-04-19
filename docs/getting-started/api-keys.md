@@ -60,7 +60,18 @@ Aparture's defaults are all-Google. If you picked Anthropic or OpenAI, the Minim
 
 ## How Aparture picks models
 
-You configure Aparture's model slots individually in the Settings panel. There's a slot for each pipeline stage (filter, scoring, PDF analysis, briefing synthesis, NotebookLM document generation), and each slot can hold any model from any provider. Out of the box, every slot is a Google model: `gemini-2.5-flash-lite` for the lightweight stages, `gemini-3.1-pro` for PDF analysis and briefing.
+You configure Aparture's model slots individually in the Settings panel. There are six slots, one per pipeline sub-stage:
+
+- `filterModel` — quick filter (Stage 1)
+- `scoringModel` — abstract scoring (Stage 2)
+- `pdfModel` — PDF deep analysis (Stage 3)
+- `briefingModel` — briefing synthesis + hallucination check (Stage 5)
+- `quickSummaryModel` — per-paper quick-summary compression that runs in parallel just before the briefing synthesis call (new; default `gemini-3.1-flash-lite` since it's a lightweight text-compression task)
+- `notebookLMModel` — NotebookLM document generation, configured in the NotebookLM card rather than the main Settings panel
+
+Each slot can hold any model from any provider. Out of the box, the first four and the quick-summary slot are all Google: `gemini-2.5-flash-lite` / `gemini-3-flash` / `gemini-3.1-pro` / `gemini-3.1-pro` / `gemini-3.1-flash-lite`.
+
+If you're running an Anthropic-only or OpenAI-only setup, swap `quickSummaryModel` in Settings to a small model from your chosen provider so the quick-summary calls don't need a Google key. Quick-summary failures are non-fatal (the briefing still renders), but you'll lose the inline per-paper expansions if it silently fails.
 
 Throughout these docs we refer to three named configurations as editorial shorthand:
 

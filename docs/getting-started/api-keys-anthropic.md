@@ -52,15 +52,18 @@ If the key is invalid, you'll see `"Anthropic API key not found"` (env var missi
 
 You pick each pipeline stage's model individually in the Settings panel. For an all-Anthropic Balanced configuration:
 
-| Stage                              | Model             | Notes                                                                                                   |
-| ---------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------- |
-| Filter (`filterModel`)             | Claude Haiku 4.5  | Fast and cheap; filtering is high-volume.                                                               |
-| Scoring (`scoringModel`)           | Claude Sonnet 4.6 | Middle of the range. Haiku works too if you want cheaper.                                               |
-| PDF analysis (`pdfModel`)          | Claude Opus 4.7   | Strongest option, most expensive stage. Sonnet 4.6 is a ~40% cheaper drop-in with a modest quality hit. |
-| Briefing (`briefingModel`)         | Claude Opus 4.7   | Same model is used for quick summaries, which generate alongside the briefing.                          |
-| NotebookLM doc (`notebookLMModel`) | Claude Opus 4.7   | Only runs if you generate a NotebookLM bundle.                                                          |
+| Stage                               | Model                                     | Notes                                                                                                   |
+| ----------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Filter (`filterModel`)              | `claude-haiku-4.5`                        | Fast and cheap; filtering is high-volume.                                                               |
+| Scoring (`scoringModel`)            | `claude-sonnet-4.6`                       | Middle of the range. Haiku 4.5 works too if you want cheaper.                                           |
+| PDF analysis (`pdfModel`)           | `claude-opus-4.7`                         | Strongest option, most expensive stage. Sonnet 4.6 is a ~40% cheaper drop-in with a modest quality hit. |
+| Briefing (`briefingModel`)          | `claude-opus-4.7`                         | Synthesis + hallucination check.                                                                        |
+| Quick summary (`quickSummaryModel`) | `claude-haiku-4.5` (or keep Flash-Lite default) | Text-compression task. The default is `gemini-3.1-flash-lite` across all providers; swap to Haiku if you'd rather keep all calls inside Anthropic (and your key set). |
+| NotebookLM doc (`notebookLMModel`)  | `claude-opus-4.7`                         | Set in the NotebookLM card, not Settings. Only runs if you generate a bundle.                           |
 
 If you want a quality/cost step down, swap `pdfModel` to Sonnet 4.6 — that single change cuts roughly a third off a typical run, since PDF analysis dominates cost.
+
+The default `quickSummaryModel` is Gemini 3.1 Flash-Lite. If you only have a Claude API key (no Google key), the quick-summary calls will fail silently and the briefing will render without the inline-expansion summaries. Switching `quickSummaryModel` to Claude Haiku 4.5 in Settings keeps everything inside Anthropic.
 
 ## 6. Cost estimate
 

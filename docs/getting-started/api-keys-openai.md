@@ -65,15 +65,18 @@ If the key is invalid, you'll see `401 invalid_api_key`. If you didn't add credi
 
 You pick each pipeline stage's model individually in the Settings panel. For an all-OpenAI Balanced configuration:
 
-| Stage                              | Model        | Notes                                                                           |
-| ---------------------------------- | ------------ | ------------------------------------------------------------------------------- |
-| Filter (`filterModel`)             | GPT-5.4 Nano | Cheapest; filtering is high-volume.                                             |
-| Scoring (`scoringModel`)           | GPT-5.4 Mini | Middle of the range.                                                            |
-| PDF analysis (`pdfModel`)          | GPT-5.4      | Strongest option, most expensive stage. GPT-5.4 Mini is a ~65% cheaper drop-in. |
-| Briefing (`briefingModel`)         | GPT-5.4      | Same model is used for quick summaries, which generate alongside the briefing.  |
-| NotebookLM doc (`notebookLMModel`) | GPT-5.4      | Only runs if you generate a NotebookLM bundle.                                  |
+| Stage                               | Model                                          | Notes                                                                           |
+| ----------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| Filter (`filterModel`)              | `gpt-5.4-nano`                                 | Cheapest; filtering is high-volume.                                             |
+| Scoring (`scoringModel`)            | `gpt-5.4-mini`                                 | Middle of the range.                                                            |
+| PDF analysis (`pdfModel`)           | `gpt-5.4`                                      | Strongest option, most expensive stage. GPT-5.4 Mini is a ~65% cheaper drop-in. |
+| Briefing (`briefingModel`)          | `gpt-5.4`                                      | Synthesis + hallucination check.                                                |
+| Quick summary (`quickSummaryModel`) | `gpt-5.4-nano` (or keep Flash-Lite default)    | Text-compression task. The default is `gemini-3.1-flash-lite`; swap to GPT-5.4 Nano if you'd rather keep all calls inside OpenAI (and your key set). |
+| NotebookLM doc (`notebookLMModel`)  | `gpt-5.4`                                      | Set in the NotebookLM card, not Settings. Only runs if you generate a bundle.   |
 
 If you want a quality/cost step down, swap `pdfModel` to GPT-5.4 Mini — that single change cuts roughly 65% off the PDF-analysis cost, since Stage 3 dominates the total.
+
+The default `quickSummaryModel` is Gemini 3.1 Flash-Lite. If you only have an OpenAI API key (no Google key), the quick-summary calls will fail silently and the briefing will render without the inline-expansion summaries. Switching `quickSummaryModel` to GPT-5.4 Nano in Settings keeps everything inside OpenAI.
 
 ## 7. Cost estimate
 
