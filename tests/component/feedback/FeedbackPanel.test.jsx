@@ -71,12 +71,27 @@ describe('FeedbackPanel', () => {
     expect(screen.getByRole('button', { name: /add a comment/i })).toBeInTheDocument();
   });
 
-  it('wires GeneralCommentInput save to onAddGeneralComment', () => {
+  it('wires GeneralCommentInput save to onAddGeneralComment with briefingId', () => {
+    const onAddGeneralComment = vi.fn();
+    render(
+      <FeedbackPanel
+        {...defaultProps}
+        briefingId="briefing-123"
+        onAddGeneralComment={onAddGeneralComment}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'general thought' } });
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    expect(onAddGeneralComment).toHaveBeenCalledWith('general thought', 'briefing-123');
+  });
+
+  it('passes undefined briefingId when prop is omitted', () => {
     const onAddGeneralComment = vi.fn();
     render(<FeedbackPanel {...defaultProps} onAddGeneralComment={onAddGeneralComment} />);
     fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'general thought' } });
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
-    expect(onAddGeneralComment).toHaveBeenCalledWith('general thought');
+    expect(onAddGeneralComment).toHaveBeenCalledWith('general thought', undefined);
   });
 });
