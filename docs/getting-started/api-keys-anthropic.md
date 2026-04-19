@@ -87,29 +87,29 @@ Current (April 2026) list pricing for every Anthropic model in Aparture's regist
 - **Prompt caching.** Aparture marks the stable prefix of each prompt (template text + your profile) as cacheable. The first call writes the cache at ~1.25× input price; subsequent calls within ~5 minutes read it at ~0.1× input price. Across a session, this nets a 20–40% reduction on input tokens.
 - **Cache warmup on parallel PDFs.** Stage 4 runs Anthropic's first PDF call alone before releasing the other workers, so the cache entry is primed once instead of racing N parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
 
-### Worked calculation: Balanced at 100 input papers
+### Worked calculation: Balanced at 50 input papers
 
-Assume 100 fetched papers, 60 pass the filter and get scored, 30 go through PDF analysis (hitting the default `maxDeepAnalysis` cap of 30).
+Reference case: 50 fetched papers, ~30 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
 
-| Stage                    | Model      | Input tokens | Output tokens | Cost                                    |
-| ------------------------ | ---------- | ------------ | ------------- | --------------------------------------- |
-| Filter (100 abstracts)   | Haiku 4.5  | ~40,000      | ~5,000        | 40k × $1 / MTok + 5k × $5 = ~$0.07      |
-| Scoring (60 abstracts)   | Sonnet 4.6 | ~48,000      | ~9,000        | 48k × $3 + 9k × $15 = ~$0.28            |
-| PDF analysis (30 papers) | Opus 4.7   | ~540,000     | ~60,000       | 540k × $5 + 60k × $25 = ~$4.20          |
-| Quick summaries (30)     | Haiku 4.5  | ~45,000      | ~12,000       | 45k × $1 + 12k × $5 = ~$0.11            |
-| Briefing synthesis       | Opus 4.7   | ~12,000      | ~3,000        | 12k × $5 + 3k × $25 = ~$0.14            |
-| Hallucination audit      | Opus 4.7   | ~8,000       | ~600          | 8k × $5 + 0.6k × $25 = ~$0.06           |
-| **Total, list price**    |            |              |               | **~$4.86**                              |
+| Stage                    | Model      | Input tokens | Output tokens | Cost                                 |
+| ------------------------ | ---------- | ------------ | ------------- | ------------------------------------ |
+| Filter (50 abstracts)    | Haiku 4.5  | ~20,000      | ~2,500        | 20k × $1 / MTok + 2.5k × $5 = ~$0.03 |
+| Scoring (30 abstracts)   | Sonnet 4.6 | ~24,000      | ~4,500        | 24k × $3 + 4.5k × $15 = ~$0.14       |
+| PDF analysis (10 papers) | Opus 4.7   | ~180,000     | ~20,000       | 180k × $5 + 20k × $25 = ~$1.40       |
+| Quick summaries (10)     | Haiku 4.5  | ~15,000      | ~4,000        | 15k × $1 + 4k × $5 = ~$0.04          |
+| Briefing synthesis       | Opus 4.7   | ~6,000       | ~2,500        | 6k × $5 + 2.5k × $25 = ~$0.09        |
+| Hallucination audit      | Opus 4.7   | ~4,000       | ~500          | 4k × $5 + 0.5k × $25 = ~$0.03        |
+| **Total, list price**    |            |              |               | **~$1.73**                           |
 
-The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~30,000 tokens total and the PDF-analysis stage lands at ~$3.20 instead of ~$4.20.
+The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~10,000 tokens total and the PDF-analysis stage lands at ~$1.15 instead of ~$1.40.
 
-With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$3.00–3.90 per run** after the first.
+With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$1.20–1.40 per run** after the first.
 
 ### Scaling to other input volumes
 
 Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-analysis cost stops growing. Stages 2 and 3 scale roughly linearly:
 
-- **25 papers in** (15 PDFs): ~$2.40 list / ~$1.70 with caching
+- **50 papers in** (10 PDFs): ~$1.75 list / ~$1.20 with caching (reference case above)
 - **100 papers in** (30 PDFs, capped): ~$4.90 list / ~$3.40 with caching
 - **250 papers in** (30 PDFs, capped): ~$5.40 list / ~$3.80 with caching — PDF analysis plateaus; filter + scoring become the delta
 

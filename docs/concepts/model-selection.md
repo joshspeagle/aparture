@@ -6,14 +6,14 @@ Each pipeline stage reads from its own model slot, and picking the right model f
 
 Aparture exposes six independent model slots plus one for the optional podcast add-on. Every slot ships with a default so you can run without touching them, and every slot can be swapped per run without restarting the server.
 
-| Slot                  | What it drives                                                                           | Default                 |
-| --------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
-| `filterModel`         | Stage 2 quick filter (YES / MAYBE / NO triage)                                           | `gemini-3.1-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                          | `gemini-3-flash`        |
-| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                              | `gemini-3-flash`        |
-| `pdfModel`            | Stage 4 deep PDF analysis                                                                | `gemini-3.1-pro`        |
-| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                      | `gemini-3.1-pro`        |
-| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis              | `gemini-3.1-flash-lite` |
+| Slot                  | What it drives                                                              | Default                 |
+| --------------------- | --------------------------------------------------------------------------- | ----------------------- |
+| `filterModel`         | Stage 2 quick filter (YES / MAYBE / NO triage)                              | `gemini-3.1-flash-lite` |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                             | `gemini-3-flash`        |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                 | `gemini-3-flash`        |
+| `pdfModel`            | Stage 4 deep PDF analysis                                                   | `gemini-3.1-pro`        |
+| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow         | `gemini-3.1-pro`        |
+| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis | `gemini-3.1-flash-lite` |
 
 A separate `notebookLMModel` slot drives the podcast-bundle generator in [the podcast add-on](/add-ons/podcast) — no default, you pick it per generation. The related `quickSummaryConcurrency` knob (default 5, clamped 1–20) controls how many quick-summary calls fire in parallel before synthesis.
 
@@ -38,22 +38,22 @@ Current generation:
 
 Legacy (still registered, mostly kept for comparison):
 
-| User-facing ID      | API ID                      | Context | Input / Output              |
-| ------------------- | --------------------------- | ------- | --------------------------- |
-| `claude-opus-4.5`   | `claude-opus-4-5`           | 200k    | ~$5 / ~$25                  |
-| `claude-opus-4.1`   | `claude-opus-4-1`           | 200k    | **$15 / $75** (pricier)     |
-| `claude-sonnet-4.5` | `claude-sonnet-4-5`         | 200k    | ~$3 / ~$15                  |
-| `claude-haiku-3.5`  | `claude-3-5-haiku-20241022` | 200k    | ~$1 / ~$5                   |
+| User-facing ID      | API ID                      | Context | Input / Output          |
+| ------------------- | --------------------------- | ------- | ----------------------- |
+| `claude-opus-4.5`   | `claude-opus-4-5`           | 200k    | ~$5 / ~$25              |
+| `claude-opus-4.1`   | `claude-opus-4-1`           | 200k    | **$15 / $75** (pricier) |
+| `claude-sonnet-4.5` | `claude-sonnet-4-5`         | 200k    | ~$3 / ~$15              |
+| `claude-haiku-3.5`  | `claude-3-5-haiku-20241022` | 200k    | ~$1 / ~$5               |
 
 Opus 4.1 is worth flagging specifically because its pricing is higher than the newer Opus generations — the registry keeps it for backwards compatibility, but there's usually no reason to pick it over Opus 4.6 or 4.7.
 
 ### OpenAI (GPT-5.4 family)
 
-| User-facing ID | API ID         | Context | Input / Output      | Cached input  |
-| -------------- | -------------- | ------- | ------------------- | ------------- |
-| `gpt-5.4`      | `gpt-5.4`      | 1M      | $2.50 / $15         | $0.25         |
-| `gpt-5.4-mini` | `gpt-5.4-mini` | 400k    | $0.75 / $4.50       | $0.075        |
-| `gpt-5.4-nano` | `gpt-5.4-nano` | 400k    | $0.20 / $1.25       | $0.02         |
+| User-facing ID | API ID         | Context | Input / Output | Cached input |
+| -------------- | -------------- | ------- | -------------- | ------------ |
+| `gpt-5.4`      | `gpt-5.4`      | 1M      | $2.50 / $15    | $0.25        |
+| `gpt-5.4-mini` | `gpt-5.4-mini` | 400k    | $0.75 / $4.50  | $0.075       |
+| `gpt-5.4-nano` | `gpt-5.4-nano` | 400k    | $0.20 / $1.25  | $0.02        |
 
 OpenAI caches automatically when prompt prefixes repeat, so the cached-input column tends to apply on later runs of the day that share a profile.
 
@@ -61,19 +61,19 @@ OpenAI caches automatically when prompt prefixes repeat, so the cached-input col
 
 Preview tier (Gemini 3.x). These are the defaults Aparture ships with — the user-facing IDs will stay stable when Google graduates them to general availability, even though the underlying API IDs will change.
 
-| User-facing ID          | API ID                          | Input / Output (≤200k)  |
-| ----------------------- | ------------------------------- | ----------------------- |
-| `gemini-3.1-pro`        | `gemini-3.1-pro-preview`        | $2 / $12                |
-| `gemini-3-flash`        | `gemini-3-flash-preview`        | $0.50 / $3              |
-| `gemini-3.1-flash-lite` | `gemini-3.1-flash-lite-preview` | $0.25 / $1.50           |
+| User-facing ID          | API ID                          | Input / Output (≤200k) |
+| ----------------------- | ------------------------------- | ---------------------- |
+| `gemini-3.1-pro`        | `gemini-3.1-pro-preview`        | $2 / $12               |
+| `gemini-3-flash`        | `gemini-3-flash-preview`        | $0.50 / $3             |
+| `gemini-3.1-flash-lite` | `gemini-3.1-flash-lite-preview` | $0.25 / $1.50          |
 
 Stable tier (Gemini 2.5):
 
-| User-facing ID          | API ID                  | Input / Output (≤200k)  |
-| ----------------------- | ----------------------- | ----------------------- |
-| `gemini-2.5-pro`        | `gemini-2.5-pro`        | $1.25 / $10             |
-| `gemini-2.5-flash`      | `gemini-2.5-flash`      | $0.30 / $2.50           |
-| `gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | $0.10 / $0.40           |
+| User-facing ID          | API ID                  | Input / Output (≤200k) |
+| ----------------------- | ----------------------- | ---------------------- |
+| `gemini-2.5-pro`        | `gemini-2.5-pro`        | $1.25 / $10            |
+| `gemini-2.5-flash`      | `gemini-2.5-flash`      | $0.30 / $2.50          |
+| `gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | $0.10 / $0.40          |
 
 Google also offers a free tier with daily request caps on most of these models. For someone running a couple of briefings per day on a modest profile, the free tier often covers the whole workflow.
 
@@ -95,7 +95,7 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 ## Three example configurations
 
-Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "50-paper run" numbers assume 50 papers fetched, 10 into deep analysis, one briefing produced.
+Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "50-paper run" numbers assume 50 papers fetched, ~30 passing the filter to scoring, 10 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages.
 
 ### Balanced (Aparture default)
 

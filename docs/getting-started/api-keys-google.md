@@ -66,14 +66,14 @@ All Gemini models bill per million tokens (MTok), separately for input and outpu
 
 List pricing (paid tier) for every Gemini model in Aparture's registry:
 
-| Model                                                    | Context | Input ($/MTok) | Output ($/MTok) |
-| -------------------------------------------------------- | ------- | -------------: | --------------: |
-| `gemini-3.1-pro` (preview; recommended PDF + briefing)   | 1M      |          $2.00 |          $12.00 |
-| `gemini-3-flash` (preview; recommended scoring)          | 1M      |          $0.50 |           $3.00 |
+| Model                                                             | Context | Input ($/MTok) | Output ($/MTok) |
+| ----------------------------------------------------------------- | ------- | -------------: | --------------: |
+| `gemini-3.1-pro` (preview; recommended PDF + briefing)            | 1M      |          $2.00 |          $12.00 |
+| `gemini-3-flash` (preview; recommended scoring)                   | 1M      |          $0.50 |           $3.00 |
 | `gemini-3.1-flash-lite` (preview; recommended filter + q-summary) | 1M      |          $0.25 |           $1.50 |
-| `gemini-2.5-pro` (stable)                                | 2M      |          $1.25 |          $10.00 |
-| `gemini-2.5-flash` (stable)                              | 1M      |          $0.30 |           $2.50 |
-| `gemini-2.5-flash-lite` (stable)                         | 1M      |          $0.10 |           $0.40 |
+| `gemini-2.5-pro` (stable)                                         | 2M      |          $1.25 |          $10.00 |
+| `gemini-2.5-flash` (stable)                                       | 1M      |          $0.30 |           $2.50 |
+| `gemini-2.5-flash-lite` (stable)                                  | 1M      |          $0.10 |           $0.40 |
 
 **Free-tier eligibility** (at reduced RPM/RPD caps):
 
@@ -85,19 +85,19 @@ Prices shown are text/image/video input at ≤200k prompt size. `gemini-3.1-pro`
 
 Google updates preview pricing periodically and the 3.x tier is still beta, so verify current rates at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to real spend.
 
-### Worked calculation: Balanced at 100 input papers (paid Tier 1)
+### Worked calculation: Balanced at 50 input papers (paid Tier 1)
 
-Assume 100 fetched papers, 60 pass the filter and get scored, 30 go through PDF analysis (hitting the default `maxDeepAnalysis` cap of 30).
+Reference case: 50 fetched papers, ~30 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
 
-| Stage                    | Model                  | Input tokens | Output tokens | Cost                                             |
-| ------------------------ | ---------------------- | ------------ | ------------- | ------------------------------------------------ |
-| Filter (100 abstracts)   | Gemini 3.1 Flash-Lite  | ~40,000      | ~5,000        | 40k × $0.25 / MTok + 5k × $1.50 = ~$0.02         |
-| Scoring (60 abstracts)   | Gemini 3 Flash         | ~48,000      | ~9,000        | 48k × $0.50 + 9k × $3 = ~$0.05                   |
-| PDF analysis (30 papers) | Gemini 3.1 Pro         | ~540,000     | ~60,000       | 540k × $2 + 60k × $12 = ~$1.80                   |
-| Quick summaries (30)     | Gemini 3.1 Flash-Lite  | ~45,000      | ~12,000       | 45k × $0.25 + 12k × $1.50 = ~$0.03               |
-| Briefing synthesis       | Gemini 3.1 Pro         | ~12,000      | ~3,000        | 12k × $2 + 3k × $12 = ~$0.06                     |
-| Hallucination audit      | Gemini 3.1 Pro         | ~8,000       | ~600          | 8k × $2 + 0.6k × $12 = ~$0.02                    |
-| **Total, list price**    |                        |              |               | **~$1.97**                                       |
+| Stage                    | Model                 | Input tokens | Output tokens | Cost                                       |
+| ------------------------ | --------------------- | ------------ | ------------- | ------------------------------------------ |
+| Filter (50 abstracts)    | Gemini 3.1 Flash-Lite | ~20,000      | ~2,500        | 20k × $0.25 / MTok + 2.5k × $1.50 = ~$0.01 |
+| Scoring (30 abstracts)   | Gemini 3 Flash        | ~24,000      | ~4,500        | 24k × $0.50 + 4.5k × $3 = ~$0.03           |
+| PDF analysis (10 papers) | Gemini 3.1 Pro        | ~180,000     | ~20,000       | 180k × $2 + 20k × $12 = ~$0.60             |
+| Quick summaries (10)     | Gemini 3.1 Flash-Lite | ~15,000      | ~4,000        | 15k × $0.25 + 4k × $1.50 = ~$0.01          |
+| Briefing synthesis       | Gemini 3.1 Pro        | ~6,000       | ~2,500        | 6k × $2 + 2.5k × $12 = ~$0.04              |
+| Hallucination audit      | Gemini 3.1 Pro        | ~4,000       | ~500          | 4k × $2 + 0.5k × $12 = ~$0.01              |
+| **Total, list price**    |                       |              |               | **~$0.70**                                 |
 
 Google doesn't wire in Aparture's prompt caching, so repeat runs pay the same list price.
 
@@ -105,7 +105,7 @@ Google doesn't wire in Aparture's prompt caching, so repeat runs pay the same li
 
 Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-analysis cost stops growing. Stages 2 and 3 scale roughly linearly, but at Gemini's paid-tier Flash pricing they stay well under $0.25 even at 250 papers:
 
-- **25 papers in** (15 PDFs): ~$0.90 list / all free on Flash-only free tier
+- **50 papers in** (10 PDFs): ~$0.70 list / all free on Flash-only free tier (reference case above)
 - **100 papers in** (30 PDFs, capped): ~$2.00 list
 - **250 papers in** (30 PDFs, capped): ~$2.10 list — PDF analysis plateaus; filter + scoring barely budge
 
@@ -113,11 +113,11 @@ Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-
 
 If you set every slot to its free-tier alternative from the Recommended models table — `gemini-2.5-flash-lite` for filter, `gemini-2.5-flash` for scoring and quick summaries, `gemini-2.5-pro` for PDF and briefing — a fresh account can run Aparture's full end-to-end pipeline without spending anything, subject only to daily request caps.
 
-| Input papers | Cost/run                                  |
-| ------------ | ----------------------------------------- |
-| 25           | $0.00                                     |
-| 100          | $0.00 (watch daily request caps)          |
-| 250          | $0.00 at pricing, may hit daily caps      |
+| Input papers | Cost/run                             |
+| ------------ | ------------------------------------ |
+| 25           | $0.00                                |
+| 100          | $0.00 (watch daily request caps)     |
+| 250          | $0.00 at pricing, may hit daily caps |
 
 This is the main argument for Google AI as the first-run provider.
 

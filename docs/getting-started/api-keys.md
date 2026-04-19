@@ -57,37 +57,37 @@ All three providers follow the same pipeline: quick filter runs on every input p
 
 Because Stage 4 caps at the top N, cost flattens at high input volumes — PDF analysis dominates on small runs, filter + scoring dominate on large ones.
 
-Per-stage breakdown for Balanced picks, with the default cap of N=30 PDFs. Totals are list price (no caching); caching discount applies on repeat runs.
+Per-stage breakdown for Balanced picks. The reference case is a run where 50 papers are fetched, ~30 pass the filter to scoring, and 10 reach deep PDF analysis; the 250-paper column shows what happens at a high input volume where the PDF cap (default 30) kicks in. Totals are list price (no caching); caching discount applies on repeat runs.
 
 ### Anthropic Balanced
 
-| Stage                   | Model             | 100 papers in | 250 papers in |
-| ----------------------- | ----------------- | ------------: | ------------: |
-| Filter                  | Claude Haiku 4.5  |         $0.07 |         $0.16 |
-| Scoring                 | Claude Sonnet 4.6 |         $0.28 |         $0.70 |
-| PDFs + briefing + audit | Claude Opus 4.7   |         $4.40 |         $4.40 |
-| Quick summaries         | Claude Haiku 4.5  |         $0.11 |         $0.11 |
-| **Total / run**         |                   |    **~$4.90** |    **~$5.40** |
+| Stage                   | Model             | 50 papers in | 250 papers in |
+| ----------------------- | ----------------- | -----------: | ------------: |
+| Filter                  | Claude Haiku 4.5  |        $0.03 |         $0.16 |
+| Scoring                 | Claude Sonnet 4.6 |        $0.14 |         $0.70 |
+| PDFs + briefing + audit | Claude Opus 4.7   |        $1.52 |         $4.40 |
+| Quick summaries         | Claude Haiku 4.5  |        $0.04 |         $0.11 |
+| **Total / run**         |                   |   **~$1.75** |    **~$5.40** |
 
 ### Google Balanced
 
-| Stage                   | Model                 | 100 papers in | 250 papers in |
-| ----------------------- | --------------------- | ------------: | ------------: |
-| Filter                  | Gemini 3.1 Flash-Lite |         $0.02 |         $0.04 |
-| Scoring                 | Gemini 3 Flash        |         $0.05 |         $0.13 |
-| PDFs + briefing + audit | Gemini 3.1 Pro        |         $1.88 |         $1.88 |
-| Quick summaries         | Gemini 3.1 Flash-Lite |         $0.03 |         $0.03 |
-| **Total / run**         |                       |    **~$2.00** |    **~$2.10** |
+| Stage                   | Model                 | 50 papers in | 250 papers in |
+| ----------------------- | --------------------- | -----------: | ------------: |
+| Filter                  | Gemini 3.1 Flash-Lite |        $0.01 |         $0.04 |
+| Scoring                 | Gemini 3 Flash        |        $0.03 |         $0.13 |
+| PDFs + briefing + audit | Gemini 3.1 Pro        |        $0.65 |         $1.88 |
+| Quick summaries         | Gemini 3.1 Flash-Lite |        $0.01 |         $0.03 |
+| **Total / run**         |                       |   **~$0.70** |    **~$2.10** |
 
 ### OpenAI Balanced
 
-| Stage                   | Model        | 100 papers in | 250 papers in |
-| ----------------------- | ------------ | ------------: | ------------: |
-| Filter                  | GPT-5.4 Nano |         $0.01 |         $0.03 |
-| Scoring                 | GPT-5.4 Mini |         $0.08 |         $0.23 |
-| PDFs + briefing + audit | GPT-5.4      |         $2.36 |         $2.36 |
-| Quick summaries         | GPT-5.4 Nano |         $0.02 |         $0.02 |
-| **Total / run**         |              |    **~$2.50** |    **~$2.70** |
+| Stage                   | Model        | 50 papers in | 250 papers in |
+| ----------------------- | ------------ | -----------: | ------------: |
+| Filter                  | GPT-5.4 Nano |        $0.01 |         $0.03 |
+| Scoring                 | GPT-5.4 Mini |        $0.04 |         $0.23 |
+| PDFs + briefing + audit | GPT-5.4      |        $0.82 |         $2.36 |
+| Quick summaries         | GPT-5.4 Nano |        $0.01 |         $0.02 |
+| **Total / run**         |              |   **~$0.90** |    **~$2.60** |
 
 Prompt caching (explicit on Anthropic, automatic on OpenAI, not wired for Google) takes another 20–40% off on repeat runs with the same profile.
 
