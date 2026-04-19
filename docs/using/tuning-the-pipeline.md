@@ -2,7 +2,7 @@
 
 Once you've produced a few briefings and know what the defaults feel like, you'll usually want to tune the pipeline — which models run where, how many papers get deep-analysed, how many calls fire in parallel, which optional stages run at all. All of those knobs live in the **Settings** panel (sidebar → Settings), and this page walks through them.
 
-The framing that helps most: each stage costs roughly 10× more per paper than the one before it, so tuning is mostly about making sure the expensive stages only see the papers worth spending on. The Settings panel is designed around that idea too — the model slots come first, the cheap stages are small text boxes under Advanced Options, and the review gates live at the bottom.
+Each stage costs roughly 10× more per paper than the one before it, so most of the tuning game is making sure the expensive stages only see the papers worth spending on. The Settings panel is organised around that idea too: the model slots come first, the cheap stages sit in small text boxes under Advanced Options, and the review gates live at the bottom.
 
 ## The mental model
 
