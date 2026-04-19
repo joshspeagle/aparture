@@ -1,38 +1,38 @@
 # The pipeline
 
-A tour of Aparture's six-stage paper-to-briefing pipeline — what each stage does, how long it takes, how much it costs, and where it can pause for you to weigh in.
+A tour of Aparture's paper-to-briefing pipeline — what each stage does, what it reads and writes, and where it can pause for you to weigh in.
 
-## The six stages at a glance
+## The stages at a glance
 
-Every run passes through the same waterfall. Each stage reads the output of the one before it, does less work than the previous one (because papers have been filtered out), and uses a more expensive model as the stakes go up.
+Every run passes through the same waterfall. Each stage reads the output of the previous one, does less work than the previous one (because papers have been filtered out along the way), and uses a more capable model as the stakes go up.
 
 ```
 ┌──────────────────┐
-│ 1. fetchPapers   │  arXiv API · no LLM · 10–60 s · free
+│ 1. fetchPapers   │  arXiv API · no LLM · free
 └────────┬─────────┘
          │ all papers in window
          ▼
 ┌──────────────────┐
-│ 2. quickFilter   │  fast model · YES / MAYBE / NO · 5–30 s/100 papers
-└────────┬─────────┘  ~$0.0001–0.0003 per paper
+│ 2. quickFilter   │  fast model · YES / MAYBE / NO
+└────────┬─────────┘  ~fractions of a cent per paper
          │
          │   ⏸  pauseAfterFilter (default: on) — review buckets, override verdicts
          │
          │ YES + MAYBE papers
          ▼
 ┌──────────────────┐
-│ 3. scoreAbstracts│  scoring model · 0–10 scores + justifications
-└────────┬─────────┘  10–60 s/100 papers · ~$0.0005–0.002 per paper
+│ 3. scoreAbstracts│  scoring model · 0.0–10.0 with justification
+└────────┬─────────┘  ~fractions of a cent per paper
          │ scored papers (score > 0)
          ▼
 ┌──────────────────┐
 │ 3.5. postProcess │  comparative re-score of top N (default 50)
-└────────┬─────────┘  5–20 s · ~$0.001–0.003 per paper · optional
+└────────┬─────────┘  ~fractions of a cent per paper · optional
          │ re-ranked papers
          ▼
 ┌──────────────────┐
 │ 4. analyzePDFs   │  deep PDF model · full-text analysis + final score
-└────────┬─────────┘  30–120 s for top 10 · ~$0.02–0.10 per paper
+└────────┬─────────┘  ~a few cents per paper
          │
          │   ⏸  pauseBeforeBriefing (default: on) — star / dismiss / comment
          │
@@ -40,40 +40,38 @@ Every run passes through the same waterfall. Each stage reads the output of the 
          ▼
 ┌──────────────────┐
 │ 5. briefing      │  quick summaries → synthesis → hallucination audit
-└──────────────────┘  15–60 s · ~$0.05–0.30 per briefing
+└──────────────────┘  ~a few cents per briefing
 ```
 
 Two optional pause gates let you steer the run before expensive work happens. Both are on by default and can be toggled in Settings → Review & confirmation.
 
+Wall-clock duration varies widely with provider latency, paper volume, and which models are in which slots, so this page doesn't quote seconds. Briefings usually land within a few minutes on a hundred-paper day at the default concurrency; the longest stretch tends to be Stage 4 because it reads full PDFs.
+
 ## Stage 1: fetch papers
 
-**What it does.** Queries the arXiv API for every paper in your selected categories, within a configurable date window (default: last 24 hours). If the window returns too few papers, Aparture widens it automatically — trying 3, 7, and then 14 days back before giving up. Deduplicates cross-listed papers and sorts chronologically.
+**What it does.** Queries the arXiv API for every paper in your selected categories, within a configurable date window (default: last 24 hours). If the window returns too few papers, Aparture widens it automatically — trying 3, 7, and then 14 days back before giving up. Cross-listed papers are deduplicated and the list is sorted chronologically.
 
 **Inputs.** `selectedCategories`, `daysBack`.
 
 **Output.** A list of raw papers with title, abstract, authors, and PDF URL.
 
-**Cost.** $0. The arXiv API is free.
-
-**Duration.** 10–60 seconds, depending on category count and arXiv load.
+**Cost.** Free. The arXiv API carries no charge.
 
 **Pause gates.** None.
 
 ## Stage 2: quick filter
 
-**What it does.** Batches papers and asks a fast, cheap model to give each one a YES / MAYBE / NO verdict against your research profile, along with a one-sentence summary and justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. Can be disabled entirely with `useQuickFilter: false`.
+**What it does.** Batches papers and asks a fast, cheap model to give each one a <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict against your research profile, along with a one-sentence summary and a short justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. The stage can be disabled entirely via `useQuickFilter: false` in config.
 
-You can override any verdict in the review-gate UI. Overrides are recorded as `filter-override` feedback events and feed into the Suggest Improvements flow as a "profile may be too narrow or too broad" signal.
+You can override any verdict at the review gate. Overrides are recorded as `filter-override` feedback events and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
 
-**Inputs.** Papers from stage 1, your `profile.content`, `filterModel` (default: `gemini-3.1-flash-lite`), `filterBatchSize` (default: 3), `categoriesToScore` (default: `['YES', 'MAYBE']`).
+**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.1-flash-lite`), `filterBatchSize` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
 
-**Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only YES + MAYBE advance to stage 3.
+**Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only the verdicts listed in `categoriesToScore` advance to Stage 3.
 
-**Cost.** ~$0.0001–0.0003 per paper (~50–150 input tokens).
+**Cost.** Fractions of a cent per paper — roughly 50–150 input tokens each.
 
-**Duration.** 5–30 seconds per 100 papers.
-
-**Pause gate.** `pauseAfterFilter` (default: on). The pipeline halts at the `filter-review` stage. The UI displays the three buckets and lets you click any paper's verdict pill to override it before proceeding.
+**Pause gate.** `pauseAfterFilter` (default: on). The pipeline halts at the `filter-review` stage. The review UI shows the three buckets and lets you click any paper's verdict button to move it before continuing.
 
 ## Stage 3: score abstracts
 
@@ -81,7 +79,7 @@ You can override any verdict in the review-gate UI. Overrides are recorded as `f
 
 ### How the score is calculated
 
-The scoring prompt asks the model to evaluate each paper on two dimensions (0–10 each) and average them with equal weight:
+The scoring prompt asks the model to evaluate each paper on two dimensions (0–10 each) and average them with equal weight.
 
 **Research alignment** — how well the paper matches your profile:
 
@@ -105,81 +103,73 @@ The scoring prompt asks the model to evaluate each paper on two dimensions (0–
 
 **Final score = (Alignment × 0.5) + (Quality × 0.5)**, to one decimal place.
 
-The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment *and* a paper the model considers genuinely transformative — it's a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
+The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment *and* a paper the model considers genuinely transformative — a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
 
-This rubric lives in the `pages/api/score-abstracts.js` prompt; see [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration (e.g., purely applied work that shouldn't cap at 6 on quality).
+This rubric lives in the `pages/api/score-abstracts.js` prompt. See [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration — for instance, if you mostly read applied work that shouldn't cap at 6 on quality.
 
-**Inputs.** Papers from stage 2, `profile.content`, `scoringModel` (default: `gemini-3-flash`), `scoringBatchSize` (default: 3).
+**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3-flash`), `scoringBatchSize` (default 3).
 
 **Output.** `scoredPapers` with `relevanceScore`, `scoreJustification`, and `initialScore` (preserved for post-processing). Papers that failed to score are kept separately in `failedPapers` and don't advance.
 
-**Cost.** ~$0.0005–0.002 per paper (~200–600 input tokens).
-
-**Duration.** 10–60 seconds per 100 papers.
+**Cost.** A fraction of a cent per paper — roughly 200–600 input tokens each.
 
 **Pause gates.** None.
 
 ## Stage 3.5: post-process scores
 
-**What it does.** An optional consistency pass on the top N scored papers (default: 50). Papers are shuffled and compared head-to-head in batches, and the model adjusts scores up or down to bring outliers into line with the broader ranking. Records `adjustmentReason` and confidence (HIGH / MEDIUM / LOW) alongside the new score. Disable with `enableScorePostProcessing: false`.
+**What it does.** An optional consistency pass on the top N scored papers (default 50). Papers are shuffled and compared head-to-head in small batches, and the model adjusts scores up or down to bring outliers into line with the broader ranking. Records `adjustmentReason` and a confidence rating (HIGH / MEDIUM / LOW) alongside the new score. Disable with `enableScorePostProcessing: false`.
 
-**Why it matters.** Different batches can drift in calibration — early batches may score stricter than late ones. This pass normalises the ranking without changing which papers advance.
+**Why it matters.** Stage 3 scores each paper independently, which can let different batches drift in calibration — early batches may score stricter than late ones, or vice versa. The post-processing pass normalises the ranking without changing which papers advance.
 
-**Inputs.** Top N papers from stage 3, `profile.content`, `postProcessingModel` (default: `gemini-3-flash`), `postProcessingCount` (default: 50), `postProcessingBatchSize` (default: 5).
+**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5).
 
 **Output.** `scoredPapers` updated with `adjustedScore`, `adjustmentReason`, and a `scoreAdjustment` trail.
 
-**Cost.** ~$0.001–0.003 per paper (~300–800 tokens per comparison).
-
-**Duration.** 5–20 seconds (only touches the top N).
+**Cost.** A fraction of a cent per paper, and the stage only touches the top N.
 
 **Pause gates.** None.
 
 ## Stage 4: analyze PDFs
 
-**What it does.** For the top N papers (default: 30 via `maxDeepAnalysis`), fetches the full PDF from arXiv and asks a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, a final relevance score. Both the pre-PDF and final scores are preserved, so you can see how much the PDF moved the score.
+**What it does.** Takes the top N papers by score (`maxDeepAnalysis`, default 30), fetches each full PDF from arXiv, and sends it to a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, and a final relevance score. Both the pre-PDF and final scores are preserved, so you can see how much the full-text read moved the score.
 
-PDF downloads are serialised server-side (~5s between arXiv requests) to respect arXiv's rate limits, but the LLM analyses themselves run in parallel via a worker pool. Default concurrency is 3 workers (tunable via `pdfAnalysisConcurrency`, 1–20). If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
+The stage runs with a worker pool. PDF downloads are serialised server-side (~5 seconds between arXiv requests) to respect arXiv's rate limits, but once the PDFs are in hand the LLM analyses themselves run in parallel. Default concurrency is 3, tunable via `pdfAnalysisConcurrency` (1–20). If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
 
-On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, then the remaining workers start and hit the cache on every subsequent paper. This trades ~3–6 s on the first paper for ~90% input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
+On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, and the remaining workers then start and hit the cache on every subsequent paper. This costs a few extra seconds on the first paper in exchange for a large input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
 
-**Inputs.** Top N papers from stage 3.5, `profile.content`, `pdfModel` (default: `gemini-3.1-pro`), `pdfAnalysisConcurrency` (default: 3).
+**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.1-pro`), `pdfAnalysisConcurrency` (default 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
-**Cost.** ~$0.02–0.10 per paper (~4,000–25,000 input tokens depending on PDF length). This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens by ~90%, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
+**Cost.** A few cents per paper. This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens substantially, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
 
-**Duration.** 30–120 seconds for the top 10 papers at the default concurrency of 3. Higher concurrency compresses wall-clock time but is bounded by provider rate limits (see [Tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
-
-**Pause gates.** None within the stage, but a gate fires after it completes.
+**Pause gate.** None within the stage, but `pauseBeforeBriefing` fires after it completes.
 
 ## Stage 5: briefing synthesis
 
 After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
-1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, comments from your feedback events).
-2. **Generate quick summaries** in parallel (five at a time) via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels.
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default: `gemini-3.1-pro`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
+1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
+2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.1-pro`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
 4. **Call `/api/check-briefing`** to audit the briefing against the source corpus — a second, independent LLM pass looks for claims that aren't supported by the papers' abstracts, quick summaries, or full reports.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
 6. **Save** the briefing + generation metadata to localStorage with a 90-day rolling window.
 
-**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression run in parallel just before synthesis, default `gemini-3.1-flash-lite`), `quickSummaryConcurrency` (default 5, clamped 1–20), `briefingRetryOnYes` / `briefingRetryOnMaybe` retry policy, accumulated feedback events.
-
 Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model (no caching), and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
+
+**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events.
 
 **Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports.
 
-**Cost.** ~$0.05–0.30 per briefing:
+**Cost.** A few cents per briefing on typical setups:
 
-- Quick summaries: ~$0.005–0.02 per paper (short model, 1–2 page compression).
-- Synthesis: ~$0.02–0.15 (~3,000–8,000 input tokens).
-- Hallucination check: ~$0.02–0.10 (~2,000–5,000 tokens).
-- Retry if triggered: +~$0.02–0.15 for a second synthesis pass.
+- Quick summaries: a small amount per paper (short model, one-page compression).
+- Synthesis: a few thousand input tokens.
+- Hallucination check: another few thousand tokens.
+- Retry, if triggered: roughly doubles the synthesis + check cost.
 
-**Duration.** 15–60 seconds. Quick summaries run in parallel; synthesis and check run sequentially.
-
-**Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after stage 4 finishes, giving you a chance to star, dismiss, or comment on papers before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
+**Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after Stage 4 finishes, giving you a chance to star, dismiss, or comment on papers before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
 
 ## The hallucination-retry loop
 
@@ -225,7 +215,7 @@ Two checkboxes in Settings → Review & confirmation control when retries fire:
 - **`briefingRetryOnYes`** — retry on a confident hallucination verdict.
 - **`briefingRetryOnMaybe`** — retry on an uncertain verdict too (more cautious, more expensive).
 
-When a retry runs, the synthesis prompt gets a retry hint summarising the flagged claims, and the audit runs again on the retried briefing. Flagged claims from the final pass are shown as a collapsible disclosure in the briefing UI, so you can see what the auditor flagged even if you decide to trust the briefing anyway.
+When a retry runs, the synthesis prompt gets a retry hint summarising the flagged claims, and the audit runs again on the retried briefing. Flagged claims from the final pass are shown as an expandable section in the briefing UI, so you can see what the auditor flagged even if you decide to trust the briefing anyway.
 
 ::: tip Only one retry per briefing
 The retry path fires at most once — a design choice to avoid runaway loops at the cost of accepting one stuck verdict. If the retry also flags, the second briefing is what you see.
@@ -233,18 +223,18 @@ The retry path fires at most once — a design choice to avoid runaway loops at 
 
 ## The Download Report vs the briefing
 
-Two outputs come out of a successful run, and they're different enough that conflating them causes persistent confusion.
+A successful run produces two separate outputs, and conflating them causes persistent confusion.
 
 The **briefing** is the editorial product: synthesis LLM output with an executive summary, themes, per-paper cards, and a hallucination audit. Stage 5 produces it, `components/briefing/BriefingView.jsx` renders it, and `useBriefing` saves it to the sidebar archive. It's the page you open day-to-day.
 
 The **Download Report** is a flat markdown export compiled by `lib/analyzer/exportReport.js` from Stage 4's per-paper deep-analysis outputs. It has no editorial framing, no theme grouping, no profile-shaped "why it matters" — just the raw technical write-ups stitched together, one after another, with scores and metadata. No LLM call happens at export time; it's a deterministic compile of cached outputs. The card surfaces as soon as Stage 4 finishes, which means **it's visible during the pre-briefing pause** — you can export the technical detail without waiting on or running briefing synthesis at all.
 
-Neither depends on the other existing. Rule of thumb: you'll read a briefing, you'll archive or share a report. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you want only the report (e.g., unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
+Neither depends on the other existing. Rule of thumb: you'll read a briefing, you'll archive or share a report. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
 
 ## Reading this alongside the UI
 
-- The **Progress Timeline** (left side of the main area during a run) shows each of the six stages with a status icon and live progress counter.
-- The **review-gate UIs** appear when `pauseAfterFilter` or `pauseBeforeBriefing` fire — they occupy the main area until you click "Continue to [next stage]".
+- The **Progress Timeline** (left side of the main area during a run) shows each of the stages with a status icon and a live progress counter.
+- The **review-gate UIs** appear when `pauseAfterFilter` or `pauseBeforeBriefing` fire — they occupy the main area until you click the Continue button.
 - The **Download Report** card appears after Stage 4, regardless of whether Stage 5 has run. See the section above for what's in it and how it differs from the briefing.
 
 ## Where to tune what
@@ -254,8 +244,12 @@ Neither depends on the other existing. Rule of thumb: you'll read a briefing, yo
 - **Tune the briefing output?** Edit `prompts/synthesis.md` — it takes effect on the next run, no rebuild needed. See [Prompts](/reference/prompts).
 - **Understand what stars and dismissals do?** They feed synthesis as engagement signals and become part of the briefing's framing. See [Giving feedback](/using/giving-feedback).
 
-## Next steps
+## Next
 
-- [Briefing anatomy →](/concepts/briefing-anatomy) — how the synthesis prompt produces each briefing section.
-- [Model selection →](/concepts/model-selection) — pick the right model for each stage.
-- [Tuning the pipeline →](/using/tuning-the-pipeline) — thresholds, batch sizes, review gates.
+[Briefing anatomy →](/concepts/briefing-anatomy) — how the synthesis prompt produces each section of the briefing.
+
+Also worth reading:
+
+- [**Tuning the pipeline**](/using/tuning-the-pipeline) — the Settings panel, knob by knob.
+- [**Model selection**](/concepts/model-selection) — picking the right model for each stage.
+- [**Review gates**](/using/review-gates) — what each pause shows and when to turn it off.

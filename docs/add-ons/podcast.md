@@ -1,101 +1,112 @@
 # Generating a podcast
 
-Aparture can't create audio directly, but it can build a bundle that [NotebookLM](https://notebooklm.google.com) turns into a commute-length podcast with two hosts discussing the day's papers. The flow: download a bundle from the briefing view, upload it to NotebookLM, paste a focus prompt, pick a duration, generate.
+Aparture doesn't produce audio directly. What it does is build a bundle of markdown sources plus a focus prompt, which you upload to [NotebookLM](https://notebooklm.google.com) — Google's hosted tool — and NotebookLM generates a two-host conversation about the day's papers. The whole flow takes a few minutes of active clicking on top of whatever NotebookLM needs to render the audio.
 
-This page covers what's in the bundle, how to upload it, and how to tune the podcast style.
+This page covers what's in the bundle, how the upload works, and the two places where you can tune podcast style.
 
 ## Is this worth setting up?
 
-The podcast flow is completely optional. You never need it to use Aparture, and plenty of users skip it entirely and just read their briefings.
-
-It's worth trying if you commute or exercise regularly and want to keep up with papers passively, if you retain information better from audio than text, or if you want to share a briefing with a co-author who isn't in the app.
-
-It's probably not worth it if you only read papers at a desk and don't want another tool in your workflow.
+The podcast flow is entirely optional. Plenty of users skip it and just read their briefings. It tends to earn its keep if you commute or exercise regularly and want to keep up passively, if audio sticks better for you than text, or if you want to share a briefing with a collaborator who isn't in Aparture. If most of your paper reading happens at a desk and you don't want another tool in the loop, skipping this add-on is perfectly reasonable.
 
 ## What's in the bundle
 
-Once a briefing exists, the **NotebookLM** card appears below the briefing in the main area. Clicking **Generate NotebookLM bundle** produces a ZIP file containing:
+Once a briefing exists, a <span class="ui-action">NotebookLM Podcast</span> card appears below it in the main area. Clicking <span class="ui-action">Generate NotebookLM bundle</span> downloads a ZIP file containing:
 
-- **`briefing.md`** — the full briefing (executive summary, themes, paper cards) as a single markdown source document for NotebookLM.
-- **`discussion-guide.md`** — a podcast outline generated from the briefing. Structures theme emphasis, paper-by-paper talking points, and pacing suggestions scaled to the target duration. This is the main "content" source for NotebookLM.
-- **One `.md` per paper** — each paper's deep-analysis full report, as its own source document. NotebookLM treats these as additional sources to pull details from during discussion.
-- **`focus-prompt.txt`** — a short prompt you paste into NotebookLM's audio-customisation textarea. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation.
+| File                     | Purpose                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `INSTRUCTIONS.md`        | The three-step upload workflow you're about to do. Not a NotebookLM source — read it and keep it local.   |
+| `briefing.md`            | The full briefing rendered as a single markdown source. Executive summary, themes, paper cards.           |
+| `discussion-guide.md`    | A podcast outline generated from the briefing — theme weighting, talking points, pacing, scaled to duration. The main "content" source NotebookLM reads from. |
+| `papers/<arxivId>.md`    | One file per paper, holding the Stage 4 deep-analysis report. NotebookLM uses these for detail during the conversation. |
+| `focus-prompt.txt`       | The prompt you paste into NotebookLM's audio-customisation box. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation. |
 
-The bundle is all plain markdown and text files, so you can inspect it before uploading.
+Everything is plain markdown or text, so you can inspect the bundle before uploading.
 
 ## Generating the bundle
 
-Under the NotebookLM card:
+Inside the NotebookLM card:
 
-1. **Duration** — dropdown with options 5, 10, 15, 20, 30 minutes. The discussion guide scales: 5 minutes covers 2-3 papers at headline depth; 30 minutes covers all papers with meaningful dive on the top 3-4.
-2. **Model** — dropdown for which model generates the discussion guide. Pick a capable model here (it's synthesising a podcast outline from the briefing); Claude Sonnet 4.6 or Gemini 3.1 Pro are reasonable defaults.
-3. **Generate NotebookLM bundle** — click to start. Takes 30-60 seconds. Progress shows inline.
+1. **Duration.** Drop-down with 5, 10, 15, 20, and 30 minute options. The discussion guide scales to the chosen length — a five-minute episode covers one theme and 2–3 papers at headline depth, a thirty-minute episode covers 3–4 themes with meaningful dives on the top papers. The scaling rules live in `lib/notebooklm/buildFocusPrompt.js` if you want to see the exact budget per tier.
+2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` — pick a capable one, since this is a synthesis task. `claude-sonnet-4.6` or `gemini-3.1-pro` are reasonable defaults.
+3. **Generate.** Click <span class="ui-action">Generate NotebookLM bundle</span>. Takes roughly 30–60 seconds; progress shows inline.
 
-When it's done, you'll get a downloaded ZIP file named something like `aparture-notebooklm-2026-04-17.zip`.
+When it's done, a ZIP file downloads with a name like `aparture-notebooklm-2026-04-17.zip`.
 
 ## Uploading to NotebookLM
 
-NotebookLM doesn't have an API, so this is a manual upload flow. Expect about 2-3 minutes of clicking.
+NotebookLM doesn't offer an API for notebook creation or audio generation, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
 
-1. Unzip the bundle locally.
-2. Open [notebooklm.google.com](https://notebooklm.google.com) in a browser. Sign in with a Google account if needed.
-3. Click **+ New notebook** (or similar — the NotebookLM UI is occasionally revised).
-4. You'll see a **Sources** panel. Click **+ Add source**, then **Upload files**.
-5. Select every `.md` file in the unzipped bundle — the briefing, the discussion guide, and each paper's report. (Don't upload `focus-prompt.txt` here; it goes somewhere else.)
+1. Unzip the bundle locally. NotebookLM doesn't accept ZIPs as sources.
+2. Open [notebooklm.google.com](https://notebooklm.google.com) and sign in with a Google account if needed.
+3. Create a new notebook.
+4. In the Sources panel, choose "Add source" → "Upload files" and select **every `.md` file** from the unzipped bundle at once — `briefing.md`, `discussion-guide.md`, and all of `papers/<arxivId>.md`.
+5. Do not upload `focus-prompt.txt` or `INSTRUCTIONS.md` as sources. They're for the next step and for you, respectively.
 6. Wait a few seconds for NotebookLM to index the sources.
-7. In the main notebook panel, find the **Audio Overview** section — look for a **Customize** button near the play button.
-8. Click **Customize**. A textarea appears.
-9. Paste the contents of `focus-prompt.txt` into the textarea.
-10. Click **Generate**. NotebookLM takes a few minutes to produce the audio.
+7. In the main panel, find the Audio Overview controls and click <span class="ui-action">Customize</span> (sometimes a pencil icon).
+8. Paste the entire contents of `focus-prompt.txt` into the customisation text box.
+9. Click <span class="ui-action">Generate</span>. NotebookLM takes a few minutes to render the audio — timing varies with queue depth on Google's side.
 
-When it's done, you'll have a 5-30 minute podcast in NotebookLM's Audio Overview. Play it, download it, or share the notebook.
+When it finishes, you'll have a 5–30 minute audio overview in the notebook. Play it in-browser, download it, or share the notebook link.
+
+::: info NotebookLM UI changes
+Google revises the NotebookLM interface periodically. Button names and panel locations drift. The bundle's `INSTRUCTIONS.md` is the version of these steps that ships with your bundle; if something doesn't match, trust that one over this page.
+:::
 
 ## What the focus prompt does
 
-The focus prompt is what distinguishes a generic "here's the content" podcast from one that sounds like two researchers actually discussing the day's papers. It tells NotebookLM's hosts:
+The focus prompt is what distinguishes a generic "read the sources aloud" podcast from one that sounds like two researchers talking through the day's papers. It carries:
 
-- The user's research context (from your Aparture profile).
-- How many papers to cover and at what depth (scaled to your chosen duration).
-- What kind of conversation to have — argument-focused, accessible, covering tensions rather than glossing.
-- What to skip (e.g. skip purely descriptive parts of papers you marked as priorities).
+- Your research context, paraphrased from the profile text.
+- How many papers to cover and at what depth, scaled to the duration you picked.
+- What kind of conversation to have — argument-focused, willing to surface tensions, careful with citations.
+- What to skip, usually purely descriptive or low-scored material.
 
-The prompt is generated at bundle-build time, so it already reflects the specific briefing's content and your duration choice.
+The focus prompt is generated when you build the bundle, so it already reflects the specific briefing and duration. You don't need to edit it — paste it in as-is.
 
 ## Tuning podcast style
 
-Two places to tune podcast output, and they behave differently.
+Two places shape the output, and they behave differently.
 
-### `prompts/notebooklm-discussion-guide.md` — the outline template (hot-reloadable)
+### `prompts/notebooklm-discussion-guide.md` — the outline template
 
-This is the prompt that generates `discussion-guide.md`. It controls:
+This is the prompt that produces `discussion-guide.md`. It controls how themes are ordered and weighted in the outline, which papers get deep-dive coverage versus brief mentions, the overall conversation arc (open, themes, transitions, close), and the pruning rules when the outline would overrun the duration budget.
 
-- How themes are ordered and weighted in the outline.
-- Which papers get deep-dive coverage versus brief mentions.
-- The overall conversation structure (open, themes, transitions, close).
-- Pruning rules when the outline would run over budget.
+Edit this file and the next bundle you generate will use the new template — the server re-reads it on each call, no rebuild needed. This is usually the right place to experiment with podcast structure.
 
-Edit this file and the next bundle you generate will use the new template — no rebuild needed. Good for iterating on podcast structure.
+### `lib/notebooklm/buildFocusPrompt.js` — the focus prompt builder
 
-### `lib/notebooklm/buildFocusPrompt.js` — the focus prompt (embedded, requires restart)
+This is a JavaScript function (not a markdown template) that produces `focus-prompt.txt`. It controls the duration-scaled depth strategy — how time is allocated across deep-dives versus brief mentions at each duration tier — along with theme-count scaling and the conversation-style directives embedded in the focus prompt.
 
-This is a JavaScript function (not a markdown template) that writes the contents of `focus-prompt.txt`. It controls:
-
-- Duration-scaled depth strategy: how much time to allocate to deep-dives versus brief mentions at each duration tier.
-- Theme count scaling with duration.
-- Pacing and conversation-style directives embedded in the focus prompt.
-
-Because this lives in JS, changes require a server restart to take effect. Less friendly for quick experimentation, but more powerful — you can condition the prompt on the specific briefing content and duration programmatically.
+Because this lives in JS, changes require a server restart to take effect. It's less convenient for quick iteration but more powerful, since you can condition the prompt on briefing content or duration programmatically.
 
 For the full prompt reference, see [Reference: prompts](/reference/prompts).
 
+## CLI automation
+
+The CLI tools in `cli/` can drive the full bundle + upload + audio-generation flow unattended. The entry points:
+
+```bash
+npm run analyze            # Full workflow: report + bundle + podcast
+npm run analyze:document   # Bundle only; skip podcast generation
+npm run analyze:podcast    # Podcast only; reuse existing bundle files
+```
+
+These use Playwright to drive a headed browser through NotebookLM. The first podcast run requires an interactive Google sign-in; subsequent runs reuse the cached session at `temp/notebooklm-profile/`. Don't delete that directory unless you're willing to re-authenticate.
+
+The automation in `cli/notebooklm-automation.js` is brittle in the way any UI-scraping tool is brittle — Google updates the NotebookLM interface periodically, and selectors occasionally break. If the CLI fails mid-run, falling back to the manual upload flow above usually works.
+
 ## Common issues
 
-- **The audio sounds generic.** Likely cause: you pasted the focus prompt into the wrong textarea, or forgot to paste it at all. The Customize → textarea flow is the one that shapes the podcast.
-- **The hosts skip a paper you cared about.** Likely cause: the paper wasn't starred, and at your chosen duration the discussion guide de-prioritised it. Star the paper and re-generate the bundle.
-- **NotebookLM runs out of context / cuts off.** Likely cause: too many sources. Drop the individual-paper markdown files and upload only the briefing + discussion guide; let NotebookLM infer details from those.
-- **The bundle takes forever to generate.** Likely cause: a slow briefing model. Switch to Gemini Flash or Claude Sonnet for this specific generation.
+**The audio sounds generic.** Usually the focus prompt wasn't pasted, or it was pasted into the wrong text box. The <span class="ui-action">Customize</span> → text-box flow is what shapes the podcast; without it, NotebookLM produces a default-tone summary.
+
+**The hosts skip a paper you wanted covered.** At shorter durations, the outline prunes aggressively by score. Star the paper in the briefing, re-generate the bundle, and re-upload. Starred papers get priority in the discussion guide.
+
+**NotebookLM hits a context limit or truncates.** Too many sources can do this. Try uploading only `briefing.md` and `discussion-guide.md`, dropping the per-paper reports. NotebookLM can usually infer enough from the briefing alone.
+
+**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (Gemini 3 Flash, Claude Sonnet 4.6) cuts this noticeably.
 
 ## Next
 
-- You want to tune the briefing itself, which is the upstream input. → [Reading a briefing](/using/reading-a-briefing) and [Tuning the pipeline](/using/tuning-the-pipeline)
-- You want to edit the prompt files that shape the podcast. → [Reference: prompts](/reference/prompts)
+- [Reading a briefing](/using/reading-a-briefing) — the briefing is the upstream input, so tuning it tunes the podcast.
+- [Tuning the pipeline](/using/tuning-the-pipeline) — thresholds and model choices that shape what reaches the bundle.
+- [Reference: prompts](/reference/prompts) — every prompt file Aparture ships, including the discussion-guide template.

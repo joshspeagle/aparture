@@ -1,136 +1,123 @@
 # Refining over time
 
-Aparture is designed to close a loop. You read a briefing, react (stars, dismisses, comments, filter overrides), your feedback accumulates, and eventually you click **Suggest Improvements** — at which point an LLM reads your current profile plus everything you've marked and proposes a revised profile with per-change rationales. You pick which changes to apply and move on.
+Once you've been giving feedback for a week or two, your profile will usually be due for an update. Rather than rewriting it by hand — trying to remember everything you starred, every paper you wished the pipeline had dismissed — you can hand the accumulated feedback to a flow that proposes profile edits. It reads your current profile plus everything you've marked and returns a list of small, targeted changes, each with its own rationale. You pick which ones to apply.
 
-This page covers that loop: how it works, what the UI looks like, and when to run it versus skip.
+This page covers that flow: what it sees, what the review step looks like, and how often it's worth running.
 
 ## The loop in one sentence
 
-Read the briefing → react (stars, dismisses, comments, filter overrides) → accumulate feedback → click Suggest Improvements → review per-hunk diff → accept some or all changes → next briefing uses the new profile.
+Read a briefing → react (stars, dismisses, comments, filter overrides) → let feedback accumulate → click <span class="ui-action">Suggest improvements →</span> → review the proposed changes one at a time → accept any subset → the next briefing uses the revised profile.
 
-That's it. Most of the details below are about the "review per-hunk diff" step, because that's where you actually make decisions.
+Most of the detail below is about the review step, because that's where you actually make decisions.
 
-## What Suggest-Improvements sees
+## What the flow sees
 
-When you click the **Suggest improvements** button (top of the Feedback panel, or in the Your Profile card's "Suggest improvements based on feedback" section), Aparture sends an LLM:
+The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same flow. When you click it, the dialog that opens lists every new feedback event since your last profile revision, with checkboxes so you can include or exclude specific events. All are included by default.
+
+When you click <span class="ui-action">Generate suggestion</span>, the model receives:
 
 - Your current profile text.
-- Every paper you've **starred** or **dismissed** (latest state per paper — if you starred then un-starred, the LLM sees it as un-starred).
-- Every paper with a **filter override** (current verdict, and what the override signals: too-narrow or too-broad).
-- Your most recent **paper comments** — capped at ~30 per type (so very long comment histories are trimmed with a transparent notice).
-- Your most recent **general comments** — same cap.
+- Every paper you've **starred** or **dismissed** — the current state per paper, so if you starred then un-starred a paper, the model only sees that it's un-starred.
+- Every paper with a **filter override** — the current verdict plus what the override signals (too-narrow or too-broad).
+- Your most recent **paper comments** — capped at the most recent 30, so long comment histories get trimmed. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
+- Your most recent **general comments** — same 30-comment cap.
 
-The LLM's job is to read these signals and propose surgical edits to your profile that bring it into better alignment with what your feedback says you want.
+The model's job is to read these signals and propose surgical edits that bring your profile into better alignment with what the feedback suggests you actually want.
 
 ## Suggested changes, not a rewrite
 
-The output isn't a rewrite. It's a list of targeted changes, each with:
+The output isn't a new profile. It's a list of atomic, non-overlapping changes, each with:
 
-- An **anchor** — an exact substring in your current profile that the change targets.
-- An **edit type** — `replace`, `insert`, or `delete`.
-- New **content** (for replace and insert).
-- A **rationale** — why this change was proposed, citing specific feedback.
+| Field          | What it holds                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| **Edit type**  | `replace`, `insert`, or `delete`.                                                                         |
+| **Anchor**     | An exact substring from your current profile that the change targets.                                     |
+| **Content**    | The new text (for replace and insert). Empty for delete.                                                  |
+| **Rationale**  | A short line explaining why, usually citing specific feedback events by arXiv ID.                         |
 
-Changes are guaranteed non-overlapping: if two candidate improvements would touch adjacent text, the LLM merges them into one change. So you can pick any subset of the proposed changes and apply them safely.
+Changes are guaranteed non-overlapping — if two candidate edits would touch adjacent text, the model merges them into one — so you can accept any subset and the result is still well-formed. The API validates this server-side and retries once if the model returns overlapping edits.
 
-## The per-hunk diff UI
+## The review dialog
 
-When suggestions come back, a dialog opens showing each proposed change as a checkable card. Top to bottom:
+When suggestions come back, the dialog swaps to a per-change review. Top to bottom:
 
 ### Change cards
 
-Each card shows:
+Each proposed change renders as a card with a checkbox (checked by default), a small label showing the edit type, a diff preview, and the model's rationale below.
 
-- **A checkbox** (defaults to checked). Uncheck it to exclude this change from the final profile.
-- **The edit type** — "Replace," "Insert," or "Delete" — as a small label.
-- **A diff preview** — the original text (strikethrough in red) and the proposed text (in green), side by side or transitioned with an arrow.
-- **The rationale** — a short italic line explaining why this change was proposed, usually citing specific feedback (e.g. "You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this change adds MoE to your active topics and removes sparse attention").
+The diff preview uses the same colour conventions throughout the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey *"after: …"* context because the anchor itself isn't being touched — the new content is going in right after it.
 
-Scroll through the cards, read the rationales, uncheck anything you don't like.
+Rationales tend to look like *"You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this adds MoE to your active topics and removes sparse attention."* Read them. Uncheck anything whose reasoning you don't buy.
 
 ### Cumulative preview
 
-Beneath the card list is a live cumulative preview showing the profile that would result from your _current_ selection. Check and uncheck cards; watch the preview update in real time.
+Below the cards sits a live preview showing the profile you'd end up with from your current selection, in serif prose the way the LLM will read it. Check and uncheck cards and the preview updates in real time.
 
 ::: tip
-The cumulative preview is the thing to watch in this dialog — it lets you see exactly what your profile will look like before you commit. If the preview looks weird (a crucial paragraph has disappeared, or an anti-interest line reads oddly), toggle cards until it looks right.
+The cumulative preview is the thing to watch here — it's the only place that shows the final profile as a whole. If it looks wrong as you toggle changes (a paragraph has disappeared, an anti-interest line reads oddly, the structure has drifted), adjust the checkboxes until it reads the way you want.
 :::
 
-### Apply button
+### Apply
 
-At the bottom, the Apply button reflects your current selection:
-
-- **"Apply 0 of 5"** (disabled) — when nothing is checked.
-- **"Apply 3 of 5"** — when 3 of 5 changes are selected.
-- **"Apply 5 of 5"** — when all are selected.
-
-There are also **Select all** / **Select none** helpers to quickly toggle.
-
-Clicking Apply commits the cumulative preview as your new profile. The old profile is preserved in history (see below).
+The Apply button at the bottom reflects your current selection — <span class="ui-action">Apply 3 of 5 changes</span>, and so on. <span class="ui-action">Select all</span> and <span class="ui-action">Select none</span> helpers sit next to it. Clicking Apply commits the cumulative preview as your new profile and archives the previous version in history with a rationale composed from the accepted changes' rationales.
 
 ## "No clear change" — when feedback is ambiguous
 
-Sometimes the LLM can't find a clear improvement. The response includes a `noChangeReason` field — a short explanation of why it didn't propose any changes.
+Sometimes the model can't find a clear improvement. When that happens, the dialog shows a single *"No profile changes suggested"* panel with a short explanation — a `noChangeReason` — rather than a change list.
 
-This typically happens when:
+This usually comes up when:
 
-- Your feedback is too sparse. (Two stars and one dismiss doesn't give the LLM much to work with.)
-- Your feedback is contradictory. (You starred a paper on X and dismissed another paper on X — the signal is unclear.)
-- Your profile already captures the signal. (You dismissed papers that your anti-interests already exclude; there's nothing to change.)
+- Your feedback is too sparse. A handful of events don't give the model much to work with.
+- Your feedback is contradictory. You starred one paper on a topic and dismissed another on the same topic, so the signal is unclear.
+- Your profile already captures the signal. The papers you dismissed were already excluded by your anti-interests; there's nothing to change.
 
-When this happens, the dialog shows the reason and offers no changes to apply. Close the dialog, keep giving feedback, and try again in a few days.
+Close the dialog, keep giving feedback, and try again after a few more briefings. The tool's refusal to invent a change it can't justify is the right default.
 
 ## Versioned history and rollback
 
-Every accepted suggestion creates a new entry in your profile history, labelled "suggested" (to distinguish from manual edits). The previous profile is archived with its own timestamp.
+Every accepted suggestion creates a new entry in your profile history, tagged **suggested** to distinguish it from a manual edit. The previous profile is archived with its own timestamp.
 
-To view history: go to **Profile** in the sidebar, expand the **History** dropdown. You'll see a list of snapshots, each with:
+To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each revision shows a timestamp, a source tag (manual or suggested), and — for suggested revisions — the concatenated rationales of the changes that were accepted. Click a revision to expand its full content, then <span class="ui-action">Revert</span> to restore it.
 
-- A timestamp.
-- A source tag ("manual" or "suggested").
-- A rationale (for suggested revisions, this is the concatenated rationales of the changes you accepted).
+Reverting is safe: your current profile is itself archived before the target revision is restored, so you can always flip back. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
 
-Click a snapshot to preview the diff against your current profile. Click again to revert.
+## When to run it
 
-Reverting is safe — your current profile is also kept in history, so you can always flip back. There's also a **Clear history** button if your history has gotten long and unwieldy; it wipes all revisions but keeps the current profile intact.
+Rough guidance, not rules:
 
-## Cadence: when to run Suggest Improvements
+- **Weekly, roughly.** A week of daily briefings with casual feedback — a few stars, a few dismisses, an override or two — usually gives the flow enough signal to propose meaningful edits. This is the sweet spot.
+- **When a briefing feels off.** If you've just read one that missed papers you care about or included papers you don't, your reactions are fresh and specific — a good time to refine.
+- **After a shift in research focus.** Starting a new project or moving to a new field usually needs 3–5 briefings of feedback on the new focus before the flow has enough to work with.
 
-Rough guidance:
-
-- **Weekly.** A week of daily briefings with even casual feedback (a few stars, a few dismisses, an override or two) usually gives the LLM enough signal to propose meaningful changes. This is the sweet spot.
-- **When briefings feel off.** If you've just read a briefing that missed papers you care about or included papers you don't, your feedback is fresh and specific — a good time to refine the profile.
-- **After a big shift.** Starting a new project? Moving to a new field? Running Suggest Improvements after 3-5 briefings with the new focus helps the profile catch up.
-
-::: warning Don't run it every day
-The system works best when feedback accumulates over several briefings — the LLM needs volume and variety to spot patterns. Running Suggest Improvements after a single briefing usually produces "no clear change" or overfits to one day's papers.
+::: warning Avoid running it every day
+The flow works best when feedback accumulates across several briefings — it needs both volume and variety to spot patterns. Running it after a single briefing tends to produce *"no clear change"* or to overfit to the one day's papers.
 :::
 
 ## A sanity check before accepting
 
-Before clicking Apply, run the cumulative preview through a quick sanity check:
+Before you click Apply, run the cumulative preview through a quick pass:
 
-- Does the profile still describe _you_? Or has it drifted toward describing what the system _gave you_ this week?
-- Are the anti-interests still honest? (Anti-interests drift more easily than positive interests, because feedback is usually about what you _did_ like rather than what you didn't.)
-- Is the profile still a reasonable length (150-300 words)? Suggest-Improvements can occasionally balloon things.
+- Does the profile still describe *you*, or has it drifted toward describing what the tool happened to surface this week?
+- Are the anti-interests still honest? Anti-interests tend to drift faster than positive interests because feedback is mostly about what you liked, not what you didn't.
+- Is the profile still a reasonable length (150–300 words)? Occasionally the flow will balloon the profile if the feedback is heavy on comments.
 - Would a collaborator reading this profile recognise your research?
 
-If any of those feel wrong, uncheck the cards that seem responsible, or close the dialog and make the changes manually.
+If any of those feel off, uncheck the responsible cards — or close the dialog and make the edit by hand.
 
 ## Limits
 
-A few things Suggest-Improvements won't do:
+A few things the flow won't do:
 
-- **Write your first profile.** If your current profile is very thin or generic, proposed changes will be too. Write a decent profile manually first (see [Writing a good profile](/using/writing-a-profile)), then let Suggest Improvements refine it.
-- **Know about papers it hasn't seen.** The LLM only reads your starred/dismissed papers plus comments and overrides. If you star a paper outside Aparture (on arXiv itself, for instance), that signal doesn't reach Suggest Improvements.
-- **Re-request just one change.** If you apply 3 of 5, and later want the other 2, there's no "apply the rest" — you'd need to run Suggest Improvements again. Usually that's fine because accumulated feedback has grown in the meantime.
+- **Write your first profile.** If the current profile is very thin, proposed changes will be too. Write a real profile manually first (see [Writing a good profile](/using/writing-a-profile)), then run refinement once you've given feedback on it.
+- **Know about papers it hasn't seen.** The flow only reads the papers you've reacted to inside Aparture plus your comments and overrides. Stars on arXiv itself don't reach it.
+- **Re-request specific changes later.** If you apply 3 of 5 and then want the other 2 the next day, there's no "apply the rest" — you'd need to run the flow again. Usually that's fine, because accumulated feedback has grown in the meantime.
 
 ## Next
 
-[Review gates →](/using/review-gates) — once you understand how feedback flows back into the profile, you're ready to decide whether the two pause gates still earn their keep on every run.
+[Review gates →](/using/review-gates) — with a sense of how feedback flows back into the profile, you can decide whether the two pause gates during a run still earn their keep for you.
 
 Also worth reading:
 
-- You've refined your profile and want to tune the pipeline — models, thresholds, batch sizes. → [Tuning the pipeline](/using/tuning-the-pipeline)
-- You want a reminder of what each feedback type does. → [Giving feedback](/using/giving-feedback)
-- You're reviewing old briefings and want to see what profile each one used. → [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance-disclosure)
+- You've refined your profile and want to tune the rest of the pipeline. → [Tuning the pipeline](/using/tuning-the-pipeline)
+- A reminder of what each feedback type contributes. → [Giving feedback](/using/giving-feedback)
+- You're reading an old briefing and want to see which profile produced it. → [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance)

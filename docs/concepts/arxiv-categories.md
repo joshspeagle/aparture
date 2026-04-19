@@ -1,43 +1,53 @@
-# arXiv Categories
+# arXiv categories
 
-Understanding arXiv's taxonomy and how to pick a set of categories that matches your research interests.
+The category set in your config determines which papers Aparture fetches each day. This page covers the category taxonomy, how cross-listings affect what you see, and a few selection patterns that tend to work in practice.
 
-## What are arXiv categories?
+## What categories are
 
-arXiv organises papers into a hierarchical taxonomy with:
+arXiv organises papers into a hierarchical taxonomy with major categories (top-level domains like `cs`, `math`, `stat`, `astro-ph`), subcategories within each domain (e.g. `cs.LG` for machine learning), and cross-listings where a single paper appears in multiple subcategories with one designated as primary.
 
-- **Major categories** — top-level domains (cs, math, physics, etc.)
-- **Subcategories** — specialised topics within a domain
-- **Cross-listings** — papers appearing in more than one category
+Aparture fetches by subcategory. The selection lives in `config.selectedCategories`, and the default configuration covers machine learning, statistics, and astrophysics — edit it in the Settings view to match your field.
 
-Papers can belong to multiple subcategories, with one designated as primary.
+## Top-level divisions
 
-## Category structure
+The [full arXiv taxonomy](https://arxiv.org/category_taxonomy) lists 150+ subcategories. The major divisions you're most likely to care about:
 
-### Computer Science (cs)
+| Prefix      | Domain                       |
+| ----------- | ---------------------------- |
+| `cs.*`      | Computer Science             |
+| `math.*`    | Mathematics                  |
+| `stat.*`    | Statistics                   |
+| `astro-ph.*`| Astrophysics                 |
+| `physics.*` | Physics (general)            |
+| `hep-*`     | High-Energy Physics          |
+| `q-bio.*`   | Quantitative Biology         |
+| `econ.*`    | Economics                    |
+| `eess.*`    | Electrical Engineering       |
 
-**Artificial Intelligence**
+Less common divisions (`cond-mat`, `gr-qc`, `nlin`, `nucl-ex`, `nucl-th`, `quant-ph`, `q-fin`) use the same `prefix.subcategory` pattern.
 
-- `cs.AI` — Artificial Intelligence
+## Common subcategories by field
+
+### Computer Science (`cs.*`)
+
+Machine learning and AI:
+
 - `cs.LG` — Machine Learning
-- `cs.NE` — Neural and Evolutionary Computing
-- `cs.CV` — Computer Vision and Pattern Recognition
+- `cs.AI` — Artificial Intelligence
 - `cs.CL` — Computation and Language (NLP)
+- `cs.CV` — Computer Vision
+- `cs.NE` — Neural and Evolutionary Computing
 
-**Theory**
+Theory and systems:
 
 - `cs.CC` — Computational Complexity
 - `cs.DS` — Data Structures and Algorithms
 - `cs.LO` — Logic in Computer Science
-
-**Systems**
-
 - `cs.DC` — Distributed, Parallel, and Cluster Computing
-- `cs.OS` — Operating Systems
 - `cs.PL` — Programming Languages
 - `cs.SE` — Software Engineering
 
-**Other**
+Other frequently-crossed categories:
 
 - `cs.CR` — Cryptography and Security
 - `cs.DB` — Databases
@@ -45,41 +55,34 @@ Papers can belong to multiple subcategories, with one designated as primary.
 - `cs.IR` — Information Retrieval
 - `cs.RO` — Robotics
 
-The [full list](https://arxiv.org/category_taxonomy) includes 40+ cs subcategories.
+### Statistics (`stat.*`)
 
-### Mathematics (math)
-
-**Pure Mathematics**
-
-- `math.AG` — Algebraic Geometry
-- `math.NT` — Number Theory
-- `math.GT` — Geometric Topology
-- `math.RT` — Representation Theory
-
-**Applied Mathematics**
-
-- `math.NA` — Numerical Analysis
-- `math.OC` — Optimization and Control
-- `math.PR` — Probability
-- `math.ST` — Statistics Theory
-
-**Interdisciplinary**
-
-- `math.CO` — Combinatorics
-- `math.DS` — Dynamical Systems
-- `math.MP` — Mathematical Physics
-
-### Statistics (stat)
-
-- `stat.ML` — Machine Learning
+- `stat.ML` — Machine Learning (frequently cross-lists with `cs.LG`)
 - `stat.ME` — Methodology
 - `stat.AP` — Applications
 - `stat.CO` — Computation
 - `stat.TH` — Theory
 
-### Physics (physics, astro-ph, etc.)
+### Mathematics (`math.*`)
 
-**Astrophysics (astro-ph)**
+Pure:
+
+- `math.AG` — Algebraic Geometry
+- `math.NT` — Number Theory
+- `math.GT` — Geometric Topology
+- `math.RT` — Representation Theory
+- `math.CO` — Combinatorics
+
+Applied:
+
+- `math.NA` — Numerical Analysis
+- `math.OC` — Optimization and Control
+- `math.PR` — Probability
+- `math.ST` — Statistics Theory
+- `math.DS` — Dynamical Systems
+- `math.MP` — Mathematical Physics
+
+### Astrophysics (`astro-ph.*`)
 
 - `astro-ph.CO` — Cosmology and Nongalactic Astrophysics
 - `astro-ph.GA` — Astrophysics of Galaxies
@@ -88,286 +91,189 @@ The [full list](https://arxiv.org/category_taxonomy) includes 40+ cs subcategori
 - `astro-ph.HE` — High Energy Astrophysical Phenomena
 - `astro-ph.IM` — Instrumentation and Methods
 
-**General Physics (physics)**
+### Physics (other)
 
 - `physics.comp-ph` — Computational Physics
 - `physics.data-an` — Data Analysis, Statistics and Probability
 - `physics.optics` — Optics
 - `physics.plasm-ph` — Plasma Physics
+- `hep-th` — High-Energy Physics, Theory
+- `hep-ph` — High-Energy Physics, Phenomenology
+- `hep-ex` — High-Energy Physics, Experiment
 
-**High Energy Physics (hep-)**
-
-- `hep-th` — High Energy Physics - Theory
-- `hep-ph` — High Energy Physics - Phenomenology
-- `hep-ex` — High Energy Physics - Experiment
-
-### Quantitative Biology (q-bio)
+### Quantitative Biology (`q-bio.*`)
 
 - `q-bio.BM` — Biomolecules
 - `q-bio.GN` — Genomics
 - `q-bio.NC` — Neurons and Cognition
 - `q-bio.QM` — Quantitative Methods
 
-### Economics (econ)
+### Economics (`econ.*`)
 
 - `econ.EM` — Econometrics
 - `econ.TH` — Theoretical Economics
 
-### Electrical Engineering (eess)
+### Electrical Engineering (`eess.*`)
 
 - `eess.IV` — Image and Video Processing
 - `eess.SP` — Signal Processing
 - `eess.SY` — Systems and Control
 
 ::: info Full taxonomy
-See [arxiv.org/category_taxonomy](https://arxiv.org/category_taxonomy) for the complete list of 150+ categories.
+The full list (including less-common categories like `cond-mat.*`, `gr-qc`, and `quant-ph`) lives at [arxiv.org/category_taxonomy](https://arxiv.org/category_taxonomy).
 :::
 
-## Choosing categories
+## How cross-listings work
 
-Three broad strategies, each with its own volume / noise / cost profile.
+Papers often appear in more than one subcategory. A typical machine-learning paper might be primary in `cs.LG` and cross-listed in `stat.ML` and `cs.AI`, which means it'll show up regardless of whether you select `cs.LG` alone or `cs.LG` plus `stat.ML`.
 
-### Strategy 1: narrow and focused
+Aparture deduplicates across categories — selecting both `cs.LG` and `stat.ML` won't double-count the paper. The sorting metadata Aparture receives from arXiv shows each paper's primary category, so you can see where the author filed it originally.
 
-**When to use:**
+In practice this means more categories gives you better coverage rather than more noise. The filter model (and your profile) handles relevance filtering downstream, so over-including categories is usually cheaper than under-including them.
 
-- Clear, specific research interests
-- Limited time for daily reading
-- You want a high signal-to-noise ratio
+## Selection patterns
 
-**Example: deep learning in astronomy**
+Three broad approaches, each with a different volume-and-signal profile.
 
-```
-Selected categories:
-- cs.LG (Machine Learning)
-- astro-ph.GA (Astrophysics of Galaxies)
-- astro-ph.CO (Cosmology)
-```
+### Narrow and focused
 
-**Typical volume:** 5–15 papers/day.
-**Pros:** highly relevant results.
-**Cons:** you'll miss related work that doesn't cross-list into your chosen set.
+Two or three highly-relevant categories. Suits clear research interests and limited daily reading time.
 
-### Strategy 2: broad and exploratory
-
-**When to use:**
-
-- Interdisciplinary research
-- You want to discover new connections
-- You have time to read widely
-
-**Example: Bayesian methods across fields**
+*Example — deep learning for galaxy evolution:*
 
 ```
-Selected categories:
-- stat.ME (Statistics Methodology)
-- stat.ML (Machine Learning)
-- astro-ph.IM (Instrumentation)
-- physics.data-an (Data Analysis)
-- econ.EM (Econometrics)
+cs.LG
+astro-ph.GA
+astro-ph.CO
 ```
 
-**Typical volume:** 20–50 papers/day.
-**Pros:** unexpected cross-field connections surface.
-**Cons:** more noise, higher costs per run.
+Typical volume: 5–15 papers/day. The filter rarely needs to work hard; signal-to-noise tends to be high. The risk is missing work that cross-lists elsewhere — a paper primary in `stat.ML` or `astro-ph.IM` that matters for your topic won't appear unless you add those categories too.
 
-### Strategy 3: domain-focused
+### Broad and exploratory
 
-**When to use:**
+Four to seven categories spanning methodological and domain interests. Suits interdisciplinary work or when you're actively scouting for adjacent ideas.
 
-- Deep expertise in one field
-- You want comprehensive coverage
-- Daily reading is a core activity
-
-**Example: complete astrophysics coverage**
+*Example — Bayesian methods across fields:*
 
 ```
-Selected categories:
-- All astro-ph.* subcategories (6 total)
-- physics.comp-ph
-- stat.AP
+stat.ME
+stat.ML
+astro-ph.IM
+physics.data-an
+econ.EM
 ```
 
-**Typical volume:** 30–80 papers/day.
-**Pros:** you miss nothing in your domain.
-**Cons:** high volume, higher spend.
+Typical volume: 20–50 papers/day. Costs more per run and puts more load on the filter, but cross-field connections surface that narrow configurations miss.
 
-## Cross-listing considerations
+### Domain-comprehensive
 
-Papers often appear in more than one category:
+Every subcategory in one domain, plus one or two methodological crosses. Suits deep expertise in one field where missing anything is a larger cost than a heavier daily triage.
 
-**Example paper:**
+*Example — full astrophysics coverage:*
 
-- Primary: `cs.LG`
-- Cross-listed: `stat.ML`, `cs.AI`
+```
+astro-ph.CO
+astro-ph.GA
+astro-ph.SR
+astro-ph.EP
+astro-ph.HE
+astro-ph.IM
+physics.comp-ph
+stat.AP
+```
 
-**How Aparture handles this:**
+Typical volume: 30–80 papers/day. This usually benefits from a stricter filter model and a lower final-output count — see [Tuning the pipeline](/using/tuning-the-pipeline) for thresholds to adjust.
 
-- Fetches unique papers (no duplicates)
-- Considers all selected categories
-- Shows primary category in results
+## Categories and profile work together
 
-**Implications:**
+Category selection controls the funnel; your profile controls what scores well inside it. The two are complementary.
 
-- Selecting both `cs.LG` and `stat.ML` won't duplicate papers
-- But you'll get papers where either is primary
-- More categories = better coverage
-
-## Category selection tips
-
-### Start small
-
-Begin with 2–3 highly relevant categories:
-
-1. **Test with a dry run** — see typical paper volume.
-2. **Run a minimal analysis** — check relevance.
-3. **Add categories gradually** — expand as needed.
-
-### Monitor volume
-
-Track papers per category over time:
-
-- **Low volume** (<5/day) — consider adding related categories.
-- **High volume** (>50/day) — consider enabling Quick Filter.
-- **Overwhelming** (>100/day) — narrow the selection or raise score thresholds.
-
-### Check cross-listings
-
-Some papers appear in multiple categories you care about:
-
-**Example workflow:**
-
-1. Run analysis with `cs.LG` only.
-2. Check where the top papers are cross-listed.
-3. Add those categories for better coverage.
-
-### Pair categories with your profile
-
-Category selection and your profile work together — the categories control what gets pulled in, and your profile controls what gets scored up.
-
-**Broad categories, narrow profile:**
+**Broad categories, narrow profile.** Cast a wide net at fetch time, let the profile and filter cut aggressively. Good when you want occasional cross-field hits without living in every subcategory daily.
 
 ```
 Categories: cs.AI, cs.LG, cs.CV, cs.CL
-Profile focus: "Bayesian deep learning"
+Profile: heavily focused on "Bayesian deep learning"
 ```
 
-**Narrow categories, broad profile:**
+**Narrow categories, broad profile.** Pre-filter at fetch time, let the profile be permissive. Good when you trust the categories to match your interest area and don't want to write a detailed profile yet.
 
 ```
 Categories: cs.LG, stat.ML
-Profile focus: "Any machine learning advances"
+Profile: "Any machine learning advance"
 ```
 
-## Common combinations
+The first pattern costs more per run (more papers fetched, more filter calls) but surfaces more cross-field work. The second is cheaper and simpler but depends on the categories being well-chosen for your field.
+
+## Common starting configurations
+
+Three configurations that tend to work as starting points. Adjust based on what the first few runs surface.
 
 ### Machine learning researcher
 
 ```
-Core:
-- cs.LG (Machine Learning)
-- cs.AI (Artificial Intelligence)
-- stat.ML (Statistics - Machine Learning)
-
-Optional:
-- cs.CV (Computer Vision)
-- cs.CL (NLP)
+Core: cs.LG, cs.AI, stat.ML
+Optional: cs.CV, cs.CL
 ```
 
-**Volume:** 20–40 papers/day.
+Typical volume: 20–40 papers/day.
 
 ### Computational astrophysicist
 
 ```
-Core:
-- astro-ph.CO (Cosmology)
-- astro-ph.GA (Galaxies)
-- astro-ph.IM (Instrumentation)
-
-Optional:
-- physics.comp-ph (Computational Physics)
-- physics.data-an (Data Analysis)
-- stat.AP (Statistics Applications)
+Core: astro-ph.CO, astro-ph.GA, astro-ph.IM
+Optional: physics.comp-ph, physics.data-an, stat.AP
 ```
 
-**Volume:** 15–35 papers/day.
+Typical volume: 15–35 papers/day.
 
 ### Applied statistician
 
 ```
-Core:
-- stat.ME (Methodology)
-- stat.AP (Applications)
-- stat.ML (Machine Learning)
-
-Optional:
-- cs.LG (Machine Learning)
-- econ.EM (Econometrics)
+Core: stat.ME, stat.AP, stat.ML
+Optional: cs.LG, econ.EM
 ```
 
-**Volume:** 10–25 papers/day.
+Typical volume: 10–25 papers/day.
 
-### Theory-focused CS
+### Theoretical CS
 
 ```
-Core:
-- cs.CC (Computational Complexity)
-- cs.DS (Data Structures & Algorithms)
-- cs.LO (Logic)
-
-Optional:
-- math.CO (Combinatorics)
-- cs.CR (Cryptography)
+Core: cs.CC, cs.DS, cs.LO
+Optional: math.CO, cs.CR
 ```
 
-**Volume:** 5–15 papers/day.
+Typical volume: 5–15 papers/day.
 
-## Category updates
+## Fetch behaviour and rate limits
 
-arXiv occasionally updates its taxonomy:
+arXiv's OAI API limits requests to one every three seconds and caps each response at 1000 papers. Aparture respects those limits automatically — it paginates large result sets and batches across categories.
 
-**Recent changes:**
+Fetch time scales roughly with category count:
 
-- 2020: added `eess.*` (Electrical Engineering).
-- 2017: reorganised `cs.*` subcategories.
-- 2016: added `econ.*` (Economics).
+| Categories   | Fetch time (approx.) |
+| ------------ | -------------------- |
+| 1–3          | ~1 minute            |
+| 5–10         | ~2–3 minutes         |
+| 20+          | ~5–10 minutes        |
 
-**Staying current:**
+Fetching is the shortest stage of the pipeline regardless — the time-dominant stages are PDF analysis and briefing synthesis, so adding categories rarely matters for overall runtime.
 
-- Check [arXiv taxonomy](https://arxiv.org/category_taxonomy) annually.
-- Watch for new subcategories in your field.
-- Update Aparture configuration as needed.
+## Taxonomy changes
 
-::: tip New subcategory?
-If you notice a new relevant subcategory, add it to your configuration and re-run historical analyses to catch papers you missed.
-:::
+arXiv occasionally updates the taxonomy. Recent changes that still show up in older configs:
 
-## API considerations
+- 2020 added the `eess.*` division (Electrical Engineering).
+- 2017 reorganised several `cs.*` subcategories.
+- 2016 added the `econ.*` division.
 
-### Fetching limits
+If you notice a subcategory that looks relevant but isn't in your config, add it and re-run — there's no cost to including an extra category beyond the marginal fetch time.
 
-arXiv's API has rate limits:
+## Next
 
-- 1 request per 3 seconds
-- Maximum 1000 results per request
+- [The pipeline →](/concepts/pipeline) — what happens after papers are fetched.
 
-**How Aparture handles this:**
+Also worth reading:
 
-- Automatically respects rate limits.
-- Batches requests across multiple categories.
-- Paginates large result sets.
-
-### Performance
-
-More categories = longer fetching:
-
-- 1–3 categories: ~1 minute.
-- 5–10 categories: ~2–3 minutes.
-- 20+ categories: ~5–10 minutes.
-
-## Next steps
-
-- [Understanding the pipeline →](/concepts/pipeline)
-- [Briefing anatomy →](/concepts/briefing-anatomy)
-- [Choosing the right models →](/concepts/model-selection)
-- [Generate your first briefing →](/using/first-briefing)
+- [Model selection](/concepts/model-selection) — pick a `filterModel` calibrated to your category volume.
+- [Tuning the pipeline](/using/tuning-the-pipeline) — thresholds and batch sizes to adjust if your category set produces a heavy daily volume.
+- [Your first briefing](/using/first-briefing) — walkthrough of a full run end-to-end.
