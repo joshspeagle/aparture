@@ -56,20 +56,38 @@ See [Model selection](/concepts/model-selection) for the full registry, the per-
 
 ## Parallelism
 
-Two concurrency knobs control how much Stage 4 and the briefing prep do at once.
+Five concurrency knobs control how many calls fire in parallel at each batch-capable stage. All default to 3 (5 for quick-summaries), all clamp 1–20.
+
+### Parallel filter calls
+
+**Parallel Filter Calls** (default 3, range 1–20) controls how many `/api/quick-filter` batches fire concurrently. Since the filter runs on every fetched paper, this is the knob that matters most on large runs — a 250-paper filter on `filterConcurrency: 1` takes ~85 sequential batches, and bumping to 5 cuts wall-clock roughly fivefold.
+
+Anthropic gets a single-flight cache warmup: the first batch completes alone so the prompt-cache entry is primed before siblings start. Google and OpenAI start all workers immediately.
+
+### Parallel scoring calls
+
+**Parallel Scoring Calls** (default 3, range 1–20) controls how many `/api/score-abstracts` batches fire concurrently. Scoring runs on the papers that passed filter, so the knob's payoff scales with the filter's pass-through rate — with a ~60% pass rate, a 250-paper run means ~50 scoring batches at `scoringBatchSize: 3`.
+
+Same Anthropic cache-warmup behavior as filter.
+
+### Parallel review calls
+
+**Parallel Review Calls** (default 3, range 1–20) controls how many `/api/rescore-abstracts` batches fire concurrently during the optional Stage 3.5 post-processing consistency pass. Only active when **Enable Post-Processing** is on.
 
 ### Parallel PDF analyses
 
-**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Analyses** controls how many of those PDF analyses fire concurrently (default 3, range 1–20). The arXiv download step is serialised server-side with a ~5-second spacing to respect arXiv's rate limits, but once the PDFs are in hand the LLM calls themselves run in parallel.
+**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Analyses** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side with a ~5-second spacing to respect arXiv's rate limits, but once the PDFs are in hand the LLM calls themselves run in parallel.
 
-- On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing. This costs a few extra seconds on the first paper in exchange for cache reads on every subsequent paper.
+- On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing.
 - On **Google** and **OpenAI**, all workers start immediately.
-
-Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier.
 
 ### Parallel quick-summaries
 
-**Parallel calls** under the Quick-summary model sets how many `/api/analyze-pdf-quick` calls fan out at once during briefing prep (default 5, range 1–20). These produce the ~300-word pre-read summaries that expand inline on paper cards. The task is short enough that this knob is mostly a rate-limit hedge — lower it if you hit 429s on a large run, raise it on a generous tier if you want to shave seconds off wall-clock.
+**Parallel calls** under the Quick-summary model (default 5, range 1–20) sets how many `/api/analyze-pdf-quick` calls fan out at once during briefing prep. These produce the ~300-word pre-read summaries that expand inline on paper cards.
+
+### Tuning guidance
+
+Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google has aggressive RPM caps on Flash-Lite, so start at 2–3 if you're relying on the free tier for filtering.
 
 ## Batch sizes
 

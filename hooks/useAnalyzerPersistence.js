@@ -59,13 +59,19 @@ export const DEFAULT_CONFIG = {
   useQuickFilter: true,
   filterModel: 'gemini-3.1-flash-lite',
   filterBatchSize: 3,
+  // Number of filter batches fired in parallel. Clamped 1–20 in pipeline.js.
+  filterConcurrency: 3,
   categoriesToScore: ['YES', 'MAYBE'],
   scoringModel: 'gemini-3-flash',
   scoringBatchSize: 3,
+  // Number of scoring batches fired in parallel. Clamped 1–20 in pipeline.js.
+  scoringConcurrency: 3,
   enableScorePostProcessing: true,
   postProcessingCount: 50,
   postProcessingBatchSize: 5,
   postProcessingModel: 'gemini-3-flash',
+  // Number of post-processing (Stage 3.5) batches fired in parallel. Clamped 1–20.
+  postProcessingConcurrency: 3,
   pdfModel: 'gemini-3.1-pro',
   // Stage 3 parallel analysis width. Default 3 is safe across provider tiers
   // (Anthropic Tier 1 with cache warmup; Google/OpenAI have headroom). Clamped

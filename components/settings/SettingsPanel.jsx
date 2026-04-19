@@ -1064,6 +1064,31 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                       Papers per API call
                     </p>
                   </div>
+                  <div style={{ flex: 1 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-sm)',
+                        fontWeight: 500,
+                        color: 'var(--aparture-mute)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      Parallel Filter Calls
+                    </label>
+                    <Input {...integerInputProps('filterConcurrency', 3, 1, 20)} />
+                    <p
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Stage 2 workers (1–20)
+                    </p>
+                  </div>
                   <div style={{ flex: 2 }}>
                     <label
                       style={{
@@ -1188,6 +1213,31 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                       Papers per API call
                     </p>
                   </div>
+                  <div style={{ flex: 1 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-sm)',
+                        fontWeight: 500,
+                        color: 'var(--aparture-mute)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      Parallel Scoring Calls
+                    </label>
+                    <Input {...integerInputProps('scoringConcurrency', 3, 1, 20)} />
+                    <p
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Stage 3 workers (1–20)
+                    </p>
+                  </div>
                   {config.enableScorePostProcessing && (
                     <>
                       <div style={{ flex: 1 }}>
@@ -1213,6 +1263,31 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                           }}
                         >
                           Papers per comparison
+                        </p>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontFamily: 'var(--aparture-font-sans)',
+                            fontSize: 'var(--aparture-text-sm)',
+                            fontWeight: 500,
+                            color: 'var(--aparture-mute)',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          Parallel Review Calls
+                        </label>
+                        <Input {...integerInputProps('postProcessingConcurrency', 3, 1, 20)} />
+                        <p
+                          style={{
+                            fontFamily: 'var(--aparture-font-sans)',
+                            fontSize: 'var(--aparture-text-xs)',
+                            color: 'var(--aparture-mute)',
+                            marginTop: '4px',
+                          }}
+                        >
+                          Stage 3.5 workers (1–20)
                         </p>
                       </div>
                       <div style={{ flex: 1 }}>

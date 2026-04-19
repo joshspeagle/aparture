@@ -65,7 +65,7 @@ Wall-clock duration varies widely with provider latency, paper volume, and which
 
 You can override any verdict at the review gate. Overrides are recorded as `filter-override` feedback events and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
 
-**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.1-flash-lite`), `filterBatchSize` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
+**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.1-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
 
 **Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only the verdicts listed in `categoriesToScore` advance to Stage 3.
 
@@ -83,31 +83,31 @@ The scoring prompt asks the model to evaluate each paper on two dimensions (0–
 
 **Research alignment** — how well the paper matches your profile:
 
-| Range | Meaning                                                   |
-| ----- | --------------------------------------------------------- |
-| 9–10  | Directly addresses your core research areas, perfect fit  |
-| 7–8   | Strong overlap with stated interests                      |
-| 5–6   | Moderate connection                                       |
-| 3–4   | Weak, peripherally related                                |
-| 0–2   | Little to no connection                                   |
+| Range | Meaning                                                  |
+| ----- | -------------------------------------------------------- |
+| 9–10  | Directly addresses your core research areas, perfect fit |
+| 7–8   | Strong overlap with stated interests                     |
+| 5–6   | Moderate connection                                      |
+| 3–4   | Weak, peripherally related                               |
+| 0–2   | Little to no connection                                  |
 
 **Paper quality** — how impactful or well-executed the work is:
 
-| Range | Meaning                                                                          |
-| ----- | -------------------------------------------------------------------------------- |
-| 9–10  | Genuinely transformative — likely to be remembered as a landmark in 5–10 years   |
-| 7–8   | Significant methodological advance or major discovery with clear impact          |
-| 5–6   | Competent work, adequately executed using standard approaches                    |
-| 3–4   | Incremental work with limited novelty                                            |
-| 0–2   | Poor execution, outdated, or fundamentally flawed                                |
+| Range | Meaning                                                                        |
+| ----- | ------------------------------------------------------------------------------ |
+| 9–10  | Genuinely transformative — likely to be remembered as a landmark in 5–10 years |
+| 7–8   | Significant methodological advance or major discovery with clear impact        |
+| 5–6   | Competent work, adequately executed using standard approaches                  |
+| 3–4   | Incremental work with limited novelty                                          |
+| 0–2   | Poor execution, outdated, or fundamentally flawed                              |
 
 **Final score = (Alignment × 0.5) + (Quality × 0.5)**, to one decimal place.
 
-The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment *and* a paper the model considers genuinely transformative — a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
+The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment _and_ a paper the model considers genuinely transformative — a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
 
 This rubric lives in the `pages/api/score-abstracts.js` prompt. See [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration — for instance, if you mostly read applied work that shouldn't cap at 6 on quality.
 
-**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3-flash`), `scoringBatchSize` (default 3).
+**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3-flash`), `scoringBatchSize` (default 3), `scoringConcurrency` (default 3).
 
 **Output.** `scoredPapers` with `relevanceScore`, `scoreJustification`, and `initialScore` (preserved for post-processing). Papers that failed to score are kept separately in `failedPapers` and don't advance.
 
@@ -121,7 +121,7 @@ This rubric lives in the `pages/api/score-abstracts.js` prompt. See [Reference: 
 
 **Why it matters.** Stage 3 scores each paper independently, which can let different batches drift in calibration — early batches may score stricter than late ones, or vice versa. The post-processing pass normalises the ranking without changing which papers advance.
 
-**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5).
+**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5), `postProcessingConcurrency` (default 3).
 
 **Output.** `scoredPapers` updated with `adjustedScore`, `adjustmentReason`, and a `scoreAdjustment` trail.
 
