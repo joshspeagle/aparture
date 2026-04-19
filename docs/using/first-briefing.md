@@ -57,8 +57,21 @@ Click **Pipeline** to move on.
 
 The Progress Timeline shows six stages, all empty, next to a **Start Analysis** button. Before you click it, know that the default run will stop and wait for you twice:
 
-- After the **filter** stage, so you can review what got bucketed into YES / MAYBE / NO and override anything the model got clearly wrong.
-- Before **briefing synthesis**, so you can star or dismiss papers from the deep-analysis results. Those signals shape how the briefing gets written.
+```
+  1. Fetch papers
+      │
+  2. Filter papers      (YES / MAYBE / NO triage)
+      │
+      ⏸   Gate 1 — review the buckets, fix obvious errors
+      │
+  3. Score abstracts    (0–10 + justification)
+  3.5. Post-process     (optional consistency pass)
+  4. Analyze PDFs       (full-text read of the top N)
+      │
+      ⏸   Gate 2 — star / dismiss / comment on analysed papers
+      │
+  5. Briefing           (editorial synthesis + hallucination audit)
+```
 
 Both pauses are on by default and can be turned off in Settings → Review & confirmation once you're comfortable. For the first run, clicking through them cold is fine — the point is to see them happen.
 
@@ -75,7 +88,9 @@ When the filter completes, the pipeline parks at a review gate. The main area sh
 
 Spend a minute scanning what landed where. If a paper you'd clearly want is in NO, click its pill to cycle it to MAYBE or YES; the reverse if NO papers slipped into YES. Every override gets logged as a `filter-override` feedback event, which does two things at once: reroutes the paper to scoring on this run, and contributes to the signal that the [Suggest Improvements](/using/refining-over-time) flow uses later to refine your profile.
 
-Don't over-engineer this on the first run. Glance, fix anything obviously wrong, click **Continue to scoring →**.
+::: tip First-run habit
+Don't over-engineer this on the first run. Glance, fix anything obviously wrong, click **Continue to scoring →**. You'll develop an intuition for the filter's blind spots after a few runs; the first time through, the point is just to see the gate.
+:::
 
 ## 6. Scoring and PDF analysis
 
@@ -95,16 +110,22 @@ On the first run, skim the results and click **Continue to briefing →** withou
 
 ## 8. Read what you got
 
-After briefing synthesis completes, the main area fills in. From top to bottom:
+After briefing synthesis completes, the main area fills in. Four blocks stack from top to bottom:
 
-- **Analysis Results** — the ranked paper list stays visible, still interactive, still the source of truth for scores and deep summaries.
-- **Download Report** — a markdown export of the full run (papers, scores, deep analyses). Useful if you want a standalone file on disk.
-- **Briefing** — the editorial reading view. Executive summary at the top, a few thematic groupings, and one card per paper grounding each pitch in your profile.
-- **NotebookLM** — a separate add-on for generating a podcast version of the briefing. Skip on the first run; see [Generating a podcast](/add-ons/podcast) when you want it.
+| Block                | What it is                                                       | When you'd use it                                      |
+| -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
+| **Analysis Results** | Ranked paper list with scores, justifications, and deep summaries | Source-of-truth lookup; still interactive              |
+| **Download Report**  | Markdown export of the full run                                  | You want a standalone file on disk                     |
+| **Briefing**         | Editorial reading view — executive summary, themes, paper cards  | Primary daily reading surface                          |
+| **NotebookLM**       | Bundle generator for a commute-length podcast                    | Optional add-on — see [Generating a podcast](/add-ons/podcast) |
 
-A note on the distinction: the briefing and the report are two different outputs of the same run. The **briefing** is what you *read* — rendered in the app, grouped by theme, shaped by your feedback signals and hallucination-checked after synthesis. The **report** is what you *save* — a flat markdown file with the full per-paper detail, no editorial shape. Most daily use revolves around the briefing; the report matters when you want to share or archive a run.
+::: info Briefing vs report
+These are two different outputs of the same run. The **briefing** is what you *read* — rendered in the app, grouped by theme, shaped by your feedback signals, and hallucination-audited after synthesis. The **report** is what you *save* — a flat markdown file with the full per-paper detail, no editorial shape. Most daily use revolves around the briefing; the report matters when you want to share or archive a run.
+:::
 
-Expect the first briefing to land as rough-but-legible. The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at either gate. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.
+::: tip Expect the first briefing to be rough
+The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at either gate. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.
+:::
 
 ## Next
 
