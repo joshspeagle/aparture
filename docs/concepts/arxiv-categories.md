@@ -246,7 +246,7 @@ Typical volume: 5–15 papers/day.
 
 ## Fetch behaviour and rate limits
 
-arXiv's OAI API limits requests to one every three seconds and caps each response at 1000 papers. Aparture respects those limits automatically — it paginates large result sets and batches across categories.
+arXiv's query API asks for a three-second delay between requests, and Aparture honours that by fetching one category at a time. Each per-category request is capped at 300 papers, so on exceptionally dense days in a large category the tail of the fetch window can get clipped — not usually a concern for daily runs on typical category sets, but worth knowing if you're running on a busy category across a multi-day window.
 
 Fetch time scales roughly with category count:
 
@@ -256,7 +256,7 @@ Fetch time scales roughly with category count:
 | 5–10         | ~2–3 minutes         |
 | 20+          | ~5–10 minutes        |
 
-Fetching is the shortest stage of the pipeline regardless — the time-dominant stages are PDF analysis and briefing synthesis, so adding categories rarely matters for overall runtime.
+Fetching is typically the shortest stage of the pipeline — the time-dominant stages are PDF analysis and briefing synthesis, so adding categories rarely matters for overall runtime.
 
 ## Taxonomy changes
 
