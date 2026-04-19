@@ -49,7 +49,7 @@ Same logic applies to scoring: you're running it on dozens to hundreds of papers
 
 Nothing in Aparture requires all stages to use the same provider. A common pattern: Gemini Flash-Lite for filtering (speed and price), Claude Sonnet for scoring (strong reasoning on abstracts), Claude Opus for PDF analysis (best-in-class long-context reading), and Gemini for briefing synthesis (good structured-output, fast).
 
-See [Model selection](/concepts/model-selection) for the full model registry and three preset configs (Budget, Balanced, Premium).
+See [Model selection](/concepts/model-selection) for the full model registry and three example configurations (Budget, Balanced, Premium) used as editorial shorthand across these docs.
 
 ## Batch sizes
 
@@ -167,5 +167,5 @@ This is also useful when troubleshooting: if a run produced a weird briefing, th
 ## Next
 
 - You want to understand each stage in depth, not just tune it. → [Pipeline](/concepts/pipeline)
-- You want to compare providers and pick a preset. → [Model selection](/concepts/model-selection)
+- You want to compare providers and pick a cost/quality combination. → [Model selection](/concepts/model-selection)
 - You want to tune the synthesis prompt itself, not just which model runs it. → [Reference: prompts](/reference/prompts)

@@ -1,6 +1,6 @@
 # Google (Gemini) API key
 
-Google AI Studio is the recommended first-run provider for Aparture. The free tier covers the entire Budget preset end-to-end, so a brand-new user can run a full analysis without spending anything, as long as they stick to the Gemini Flash family and stay inside the daily request allowances.
+Google AI Studio is the recommended first-run provider for Aparture. The free tier covers an all-Flash model setup end-to-end, so a brand-new user can run a full analysis without spending anything, as long as they stick to the Gemini Flash family and stay inside the daily request allowances.
 
 Setup takes 2 minutes. No credit card required.
 
@@ -56,7 +56,7 @@ Five of the six Gemini models Aparture knows about are free-tier eligible:
 | Gemini 2.5 Flash              | Free of charge           |
 | Gemini 2.5 Flash-Lite         | Free of charge           |
 
-The **Budget preset** uses Flash and Flash-Lite throughout, so it costs nothing on the free tier. The **Balanced preset** uses Gemini 3.1 Pro for deep PDF analysis and briefing, which is paid-only — you'll need to upgrade to Tier 1 (below) to use it.
+If you keep all model slots on Flash and Flash-Lite, running Aparture stays free on this tier. Aparture's out-of-the-box defaults use Gemini 3.1 Pro for PDF analysis and briefing synthesis, which is paid-only — to run with the defaults you'll need to upgrade to Tier 1 (below), or switch those two slots to a Flash model in Settings to stay free.
 
 ::: warning Two caveats on the free tier
 
@@ -70,7 +70,7 @@ The **Budget preset** uses Flash and Flash-Lite throughout, so it costs nothing 
 
 You'll hit a free-tier wall when any of:
 
-1. You select Gemini 3.1 Pro Preview for any stage (Balanced or Quality preset).
+1. You select Gemini 3.1 Pro Preview for any model slot (which the defaults do for PDF analysis and briefing).
 2. You exceed daily RPD on a Flash model (typical for 250+ papers/day).
 3. You need to opt out of data-for-training.
 4. Your workload needs higher RPM/TPM than the free tier allows.
@@ -94,7 +94,7 @@ Tier 2+ requires sustained spend history and manual Google approval. Aparture's 
 
 ## 5. Pricing for a Balanced-config run on Google
 
-Balanced preset with all-Google models:
+Balanced configuration with all-Google models (editorial shorthand — see [hub page](/getting-started/api-keys) for definition):
 
 - **Stage 1 (quick filter):** Gemini 3.1 Flash-Lite Preview — $0.25 / $1.50 per MTok
 - **Stage 2 (scoring):** Gemini 3 Flash Preview — $0.50 / $3.00 per MTok
@@ -114,7 +114,7 @@ Daily cost:
 
 The cost flattens at higher paper volumes because Stage 3 + Briefing (the expensive Pro calls) are capped at top-N regardless of input. Scaling from 25 to 250 papers/day only adds about $0.40/day.
 
-### Budget preset (free tier)
+### Budget configuration (free tier)
 
 Same pipeline but with Flash-family models throughout — Flash-Lite filter, Flash scoring + post-proc, Flash PDF + briefing, no Pro models:
 
@@ -124,7 +124,7 @@ Same pipeline but with Flash-family models throughout — Flash-Lite filter, Fla
 | 100        | $0.00 (watch daily RPD)                   |
 | 250        | $0.00 at pricing, but likely hits RPD cap |
 
-This is the main argument for Google AI as the first-run provider: a fresh account can run Aparture's full end-to-end pipeline without spending anything, as long as it stays in the Budget preset.
+This is the main argument for Google AI as the first-run provider: a fresh account can run Aparture's full end-to-end pipeline without spending anything, as long as every model slot is set to a Flash-family model.
 
 ## 6. Verify
 
@@ -140,7 +140,7 @@ If the key is invalid you'll see `"Google API key not found"` (env var missing o
 4. **Rate-limit numbers are gated behind sign-in.** Per-model RPM/TPM/RPD numbers aren't in the public docs anymore. Sign in at [aistudio.google.com](https://aistudio.google.com/) and look at the rate-limit panel for your current limits.
 5. **Free tier trains on your data.** Unavoidable on the free tier. If your profile is sensitive, upgrade to Tier 1 or use a non-sensitive stand-in profile.
 6. **Preview models have tighter limits.** Gemini 3.x previews have smaller RPM/TPM than the 2.5 stable counterparts. For production-grade reliability, consider the 2.5-stable variants.
-7. **Picking Balanced on free tier fails silently.** If you select a Gemini 3.1 Pro-based preset but haven't enabled billing, the route returns `PERMISSION_DENIED` mid-run. Either enable billing or switch to the Budget preset.
+7. **Picking Pro on the free tier fails mid-run.** If any model slot is set to Gemini 3.1 Pro but you haven't enabled billing, the route returns `PERMISSION_DENIED` partway through. Either enable billing or switch the Pro slots to a Flash model in Settings.
 
 ---
 

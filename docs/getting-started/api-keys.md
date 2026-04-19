@@ -4,7 +4,7 @@ Aparture routes LLM calls through Anthropic (Claude), OpenAI (GPT), or Google (G
 
 ## TL;DR
 
-Pick one provider to start. If you have no strong preference, **start with Google AI** — its free tier covers Aparture's Budget preset end-to-end, and no credit card is required.
+Pick one provider to start. If you have no strong preference, **start with Google AI** — its free tier covers the cheapest, all-Google model combination end-to-end, and no credit card is required. Aparture's default model slots are all-Google out of the box, so a Google key also requires the least fiddling in Settings.
 
 ## Pick a provider
 
@@ -16,7 +16,7 @@ The current-generation models from all three providers are broadly comparable on
 
 ### Anthropic Claude
 
-New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing. Balanced-preset runs are ~$2.60 at 25 papers/day and scale with volume (Opus is used in the heavier stages).
+New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing. Balanced-configuration runs are ~$2.60 at 25 papers/day and scale with volume (Opus is used in the heavier stages).
 
 [Set up Anthropic →](/getting-started/api-keys-anthropic)
 
@@ -26,7 +26,7 @@ New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wire
 
 ### Google Gemini
 
-Free tier covers the **Budget preset** end-to-end, and no credit card is needed to start. Running the **Balanced preset** requires enabling billing (Gemini 3.1 Pro is paid-only) and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
+Free tier covers an all-Flash model setup end-to-end, and no credit card is needed to start. Using Gemini 3.1 Pro (the stronger model Aparture defaults to for PDF analysis and briefing) requires enabling billing, and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
 
 [Set up Google AI →](/getting-started/api-keys-google)
 
@@ -36,7 +36,7 @@ Free tier covers the **Budget preset** end-to-end, and no credit card is needed 
 
 ### OpenAI GPT
 
-Requires a $5 minimum prepaid deposit to activate API access (no free trial). Balanced-preset cost stays roughly flat from 25 to 250 papers/day (~$1.40–$2.80), because the expensive PDF and briefing stages are capped at top-N regardless of input. OpenAI caches repeated prompt prefixes automatically.
+Requires a $5 minimum prepaid deposit to activate API access (no free trial). With GPT-5.4 across the heavier stages, cost stays roughly flat from 25 to 250 papers/day (~$1.40–$2.80), because the expensive PDF and briefing stages are capped at top-N regardless of input. OpenAI caches repeated prompt prefixes automatically.
 
 [Set up OpenAI →](/getting-started/api-keys-openai)
 
@@ -57,17 +57,19 @@ Whichever provider you picked, the steps back in Aparture are the same:
 
 That's it. Your key is working; you can generate your first briefing.
 
-## What's a preset?
+## How Aparture picks models
 
-Aparture ships with three model presets you pick between in the UI. Each preset controls which model runs at each pipeline stage:
+You configure Aparture's model slots individually in the Settings panel — there's a slot for each pipeline stage (filter, scoring, PDF analysis, briefing synthesis, NotebookLM document generation), and each slot can hold any model from any provider. Out of the box the slots are all-Google, using `gemini-2.5-flash-lite` for the lightweight stages and `gemini-3.1-pro` for PDF analysis and briefing.
 
-- **Budget** — the cheapest small/mid model at every stage. Fast, inexpensive, good for learning the tool or for high-volume runs. This is the preset that stays free on Google's free tier.
-- **Balanced** — a small model for filtering and scoring, and a larger model for PDF analysis and briefing synthesis. The default out of the box.
-- **Quality** — the strongest model each provider offers, used across all stages. Noticeably more expensive, and in most cases marginally better rather than dramatically so.
+Throughout these docs we refer to three example configurations as editorial shorthand for common, sensible combinations. They aren't UI presets — they're just named combinations used in the pricing tables and the [Model selection](/concepts/model-selection) page:
 
-The cost numbers below use the Balanced preset. Each per-provider page has the full model lineup and costs for all three presets.
+- **Budget** — the cheapest small/mid model at every stage. Fast, inexpensive, and the combination that stays free on Google's free tier.
+- **Balanced** — a small model for filtering and scoring, plus a stronger model for PDF analysis and briefing synthesis. This is what the defaults approximate with all-Google.
+- **Quality** — the strongest model each provider offers, used across all stages. Noticeably more expensive, usually only marginally better in outcome.
 
-## Pricing at a glance (Balanced preset)
+The cost numbers below use the Balanced configuration for each provider. The [Model selection](/concepts/model-selection) page has the full model picks for each.
+
+## Pricing at a glance (Balanced configuration)
 
 Cost per daily run, by provider and paper volume:
 
@@ -79,7 +81,7 @@ Cost per daily run, by provider and paper volume:
 
 Three things the table says concisely:
 
-- Google's Budget preset stays free within the daily request caps, which makes it ideal for learning the tool or for routine low-volume reading.
+- Google's Budget configuration (all Gemini Flash models) stays free within the daily request caps, which makes it ideal for learning the tool or for routine low-volume reading.
 - OpenAI's Balanced cost is roughly flat from 25 to 250 papers/day because the expensive stages are capped at top-N regardless of input.
 - Anthropic's Balanced cost grows with volume because Opus is used for both PDF analysis and briefing. Switching the PDF slot to Sonnet drops cost significantly with a modest quality hit.
 
@@ -87,7 +89,7 @@ Caching takes another 20–40% off these numbers on repeated runs with the same 
 
 ## Can I run completely free?
 
-Yes, on Google's Budget preset. The Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts) is free for free-tier accounts, and the Budget preset stays within that family. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which the Balanced and Quality presets use for the heavier stages.
+Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts). All of those are free for free-tier accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing — so if you want everything free on Google, swap those two slots to a Flash model in Settings.
 
 Two caveats worth knowing up front:
 
@@ -100,7 +102,7 @@ Quick lookup for key formats, env-var names, and signup URLs:
 
 |                             | Anthropic (Claude)                                  | Google (Gemini)                                                  | OpenAI (GPT)                                              |
 | --------------------------- | --------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------- |
-| **Free tier**               | ~$5 starter credit, one-time                        | Yes (covers Budget preset)                                       | None                                                      |
+| **Free tier**               | ~$5 starter credit, one-time                        | Yes (covers an all-Flash setup)                                  | None                                                      |
 | **Billing to start**        | Not required for starter credit                     | Not required for free tier                                       | $5 minimum deposit                                        |
 | **Key format**              | `sk-ant-api03-...`                                  | `AIzaSy...`                                                      | `sk-proj-...`                                             |
 | **Env var in `.env.local`** | `CLAUDE_API_KEY`                                    | `GOOGLE_AI_API_KEY`                                              | `OPENAI_API_KEY`                                          |

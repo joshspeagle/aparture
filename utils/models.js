@@ -275,31 +275,6 @@ const DEFAULT_MODELS = {
   pdfModel: 'gemini-3.1-pro',
 };
 
-// Model presets for different use cases
-const MODEL_PRESETS = {
-  budget: {
-    filterModel: 'gemini-2.5-flash-lite',
-    scoringModel: 'gemini-2.5-flash-lite',
-    pdfModel: 'gemini-2.5-flash',
-  },
-  balanced: {
-    filterModel: 'gemini-2.5-flash-lite',
-    scoringModel: 'gemini-3-flash',
-    pdfModel: 'gemini-3.1-pro',
-  },
-  quality: {
-    filterModel: 'gpt-5.4-nano',
-    scoringModel: 'claude-sonnet-4.6',
-    pdfModel: 'claude-opus-4.7',
-  },
-  'google-free': {
-    // For Google's free tier
-    filterModel: 'gemini-2.5-flash-lite',
-    scoringModel: 'gemini-3-flash',
-    pdfModel: 'gemini-2.5-pro',
-  },
-};
-
 // Export for both CommonJS and ES modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -310,7 +285,6 @@ if (typeof module !== 'undefined' && module.exports) {
     getModelsForQuickFilter,
     getModelsByProvider,
     DEFAULT_MODELS,
-    MODEL_PRESETS,
   };
 }
 
@@ -322,6 +296,5 @@ export {
   getModelsByProvider,
   getModelsForPDF,
   getModelsForQuickFilter,
-  MODEL_PRESETS,
   MODEL_REGISTRY,
 };
