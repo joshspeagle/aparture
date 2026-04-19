@@ -756,6 +756,8 @@ export default function App() {
       results,
       briefingModel: resolvedBriefingModel,
       pdfModel: config?.pdfModel,
+      quickSummaryModel: config?.quickSummaryModel,
+      quickSummaryConcurrency: config?.quickSummaryConcurrency,
       briefingRetryOnYes: config.briefingRetryOnYes ?? true,
       briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
       profile,

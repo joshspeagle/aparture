@@ -68,6 +68,14 @@ export const DEFAULT_CONFIG = {
   postProcessingModel: 'gemini-3-flash',
   pdfModel: 'gemini-3.1-pro',
   briefingModel: 'gemini-3.1-pro',
+  // Quick summaries compress each full PDF analysis into a ~300-word pre-read.
+  // Small/cheap text-only model is appropriate (input is the text of the full
+  // report, not the PDF). Flash-Lite by default; fall back to briefingModel if
+  // this slot is unset in a legacy config.
+  quickSummaryModel: 'gemini-3.1-flash-lite',
+  // Number of quick-summary calls fired in parallel during briefing prep.
+  // Provider rate limits are the practical ceiling; default 5 is conservative.
+  quickSummaryConcurrency: 5,
   pauseAfterFilter: true,
   pauseBeforeBriefing: true,
   briefingRetryOnYes: true,

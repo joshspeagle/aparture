@@ -630,6 +630,120 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               </div>
             </div>
           </div>
+
+          {/* Quick-summary model + concurrency (briefing prep sub-stage) */}
+          <div
+            style={{
+              marginTop: 'var(--aparture-space-4)',
+              padding: 'var(--aparture-space-3)',
+              background: 'var(--aparture-bg)',
+              border: '1px solid var(--aparture-hairline)',
+              borderRadius: '4px',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                fontWeight: 500,
+                color: 'var(--aparture-mute)',
+                marginBottom: 'var(--aparture-space-2)',
+              }}
+            >
+              Quick-summary model &amp; concurrency
+            </p>
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: '11px',
+                color: 'var(--aparture-mute)',
+                margin: '0 0 var(--aparture-space-3) 0',
+                lineHeight: 1.5,
+              }}
+            >
+              Briefing generation runs one quick-summary call per PDF-analyzed paper (text
+              compression of each full report into a ~300-word pre-read). These fire in parallel
+              before the main synthesis call. The model is independent of the briefing model —
+              Flash-Lite handles this well and much cheaper.
+            </p>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr',
+                gap: 'var(--aparture-space-3)',
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    fontWeight: 500,
+                    color: 'var(--aparture-mute)',
+                    marginBottom: 'var(--aparture-space-1)',
+                  }}
+                >
+                  Quick-summary model
+                </label>
+                <Select
+                  value={config.quickSummaryModel ?? 'gemini-3.1-flash-lite'}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, quickSummaryModel: e.target.value }))
+                  }
+                  disabled={processing.isRunning}
+                >
+                  {AVAILABLE_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    fontWeight: 500,
+                    color: 'var(--aparture-mute)',
+                    marginBottom: 'var(--aparture-space-1)',
+                  }}
+                >
+                  Parallel calls
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={config.quickSummaryConcurrency ?? 5}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setConfig((prev) => ({
+                      ...prev,
+                      quickSummaryConcurrency: Number.isFinite(v) ? v : 5,
+                    }));
+                  }}
+                  disabled={processing.isRunning}
+                />
+              </div>
+            </div>
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: '11px',
+                color: 'var(--aparture-mute)',
+                margin: 'var(--aparture-space-2) 0 0 0',
+                fontStyle: 'italic',
+              }}
+            >
+              Parallel-calls default is 5. Lower it if you hit provider rate limits on large runs;
+              raise it if you're on a generous tier and want shorter wall-clock time. Clamped to
+              1–20.
+            </p>
+          </div>
+
           <div
             style={{
               marginTop: 'var(--aparture-space-3)',
