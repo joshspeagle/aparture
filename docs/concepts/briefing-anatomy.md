@@ -18,7 +18,7 @@ export const BriefingSchema = z.object({
 });
 ```
 
-Three top-level fields, all required, no optional fields. Everything else you see in a briefing — the inline quick-summary panels, the full-report side panel, the "Generation details" section below — is passed into the renderer as separate props, not validated by this schema, and not produced by the synthesis LLM call.
+Three top-level fields, all required. Everything else you see in a briefing — the inline quick-summary panels, the full-report side panel, the "Generation details" section below — is passed into the renderer as separate props, not validated by this schema, and not produced by the synthesis LLM call.
 
 That separation is deliberate. The briefing object itself is stable and portable (it could be serialised to JSON and re-rendered somewhere else tomorrow), while the ancillary data — provenance, per-paper expansions, full reports — can evolve without breaking the contract. Keeping the schema this narrow also keeps the synthesis LLM's job narrow: produce editorial prose against a small, well-defined shape, and stop. Everything that isn't editorial is handled outside the synthesis call.
 
@@ -151,7 +151,7 @@ And the sourcing discipline the prompt enforces separately:
 > - If you are uncertain whether a claim is supported, omit it rather than state it. The briefing is better short and accurate than long and embellished.
 > - Cross-paper claims in `themes.argument` must be supported by content in at least two of the cited papers.
 
-Those constraints are most of the reason Aparture's briefings are worth reading — the prompt is aggressive about refusing to invent, and the hallucination audit in Stage 5 exists to catch the cases where the LLM does it anyway.
+Those constraints are a big part of why Aparture's briefings are worth trusting — the prompt is explicit about not inventing, and the hallucination audit in Stage 5 exists to catch the cases where the LLM does it anyway.
 
 ## Validation flow
 
@@ -167,7 +167,7 @@ If step 3 flags hallucinations and the matching retry flag is enabled, synthesis
 
 ## Where to tune what
 
-- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. The ~150-line prompt is the biggest quality lever in the system — changes take effect on the next `/api/synthesize` call with no rebuild. See [Prompts](/reference/prompts).
+- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. This prompt is the biggest quality lever in the system — changes take effect on the next `/api/synthesize` call with no rebuild. See [Prompts](/reference/prompts).
 - **Change how it looks.** Edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the React components, so colour changes propagate without touching any `.jsx` file.
 - **Change the hallucination audit's sensitivity.** Edit `prompts/check-briefing.md`. Also hot-reloadable.
 - **Add a new briefing section.** A two-part change: extend `BriefingSchema` in `lib/synthesis/schema.js` to add the field, update the prompt to produce it, and add a render component under `components/briefing/` wired into `BriefingView.jsx`.
