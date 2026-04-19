@@ -95,6 +95,7 @@ Automatic prompt caching typically takes 20–40% off on repeat runs. See the [p
 - **`model_not_found` for `gpt-5.4`.** Your org may not yet have access to the newest models. Check **Dashboard → Models**, or switch to `gpt-5.4-mini`.
 - **Whitespace in the key.** Copy/paste sometimes adds a trailing space or a Windows CRLF line ending. Re-save `.env.local` with LF and no trailing whitespace.
 - **Per-model rate limits are dashboard-only.** OpenAI no longer publishes consolidated tables; your current limits are at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits).
+- **Want faster PDF analysis?** OpenAI caches repeated prompt prefixes automatically (no warmup needed), and the Tier 3+ TPM is generous enough to handle higher Stage 4 parallelism than the default of 3. Raise **Parallel PDF analyses** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
 
 ---
 

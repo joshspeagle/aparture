@@ -111,6 +111,7 @@ Tier 1 has a **$250/month spend cap per billing account** (non-configurable, ser
 - **Free-tier uses your data for training.** Unavoidable on the free tier. If your profile contains sensitive research notes, upgrade to Tier 1 or keep the free-tier profile non-sensitive.
 - **Preview models have tighter limits than 2.5-stable.** Gemini 3.x previews get smaller allowances than the 2.5 stable counterparts. For production-grade runs with predictable throughput, prefer 2.5-stable models.
 - **Rate-limit numbers are dashboard-only.** Per-model RPM/TPM/RPD aren't in the public docs anymore. Sign in at [aistudio.google.com](https://aistudio.google.com/) to see your current limits.
+- **Want faster PDF analysis?** Google's RPM on Tier 1+ is generous enough to handle higher Stage 4 parallelism than the default of 3. Raise **Parallel PDF analyses** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
 
 ---
 

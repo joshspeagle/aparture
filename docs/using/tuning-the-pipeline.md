@@ -63,7 +63,16 @@ Each stage batches papers into API calls to avoid per-paper overhead. Bigger bat
 | Filter batch size          | 3       | 3-10             | Small because filter prompts are short; batching helps throughput |
 | Scoring batch size         | 3       | 3-8              | Medium — each paper has a full abstract + justification           |
 | Post-processing batch size | 5       | 3-10             | Comparative batches need multiple papers                          |
-| PDF analysis batch size    | 1       | (always 1)       | One PDF per call; sequential with 2s delay                        |
+| PDF analysis batch size    | 1       | (always 1)       | One PDF per call — but see **Parallel PDF analyses** below        |
+
+### Parallel PDF analyses
+
+**Parallel PDF analyses** (default: 3, range 1-20) controls how many Stage 4 PDFs are analysed at once. The arXiv download step is serialised server-side to respect arXiv's rate limits, but the LLM calls themselves run in parallel once the PDFs are in hand.
+
+- On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing. This costs ~3-6 seconds on the first paper in exchange for cheaper cache reads on every subsequent paper.
+- On **Google** and **OpenAI**, all workers start immediately.
+
+Start at 3. Raise to 5-8 on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+). Drop to 1 if you start seeing 429s on rate-limit-sensitive tiers.
 
 Most users never touch these. Raise batch sizes when:
 

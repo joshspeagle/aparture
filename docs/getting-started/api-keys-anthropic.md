@@ -81,6 +81,7 @@ Prompt caching takes another 20–40% off on repeat runs. See the [pricing table
 - **Copied only the masked preview.** If you missed the full key at creation, revoke and recreate. There's no "show full key" button anywhere.
 - **Starter credit expired.** The ~$5 new-account credit has an expiration, typically 14–30 days. If you signed up months ago without using it, check **Settings → Billing → Credit history**.
 - **Slow PDF analysis on a new account.** Tier 1 has tight rate limits — a 20-paper deep-analysis stage on Opus can take ~40 minutes. Tier 2 unlocks automatically at ~$40 cumulative spend; until then, Sonnet 4.6 is a much faster option for the PDF stage ([tuning the pipeline](/using/tuning-the-pipeline)).
+- **First PDF feels slow even though analysis is parallel.** Aparture runs a single cache-warmup call before releasing sibling workers on Anthropic, so the first paper takes 3–6 s longer than subsequent ones. This is deliberate — it primes the prompt-cache entry so the remaining N-1 papers hit the cache instead of racing parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
 
 ---
 

@@ -109,15 +109,17 @@ You can override any verdict in the review-gate UI. Overrides are recorded as `f
 
 **What it does.** For the top N papers (default: 30 via `maxDeepAnalysis`), fetches the full PDF from arXiv and asks a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, a final relevance score. Both the pre-PDF and final scores are preserved, so you can see how much the PDF moved the score.
 
-PDFs are downloaded sequentially with a 2-second delay between requests to respect arXiv's rate limits. If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
+PDF downloads are serialised server-side (~5s between arXiv requests) to respect arXiv's rate limits, but the LLM analyses themselves run in parallel via a worker pool. Default concurrency is 3 workers (tunable via `pdfAnalysisConcurrency`, 1–20). If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
 
-**Inputs.** Top N papers from stage 3.5, `profile.content`, `pdfModel` (default: `gemini-3.1-pro`).
+On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, then the remaining workers start and hit the cache on every subsequent paper. This trades ~3–6 s on the first paper for ~90% input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
+
+**Inputs.** Top N papers from stage 3.5, `profile.content`, `pdfModel` (default: `gemini-3.1-pro`), `pdfAnalysisConcurrency` (default: 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
-**Cost.** ~$0.02–0.10 per paper (~4,000–25,000 input tokens depending on PDF length). This stage dominates the bill.
+**Cost.** ~$0.02–0.10 per paper (~4,000–25,000 input tokens depending on PDF length). This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens by ~90%, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
 
-**Duration.** 30–120 seconds for the top 10 papers (roughly 5–10 s per paper: 2 s download + 3–8 s API call).
+**Duration.** 30–120 seconds for the top 10 papers at the default concurrency of 3. Higher concurrency compresses wall-clock time but is bounded by provider rate limits (see [Tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
 
 **Pause gates.** None within the stage, but a gate fires after it completes.
 

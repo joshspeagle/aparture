@@ -306,6 +306,8 @@ Free-tier OpenAI accounts (~3 RPM on GPT-5.4-class) will 429 on almost any real 
 
 If you see persistent 429s on Google, enable the quick-filter stage (it reduces the number of downstream calls) or reduce batch sizes. For heavy daily use, move to a paid tier.
 
+**429 specifically during Stage 4 (PDF analysis)**. Aparture now runs PDF analyses in parallel (default 3 workers). If you see provider 429s landing on PDF calls specifically, drop **Settings → Parallel PDF analyses** from 3 to 2 or 1. Conversely, if your tier is generous and PDF analysis feels slow, you can raise it up to 20.
+
 ### Context overflow
 
 ```
