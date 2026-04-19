@@ -93,7 +93,7 @@ Top-level layout is conventional Next.js. The list below calls out directories t
 - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
 - `lib/profile/` - Profile utilities (migrations, diff, feedbackCap, suggestPrompt)
 - `lib/briefing/filterBriefings.js` - Pure filter function for sidebar search (dateRange / starredOnly / query)
-- `prompts/` - Editable LLM prompt templates (changes take effect on next call — no rebuild needed): `synthesis.md`, `analyze-pdf-quick.md`, `suggest-profile.md`, `check-briefing.md`
+- `prompts/` - Editable LLM prompt templates (changes take effect on next call — no rebuild needed): `synthesis.md`, `analyze-pdf-quick.md`, `suggest-profile.md`, `check-briefing.md`, `rubric-filter.md`, `rubric-scoring.md`, `rubric-rescoring.md`, `rubric-pdf.md`, `notebooklm-discussion-guide.md`. The four `rubric-*.md` files contain a `{{CACHE_BOUNDARY}}` marker that `lib/llm/loadRubricPrompt.js` uses to split each template into a cache-stable prefix (rubric + profile) and a variable tail (per-batch papers) for Anthropic prompt caching.
 - `hooks/` - React hooks with localStorage persistence
   - `useProfile.js` - Research profile hook (structured data model with versioned history). `profile.content` is read by every pipeline stage.
   - `useBriefing.js` - Briefing archive with 90-day rolling window. Entries keyed by unique ID + timestamp (multiple briefings per day). `generationMetadata` carries profile snapshot, model IDs, filter verdicts, hallucination check results.

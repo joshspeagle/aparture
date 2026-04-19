@@ -1,4 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
+import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 function checkPassword(password) {
@@ -49,62 +50,17 @@ function validateFilterResponse(responseText, expectedCount) {
  * This portion is identical for every batch call with the same scoringCriteria,
  * making it a good candidate for Anthropic prompt caching.
  */
-function buildCachePrefix(scoringCriteria) {
-  return `You are a research assistant doing quick relevance screening of academic papers.
-
-Research Interests:
-${scoringCriteria}
-
-For each paper below, produce three things:
-1. A one-sentence SUMMARY of what the paper is actually about, so the user can tell at a glance whether the model understood it correctly.
-2. A VERDICT: YES (clearly relevant), NO (clearly not relevant), or MAYBE (possibly relevant, needs closer look).
-3. A one-sentence JUSTIFICATION explaining the verdict with reference to the research interests above. Be specific — "aligns with mechanistic interpretability" is better than "relevant".
-
-FILTERING GUIDANCE:
-- YES: Papers that clearly align with the specified research interests
-- NO: Papers clearly outside the research areas or using fundamentally different approaches
-- MAYBE: Papers with potential relevance that need deeper review (borderline cases). **Prefer MAYBE over NO when the abstract is ambiguous** — dismissed papers are expensive to recover, so err on the side of passing through borderline cases. Reserve NO for clear mismatches.
-- Focus on the specific criteria provided, not general AI/ML relevance.
-- Consider interdisciplinary connections only if they relate to the stated interests.
-- Ground every justification in the paper's abstract, not in guesses about what the title implies.
-
-Respond ONLY with a valid JSON array in this exact format:
-[
-  {
-    "paperIndex": 1,
-    "verdict": "YES",
-    "summary": "One-sentence summary of what Paper 1 is about.",
-    "justification": "One-sentence reason for the verdict, citing the research interests."
-  },
-  {
-    "paperIndex": 2,
-    "verdict": "NO",
-    "summary": "One-sentence summary of what Paper 2 is about.",
-    "justification": "One-sentence reason for the verdict."
-  },
-  {
-    "paperIndex": 3,
-    "verdict": "MAYBE",
-    "summary": "One-sentence summary of what Paper 3 is about.",
-    "justification": "One-sentence reason for the verdict."
-  }
-]
-
-Your entire response MUST ONLY be a single, valid JSON array.`;
-}
-
 /**
- * Build the variable per-batch tail: the list of papers to screen.
+ * Format the per-batch paper list for the {{papers}} slot in rubric-filter.md.
  */
-function buildBatchPrompt(papers) {
-  return `Papers to screen:
-${papers
-  .map(
-    (p, idx) => `Paper ${idx + 1}:
+function formatPapersForBatch(papers) {
+  return papers
+    .map(
+      (p, idx) => `Paper ${idx + 1}:
 Title: ${p.title}
 Abstract: ${p.abstract || 'No abstract available'}`
-  )
-  .join('\n\n')}`;
+    )
+    .join('\n\n');
 }
 
 export default async function handler(req, res) {
@@ -167,13 +123,16 @@ export default async function handler(req, res) {
       responseText = result.text;
     } else {
       // Normal path: split prompt into static prefix (cacheable) + variable tail.
-      const cachePrefix = buildCachePrefix(scoringCriteria ?? '');
-      const batchPrompt = buildBatchPrompt(papers ?? []);
+      const { cachePrefix, variableTail } = await loadRubricPrompt(
+        'rubric-filter.md',
+        { profile: scoringCriteria ?? '' },
+        { papers: formatPapersForBatch(papers ?? []) }
+      );
       // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
       // tests. When the override is active, disable caching so the fixture hash
       // keys only on {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
-      const finalPrompt = promptOverride ?? batchPrompt;
+      const finalPrompt = promptOverride ?? variableTail;
       const useCaching = cacheable && !isFixture && !promptOverride;
 
       const result = await callModel(

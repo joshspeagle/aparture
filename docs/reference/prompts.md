@@ -1,18 +1,18 @@
 # Prompts
 
-Aparture's LLM prompts live in two places. The ones meant for tuning sit in `prompts/` as Markdown files and reload on every API call with no restart. The ones baked into route and library code — scoring rubrics, small repair templates — take effect only after a dev-server restart because they're compiled into the JS bundle at startup.
+Aparture's LLM prompts live in two places. The ones meant for tuning sit in `prompts/` as Markdown files and reload on every API call with no restart — this is where the main briefing prompt, the scoring rubrics, and the hallucination audit all live. A smaller set stays embedded in source code, because the content is either too short (repair templates) or too programmatic (the podcast focus-prompt builder).
 
 ## The two categories
 
 **Hot-reloadable prompt files** live in `prompts/` as Markdown files. Each API route reads its template from disk per request, substitutes its template variables, and dispatches. Edits land on the next call with no rebuild or deploy — this is the primary tuning surface.
 
-**Embedded prompts** are string literals inside `pages/api/*.js` and `lib/**/*.js`. Most of them are scoring rubrics (Stage 2 and Stage 3) kept in code on purpose so the scale doesn't drift between briefings; the rest are short repair templates that fire only on schema validation failure. Tuning either requires editing the source file and restarting the dev server.
+**Embedded prompts** are string literals inside `lib/**/*.js` and a few `pages/api/*.js` routes. They're short and rarely tuned — editing any of them means restarting `npm run dev` to see the change.
 
-Template variables in the Markdown files use double-curly-brace syntax (the literal form in each file is `{` + `{variable}` + `}`). The tables below list variable names without the braces for readability.
+Template variables in the Markdown files use double-curly-brace syntax (the literal form in each file is `{` + `{variable}` + `}`). The sections below list variable names without the braces for readability.
 
 ## Hot-reloadable prompts (`prompts/*.md`)
 
-Five files. Each renders its template variables at dispatch time from values the route passes in.
+Nine files. Each renders its template variables at dispatch time from values the route passes in.
 
 ### `prompts/synthesis.md`
 
@@ -44,6 +44,30 @@ Podcast outline for NotebookLM — themes, pruning, duration-scaled depth. Fires
 
 **Variables:** `themes`, `papers`, `duration`, `date`
 
+### `prompts/rubric-filter.md`
+
+Stage 2 quick-filter rubric — <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict, one-sentence summary, one-sentence justification. Fires every filter batch via `/api/quick-filter`.
+
+**Variables:** `profile`, `papers`
+
+### `prompts/rubric-scoring.md`
+
+Stage 3 abstract-scoring rubric — 0.0–10.0 scale, alignment × quality split, scoring guidance. Fires every scoring batch via `/api/score-abstracts`.
+
+**Variables:** `profile`, `papers`
+
+### `prompts/rubric-rescoring.md`
+
+Stage 3.5 post-processing pass — comparative re-scoring across a batch for consistency. Fires every post-processing batch when the stage is enabled, via `/api/rescore-abstracts`.
+
+**Variables:** `profile`, `papers`
+
+### `prompts/rubric-pdf.md`
+
+Stage 4 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score. Fires for every paper that reaches Stage 4, via `/api/analyze-pdf`.
+
+**Variables:** `profile`, `originalScore`
+
 ::: tip Changes land immediately
 Edits to any file in `prompts/` take effect on the next API call that reads it. No rebuild, no restart — save the file, trigger the flow, look at the output.
 :::
@@ -57,26 +81,24 @@ Variables are rendered as simple string substitution. A few are worth noting:
 - `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups events by type.
 - `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
 
+### The cache-boundary marker
+
+The four `rubric-*.md` files contain a single `{{CACHE_BOUNDARY}}` line that splits each file into the stable prefix (rubric scaffolding + your profile) and the variable tail (the batch of papers). `lib/llm/loadRubricPrompt.js` reads the file, substitutes the variables, and returns both halves so the Anthropic prompt-cache block can be placed on the stable portion only. The split point is invisible to the LLM — the two halves concatenate with no separator — but it's the reason edits to the rubric prose above the marker are cache-aware while edits below the marker are per-batch variable content.
+
+Keep the marker as a single `{{CACHE_BOUNDARY}}` line with blank lines before and after. Removing it will raise a load error on the next call.
+
 ## Embedded prompts (require server restart)
 
-These are inline in the route or library code. Editing any of them means restarting `npm run dev` to see the change.
+A smaller set of prompts still lives in the source code. Each is either too short or too programmatic to move cleanly to a template file.
 
-| Location                             | What it controls                                                                                                                                                                                                      | When it runs                                                         |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `pages/api/quick-filter.js`          | Stage 2 quick-filter rubric — <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict, one-sentence summary, one-sentence justification | Every Stage 2 batch call                                             |
-| `pages/api/score-abstracts.js`       | Stage 3 abstract-scoring rubric — 0.0–10.0 scale, alignment × quality split, scoring guidance                                                                                                                         | Every Stage 3 batch call                                             |
-| `pages/api/rescore-abstracts.js`     | Stage 3.5 post-processing pass — comparative re-scoring across a batch for consistency                                                                                                                                | Every post-processing batch when the stage is enabled                |
-| `pages/api/analyze-pdf.js`           | Stage 4 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score                                                                                                                 | Every paper that reaches Stage 4                                     |
-| `lib/notebooklm/buildFocusPrompt.js` | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets                                                                                                                                       | During podcast bundle generation; output lands in `focus-prompt.txt` |
-| `lib/synthesis/repair.js`            | Synthesis schema-repair template                                                                                                                                                                                      | Only when `/api/synthesize` output fails zod validation              |
-| `pages/api/check-briefing.js`        | Hallucination-check schema-repair template                                                                                                                                                                            | Only when `/api/check-briefing` output fails validation              |
-| `pages/api/suggest-profile.js`       | Suggest-profile schema-repair template                                                                                                                                                                                | Only when `/api/suggest-profile` output fails validation             |
+| Location                             | What it controls                                                                | When it runs                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `lib/notebooklm/buildFocusPrompt.js` | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets | During podcast bundle generation; output lands in `focus-prompt.txt` |
+| `lib/synthesis/repair.js`            | Synthesis schema-repair template                                                | Only when `/api/synthesize` output fails zod validation              |
+| `pages/api/check-briefing.js`        | Hallucination-check schema-repair template                                      | Only when `/api/check-briefing` output fails validation              |
+| `pages/api/suggest-profile.js`       | Suggest-profile schema-repair template                                          | Only when `/api/suggest-profile` output fails validation             |
 
-### Where the scoring rubric lives
-
-The Stage 3 and Stage 4 scoring scale — what a 7 means versus a 9, the 50/50 blend of research alignment and paper quality — lives inline in `pages/api/score-abstracts.js` and `pages/api/analyze-pdf.js`, not in any `prompts/*.md` file. The `buildCachePrefix(scoringCriteria)` function in each route assembles the rubric by wrapping your profile text (the variable portion) in the rubric scaffolding (the stable portion). The stable portion is cached under Anthropic prompt caching when the model supports it.
-
-The quick-filter rubric (Stage 2 — <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>) follows the same pattern in `pages/api/quick-filter.js`, and the post-processing rubric (Stage 3.5) in `pages/api/rescore-abstracts.js`.
+The focus-prompt builder is a JavaScript function that computes paper and theme budgets from the podcast duration (not a static template). The three repair templates are short and tightly coupled to the zod schema they're repairing — moving them to files would gain nothing since they're only rarely tuned.
 
 ## What to tune for which quality knob
 
@@ -92,27 +114,11 @@ Match the symptom to a file.
 
 **Podcasts drift off-topic or cover too many papers shallowly.** Edit `prompts/notebooklm-discussion-guide.md` for the outline itself, or `lib/notebooklm/buildFocusPrompt.js` for the per-duration budget table NotebookLM receives in `focus-prompt.txt`.
 
-**Scoring doesn't match your profile.** This is usually a profile problem, not a prompt problem. The scoring rubrics in `quick-filter.js`, `score-abstracts.js`, and `analyze-pdf.js` describe the 0–10 scale itself; they don't describe what's relevant to you. Edit your profile, then run the refinement flow. Only edit the rubric files if you want to recalibrate the scale — which invalidates score comparisons against older briefings.
+**Scoring doesn't match your profile.** This is usually a profile problem, not a prompt problem. The scoring rubrics in `prompts/rubric-filter.md`, `rubric-scoring.md`, and `rubric-pdf.md` describe the 0–10 scale itself; they don't describe what's relevant to you. Edit your profile, then run the refinement flow. Only edit the rubric files if you want to recalibrate the scale — which invalidates score comparisons against older briefings.
 
-## Why scoring rubrics aren't hot-reloadable
-
-The filter, abstract-scoring, and re-scoring prompts sit in JS function bodies instead of `prompts/*.md`. This is deliberate:
-
-- **Consistency across runs.** The rubric defines what a 7 means. Accidental edits during an experiment would bleed into every briefing's provenance metadata and make comparisons across dates meaningless.
-- **Caching.** Each route splits its prompt into a stable prefix (rubric + profile) and a variable tail (the current batch of papers). Keeping the rubric in code lets the prefix be shaped for Anthropic prompt caching cleanly — `lib/llm/structured/anthropic.js` emits a `cache_control: {type: 'ephemeral'}` block on the prefix, and `read` tokens from cache hits land in the dispatcher's log line.
-- **Low tuning frequency.** Scoring scales get calibrated once and rarely adjusted. A dev-server restart is the right cost for that cadence.
-
-If you do need to change a scoring rubric, edit the `buildCachePrefix` function in the relevant route, restart with `npm run dev`, and run the Minimal API Test to confirm the new scale produces calibrated output before a full run.
-
-## Why repair templates are embedded too
-
-The three repair sites (`lib/synthesis/repair.js` and the `buildRepairPrompt` helpers in `pages/api/check-briefing.js` and `pages/api/suggest-profile.js`) are short by design — a few lines asking the model to fix a specific validation error without re-inferring content. Each one is coupled to the zod schema that produced the error, so keeping them next to the validator is clearer than splitting them into a prompt file.
-
-Repair fires rarely. When it does, tuning it usually means adding context about the schema the first attempt failed — a code change with a cheap restart, not an iterate-and-observe loop.
-
-## `buildFocusPrompt` is generated, not a template
-
-`lib/notebooklm/buildFocusPrompt.js` is a function that builds the focus prompt from a duration input and writes the result to `focus-prompt.txt` in the podcast bundle. It's not a static template — the number of themes, the depth of coverage, and the paper budget scale with the podcast length. If you want to change how time budgets map to depth, that's the file to edit.
+::: warning Editing scoring rubrics is a breaking change
+The rubric defines what a 7 means versus a 9. Edits change the score distribution of every subsequent briefing, which invalidates cross-date comparisons. Generation metadata captures the prompt filename but not its contents, so an old briefing with "score 8.2" and a new briefing with "score 8.2" aren't automatically comparable if the rubric changed in between. Treat rubric edits as calibration events worth noting separately.
+:::
 
 ## See also
 

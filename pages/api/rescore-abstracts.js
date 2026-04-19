@@ -1,4 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
+import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 function checkPassword(password) {
@@ -55,76 +56,21 @@ function validateRescoreResponse(responseText, expectedCount) {
  * This portion is identical for every batch call with the same scoringCriteria,
  * making it a good candidate for Anthropic prompt caching.
  */
-function buildCachePrefix(scoringCriteria) {
-  return `You are a research assistant performing a SECOND-PASS REVIEW of already-scored academic papers to ensure consistency and accuracy.
-
-RESEARCH INTERESTS:
-${scoringCriteria}
-
-IMPORTANT CONTEXT:
-These papers have already been scored once. Your task is to review the scores AS A GROUP to:
-1. Identify any papers that seem mis-scored relative to the others
-2. Check for scoring inconsistencies (similar papers with very different scores)
-3. Adjust scores to ensure fair relative ranking
-4. Consider if complex criteria were properly applied
-
-SCORING APPROACH (same as initial scoring):
-Papers are scored on two dimensions:
-- RESEARCH ALIGNMENT (0-10): How well it matches the specific research interests
-- PAPER QUALITY (0-10): How impactful/well-executed the work is
-- FINAL SCORE = (Research Alignment × 0.5) + (Paper Quality × 0.5)
-
-REVIEW INSTRUCTIONS:
-1. Compare all papers against each other to identify relative ranking issues
-2. Look for papers that seem over-scored or under-scored compared to similar papers
-3. Consider if the initial scoring properly understood complex research criteria
-4. Adjust scores to create a fair and consistent ranking
-5. Most adjustments should be small (±0.5 to ±1.5 points)
-6. Only make large adjustments (±2.0+ points) if clearly justified
-7. Papers can keep their original score if it seems appropriate
-
-For each paper, provide:
-- adjustedScore: The new score after review (can be same as initial)
-- adjustmentReason: Brief explanation of why you adjusted (or kept) the score
-- confidence: Your confidence in this adjustment (HIGH/MEDIUM/LOW)
-
-COMPARATIVE ANALYSIS GUIDANCE:
-- If two papers address similar topics, their scores should reflect their relative quality
-- If a paper is clearly superior to another in the batch, it should score higher
-- Consider the full score distribution - avoid clustering all scores too closely
-- Remember that scores near 0 or 10 should be rare
-
-USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. Use the full 0-10 scale.
-
-Respond ONLY with a valid JSON array in this exact format:
-[
-  {
-    "paperIndex": 1,
-    "adjustedScore": 6.5,
-    "adjustmentReason": "Initially over-scored; similar methodology to Paper 3 but less novel findings",
-    "confidence": "HIGH"
-  }
-]
-
-Your entire response MUST ONLY be a single, valid JSON array. DO NOT respond with anything other than a single, valid JSON array.`;
-}
-
 /**
- * Build the variable per-batch tail: the list of papers with initial scores to review.
+ * Format the per-batch paper list for the {{papers}} slot in rubric-rescoring.md.
  */
-function buildBatchPrompt(papers) {
-  return `PAPERS TO REVIEW (with their initial scores and justifications):
-${papers
-  .map(
-    (p, idx) => `
+function formatPapersForBatch(papers) {
+  return papers
+    .map(
+      (p, idx) => `
 Paper ${idx + 1}:
 Title: ${p.title}
 Abstract: ${p.abstract}
 Initial Score: ${p.initialScore}/10
 Initial Justification: ${p.initialJustification}
 `
-  )
-  .join('\n')}`;
+    )
+    .join('\n');
 }
 
 export default async function handler(req, res) {
@@ -187,13 +133,16 @@ export default async function handler(req, res) {
       responseText = result.text;
     } else {
       // Normal path: split prompt into static prefix (cacheable) + variable tail.
-      const cachePrefix = buildCachePrefix(scoringCriteria ?? '');
-      const batchPrompt = buildBatchPrompt(papers ?? []);
+      const { cachePrefix, variableTail } = await loadRubricPrompt(
+        'rubric-rescoring.md',
+        { profile: scoringCriteria ?? '' },
+        { papers: formatPapersForBatch(papers ?? []) }
+      );
       // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
       // tests. When the override is active, disable caching so the fixture hash
       // keys only on {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
-      const finalPrompt = promptOverride ?? batchPrompt;
+      const finalPrompt = promptOverride ?? variableTail;
       const useCaching = cacheable && !isFixture && !promptOverride;
 
       const result = await callModel(
