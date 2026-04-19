@@ -114,7 +114,7 @@ After briefing synthesis completes, the main area fills in. Four blocks stack fr
 
 | Block                | What it is                                                       | When you'd use it                                      |
 | -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
-| **Analysis Results** | Ranked paper list with scores, justifications, and deep summaries | Source-of-truth lookup; still interactive              |
+| **Analysis Results** | Ranked paper list with scores (0.0–10.0, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)), justifications, and deep summaries | Source-of-truth lookup; still interactive |
 | **Download Report**  | Markdown export of the full run                                  | You want a standalone file on disk                     |
 | **Briefing**         | Editorial reading view — executive summary, themes, paper cards  | Primary daily reading surface                          |
 | **NotebookLM**       | Bundle generator for a commute-length podcast                    | Optional add-on — see [Generating a podcast](/add-ons/podcast) |

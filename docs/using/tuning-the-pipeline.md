@@ -89,7 +89,7 @@ Lower them when:
 
 ## Score thresholds
 
-Three thresholds control which papers advance between stages.
+Three thresholds control which papers advance between stages. The 0.0–10.0 relevance score itself is produced at Stage 3 — for what the numbers actually mean and how they're calibrated, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts).
 
 ### Filter verdicts to advance
 

@@ -77,7 +77,37 @@ You can override any verdict in the review-gate UI. Overrides are recorded as `f
 
 ## Stage 3: score abstracts
 
-**What it does.** Sends each surviving paper's full abstract to a stronger scoring model and asks for a 0–10 relevance score with a detailed justification. Papers that score exactly 0 are dropped. This is the main quality filter — everything downstream uses these scores to decide which papers deserve expensive deep analysis.
+**What it does.** Sends each surviving paper's full abstract to a stronger scoring model and asks for a 0.0–10.0 relevance score (one decimal place) with a 2–3 sentence justification. Papers that score exactly 0 are dropped. This is the main quality filter — everything downstream uses these scores to decide which papers deserve expensive deep analysis, and the number you see on each paper card in the briefing traces back to this stage.
+
+### How the score is calculated
+
+The scoring prompt asks the model to evaluate each paper on two dimensions (0–10 each) and average them with equal weight:
+
+**Research alignment** — how well the paper matches your profile:
+
+| Range | Meaning                                                   |
+| ----- | --------------------------------------------------------- |
+| 9–10  | Directly addresses your core research areas, perfect fit  |
+| 7–8   | Strong overlap with stated interests                      |
+| 5–6   | Moderate connection                                       |
+| 3–4   | Weak, peripherally related                                |
+| 0–2   | Little to no connection                                   |
+
+**Paper quality** — how impactful or well-executed the work is:
+
+| Range | Meaning                                                                          |
+| ----- | -------------------------------------------------------------------------------- |
+| 9–10  | Genuinely transformative — likely to be remembered as a landmark in 5–10 years   |
+| 7–8   | Significant methodological advance or major discovery with clear impact          |
+| 5–6   | Competent work, adequately executed using standard approaches                    |
+| 3–4   | Incremental work with limited novelty                                            |
+| 0–2   | Poor execution, outdated, or fundamentally flawed                                |
+
+**Final score = (Alignment × 0.5) + (Quality × 0.5)**, to one decimal place.
+
+The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment *and* a paper the model considers genuinely transformative — it's a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
+
+This rubric lives in the `pages/api/score-abstracts.js` prompt; see [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration (e.g., purely applied work that shouldn't cap at 6 on quality).
 
 **Inputs.** Papers from stage 2, `profile.content`, `scoringModel` (default: `gemini-3-flash`), `scoringBatchSize` (default: 3).
 

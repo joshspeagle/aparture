@@ -15,7 +15,7 @@ The LLM reads it the way a well-intentioned collaborator would: to understand wh
 It's worth knowing where your profile actually lands:
 
 - **Quick filter** (Stage 2) — decides whether to include or skip papers based on abstracts. Short prompts; your profile competes with the paper text for attention, so clarity matters.
-- **Abstract scoring** (Stage 3) — assigns 0-10 relevance scores with justifications. Reads your profile as grounds for the relevance judgement.
+- **Abstract scoring** (Stage 3) — assigns 0.0–10.0 relevance scores with justifications. Reads your profile as grounds for the relevance judgement. See [how scoring works](/concepts/pipeline#stage-3-score-abstracts) for the rubric.
 - **Post-processing** (Stage 3.5, optional) — compares batches of papers for consistent ranking. Uses the profile indirectly, via scored justifications.
 - **PDF analysis** (Stage 4) — deep-reads the top N papers. Uses your profile to frame the summary and adjust the score after seeing the full content.
 - **Briefing synthesis** (Stage 5) — the big one. Uses your profile (plus your starred/dismissed papers and comments) to produce the executive summary, themes, and "why it matters" paragraphs.
