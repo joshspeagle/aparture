@@ -92,29 +92,29 @@ All GPT-5.4 models bill per million tokens (MTok), separately for input and outp
 
 OpenAI updates pricing periodically. Verify current rates at [developers.openai.com/api/docs/pricing](https://developers.openai.com/api/docs/pricing) before committing to real spend.
 
-### Worked calculation: Balanced at 50 input papers
+### Worked calculation: Balanced at 100 input papers
 
-Reference case: 50 fetched papers, ~30 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, ~50 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
 
-| Stage                    | Model        | Input tokens | Output tokens | Cost                                       |
-| ------------------------ | ------------ | ------------ | ------------- | ------------------------------------------ |
-| Filter (50 abstracts)    | GPT-5.4 Nano | ~20,000      | ~2,500        | 20k × $0.20 / MTok + 2.5k × $1.25 = ~$0.01 |
-| Scoring (30 abstracts)   | GPT-5.4 Mini | ~24,000      | ~4,500        | 24k × $0.75 + 4.5k × $4.50 = ~$0.04        |
-| PDF analysis (10 papers) | GPT-5.4      | ~180,000     | ~20,000       | 180k × $2.50 + 20k × $15 = ~$0.75          |
-| Quick summaries (10)     | GPT-5.4 Nano | ~15,000      | ~4,000        | 15k × $0.20 + 4k × $1.25 = ~$0.01          |
-| Briefing synthesis       | GPT-5.4      | ~6,000       | ~2,500        | 6k × $2.50 + 2.5k × $15 = ~$0.05           |
-| Hallucination audit      | GPT-5.4      | ~4,000       | ~500          | 4k × $2.50 + 0.5k × $15 = ~$0.02           |
-| **Total, list price**    |              |              |               | **~$0.88**                                 |
+| Stage                    | Model        | Input tokens | Output tokens | Cost                                     |
+| ------------------------ | ------------ | ------------ | ------------- | ---------------------------------------- |
+| Filter (100 abstracts)   | GPT-5.4 Nano | ~40,000      | ~5,000        | 40k × $0.20 / MTok + 5k × $1.25 = ~$0.01 |
+| Scoring (50 abstracts)   | GPT-5.4 Mini | ~40,000      | ~7,500        | 40k × $0.75 + 7.5k × $4.50 = ~$0.06      |
+| PDF analysis (10 papers) | GPT-5.4      | ~180,000     | ~20,000       | 180k × $2.50 + 20k × $15 = ~$0.75        |
+| Quick summaries (10)     | GPT-5.4 Nano | ~15,000      | ~4,000        | 15k × $0.20 + 4k × $1.25 = ~$0.01        |
+| Briefing synthesis       | GPT-5.4      | ~6,000       | ~2,500        | 6k × $2.50 + 2.5k × $15 = ~$0.05         |
+| Hallucination audit      | GPT-5.4      | ~4,000       | ~500          | 4k × $2.50 + 0.5k × $15 = ~$0.02         |
+| **Total, list price**    |              |              |               | **~$0.90**                               |
 
 With automatic caching on repeat runs (same profile, same category set), the stable prefix of each prompt drops to 10% of list input pricing, so repeat runs land at **~$0.60–$0.70 per run** after the first.
 
 ### Scaling to other input volumes
 
-Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-analysis cost stops growing. Stages 2 and 3 scale roughly linearly:
+Stages 2 and 3 scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — default cap is `maxDeepAnalysis = 30`, but most runs stay well below that:
 
-- **50 papers in** (10 PDFs): ~$0.90 list / ~$0.65 with caching (reference case above)
-- **100 papers in** (30 PDFs, capped): ~$2.50 list / ~$1.80 with caching
-- **250 papers in** (30 PDFs, capped): ~$2.70 list / ~$1.95 with caching — PDF analysis plateaus; filter + scoring become the delta
+- **50 papers in** (10 PDFs): ~$0.87 list / ~$0.60 with caching
+- **100 papers in** (10 PDFs): ~$0.90 list / ~$0.65 with caching (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$2.65 list / ~$1.95 with caching — PDF analysis plateaus; filter + scoring become the delta
 
 ## 8. Common gotchas
 

@@ -85,29 +85,29 @@ Prices shown are text/image/video input at ≤200k prompt size. `gemini-3.1-pro`
 
 Google updates preview pricing periodically and the 3.x tier is still beta, so verify current rates at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to real spend.
 
-### Worked calculation: Balanced at 50 input papers (paid Tier 1)
+### Worked calculation: Balanced at 100 input papers (paid Tier 1)
 
-Reference case: 50 fetched papers, ~30 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, ~50 pass the filter and get scored, 10 go through PDF analysis (well below the default `maxDeepAnalysis` cap of 30).
 
-| Stage                    | Model                 | Input tokens | Output tokens | Cost                                       |
-| ------------------------ | --------------------- | ------------ | ------------- | ------------------------------------------ |
-| Filter (50 abstracts)    | Gemini 3.1 Flash-Lite | ~20,000      | ~2,500        | 20k × $0.25 / MTok + 2.5k × $1.50 = ~$0.01 |
-| Scoring (30 abstracts)   | Gemini 3 Flash        | ~24,000      | ~4,500        | 24k × $0.50 + 4.5k × $3 = ~$0.03           |
-| PDF analysis (10 papers) | Gemini 3.1 Pro        | ~180,000     | ~20,000       | 180k × $2 + 20k × $12 = ~$0.60             |
-| Quick summaries (10)     | Gemini 3.1 Flash-Lite | ~15,000      | ~4,000        | 15k × $0.25 + 4k × $1.50 = ~$0.01          |
-| Briefing synthesis       | Gemini 3.1 Pro        | ~6,000       | ~2,500        | 6k × $2 + 2.5k × $12 = ~$0.04              |
-| Hallucination audit      | Gemini 3.1 Pro        | ~4,000       | ~500          | 4k × $2 + 0.5k × $12 = ~$0.01              |
-| **Total, list price**    |                       |              |               | **~$0.70**                                 |
+| Stage                    | Model                 | Input tokens | Output tokens | Cost                                     |
+| ------------------------ | --------------------- | ------------ | ------------- | ---------------------------------------- |
+| Filter (100 abstracts)   | Gemini 3.1 Flash-Lite | ~40,000      | ~5,000        | 40k × $0.25 / MTok + 5k × $1.50 = ~$0.02 |
+| Scoring (50 abstracts)   | Gemini 3 Flash        | ~40,000      | ~7,500        | 40k × $0.50 + 7.5k × $3 = ~$0.04         |
+| PDF analysis (10 papers) | Gemini 3.1 Pro        | ~180,000     | ~20,000       | 180k × $2 + 20k × $12 = ~$0.60           |
+| Quick summaries (10)     | Gemini 3.1 Flash-Lite | ~15,000      | ~4,000        | 15k × $0.25 + 4k × $1.50 = ~$0.01        |
+| Briefing synthesis       | Gemini 3.1 Pro        | ~6,000       | ~2,500        | 6k × $2 + 2.5k × $12 = ~$0.04            |
+| Hallucination audit      | Gemini 3.1 Pro        | ~4,000       | ~500          | 4k × $2 + 0.5k × $12 = ~$0.01            |
+| **Total, list price**    |                       |              |               | **~$0.72**                               |
 
 Google doesn't wire in Aparture's prompt caching, so repeat runs pay the same list price.
 
 ### Scaling to other input volumes
 
-Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-analysis cost stops growing. Stages 2 and 3 scale roughly linearly, but at Gemini's paid-tier Flash pricing they stay well under $0.25 even at 250 papers:
+Stages 2 and 3 scale linearly with input volume, but at Gemini's paid-tier Flash pricing they stay well under $0.15 even at 250 papers. Stage 4 scales with how many papers you deep-analyse — default cap is `maxDeepAnalysis = 30`, but most runs stay well below that:
 
-- **50 papers in** (10 PDFs): ~$0.70 list / all free on Flash-only free tier (reference case above)
-- **100 papers in** (30 PDFs, capped): ~$2.00 list
-- **250 papers in** (30 PDFs, capped): ~$2.10 list — PDF analysis plateaus; filter + scoring barely budge
+- **50 papers in** (10 PDFs): ~$0.70 list / all free on Flash-only free tier
+- **100 papers in** (10 PDFs): ~$0.72 list (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$2.15 list — PDF analysis plateaus; filter + scoring barely budge
 
 ### Free tier (2.5-stable throughout)
 

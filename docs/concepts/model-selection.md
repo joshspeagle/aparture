@@ -95,7 +95,7 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 ## Three example configurations
 
-Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "50-paper run" numbers assume 50 papers fetched, ~30 passing the filter to scoring, 10 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages.
+Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "100-paper run" numbers assume 100 papers fetched, ~50 passing the filter to scoring, 10 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages.
 
 ### Balanced (Aparture default)
 
@@ -110,7 +110,7 @@ What `DEFAULT_CONFIG` ships with. A good starting point regardless of provider p
 | `briefingModel`       | `gemini-3.1-pro`        |
 | `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
-Ballpark cost for a 50-paper run: roughly $0.80–2.00.
+Ballpark cost for a 100-paper run: roughly $0.70–1.75.
 
 ### Budget (Google free tier or stable Gemini 2.5)
 
@@ -125,7 +125,7 @@ Useful if you're on the free tier or deliberately keeping spend near zero. The s
 | `briefingModel`       | `gemini-2.5-pro`        |
 | `quickSummaryModel`   | `gemini-2.5-flash-lite` |
 
-Ballpark cost for a 50-paper run: roughly $0.20–0.60, or effectively zero if you stay inside Google's free-tier caps.
+Ballpark cost for a 100-paper run: roughly $0.30–0.80, or effectively zero if you stay inside Google's free-tier caps.
 
 ### Premium (Claude throughout)
 
@@ -140,7 +140,7 @@ All-Anthropic. Haiku 4.5 on the cheap stages, Sonnet 4.6 on scoring, Opus 4.7 on
 | `briefingModel`       | `claude-opus-4.7`   |
 | `quickSummaryModel`   | `claude-haiku-4.5`  |
 
-Ballpark cost for a 50-paper run: roughly $3–8 on a cold run, somewhat less once prompt caching starts hitting.
+Ballpark cost for a 100-paper run: roughly $1.75–4 on a cold run, somewhat less once prompt caching starts hitting.
 
 Keeping `quickSummaryModel` on Haiku means the whole run stays within Anthropic and you don't need a second API key. If you're willing to keep a Google key alongside, leaving this slot on `gemini-3.1-flash-lite` is slightly cheaper.
 
