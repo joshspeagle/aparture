@@ -1,26 +1,16 @@
 # Briefing anatomy
 
-A tour of the briefing from the inside — what each section is, what prompt instruction produces it, what the zod schema requires, and which React component renders it.
+A tour of the briefing from the inside — what each section is, what prompt instruction produces it, and the hard constraints the synthesis LLM must honour.
 
 ::: info System view, not reading view
-This page is the **system view** of the briefing: schema fields, prompt instructions, render components. For the **reading view** — what to look for, how to act on stars and dismissals, how to use the inline expansions — see [Reading a briefing](/using/reading-a-briefing) instead.
+This page is the **system view** of the briefing: what produces each part and why. For the **reading view** — what to look for, how to act on stars and dismissals, how to use the inline expansions — see [Reading a briefing](/using/reading-a-briefing) instead.
 :::
 
-## Why the schema is small
+## Three sections, nothing more
 
-Despite the visual density of a finished briefing, the data contract is short. From `lib/synthesis/schema.js`:
+Despite the visual density of a finished briefing, the synthesis LLM only produces three things: an executive summary, a list of themes, and one card per paper. Everything else on the page — the quick-summary expansion, the full-report side panel, the "Generation details" disclosure — is rendered from data generated elsewhere in the pipeline, not from the synthesis call.
 
-```js
-export const BriefingSchema = z.object({
-  executiveSummary: z.string().min(1),
-  themes: z.array(ThemeSectionSchema),  // ≥ 1
-  papers: z.array(PaperCardSchema),     // one per input paper
-});
-```
-
-Three top-level fields, all required. Everything else you see in a briefing — the inline quick-summary panels, the full-report side panel, the "Generation details" section below — is passed into the renderer as separate props, not validated by this schema, and not produced by the synthesis LLM call.
-
-That separation is deliberate. The briefing object itself is stable and portable (it could be serialised to JSON and re-rendered somewhere else tomorrow), while the ancillary data — provenance, per-paper expansions, full reports — can evolve without breaking the contract. Keeping the schema this narrow also keeps the synthesis LLM's job narrow: produce editorial prose against a small, well-defined shape, and stop. Everything that isn't editorial is handled outside the synthesis call.
+Keeping the synthesis contract narrow keeps the LLM's job narrow: produce editorial prose against a small, well-defined shape, and stop.
 
 ## Section 1: the executive summary
 
@@ -36,9 +26,7 @@ The synthesis prompt gives the model a three-paragraph template rather than a wo
 >
 > **Final paragraph:** a clear reading recommendation. "If you read one paper today, make it [arxivId] because…" This is the most actionable sentence in the briefing.
 
-**Schema field.** `executiveSummary: string` (min length 1).
-
-**UI component.** `components/briefing/ExecutiveSummary.jsx` — renders a prose block with the class `executive-summary` directly after the header.
+Rendered as a prose block directly after the briefing header.
 
 ## Section 2: themes
 
@@ -56,19 +44,9 @@ From `prompts/synthesis.md`:
 > - `argument`: a 2–4 sentence paragraph explaining why these papers belong together and what the user should take away. This is editorial writing, not a section header. If papers within the theme are in tension or build on each other, say so here — **debates belong inside themes, not in a separate section.**
 > - `paperIds`: the arxivIds of the papers in this theme. Every paper in `papers` should appear in at least one theme.
 
-The last bullet reflects a design choice worth surfacing. Prior versions of Aparture had separate `DebateBlock` and `LongitudinalBlock` components for explicitly marked tensions and over-time observations. Those were removed in favour of handling those cases **inside a theme's `argument` field**, where they're naturally grounded in the papers being grouped. A theme that contains two papers disagreeing about the same phenomenon will usually produce better prose when the disagreement is argued through in the theme's own paragraph than when it's lifted out into its own UI block.
+The last bullet reflects a design choice worth surfacing. Prior versions of Aparture had separate components for explicitly marked tensions and over-time observations. Those were removed in favour of handling those cases **inside a theme's argument**, where they're naturally grounded in the papers being grouped. A theme that contains two papers disagreeing about the same phenomenon will usually produce better prose when the disagreement is argued through in the theme's own paragraph than when it's lifted out into its own UI block.
 
-**Schema fields.**
-
-```js
-z.object({
-  title: z.string().min(1),             // 6–12 word argument-style headline
-  argument: z.string().min(1),          // 2–4 sentence editorial paragraph
-  paperIds: z.array(z.string()).min(1), // ≥ 1 arxivId
-});
-```
-
-**UI component.** `components/briefing/ThemeSection.jsx`. Renders a numbered header (`── THEME 1 ──`), the title as an `h2`, the argument as an italicised paragraph (class `italic-pitch`), and the paper cards as children. One `ThemeSection` per theme, in the priority order the LLM returned.
+Each theme renders as a numbered section with an argument-style title, an italicised argument paragraph, and the paper cards for its papers. Themes appear in the priority order the LLM returned.
 
 ## Section 3: papers
 
@@ -91,35 +69,19 @@ From `prompts/synthesis.md`:
 >   - For **dismissed** papers: keep brief. Acknowledge the dismissal and explain only if there is a genuine reason to include it despite the user's signal.
 >   - When **comments** exist: integrate them. The user's own words should shape your framing.
 
-**Schema fields.**
+Each card renders inside its parent theme with a colour-coded score badge (brightened at 9+), the title as a link to the arXiv page, the italicised one-line pitch, the "why it matters" paragraph, and action buttons for quick summary, full report, star, dismiss, and comment.
 
-```js
-z.object({
-  arxivId: z.string().min(1),
-  title: z.string().min(1),
-  score: z.number().min(0).max(10),
-  onelinePitch: z.string().min(1),
-  whyMatters: z.string().min(1),
-});
-```
+## Everything else on the page
 
-**UI component.** `components/briefing/PaperCard.jsx`. Renders the score badge (colour-coded, with a `scoreHigh` class when the score is 9 or higher), the title as an `h3`, an arXiv link, the italicised `onelinePitch`, the `whyMatters` paragraph, action buttons (quick summary, full report, star, dismiss, comment), an optional comment-input area, and any existing user comments for this paper. Cards render inside their parent `ThemeSection`.
-
-## Everything else on the page (not in the schema)
-
-Three features look like they're part of the briefing but are actually passed to the renderer as separate props, outside the validated schema. They exist because they're useful for reading and for provenance, but they don't need to be part of the synthesis LLM's output contract.
+Three features look like they're part of the briefing but come from elsewhere in the pipeline. They exist because they're useful for reading and for provenance, but they don't need to be part of the synthesis LLM's output.
 
 ### Quick summaries
 
-~300-word per-paper summaries, generated in parallel during Stage 5 of the pipeline via `/api/analyze-pdf-quick`. Stored by arXiv ID and passed to `BriefingView` as `quickSummariesById`.
-
-**Component.** `components/briefing/QuickSummaryInline.jsx` — renders an inline bordered block directly below the paper card when the user clicks the quick-summary button. The text source is external; the briefing object has no field for it.
+~300-word per-paper summaries, generated in parallel during Stage 5 of the pipeline. Render as an inline bordered block directly below each paper card when the user clicks the quick-summary button.
 
 ### Full reports
 
-The verbatim deep-analysis text produced by Stage 4 (PDF analysis). Also passed to `BriefingView` as a separate map: `fullReportsById`.
-
-**Component.** `components/briefing/FullReportSidePanel.jsx` — a right-side panel (covering roughly the right half of the window, via Radix UI) triggered by the full-report button on any paper card. The briefing object has no field for it.
+The verbatim deep-analysis text produced by Stage 4 (PDF analysis). Render as a right-side panel triggered by the full-report button on any paper card.
 
 ### Generation metadata
 
@@ -133,11 +95,11 @@ Everything you see in the expandable "Generation details" section below the brie
 - **Hallucination audit result** — verdict (<span class="verdict is-yes">NO</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">YES</span>), justification, list of flagged claims, and whether a retry was triggered
 - Generation timestamp
 
-**Component.** `components/briefing/GenerationDetails.jsx`. This data is attached to the saved briefing entry as `generationMetadata`, separate from the briefing object itself. Keeping it out-of-band means the briefing contract stays stable as provenance data evolves — new fields can be added to the metadata payload without touching the zod schema.
+This data is attached to the saved briefing entry separately from the briefing object itself, so new provenance fields can be added over time without changing the synthesis contract.
 
 ## Hard constraints (from the prompt)
 
-A few invariants the synthesis LLM must honour. If any fail, validation rejects the briefing and the repair pass runs.
+A few invariants the synthesis LLM must honour. If any fail, validation rejects the briefing and a repair pass runs.
 
 > - Every `arxivId` you emit in `papers` or `themes.paperIds` must be from the input list.
 > - `executiveSummary` is required and must be non-empty.
@@ -151,26 +113,13 @@ And the sourcing discipline the prompt enforces separately:
 > - If you are uncertain whether a claim is supported, omit it rather than state it. The briefing is better short and accurate than long and embellished.
 > - Cross-paper claims in `themes.argument` must be supported by content in at least two of the cited papers.
 
-Those constraints are a big part of why Aparture's briefings are worth trusting — the prompt is explicit about not inventing, and the hallucination audit in Stage 5 exists to catch the cases where the LLM does it anyway.
-
-## Validation flow
-
-When `/api/synthesize` returns, three validation passes run before the briefing is saved.
-
-1. **Zod shape check.** `BriefingSchema.safeParse()` in `lib/synthesis/validator.js` validates types, required fields, and min/max constraints.
-2. **Citation check.** `validateCitations()` ensures every `arxivId` in `papers` and `themes.paperIds` matches an arxivId in the input paper list. Unknown IDs are rejected.
-3. **Hallucination audit.** `/api/check-briefing` runs an independent LLM pass that compares briefing claims against the source corpus. Returns a verdict (<span class="verdict is-yes">NO</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">YES</span>), justification, and any flagged claims.
-
-If steps 1 or 2 fail, `lib/synthesis/repair.js` runs a targeted fix-it LLM call — minimal prompt, just the validation errors and the original output, asking the model to fix the structure without re-inferring content. This keeps repair cheap; it's not a full resynthesis.
-
-If step 3 flags hallucinations and the matching retry flag is enabled, synthesis reruns with a retry hint. See [the pipeline page](/concepts/pipeline#the-hallucination-retry-loop) for the full retry flow.
+Those constraints are a big part of why Aparture's briefings are worth trusting — the prompt is explicit about not inventing, and the hallucination audit (run as a separate LLM pass after synthesis) exists to catch the cases where the model does it anyway.
 
 ## Where to tune what
 
-- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. This prompt is the biggest quality lever in the system — changes take effect on the next `/api/synthesize` call with no rebuild. See [Prompts](/reference/prompts).
-- **Change how it looks.** Edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the React components, so colour changes propagate without touching any `.jsx` file.
+- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. This prompt is the biggest quality lever in the system — changes take effect on the next briefing with no rebuild. See [Prompts](/reference/prompts).
+- **Change how it looks.** Edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the components, so colour changes propagate without touching any JavaScript.
 - **Change the hallucination audit's sensitivity.** Edit `prompts/check-briefing.md`. Also hot-reloadable.
-- **Add a new briefing section.** A two-part change: extend `BriefingSchema` in `lib/synthesis/schema.js` to add the field, update the prompt to produce it, and add a render component under `components/briefing/` wired into `BriefingView.jsx`.
 
 ## Next
 

@@ -4,34 +4,58 @@ Aparture's LLM prompts live in two places. The ones meant for tuning sit in `pro
 
 ## The two categories
 
-**Hot-reloadable prompt files** live in `prompts/`. Each API route reads its template from disk per request, substitutes `{{placeholder}}` fields, and dispatches. Edits land on the next call with no rebuild or deploy — this is the primary tuning surface.
+**Hot-reloadable prompt files** live in `prompts/` as Markdown files. Each API route reads its template from disk per request, substitutes its template variables, and dispatches. Edits land on the next call with no rebuild or deploy — this is the primary tuning surface.
 
 **Embedded prompts** are string literals inside `pages/api/*.js` and `lib/**/*.js`. Most of them are scoring rubrics (Stage 2 and Stage 3) kept in code on purpose so the scale doesn't drift between briefings; the rest are short repair templates that fire only on schema validation failure. Tuning either requires editing the source file and restarting the dev server.
+
+Template variables in the Markdown files use double-curly-brace syntax (the literal form in each file is `{` + `{variable}` + `}`). The tables below list variable names without the braces for readability.
 
 ## Hot-reloadable prompts (`prompts/*.md`)
 
 Five files. Each renders its template variables at dispatch time from values the route passes in.
 
-| File                                     | What it controls                                                        | Placeholders                                                                                            | When it's called                                                         |
-| ---------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `prompts/synthesis.md`                   | Main briefing generation — executive summary, themes, paper cards       | `{{profile}}`, `{{papers}}`                                                                             | After PDF analysis, via `/api/synthesize`                                |
-| `prompts/analyze-pdf-quick.md`           | ~300-word per-paper compression used for the inline expansion view      | `{{title}}`, `{{authors}}`, `{{arxivId}}`, `{{fullReport}}`, `{{abstract}}`, `{{scoringJustification}}` | Quick-summary fan-out during briefing prep, via `/api/analyze-pdf-quick` |
-| `prompts/check-briefing.md`              | Hallucination audit — flags unsupported claims in a generated briefing  | `{{briefing}}`, `{{papers}}`                                                                            | After synthesis, via `/api/check-briefing`                               |
-| `prompts/suggest-profile.md`             | Profile refinement proposals from accumulated feedback                  | `{{profile}}`, `{{feedback}}`                                                                           | User clicks Suggest improvements, via `/api/suggest-profile`             |
-| `prompts/notebooklm-discussion-guide.md` | Podcast outline for NotebookLM — themes, pruning, duration-scaled depth | `{{themes}}`, `{{papers}}`, `{{duration}}`, `{{date}}`                                                  | User clicks Generate podcast, via `/api/generate-notebooklm`             |
+### `prompts/synthesis.md`
+
+Main briefing generation — executive summary, themes, paper cards. Fires after PDF analysis via `/api/synthesize`.
+
+**Variables:** `profile`, `papers`
+
+### `prompts/analyze-pdf-quick.md`
+
+~300-word per-paper compression used for the inline expansion view. Fires in parallel during briefing prep via `/api/analyze-pdf-quick`, once per paper.
+
+**Variables:** `title`, `authors`, `arxivId`, `fullReport`, `abstract`, `scoringJustification`
+
+### `prompts/check-briefing.md`
+
+Hallucination audit — flags unsupported claims in a generated briefing. Fires after synthesis via `/api/check-briefing`.
+
+**Variables:** `briefing`, `papers`
+
+### `prompts/suggest-profile.md`
+
+Profile refinement proposals from accumulated feedback. Fires when the user clicks Suggest improvements via `/api/suggest-profile`.
+
+**Variables:** `profile`, `feedback`
+
+### `prompts/notebooklm-discussion-guide.md`
+
+Podcast outline for NotebookLM — themes, pruning, duration-scaled depth. Fires when the user clicks Generate podcast via `/api/generate-notebooklm`.
+
+**Variables:** `themes`, `papers`, `duration`, `date`
 
 ::: tip Changes land immediately
 Edits to any file in `prompts/` take effect on the next API call that reads it. No rebuild, no restart — save the file, trigger the flow, look at the output.
 :::
 
-### Placeholder conventions
+### Variable conventions
 
-Placeholders are rendered as simple string substitution. A few are worth noting:
+Variables are rendered as simple string substitution. A few are worth noting:
 
-- `{{profile}}` is the exact profile text stored in `scoringCriteria` in your config. It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
-- `{{papers}}` in `synthesis.md` and `check-briefing.md` is a JSON-serialised list of the per-paper objects — including titles, scores, quick summaries, full reports, and any stars/dismisses/comments attached to the paper.
-- `{{feedback}}` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups events by type.
-- `{{themes}}` and `{{papers}}` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
+- `profile` is the exact profile text stored in `scoringCriteria` in your config. It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
+- `papers` in `synthesis.md` and `check-briefing.md` is a JSON-serialised list of the per-paper objects — including titles, scores, quick summaries, full reports, and any stars/dismisses/comments attached to the paper.
+- `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups events by type.
+- `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
 
 ## Embedded prompts (require server restart)
 
