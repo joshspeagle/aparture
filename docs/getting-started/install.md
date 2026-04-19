@@ -112,9 +112,19 @@ npm install
 
 `npm install` pulls roughly 700 packages (~500 MB) and takes 1–3 minutes on a clean machine.
 
-You now have a `.env.local` file to fill in on the [API keys page](/getting-started/api-keys). Don't start the dev server yet. It will fail without at least one API key.
+## 3. Set a local access password
 
-## 3. Playwright (optional fallback for reCAPTCHA)
+Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll remember:
+
+```bash
+ACCESS_PASSWORD=pick-anything-memorable
+```
+
+Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder, which works fine for local-only development, though you should obviously pick something real before exposing the app beyond your own machine.
+
+You'll also add your LLM API key to this same `.env.local` file on the next page. Don't start the dev server yet — it will fail without at least one API key.
+
+## 4. Playwright (optional fallback for reCAPTCHA)
 
 Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
 
@@ -133,7 +143,7 @@ npx playwright install-deps chromium
 The first PDF download that hits reCAPTCHA may prompt you to solve it interactively in a headed browser. Once you solve it, Playwright caches the session in `temp/playwright-profile/` and subsequent runs proceed without prompts. Deleting that folder forces a re-solve on the next affected paper.
 :::
 
-## 4. Verify the toolchain
+## 5. Verify the toolchain
 
 Before moving on, confirm everything installed cleanly:
 

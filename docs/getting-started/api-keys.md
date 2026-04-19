@@ -1,14 +1,14 @@
 # API keys
 
-Aparture routes LLM calls through Anthropic (Claude), OpenAI (GPT), or Google (Gemini). You need at least one provider key to run the pipeline. You can mix providers across stages (the default config already does), and you can add more providers later without reconfiguring anything else.
+Aparture routes LLM calls through Anthropic (Claude), OpenAI (GPT), or Google (Gemini). You need at least one provider key to run the pipeline. You can mix providers across stages — the default config already does — and you can add more providers later without reconfiguring anything else.
 
 ## TL;DR
 
-Pick one provider to start. If you have no strong preference, **start with Google AI** — its free tier covers the cheapest, all-Google model combination end-to-end, and no credit card is required. Aparture's default model slots are all-Google out of the box, so a Google key also requires the least fiddling in Settings.
+Pick one provider to start. If you have no strong preference, **start with Google AI** — its free tier covers a full all-Flash-model run end-to-end, and no credit card is required. Aparture's default model slots are all-Google out of the box, so a Google key also requires the least fiddling in Settings.
 
 ## Pick a provider
 
-The current-generation models from all three providers are broadly comparable on the tasks Aparture performs. The main decision is about cost structure and setup friction, not model quality.
+The current-generation models from all three providers are broadly comparable on the tasks Aparture performs. The decision is mostly about cost structure and setup friction.
 
 <div class="landing-cards">
 
@@ -16,7 +16,7 @@ The current-generation models from all three providers are broadly comparable on
 
 ### Anthropic Claude
 
-New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing. Balanced-configuration runs are ~$2.60 at 25 papers/day and scale with volume (Opus is used in the heavier stages).
+New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing.
 
 [Set up Anthropic →](/getting-started/api-keys-anthropic)
 
@@ -26,7 +26,7 @@ New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wire
 
 ### Google Gemini
 
-Free tier covers an all-Flash model setup end-to-end, and no credit card is needed to start. Using Gemini 3.1 Pro (the stronger model Aparture defaults to for PDF analysis and briefing) requires enabling billing, and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
+Free tier covers an all-Flash model setup end-to-end, and no credit card is needed to start. Using Gemini 3.1 Pro (the stronger model Aparture defaults to for PDF analysis and briefing) requires enabling billing.
 
 [Set up Google AI →](/getting-started/api-keys-google)
 
@@ -36,7 +36,7 @@ Free tier covers an all-Flash model setup end-to-end, and no credit card is need
 
 ### OpenAI GPT
 
-Requires a $5 minimum prepaid deposit to activate API access (no free trial). With GPT-5.4 across the heavier stages, cost stays roughly flat from 25 to 250 papers/day (~$1.40–$2.80), because the expensive PDF and briefing stages are capped at top-N regardless of input. OpenAI caches repeated prompt prefixes automatically.
+Requires a $5 minimum prepaid deposit to activate API access — no free trial. OpenAI's platform caches repeated prompt prefixes automatically, so real cost on repeat runs tracks 20–40% below list.
 
 [Set up OpenAI →](/getting-started/api-keys-openai)
 
@@ -48,53 +48,53 @@ Requires a $5 minimum prepaid deposit to activate API access (no free trial). Wi
 
 Whichever provider you picked, the steps back in Aparture are the same:
 
-1. Open `.env.local` in the project root and paste the key under the right variable name:
+1. Open `.env.local` in the project root. Confirm `ACCESS_PASSWORD` is set — see the [install page](/getting-started/install#_3-set-a-local-access-password) if you skipped that step.
+2. Paste your API key under the right variable name:
    - `CLAUDE_API_KEY=sk-ant-api03-...` for Anthropic
-   - `OPENAI_API_KEY=sk-proj-...` for OpenAI
    - `GOOGLE_AI_API_KEY=AIzaSy...` for Google
-2. Restart `npm run dev` if it was already running. Next.js reads `.env.local` once at server startup.
-3. Run the [Minimal API Test](/getting-started/verify-setup) from the UI. That's a 5-paper end-to-end test that confirms your key authenticates and the pipeline runs cleanly. It costs ~$0.20–$1 on paid tiers and is free on Google's free tier.
+   - `OPENAI_API_KEY=sk-proj-...` for OpenAI
+3. Restart `npm run dev` if it was already running. Next.js reads `.env.local` once at server startup.
+4. Run the [Minimal API Test](/getting-started/verify-setup) from the UI. That's a 5-paper end-to-end test that confirms your key authenticates and the pipeline runs cleanly.
 
-That's it. Your key is working; you can generate your first briefing.
+Aparture's defaults are all-Google. If you picked Anthropic or OpenAI, the Minimal API Test still hits Google unless you switch at least one model slot in Settings to the provider you just set up. The per-provider pages walk through this.
 
 ## How Aparture picks models
 
-You configure Aparture's model slots individually in the Settings panel — there's a slot for each pipeline stage (filter, scoring, PDF analysis, briefing synthesis, NotebookLM document generation), and each slot can hold any model from any provider. Out of the box the slots are all-Google, using `gemini-2.5-flash-lite` for the lightweight stages and `gemini-3.1-pro` for PDF analysis and briefing.
+You configure Aparture's model slots individually in the Settings panel. There's a slot for each pipeline stage (filter, scoring, PDF analysis, briefing synthesis, NotebookLM document generation), and each slot can hold any model from any provider. Out of the box, every slot is a Google model: `gemini-2.5-flash-lite` for the lightweight stages, `gemini-3.1-pro` for PDF analysis and briefing.
 
-Throughout these docs we refer to three example configurations as editorial shorthand for common, sensible combinations. They aren't UI presets — they're just named combinations used in the pricing tables and the [Model selection](/concepts/model-selection) page:
+Throughout these docs we refer to three named configurations as editorial shorthand:
 
-- **Budget** — the cheapest small/mid model at every stage. Fast, inexpensive, and the combination that stays free on Google's free tier.
-- **Balanced** — a small model for filtering and scoring, plus a stronger model for PDF analysis and briefing synthesis. This is what the defaults approximate with all-Google.
-- **Quality** — the strongest model each provider offers, used across all stages. Noticeably more expensive, usually only marginally better in outcome.
+- **Budget** — the cheapest small/mid model at every stage. Fast, inexpensive, the configuration that stays free on Google's free tier.
+- **Balanced** — a small model for filtering and scoring, plus a stronger model for PDF analysis and briefing synthesis. What the default all-Google setup approximates.
+- **Quality** — the strongest model each provider offers, used across every stage. Noticeably more expensive, in practice only marginally better in output.
 
-The cost numbers below use the Balanced configuration for each provider. The [Model selection](/concepts/model-selection) page has the full model picks for each.
+These aren't UI presets; you pick models per slot individually. The names are just useful shorthand when comparing costs. Each provider page has full model picks for its Balanced configuration.
 
-## Pricing at a glance (Balanced configuration)
+## Cost at a glance
 
-Cost per daily run, by provider and paper volume:
+All three providers run Aparture's pipeline with the same structure: quick filter runs on every input paper, abstract scoring runs on papers that pass the filter, and PDF analysis runs on the top 30 scoring papers (this cap — `config.maxDeepAnalysis`, default 30 — is set in Settings). Briefing synthesis runs once per run.
 
-| Papers/day | Anthropic | Google (Balanced) | Google (Budget)                   | OpenAI |
-| ---------- | --------- | ----------------- | --------------------------------- | ------ |
-| 25         | ~$2.60    | ~$1.53            | **$0.00**                         | ~$1.37 |
-| 100        | ~$9.34    | ~$1.86            | **$0.00** (watch daily caps)      | ~$2.03 |
-| 250        | ~$22.83   | ~$1.94            | **$0.00** at pricing; may hit cap | ~$2.79 |
+Because Stage 3 caps at 30 papers regardless of input volume, cost is dominated by the PDF-analysis and briefing stages at low input volumes (say, 25 papers/day), and by the filter and scoring stages at high input volumes (250+ papers/day).
 
-Three things the table says concisely:
+Typical per-run cost with Balanced-configuration model picks and the default 30-paper cap:
 
-- Google's Budget configuration (all Gemini Flash models) stays free within the daily request caps, which makes it ideal for learning the tool or for routine low-volume reading.
-- OpenAI's Balanced cost is roughly flat from 25 to 250 papers/day because the expensive stages are capped at top-N regardless of input.
-- Anthropic's Balanced cost grows with volume because Opus is used for both PDF analysis and briefing. Switching the PDF slot to Sonnet drops cost significantly with a modest quality hit.
+| Provider                 | Per run at 25 papers | Per run at 250 papers     | Notes                                  |
+| ------------------------ | -------------------- | ------------------------- | -------------------------------------- |
+| **Anthropic** (Balanced) | ~$2.60               | ~$7                       | Opus for PDF + briefing dominates cost |
+| **Google** (Balanced)    | ~$1.50               | ~$2                       | Gemini 3.1 Pro for heavier stages      |
+| **Google** (all-Flash)   | **$0**               | **$0** (watch daily caps) | Free tier, Flash models only           |
+| **OpenAI** (Balanced)    | ~$1.40               | ~$3                       | GPT-5.4 for heavier stages             |
 
-Caching takes another 20–40% off these numbers on repeated runs with the same profile. Aparture caches explicitly on Anthropic routes; OpenAI's platform caches automatically; Google caching isn't wired in yet.
+Ranges reflect input volume only. Prompt caching (explicit on Anthropic, automatic on OpenAI, not yet wired for Google) takes another 20–40% off on repeat runs with the same profile.
 
 ## Can I run completely free?
 
-Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts). All of those are free for free-tier accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing — so if you want everything free on Google, swap those two slots to a Flash model in Settings.
+Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts) — all of those are free for free-tier accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing. If you want everything free on Google, swap those two slots to a Flash model in Settings.
 
 Two caveats worth knowing up front:
 
-1. **Daily request caps apply on the free tier.** A 25-papers/day Budget run fits comfortably; a 250-papers/day run can trip the cap. Your current per-model limits are visible at the [AI Studio dashboard](https://aistudio.google.com/) after signing in, or documented generally at the [Gemini API rate-limits page](https://ai.google.dev/gemini-api/docs/rate-limits).
-2. **Free-tier users cannot opt out of training-data collection.** If your profile contains sensitive research notes, upgrade to paid Tier 1 (a $10 prepaid credit) to enable opt-out. More details are on the [Google setup page](/getting-started/api-keys-google).
+1. **Daily request caps apply on the free tier.** A 25-papers/day Budget run fits comfortably; a 250-papers/day run can trip the cap. Your current per-model limits are visible after signing in at the [AI Studio dashboard](https://aistudio.google.com/), and described at a high level at the [Gemini API rate-limits page](https://ai.google.dev/gemini-api/docs/rate-limits).
+2. **Free-tier users cannot opt out of training-data collection.** If your profile contains sensitive research notes, upgrade to paid Tier 1 (a $10 prepaid credit) to enable opt-out. More on the [Google setup page](/getting-started/api-keys-google).
 
 ## Reference: provider table
 
