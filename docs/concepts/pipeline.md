@@ -132,7 +132,7 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
 6. **Save** the briefing + generation metadata to localStorage with a 90-day rolling window.
 
-**Inputs.** `finalRanking`, `profile.content`, `briefingModel`, `pdfModel` (for quick summaries if `briefingModel` is unset), `briefingRetryOnYes` / `briefingRetryOnMaybe` retry policy, accumulated feedback events.
+**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression run in parallel just before synthesis, default `gemini-3.1-flash-lite`), `quickSummaryConcurrency` (default 5, clamped 1–20), `briefingRetryOnYes` / `briefingRetryOnMaybe` retry policy, accumulated feedback events.
 
 **Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports.
 
@@ -206,7 +206,7 @@ The retry path fires at most once — a design choice to avoid runaway loops at 
 ## Where to tune what
 
 - **Skip a stage?** Toggle `useQuickFilter` or `enableScorePostProcessing` in Settings. Both stages are safe to skip when your profile is narrow and well-calibrated.
-- **Pick a different model per stage?** The config exposes `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, and `briefingModel` as independent slots. See [Model selection](/concepts/model-selection) for recommended combinations.
+- **Pick a different model per stage?** The config exposes `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, `briefingModel`, and `quickSummaryModel` as independent slots. See [Model selection](/concepts/model-selection) for recommended combinations.
 - **Tune the briefing output?** Edit `prompts/synthesis.md` — it takes effect on the next run, no rebuild needed. See [Prompts](/reference/prompts).
 - **Understand what stars and dismissals do?** They feed synthesis as engagement signals and become part of the briefing's framing. See [Giving feedback](/using/giving-feedback).
 
