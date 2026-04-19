@@ -168,7 +168,7 @@ Gemini 3.x models are marked `-preview` in their API IDs. The user-facing IDs (`
 
 ---
 
-**Snapshot taken 2026-04-18.** Model lineup from `utils/models.js`. Pricing verified against the provider pricing pages below. Check these for current prices before making high-volume decisions:
+**Snapshot taken 2026-04-19.** Model lineup from `utils/models.js`. Pricing verified against the provider pricing pages below. Check these for current prices before making high-volume decisions:
 
 - Anthropic: [platform.claude.com/docs/en/docs/about-claude/models](https://platform.claude.com/docs/en/docs/about-claude/models)
 - OpenAI: [developers.openai.com/api/docs/models](https://developers.openai.com/api/docs/models)
