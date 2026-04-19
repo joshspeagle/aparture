@@ -1,6 +1,6 @@
 # Your first briefing
 
-With a working environment behind you, this page walks through producing your first real briefing — on your own profile, with your own categories, end to end. Budget around ten minutes of active attention plus twenty or thirty minutes of pipeline runtime you can spend elsewhere.
+With a working environment behind you, this page walks through producing your first real briefing — on your own profile, with your own categories, end to end. Plan on ten minutes or so of active attention, spread across a pipeline run you can mostly walk away from.
 
 The goal is to get through one complete run, not to write the perfect profile or tune every setting. Everything you see here has a deeper page elsewhere in the Guide; the forward links at each step are safe to skip on the first pass.
 
@@ -68,8 +68,8 @@ Click **Start Analysis**.
 
 The timeline lights up stage-by-stage. The first two run without intervention:
 
-1. **Fetch papers** — the arXiv API query runs against your configured categories (a few seconds to a minute).
-2. **Filter papers** — the filter model reads each paper's abstract and triages it as YES, MAYBE, or NO (a few seconds per hundred papers, parallel).
+1. **Fetch papers** — the arXiv API query runs against your configured categories.
+2. **Filter papers** — the filter model reads each paper's abstract and triages it as YES, MAYBE, or NO, in parallel across batches.
 
 When the filter completes, the pipeline parks at a review gate. The main area shows the three buckets with a one-sentence summary and justification per paper, plus a clickable verdict pill next to each one.
 
@@ -79,9 +79,9 @@ Don't over-engineer this on the first run. Glance, fix anything obviously wrong,
 
 ## 6. Scoring and PDF analysis
 
-The pipeline moves through abstract scoring, an optional post-processing consistency pass, and deep PDF analysis of the top-ranked papers. This is the slowest part of the run — PDF download and the analysis LLM call each take real time, and by default they run three-wide in parallel. Realistic wall-clock: five to twenty minutes, depending on how many papers passed the filter and which model you're using for PDFs.
+The pipeline moves through abstract scoring, an optional post-processing consistency pass, and deep PDF analysis of the top-ranked papers. This is the slowest part of the run — PDF download and the analysis LLM call each take real time, and by default they run three-wide in parallel. Wall-clock here depends heavily on how many papers passed the filter, which model you're using for PDFs, and your provider tier; it's rarely the fastest stage.
 
-You can walk away here. Progress counters in the timeline and the activity log below it update live, and Aparture's state is persisted to `localStorage`, so navigating to another browser tab won't lose the run.
+Walk away. Progress counters in the timeline and the activity log below it update live, and Aparture's state is persisted to `localStorage`, so navigating to another browser tab won't lose the run.
 
 ## 7. Second pause — before the briefing writes
 
@@ -95,7 +95,7 @@ On the first run, skim the results and click **Continue to briefing →** withou
 
 ## 8. Read what you got
 
-After briefing synthesis (another fifteen seconds to a minute), the main area fills in. From top to bottom:
+After briefing synthesis completes, the main area fills in. From top to bottom:
 
 - **Analysis Results** — the ranked paper list stays visible, still interactive, still the source of truth for scores and deep summaries.
 - **Download Report** — a markdown export of the full run (papers, scores, deep analyses). Useful if you want a standalone file on disk.
