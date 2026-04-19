@@ -1,6 +1,6 @@
 # Generating a podcast
 
-Aparture doesn't produce audio directly. What it does is build a bundle of markdown sources plus a focus prompt, which you upload to [NotebookLM](https://notebooklm.google.com) — Google's hosted tool — and NotebookLM generates a two-host conversation about the day's papers. The whole flow takes a few minutes of active clicking on top of whatever NotebookLM needs to render the audio.
+Aparture doesn't produce audio directly. Instead, it builds a bundle of markdown sources plus a focus prompt that you upload to [NotebookLM](https://notebooklm.google.com) — Google's hosted tool — which generates a two-host conversation about the day's papers. The whole flow takes a few minutes of active clicking on top of whatever NotebookLM needs to render the audio.
 
 This page covers what's in the bundle, how the upload works, and the two places where you can tune podcast style.
 
