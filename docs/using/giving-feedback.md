@@ -22,7 +22,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### ⊘ Dismiss
 
-*Latest-wins, per paper.* "This paper is not what I want." Same semantics as star: a dismiss given before synthesis deprioritises the paper in the current briefing; dismisses given afterwards persist, shape future appearances of the same paper, and accumulate as a "profile may be too broad here" signal.
+*Latest-wins, per paper.* "This paper is not what I want." Same semantics as star: a dismiss given before synthesis deprioritises the paper in the current briefing; dismisses given afterwards persist on the paper and accumulate as a "profile may be too broad here" signal for Suggest-Improvements.
 
 </div>
 
@@ -30,7 +30,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### 💬 Paper comment
 
-*Append-only, per paper.* "Here's my thought on this specific paper." Pulled into the synthesis prompt so a future briefing's "why it matters" paragraph can reference your reaction. Every comment is a new entry — old comments never get overwritten.
+*Append-only, per paper.* "Here's my thought on this specific paper." Comments given before synthesis get woven into the current briefing's "why it matters" paragraph; comments given afterwards accumulate as signal for Suggest-Improvements (where they're among the strongest inputs the flow sees — specific, varied, paper-grounded). Every comment is a new entry — old comments never get overwritten.
 
 </div>
 
@@ -61,7 +61,7 @@ All five feed the same feedback store (persisted to `aparture-feedback` localSto
 Stars and dismisses appear on every paper card that shows paper-level controls, in three places:
 
 - **Analysis Results list** (Pipeline view) — as soon as Stage 4 finishes, each card has <span class="ui-action">☆ star</span> and <span class="ui-action">⊘ dismiss</span> buttons. Available as soon as deep analysis completes; you don't need to wait for the briefing.
-- **Briefing paper cards** — same two buttons in the rendered briefing. Bear in mind that synthesis only saw the stars and dismisses that existed *at synthesis time*, so toggling here affects future briefings (for recurring papers) and Suggest-Improvements, not the briefing you're on.
+- **Briefing paper cards** — same two buttons in the rendered briefing. Synthesis only saw feedback that existed *at synthesis time*, so toggling here doesn't change what you're reading. The feedback accumulates on the paper and feeds Suggest-Improvements, which is how today's feedback reaches tomorrow's briefings.
 - **Filter results list** (when the pipeline pauses at Gate 1) — each paper has the three verdict pills (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>) and, once scoring completes, the star/dismiss affordances.
 
 Clicking <span class="ui-action">☆ star</span> turns it into <span class="ui-action">★ starred</span> (filled, amber). Clicking again unstars. Dismiss works the same way: <span class="ui-action">⊘ dismiss</span> → <span class="ui-action">⊘ dismissed</span> → click to reverse.
@@ -70,7 +70,7 @@ Clicking <span class="ui-action">☆ star</span> turns it into <span class="ui-a
 
 Every paper card also has a <span class="ui-action">+ comment</span> button. Clicking it reveals a small textarea ("Your thoughts on this paper…") and a Save/Cancel pair. Type, save, and the comment is stored against that paper.
 
-Paper comments are visible on the paper's card in subsequent briefings and get pulled into the synthesis prompt — the "why it matters" paragraph will often quote or reference them. A comment like "skeptical of the evaluation" gets acknowledged in the framing; "want to compare with last week's approach" shapes how the paper is positioned.
+Comments given before synthesis get pulled into the synthesis prompt — the "why it matters" paragraph will often quote or reference them. A comment like "skeptical of the evaluation" gets acknowledged in the framing; "want to compare with last week's approach" shapes how the paper is positioned. Comments given on the rendered briefing don't affect it retroactively, but they accumulate as signal for the Suggest-Improvements flow, where specific paper-grounded comments are among the richest inputs it sees.
 
 ### General comments — the Feedback panel
 

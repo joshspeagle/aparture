@@ -29,7 +29,7 @@ From top to bottom, a briefing stacks like this:
 
 The editorial lead at the top: two to four paragraphs of serif prose. It's the densest summary of the day in the briefing and often enough on its own if you're short on time.
 
-The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 2 (the pre-briefing review), those anchor the framing; because stars persist per paper, a starred paper returning from an earlier run also feeds in. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of *"if you read one paper today, make it [arxivId] because…"* — usually the clearest pointer in the whole briefing.
+The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 2 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of *"if you read one paper today, make it [arxivId] because…"* — usually the clearest pointer in the whole briefing.
 
 ### Themes
 
@@ -49,7 +49,7 @@ Each theme contains one or more paper cards. This is where individual papers are
 | **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                      |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
-The "why it matters" paragraph is where your feedback shapes the output most visibly. Starred papers (starred before synthesis ran, either at Gate 2 this run or on a prior run where the same paper appeared) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
+The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 2 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
 
 ## Going deeper on a single paper
 
@@ -108,12 +108,12 @@ The layout is designed for a few-minute read, not a completionist pass. A patter
 1. **Start with the executive summary.** If it surfaces a specific paper as "if you read one today, make it this", that's your primary target. If it says the day was thin, trust it and skip to theme 1's first card.
 2. **Scan theme 1.** That's where the highest-scored papers land, and any papers you pre-starred at Gate 2 have been woven into its framing. Read pitches; for anything that catches you, open the quick summary inline.
 3. **If the quick summary holds up, open the full report.** The deeper detail is usually enough to decide whether to open the PDF or move on.
-4. **Star anything interesting you won't read now.** Stars are tied to the paper (by arXiv ID) and persist across runs — they anchor the paper's treatment if it reappears in a later briefing, and they feed the Suggest-Improvements flow as aggregate signal. They don't retroactively change the briefing you're reading now; that's already been synthesised.
+4. **Star anything interesting you won't read now.** Stars are tied to the paper by arXiv ID and persist across runs, but in practice they don't retroactively change the briefing you're reading (that's already been synthesised) and arXiv papers rarely reappear in later runs. Their real job is to accumulate as signal for Suggest-Improvements, which is how feedback on this briefing eventually shapes future ones.
 5. **Dismiss deliberately.** A dismiss tells the system "stop bringing me these", so use it when a paper is genuinely not a fit — not when you're just out of time today.
 6. **Skip the rest.** Working through every paper isn't the intended use — triage is.
 
 ::: info Feedback you give here is the same feedback you give at Gate 2
-Stars, dismisses, and comments are all keyed per paper, not per run. The same controls appear on the pre-briefing review gate (Gate 2) and on the paper cards in the briefing itself — the difference is just timing relative to synthesis. Feedback given at Gate 2 shapes the briefing that's about to be written; feedback given while reading shapes future briefings (for any paper that reappears) and accumulates as signal for Suggest-Improvements. [Giving feedback](/using/giving-feedback) covers the full mechanics.
+Stars, dismisses, and comments are all keyed per paper, not per run. The same controls appear on the pre-briefing review gate (Gate 2) and on the paper cards in the briefing itself — the difference is just timing relative to synthesis. Feedback given at Gate 2 shapes the briefing that's about to be written; feedback given while reading mainly accumulates as signal for Suggest-Improvements, which is the actual path by which today's feedback shapes tomorrow's briefings (via a refined profile). [Giving feedback](/using/giving-feedback) covers the full mechanics.
 :::
 
 ## Next
