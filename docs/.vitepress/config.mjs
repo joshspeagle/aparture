@@ -39,8 +39,8 @@ export default defineConfig({
             { text: 'Install', link: '/getting-started/install' },
             { text: 'API keys', link: '/getting-started/api-keys', collapsed: false, items: [
               { text: 'Anthropic', link: '/getting-started/api-keys-anthropic' },
-              { text: 'OpenAI',    link: '/getting-started/api-keys-openai' },
               { text: 'Google AI', link: '/getting-started/api-keys-google' },
+              { text: 'OpenAI',    link: '/getting-started/api-keys-openai' },
             ] },
             { text: 'Verify your setup', link: '/getting-started/verify-setup' },
             { text: 'Your first briefing', link: '/getting-started/first-briefing' },

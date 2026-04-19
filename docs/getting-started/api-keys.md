@@ -14,21 +14,21 @@ The current-generation models from all three providers are broadly comparable on
 
 <div class="landing-card">
 
-### Google Gemini
-
-Free tier covers the **Budget preset** end-to-end, and no credit card is needed to start. Running the **Balanced preset** requires enabling billing (Gemini 3.1 Pro is paid-only) and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
-
-[Set up Google AI →](/getting-started/api-keys-google)
-
-</div>
-
-<div class="landing-card">
-
 ### Anthropic Claude
 
 New accounts get a one-time ~$5 starter credit. Aparture has prompt caching wired in explicitly for Anthropic, so repeated runs with the same profile typically come in 20–40% below list pricing. Balanced-preset runs are ~$2.60 at 25 papers/day and scale with volume (Opus is used in the heavier stages).
 
 [Set up Anthropic →](/getting-started/api-keys-anthropic)
+
+</div>
+
+<div class="landing-card">
+
+### Google Gemini
+
+Free tier covers the **Budget preset** end-to-end, and no credit card is needed to start. Running the **Balanced preset** requires enabling billing (Gemini 3.1 Pro is paid-only) and costs roughly $1.50–$2.00 per run at any volume. Good first stop if you're new to paid LLM APIs.
+
+[Set up Google AI →](/getting-started/api-keys-google)
 
 </div>
 
@@ -71,11 +71,11 @@ The cost numbers below use the Balanced preset. Each per-provider page has the f
 
 Cost per daily run, by provider and paper volume:
 
-| Papers/day | Anthropic | OpenAI | Google (Balanced) | Google (Budget)                   |
-| ---------- | --------- | ------ | ----------------- | --------------------------------- |
-| 25         | ~$2.60    | ~$1.37 | ~$1.53            | **$0.00**                         |
-| 100        | ~$9.34    | ~$2.03 | ~$1.86            | **$0.00** (watch daily caps)      |
-| 250        | ~$22.83   | ~$2.79 | ~$1.94            | **$0.00** at pricing; may hit cap |
+| Papers/day | Anthropic | Google (Balanced) | Google (Budget)                   | OpenAI |
+| ---------- | --------- | ----------------- | --------------------------------- | ------ |
+| 25         | ~$2.60    | ~$1.53            | **$0.00**                         | ~$1.37 |
+| 100        | ~$9.34    | ~$1.86            | **$0.00** (watch daily caps)      | ~$2.03 |
+| 250        | ~$22.83   | ~$1.94            | **$0.00** at pricing; may hit cap | ~$2.79 |
 
 Three things the table says concisely:
 
@@ -98,14 +98,14 @@ Two caveats worth knowing up front:
 
 Quick lookup for key formats, env-var names, and signup URLs:
 
-|                             | Anthropic (Claude)                                  | OpenAI (GPT)                                              | Google (Gemini)                                                  |
-| --------------------------- | --------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Free tier**               | ~$5 starter credit, one-time                        | None                                                      | Yes (covers Budget preset)                                       |
-| **Billing to start**        | Not required for starter credit                     | $5 minimum deposit                                        | Not required for free tier                                       |
-| **Key format**              | `sk-ant-api03-...`                                  | `sk-proj-...`                                             | `AIzaSy...`                                                      |
-| **Env var in `.env.local`** | `CLAUDE_API_KEY`                                    | `OPENAI_API_KEY`                                          | `GOOGLE_AI_API_KEY`                                              |
-| **Prompt caching**          | Wired in explicitly                                 | Automatic                                                 | Not yet wired in                                                 |
-| **Signup page**             | [platform.claude.com](https://platform.claude.com/) | [platform.openai.com](https://platform.openai.com/signup) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+|                             | Anthropic (Claude)                                  | Google (Gemini)                                                  | OpenAI (GPT)                                              |
+| --------------------------- | --------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------- |
+| **Free tier**               | ~$5 starter credit, one-time                        | Yes (covers Budget preset)                                       | None                                                      |
+| **Billing to start**        | Not required for starter credit                     | Not required for free tier                                       | $5 minimum deposit                                        |
+| **Key format**              | `sk-ant-api03-...`                                  | `AIzaSy...`                                                      | `sk-proj-...`                                             |
+| **Env var in `.env.local`** | `CLAUDE_API_KEY`                                    | `GOOGLE_AI_API_KEY`                                              | `OPENAI_API_KEY`                                          |
+| **Prompt caching**          | Wired in explicitly                                 | Not yet wired in                                                 | Automatic                                                 |
+| **Signup page**             | [platform.claude.com](https://platform.claude.com/) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | [platform.openai.com](https://platform.openai.com/signup) |
 
 ---
 
