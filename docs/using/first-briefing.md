@@ -48,7 +48,7 @@ Edit the bracketed placeholders to match your actual work, then click **Save cha
 Click **Settings**. Two things to set, one to leave alone:
 
 - **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers come through on a typical day. If none of those match, see [arXiv categories](/concepts/arxiv-categories).
-- **Model slots** — leave the defaults. The out-of-the-box lineup is all-Google Gemini: Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing. It's fast, capable, and the cheapest Day-1 option — free-tier eligible down to the Pro stages. [Model selection](/concepts/model-selection) covers when to switch.
+- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's Balanced lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) covers the trade-offs in depth.
 - **Everything else** — skip for now.
 
 Click **Pipeline** to move on.
