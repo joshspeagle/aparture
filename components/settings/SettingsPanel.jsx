@@ -739,8 +739,8 @@ export default function SettingsPanel({ config, setConfig, processing }) {
               }}
             >
               Parallel-calls default is 5. Lower it if you hit provider rate limits on large runs;
-              raise it if you're on a generous tier and want shorter wall-clock time. Clamped to
-              1–20.
+              raise it if you&apos;re on a generous tier and want shorter wall-clock time. Clamped
+              to 1–20.
             </p>
           </div>
 

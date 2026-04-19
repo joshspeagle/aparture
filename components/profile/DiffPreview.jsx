@@ -167,10 +167,8 @@ function ChangeCard({ change, checked, onToggle }) {
  *   - onCancel: () => void — optional, renders a Cancel button next to Apply.
  */
 export default function DiffPreview({ currentProfile, changes, onApply, onCancel }) {
-  const safeChanges = Array.isArray(changes) ? changes : [];
-  const [acceptedIds, setAcceptedIds] = useState(
-    () => new Set(safeChanges.map((c) => c.id))
-  );
+  const safeChanges = useMemo(() => (Array.isArray(changes) ? changes : []), [changes]);
+  const [acceptedIds, setAcceptedIds] = useState(() => new Set(safeChanges.map((c) => c.id)));
 
   const cumulative = useMemo(
     () => applyAll(currentProfile ?? '', safeChanges, acceptedIds),
@@ -195,9 +193,7 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
 
   const handleApply = () => {
     if (!onApply) return;
-    const orderedIds = safeChanges
-      .filter((c) => acceptedIds.has(c.id))
-      .map((c) => c.id);
+    const orderedIds = safeChanges.filter((c) => acceptedIds.has(c.id)).map((c) => c.id);
     onApply({ acceptedIds: orderedIds, resultText: cumulative });
   };
 
