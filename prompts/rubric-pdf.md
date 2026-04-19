@@ -47,13 +47,16 @@ Furthermore, now that you have access to the full paper, please provide:
 6. An updated relevance score (0.0-10.0 with one decimal place)
 
 Format your response as a JSON object with these fields:
+
+```json
 {
-"summary": "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n\nFourth paragraph (if needed).\n\nFifth paragraph (if needed).",
-"keyFindings": "string",
-"methodology": "string",
-"limitations": "string",
-"relevanceAssessment": "string",
-"updatedScore": number (0.0-10.0 with one decimal place)
+  "summary": "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n\nFourth paragraph (if needed).\n\nFifth paragraph (if needed).",
+  "keyFindings": "string",
+  "methodology": "string",
+  "limitations": "string",
+  "relevanceAssessment": "string",
+  "updatedScore": 7.5
 }
+```
 
 Your entire response MUST ONLY be a single, valid JSON object. DO NOT respond with anything other than a single, valid JSON object.

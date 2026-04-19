@@ -19,26 +19,29 @@ FILTERING GUIDANCE:
 - Ground every justification in the paper's abstract, not in guesses about what the title implies.
 
 Respond ONLY with a valid JSON array in this exact format:
+
+```json
 [
-{
-"paperIndex": 1,
-"verdict": "YES",
-"summary": "One-sentence summary of what Paper 1 is about.",
-"justification": "One-sentence reason for the verdict, citing the research interests."
-},
-{
-"paperIndex": 2,
-"verdict": "NO",
-"summary": "One-sentence summary of what Paper 2 is about.",
-"justification": "One-sentence reason for the verdict."
-},
-{
-"paperIndex": 3,
-"verdict": "MAYBE",
-"summary": "One-sentence summary of what Paper 3 is about.",
-"justification": "One-sentence reason for the verdict."
-}
+  {
+    "paperIndex": 1,
+    "verdict": "YES",
+    "summary": "One-sentence summary of what Paper 1 is about.",
+    "justification": "One-sentence reason for the verdict, citing the research interests."
+  },
+  {
+    "paperIndex": 2,
+    "verdict": "NO",
+    "summary": "One-sentence summary of what Paper 2 is about.",
+    "justification": "One-sentence reason for the verdict."
+  },
+  {
+    "paperIndex": 3,
+    "verdict": "MAYBE",
+    "summary": "One-sentence summary of what Paper 3 is about.",
+    "justification": "One-sentence reason for the verdict."
+  }
 ]
+```
 
 Your entire response MUST ONLY be a single, valid JSON array.
 

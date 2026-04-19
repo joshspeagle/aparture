@@ -53,20 +53,22 @@ Example of GOOD (merged):
 
 Return structured JSON:
 
+```json
 {
-"changes": [
-{
-"id": "string — short stable identifier unique within this response (e.g. \"c1\", \"c2\")",
-"rationale": "string — one sentence explaining why, citing specific feedback events",
-"edit": {
-"type": "replace" | "insert" | "delete",
-"anchor": "string — verbatim substring of the current profile",
-"content": "string — new text for replace/insert; empty string for delete"
+  "changes": [
+    {
+      "id": "string — short stable identifier unique within this response (e.g. \"c1\", \"c2\")",
+      "rationale": "string — one sentence explaining why, citing specific feedback events",
+      "edit": {
+        "type": "replace" | "insert" | "delete",
+        "anchor": "string — verbatim substring of the current profile",
+        "content": "string — new text for replace/insert; empty string for delete"
+      }
+    }
+  ],
+  "noChangeReason": "string — optional, only if changes is empty"
 }
-}
-],
-"noChangeReason": "string — optional, only if changes is empty"
-}
+```
 
 If `changes` is empty, `noChangeReason` must be provided.
 

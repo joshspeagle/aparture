@@ -38,13 +38,16 @@ IMPORTANT GUIDANCE:
 USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. to create better discrimination. Use the full 0-10 scale.
 
 Respond ONLY with a valid JSON array in this exact format:
+
+```json
 [
-{
-"paperIndex": number,
-"score": number (0.0-10.0 with one decimal place),
-"justification": "string"
-}
+  {
+    "paperIndex": 1,
+    "score": 7.5,
+    "justification": "Two to three sentence justification."
+  }
 ]
+```
 
 Your entire response MUST ONLY be a single, valid JSON array. DO NOT respond with anything other than a single, valid JSON array.
 

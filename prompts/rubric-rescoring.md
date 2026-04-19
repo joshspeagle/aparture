@@ -44,14 +44,17 @@ COMPARATIVE ANALYSIS GUIDANCE:
 USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. Use the full 0-10 scale.
 
 Respond ONLY with a valid JSON array in this exact format:
+
+```json
 [
-{
-"paperIndex": 1,
-"adjustedScore": 6.5,
-"adjustmentReason": "Initially over-scored; similar methodology to Paper 3 but less novel findings",
-"confidence": "HIGH"
-}
+  {
+    "paperIndex": 1,
+    "adjustedScore": 6.5,
+    "adjustmentReason": "Initially over-scored; similar methodology to Paper 3 but less novel findings",
+    "confidence": "HIGH"
+  }
 ]
+```
 
 Your entire response MUST ONLY be a single, valid JSON array. DO NOT respond with anything other than a single, valid JSON array.
 
