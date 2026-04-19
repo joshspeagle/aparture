@@ -89,14 +89,14 @@ When the filter completes, the pipeline parks at a review gate. The main area sh
 Spend a minute scanning what landed where. If a paper you'd clearly want is in NO, click its pill to cycle it to MAYBE or YES; the reverse if NO papers slipped into YES. Every override gets logged as a `filter-override` feedback event, which does two things at once: reroutes the paper to scoring on this run, and contributes to the signal that the [Suggest Improvements](/using/refining-over-time) flow uses later to refine your profile.
 
 ::: tip First-run habit
-Don't over-engineer this on the first run. Glance, fix anything obviously wrong, click **Continue to scoring →**. You'll develop an intuition for the filter's blind spots after a few runs; the first time through, the point is just to see the gate.
+A quick scan is plenty here. If something's obviously in the wrong bucket, click its verdict pill to move it; if not, **Continue to scoring →** is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
 :::
 
 ## 6. Scoring and PDF analysis
 
 The pipeline moves through abstract scoring, an optional post-processing consistency pass, and deep PDF analysis of the top-ranked papers. This is the slowest part of the run — PDF download and the analysis LLM call each take real time, and by default they run three-wide in parallel. Wall-clock here depends heavily on how many papers passed the filter, which model you're using for PDFs, and your provider tier; it's rarely the fastest stage.
 
-Walk away. Progress counters in the timeline and the activity log below it update live, and Aparture's state is persisted to `localStorage`, so navigating to another browser tab won't lose the run.
+This is a good stretch to step away from the browser. The pipeline runs unattended, the timeline and activity log update as each stage completes, and the run survives browser navigation — you can switch tabs or come back later without losing anything.
 
 ## 7. Second pause — before the briefing writes
 
