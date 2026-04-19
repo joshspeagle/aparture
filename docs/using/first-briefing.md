@@ -20,7 +20,7 @@ The sidebar carries a list of past briefings (empty for now), a light/dark theme
 
 Open the <span class="ui-action">Profile</span> view. The text box at the top is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
 
-A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly *not* interested in (the filter model leans heavily on negatives) is already enough to get useful output. Something like:
+A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly _not_ interested in (the filter model leans heavily on negatives) is already enough to get useful output. Something like:
 
 ```text
 I am a researcher working on [YOUR FIELD]. I care most about methodological
@@ -48,7 +48,7 @@ Edit the bracketed placeholders to match your actual work, then click <span clas
 Open the <span class="ui-action">Settings</span> view. Two things to set, one to leave alone, everything else to skip for now:
 
 - **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
-- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's Balanced lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
+- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.
 
@@ -117,12 +117,12 @@ Once synthesis completes, Aparture saves the new briefing to the sidebar archive
 
 Four blocks are worth recognising across the two views:
 
-| Block                | Where it lives           | What it is                                                       |
-| -------------------- | ------------------------ | ---------------------------------------------------------------- |
+| Block                | Where it lives           | What it is                                                                                                                                                            |
+| -------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Analysis Results** | Pipeline view            | Ranked paper list with scores (0.0–10.0, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)), justifications, and deep summaries — still interactive |
-| **Download Report**  | Pipeline view            | Markdown compile of the per-paper deep analyses (see [report vs briefing](/concepts/pipeline#the-download-report-vs-the-briefing)) |
-| **Briefing**         | Briefing view (archived) | Editorial reading surface — executive summary, themes, paper cards |
-| **NotebookLM**       | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast) |
+| **Download Report**  | Pipeline view            | Markdown compile of the per-paper deep analyses (see [report vs briefing](/concepts/pipeline#the-download-report-vs-the-briefing))                                    |
+| **Briefing**         | Briefing view (archived) | Editorial reading surface — executive summary, themes, paper cards                                                                                                    |
+| **NotebookLM**       | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast)                                                                                       |
 
 ::: tip Expect the first briefing to be rough
 The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at either gate. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.

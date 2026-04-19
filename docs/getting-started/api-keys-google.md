@@ -45,9 +45,9 @@ If the key is invalid, you'll see `"Google API key not found"` (env var missing 
 
 ## 5. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the Google picks for an all-Google Balanced configuration, with a free-tier-only alternative in the rightmost column.
+You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the recommended Google picks for an all-Google setup, with a free-tier-only alternative in the rightmost column.
 
-| Stage                               | Balanced (paid Tier 1)  | Free-tier alternative   |
+| Stage                               | Paid Tier 1             | Free-tier alternative   |
 | ----------------------------------- | ----------------------- | ----------------------- |
 | Filter (`filterModel`)              | `gemini-3.1-flash-lite` | `gemini-2.5-flash-lite` |
 | Scoring (`scoringModel`)            | `gemini-3-flash`        | `gemini-2.5-flash`      |
@@ -56,7 +56,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | Quick summary (`quickSummaryModel`) | `gemini-3.1-flash-lite` | `gemini-2.5-flash`      |
 | NotebookLM (`notebookLMModel`)      | Same as `pdfModel`      | Same as `pdfModel`      |
 
-The Balanced column is Aparture's out-of-the-box default. If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps than the 3.x previews, and the only paid-only slot is the Pro tier (`gemini-3.1-pro`), which has no free counterpart at all.
+The paid Tier 1 column is Aparture's out-of-the-box default. If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps than the 3.x previews, and the only paid-only slot is the Pro tier (`gemini-3.1-pro`), which has no free counterpart at all.
 
 ## 6. Cost estimate
 
@@ -85,7 +85,7 @@ Prices shown are text/image/video input at ≤200k prompt size. `gemini-3.1-pro`
 
 Google updates preview pricing periodically and the 3.x tier is still beta, so verify current rates at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to real spend.
 
-### Worked calculation: Balanced at 100 input papers (paid Tier 1)
+### Worked calculation: 100 input papers (all-Google lineup, paid Tier 1)
 
 Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 

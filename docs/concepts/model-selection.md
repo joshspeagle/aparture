@@ -89,17 +89,19 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 **`postProcessingModel` — same as or stronger than `scoringModel`.** Stage 3.5 compares top papers head-to-head for calibration, so calibration matters more than throughput. Most configurations set it to the same model as `scoringModel`.
 
-**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`. Budget fallback: `gemini-3-flash` or `gemini-2.5-pro`.
+**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`. Cheaper fallback: `gemini-3-flash` or `gemini-2.5-pro`.
 
-**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`. Budget fallback: `gemini-3-flash` works if you're willing to accept slightly less polished prose.
+**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.1-pro`, `claude-opus-4.7`, `claude-sonnet-4.6`, `gpt-5.4`. Cheaper fallback: `gemini-3-flash` works if you're willing to accept slightly less polished prose.
 
-## Three example configurations
+## Example configurations
 
 Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "100-paper run" numbers assume 100 papers fetched, ~50 passing the filter to scoring, 20 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages.
 
-### Balanced (Aparture default)
+Three configurations worth spelling out: the Aparture default, a free-tier-only setup, and one mix across all three providers. Any model from the registry works in any slot — these are just common starting points.
 
-What `DEFAULT_CONFIG` ships with. A good starting point regardless of provider preference.
+### Default (Aparture ships with this)
+
+All-Google, current-generation Gemini 3.x. What `DEFAULT_CONFIG` sets.
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
@@ -110,11 +112,11 @@ What `DEFAULT_CONFIG` ships with. A good starting point regardless of provider p
 | `briefingModel`       | `gemini-3.1-pro`        |
 | `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
-Ballpark cost for a 100-paper run: roughly $1.00–2.50.
+Ballpark cost for a 100-paper run: roughly $1.00–2.50. Every model here except `gemini-3.1-pro` is free-tier-eligible; the Pro slots require a paid Google tier.
 
-### Budget (Google free tier or stable Gemini 2.5)
+### Free tier (Gemini 2.5 throughout)
 
-Useful if you're on the free tier or deliberately keeping spend near zero. The stable 2.5 models are cheaper per token than the 3.x previews; the trade-off is slightly rougher briefings.
+Every slot set to a stable Gemini 2.5 model. A fresh Google AI Studio account can run the full pipeline at no cost, subject to daily request caps. Slightly less polished than the 3.x previews, but fully capable of end-to-end briefings.
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
@@ -125,28 +127,24 @@ Useful if you're on the free tier or deliberately keeping spend near zero. The s
 | `briefingModel`       | `gemini-2.5-pro`        |
 | `quickSummaryModel`   | `gemini-2.5-flash-lite` |
 
-Ballpark cost for a 100-paper run: roughly $0.50–1.50, or effectively zero if you stay inside Google's free-tier caps.
+Ballpark cost for a 100-paper run: effectively $0 within Google's free-tier caps, or roughly $0.50–1.20 on paid Tier 1. See [Google API key setup](/getting-started/api-keys-google#free-tier-2-5-stable-throughout) for caps and signup.
 
-### Premium (Claude throughout)
+### Mixed providers
 
-All-Anthropic. Haiku 4.5 on the cheap stages, Sonnet 4.6 on scoring, Opus 4.7 on the two expensive ones. The briefing stage benefits most from Opus 4.7's adaptive thinking.
+One way to spread work across all three providers: Gemini Flash-Lite on the high-volume filter, Claude Sonnet for careful abstract scoring, GPT-5.4 on deep PDF analysis, Gemini 3.1 Pro for briefing synthesis, and Claude Haiku compressing quick summaries. Requires keys for all three.
 
-| Slot                  | Model               |
-| --------------------- | ------------------- |
-| `filterModel`         | `claude-haiku-4.5`  |
-| `scoringModel`        | `claude-sonnet-4.6` |
-| `postProcessingModel` | `claude-sonnet-4.6` |
-| `pdfModel`            | `claude-opus-4.7`   |
-| `briefingModel`       | `claude-opus-4.7`   |
-| `quickSummaryModel`   | `claude-haiku-4.5`  |
+| Slot                  | Model                   |
+| --------------------- | ----------------------- |
+| `filterModel`         | `gemini-3.1-flash-lite` |
+| `scoringModel`        | `claude-sonnet-4.6`     |
+| `postProcessingModel` | `claude-sonnet-4.6`     |
+| `pdfModel`            | `gpt-5.4`               |
+| `briefingModel`       | `gemini-3.1-pro`        |
+| `quickSummaryModel`   | `claude-haiku-4.5`      |
 
-Ballpark cost for a 100-paper run: roughly $2.75–7 on a cold run, somewhat less once prompt caching starts hitting.
+Ballpark cost for a 100-paper run: roughly $1.75–3.00. Anthropic prompt caching trims scoring and quick-summary cost on repeat runs with the same profile.
 
-Keeping `quickSummaryModel` on Haiku means the whole run stays within Anthropic and you don't need a second API key. If you're willing to keep a Google key alongside, leaving this slot on `gemini-3.1-flash-lite` is slightly cheaper.
-
-::: tip Anthropic prompt caching
-Aparture enables Anthropic's prompt caching automatically on every Anthropic call. On runs that share a profile, the repeated-prefix cost drops substantially — the second run of the day is usually noticeably cheaper than the first. The terminal log prints `[anthropic cache] read=N create=N` after each call if you want to confirm cache hits.
-:::
+This is one mix among many. Providers are interchangeable per slot, and the pipeline only checks that each slot's selected model has a valid key in `.env.local` — a missing key breaks only the stage that needs it, and the rest of the pipeline keeps running.
 
 ## Adaptive thinking on Anthropic
 
@@ -156,11 +154,9 @@ In practice, this matters most for `briefingModel` and `pdfModel`, where the mod
 
 The default `maxTokens` for Anthropic calls is raised to 16000 to give thinking room to breathe.
 
-## Mixing providers across stages
-
-Nothing requires sticking to a single provider. A common pattern is to put Google on the high-volume stages (`filterModel`, `scoringModel`) because Flash-Lite and Flash are hard to beat on cost, and put Claude Opus or GPT-5.4 on the expensive stages (`pdfModel`, `briefingModel`) for quality.
-
-The main trade-off is that each provider needs its own key in `.env.local`. The auth check in each API route reads the env-var key for the chosen model's provider, so a missing key only breaks the stage that needs it — the rest of the pipeline keeps running.
+::: tip Anthropic prompt caching
+Aparture enables Anthropic's prompt caching automatically on every Anthropic call. On runs that share a profile, the repeated-prefix cost drops substantially — the second run of the day is usually noticeably cheaper than the first. The terminal log prints `[anthropic cache] read=N create=N` after each call if you want to confirm cache hits.
+:::
 
 ## When the previews change
 

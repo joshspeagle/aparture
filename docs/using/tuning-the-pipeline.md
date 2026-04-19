@@ -8,14 +8,14 @@ Each stage costs roughly 10× more per paper than the one before it, so most of 
 
 The pipeline is a waterfall. Each stage narrows the set of papers before the next stage runs, so cheap models can afford to be loose on hundreds of abstracts while expensive models only ever see the handful that make it through. Rough per-paper costs:
 
-| Stage             | What runs                       | Rough per-paper cost |
-| ----------------- | ------------------------------- | -------------------- |
-| Stage 1 · fetch   | arXiv API                       | free                 |
-| Stage 2 · filter  | YES / MAYBE / NO triage         | fractions of a cent  |
-| Stage 3 · scoring | 0.0–10.0 with justification     | a fraction of a cent |
-| Stage 3.5 · post  | consistency pass on top N       | a fraction of a cent |
-| Stage 4 · PDFs    | deep read of top-ranked papers  | a few cents each     |
-| Stage 5 · briefing| synthesis + hallucination audit | a few cents per run  |
+| Stage              | What runs                       | Rough per-paper cost |
+| ------------------ | ------------------------------- | -------------------- |
+| Stage 1 · fetch    | arXiv API                       | free                 |
+| Stage 2 · filter   | YES / MAYBE / NO triage         | fractions of a cent  |
+| Stage 3 · scoring  | 0.0–10.0 with justification     | a fraction of a cent |
+| Stage 3.5 · post   | consistency pass on top N       | a fraction of a cent |
+| Stage 4 · PDFs     | deep read of top-ranked papers  | a few cents each     |
+| Stage 5 · briefing | synthesis + hallucination audit | a few cents per run  |
 
 Tuning comes down to: get the right papers into Stage 4, don't overspend on the stages before it, and don't let the wrong papers through. The rest of this page goes through the knobs.
 
@@ -23,14 +23,14 @@ Tuning comes down to: get the right papers into Stage 4, don't overspend on the 
 
 Each stage has its own model slot. Current defaults are all Google:
 
-| Slot                  | Setting label                | Default                   | What it drives                                                                 |
-| --------------------- | ---------------------------- | ------------------------- | ------------------------------------------------------------------------------ |
-| `filterModel`         | Quick Filter Model (Stage 1) | `gemini-3.1-flash-lite`   | Stage 2 YES/MAYBE/NO verdicts                                                  |
-| `scoringModel`        | Abstract Scoring Model       | `gemini-3-flash`          | Stage 3 scoring (and the optional Stage 3.5 consistency pass)                  |
-| `pdfModel`            | Deep PDF Analysis Model      | `gemini-3.1-pro`          | Stage 4 full-text read                                                         |
-| `briefingModel`       | Briefing Model               | `gemini-3.1-pro`          | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow    |
-| `quickSummaryModel`   | Quick-summary model          | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis      |
-| `notebookLMModel`     | (set when generating podcast)| unset until first podcast | Optional NotebookLM document bundle                                            |
+| Slot                | Setting label                 | Default                   | What it drives                                                              |
+| ------------------- | ----------------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| `filterModel`       | Quick Filter Model (Stage 1)  | `gemini-3.1-flash-lite`   | Stage 2 YES/MAYBE/NO verdicts                                               |
+| `scoringModel`      | Abstract Scoring Model        | `gemini-3-flash`          | Stage 3 scoring (and the optional Stage 3.5 consistency pass)               |
+| `pdfModel`          | Deep PDF Analysis Model       | `gemini-3.1-pro`          | Stage 4 full-text read                                                      |
+| `briefingModel`     | Briefing Model                | `gemini-3.1-pro`          | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow |
+| `quickSummaryModel` | Quick-summary model           | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis   |
+| `notebookLMModel`   | (set when generating podcast) | unset until first podcast | Optional NotebookLM document bundle                                         |
 
 The Settings panel's own stage numbering is a little different from the numbering these docs use (the UI calls the filter "Stage 1"); the labels above are what you'll literally see on screen. All slots are disabled while a run is in progress.
 
@@ -52,7 +52,7 @@ Scoring is similar: dozens to hundreds of abstracts, and most of what the model 
 
 Nothing in Aparture requires one provider per run. A common pattern is Gemini Flash-Lite for filtering (speed and price), Claude Sonnet for scoring, Claude Opus for PDFs, and Gemini for synthesis. As long as every slot has a valid key for the provider it points at, the pipeline doesn't care.
 
-See [Model selection](/concepts/model-selection) for the full registry and three worked-example configurations (Budget, Balanced, Premium) used as editorial shorthand across these docs.
+See [Model selection](/concepts/model-selection) for the full registry, the per-stage recommendations, and example lineups (including a free-tier-only setup and a three-provider mix).
 
 ## Parallelism
 
@@ -75,12 +75,12 @@ Three is a conservative default that works across provider tiers. Raising it to 
 
 Each stage batches papers into API calls to avoid per-paper overhead. Bigger batches are faster but risk hitting context limits or giving each paper less careful attention.
 
-| Setting                    | Default | Reasonable range | Notes                                                             |
-| -------------------------- | ------- | ---------------- | ----------------------------------------------------------------- |
-| Filter Batch Size          | 3       | 3–10             | Short prompts; batching mostly helps throughput                   |
-| Scoring Batch Size         | 3       | 3–8              | Each paper carries a full abstract + justification                |
-| Review Batch Size          | 5       | 3–10             | Post-processing compares multiple papers at once                  |
-| PDF analysis batch         | 1       | (always 1)       | One PDF per call — see **Parallel PDF Analyses** above            |
+| Setting            | Default | Reasonable range | Notes                                                  |
+| ------------------ | ------- | ---------------- | ------------------------------------------------------ |
+| Filter Batch Size  | 3       | 3–10             | Short prompts; batching mostly helps throughput        |
+| Scoring Batch Size | 3       | 3–8              | Each paper carries a full abstract + justification     |
+| Review Batch Size  | 5       | 3–10             | Post-processing compares multiple papers at once       |
+| PDF analysis batch | 1       | (always 1)       | One PDF per call — see **Parallel PDF Analyses** above |
 
 Most users never touch these. Raising batch sizes tends to help when you're on a fast provider with generous rate limits, your abstracts are short, or you're using a long-context model. Lowering them tends to help when you're hitting rate-limit errors or noticing sloppier scoring at larger batch sizes.
 
@@ -120,12 +120,12 @@ Whether Stage 2 runs at all is governed by the `useQuickFilter` config flag (def
 
 Four checkboxes under **Review & confirmation** govern when the pipeline pauses and when it retries.
 
-| Checkbox                                                      | Default | What it does                                                                 |
-| ------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------- |
-| Pause after filter to review overrides                        | on      | Stops at Gate 1 so you can move papers between YES / MAYBE / NO buckets      |
-| Pause before briefing to review scores and add feedback       | on      | Stops at Gate 2 so you can star, dismiss, or comment before synthesis runs   |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>  | on      | Reruns synthesis once with a retry hint when the audit flags claims         |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span> | off     | Same, but for the more ambiguous verdict                                     |
+| Checkbox                                                                                       | Default | What it does                                                               |
+| ---------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------- |
+| Pause after filter to review overrides                                                         | on      | Stops at Gate 1 so you can move papers between YES / MAYBE / NO buckets    |
+| Pause before briefing to review scores and add feedback                                        | on      | Stops at Gate 2 so you can star, dismiss, or comment before synthesis runs |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>      | on      | Reruns synthesis once with a retry hint when the audit flags claims        |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span> | off     | Same, but for the more ambiguous verdict                                   |
 
 The two pause gates are the training wheels. Leaving them on is the right starting point; turning them off is something you'll usually do deliberately once you've seen enough runs to know the filter and the scores are landing well for your profile. [Review gates](/using/review-gates) goes deeper on what each gate shows and when to skip which.
 
@@ -133,7 +133,7 @@ The retry checkboxes trade tokens for quality. A retry is a full second synthesi
 
 ## A few common configurations
 
-The defaults ship as a reasonable **Balanced** setup — all-Google models, both pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
+The defaults ship tuned sensibly — all-Google models, both pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
 
 **Cost-sensitive.** Switch filter and scoring to the cheapest Flash-Lite or Nano tier. Drop Papers to Analyze to 10–15. Turn off post-processing. Turn off retry-on-<span class="verdict is-maybe">MAYBE</span> if it isn't already.
 

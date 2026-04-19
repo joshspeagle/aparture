@@ -63,7 +63,7 @@ If the key is invalid, you'll see `401 invalid_api_key`. If you didn't add credi
 
 ## 6. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the OpenAI picks for an all-OpenAI Balanced configuration.
+You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the recommended OpenAI picks for an all-OpenAI setup.
 
 | Stage                               | Model          |
 | ----------------------------------- | -------------- |
@@ -92,7 +92,7 @@ All GPT-5.4 models bill per million tokens (MTok), separately for input and outp
 
 OpenAI updates pricing periodically. Verify current rates at [developers.openai.com/api/docs/pricing](https://developers.openai.com/api/docs/pricing) before committing to real spend.
 
-### Worked calculation: Balanced at 100 input papers
+### Worked calculation: 100 input papers (all-OpenAI lineup)
 
 Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 

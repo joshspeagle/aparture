@@ -50,24 +50,24 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 
 ## Master symptom table
 
-| Symptom                                                            | Likely cause                                                      | Jump to                                                                   |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `npm install` fails with `gyp ERR!` or `EACCES`                    | Node version mismatch, missing build deps, or sudo install        | [npm install failures](#npm-install-failures)                             |
-| `npx playwright install chromium` hangs or fails                   | Disk space, missing system libs, or Apple Silicon without Rosetta | [Playwright install failures](#playwright-install-failures)               |
-| `Error: listen EADDRINUSE :::3000`                                 | Port 3000 already in use                                          | [Port 3000 already in use](#port-3000-already-in-use)                     |
-| Every API call returns `401 Invalid password`                      | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF          | [ACCESS_PASSWORD mismatch](#access_password-mismatch)                     |
-| `.env.local` edits don't appear to take effect                     | Dev server cached old values at startup                           | [`.env.local` not loading](#env-local-not-loading)                        |
-| `missing credentials` or provider `401`                            | API key env var unset, or wrong prefix pasted                     | [API key format issues](#api-key-format-issues)                           |
-| `arXiv rate limit: exhausted 3 retries`                            | ArXiv's 3s-per-request cap was tripped                            | [arXiv rate limits](#arxiv-rate-limits)                                   |
-| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`          | ArXiv served reCAPTCHA HTML instead of PDF bytes                  | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
-| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                  | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
-| `Filter/Score/PDF API error: 429`                                  | Provider rate-limit                                               | [Provider rate limits](#provider-rate-limits)                             |
-| `context_length_exceeded` / `FAILED_PRECONDITION`                  | Prompt + content exceeded the model's context window              | [Context overflow](#context-overflow)                                     |
-| Costs are higher than expected mid-run                             | Expensive model, large batches, or runaway correction loops       | [Cost spike mid-run](#cost-spike-mid-run)                                 |
-| Pipeline frozen for > 5 minutes                                    | Hung network request, unrecognised pause, or orphaned browser tab | [Stuck stage](#stuck-stage)                                               |
-| `Briefing generation failed: synthesis failed`                     | Schema validation + repair both failed                            | [Briefing schema-validation failure](#briefing-schema-validation-failure) |
-| Briefing renders with a `YES` hallucination badge                  | Audit flagged claims; retry disabled or also flagged              | [Hallucination-retry loop](#hallucination-retry-loop)                     |
-| Briefing retries repeatedly and still fails                        | By design — at most one retry per briefing                        | [Hallucination-retry loop](#hallucination-retry-loop)                     |
+| Symptom                                                              | Likely cause                                                      | Jump to                                                                   |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install        | [npm install failures](#npm-install-failures)                             |
+| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or Apple Silicon without Rosetta | [Playwright install failures](#playwright-install-failures)               |
+| `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                          | [Port 3000 already in use](#port-3000-already-in-use)                     |
+| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF          | [ACCESS_PASSWORD mismatch](#access_password-mismatch)                     |
+| `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                           | [`.env.local` not loading](#env-local-not-loading)                        |
+| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                     | [API key format issues](#api-key-format-issues)                           |
+| `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                            | [arXiv rate limits](#arxiv-rate-limits)                                   |
+| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`            | ArXiv served reCAPTCHA HTML instead of PDF bytes                  | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
+| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                    | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
+| `Filter/Score/PDF API error: 429`                                    | Provider rate-limit                                               | [Provider rate limits](#provider-rate-limits)                             |
+| `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window              | [Context overflow](#context-overflow)                                     |
+| Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops       | [Cost spike mid-run](#cost-spike-mid-run)                                 |
+| Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab | [Stuck stage](#stuck-stage)                                               |
+| `Briefing generation failed: synthesis failed`                       | Schema validation + repair both failed                            | [Briefing schema-validation failure](#briefing-schema-validation-failure) |
+| Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged              | [Hallucination-retry loop](#hallucination-retry-loop)                     |
+| Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                        | [Hallucination-retry loop](#hallucination-retry-loop)                     |
 
 ---
 
@@ -206,11 +206,11 @@ A request gets past `ACCESS_PASSWORD` but you see `missing credentials` or a pro
 
 Expected prefixes:
 
-| Provider  | Env var             | Prefix                      |
-| --------- | ------------------- | --------------------------- |
-| Anthropic | `CLAUDE_API_KEY`    | `sk-ant-api03-...`          |
-| OpenAI    | `OPENAI_API_KEY`    | `sk-proj-...` or `sk-...`   |
-| Google    | `GOOGLE_AI_API_KEY` | `AIzaSy...`                 |
+| Provider  | Env var             | Prefix                    |
+| --------- | ------------------- | ------------------------- |
+| Anthropic | `CLAUDE_API_KEY`    | `sk-ant-api03-...`        |
+| OpenAI    | `OPENAI_API_KEY`    | `sk-proj-...` or `sk-...` |
+| Google    | `GOOGLE_AI_API_KEY` | `AIzaSy...`               |
 
 A wrong prefix usually means you pasted the wrong kind of secret — a Google OAuth token instead of an AI Studio key, for example. See the per-provider pages: [Anthropic](/getting-started/api-keys-anthropic) · [OpenAI](/getting-started/api-keys-openai) · [Google](/getting-started/api-keys-google).
 
@@ -332,7 +332,7 @@ Aparture doesn't yet surface real-time spend. To check during a run:
 Common drivers:
 
 - **Correction loops.** A malformed-JSON response can trigger up to 12 LLM calls per batch in the worst case (2 backend corrections × 3 client retries × 2 extra backend calls). Repeated `validation failed` in the terminal suggests the model is struggling — switch to a stronger slot for that stage.
-- **Premium model on Stage 4.** Claude Opus on 100 PDFs is expensive. [Model selection](/concepts/model-selection) has cheaper per-stage configs.
+- **Expensive model on Stage 4.** Claude Opus or GPT-5.4 on 100 PDFs adds up fast. [Model selection](/concepts/model-selection) has cheaper per-stage picks.
 - **Deep analysis on too many papers.** Lower `maxDeepAnalysis` (default 30).
 
 ### Stuck stage

@@ -45,9 +45,9 @@ Aparture's defaults are all-Google. If you picked Anthropic or OpenAI, the Minim
 
 ## How Aparture uses models
 
-Aparture splits work across five LLM slots — filter, scoring, PDF analysis, briefing, and quick-summary compression — and runs each at a different point in the pipeline. Which model to put in which slot is the central configuration decision; [Model selection](/concepts/model-selection) is the dedicated page for that choice, and the per-provider pages below give a recommended **Balanced** lineup for each.
+Aparture splits work across five LLM slots — filter, scoring, PDF analysis, briefing, and quick-summary compression — and runs each at a different point in the pipeline. Which model to put in which slot is the central configuration decision; [Model selection](/concepts/model-selection) is the dedicated page for that choice, and the per-provider pages below give a recommended all-provider lineup for each.
 
-Throughout these docs, **Balanced** means: a weak-but-fast model for filtering, a medium model for abstract scoring, a strong-but-slower model for PDF analysis and briefing synthesis, and the weak/fast model again for per-paper quick-summary compression. It's the default shape of the app out of the box, and the configuration the cost tables below assume.
+The common shape across these lineups is: a weak-but-fast model for filtering, a medium model for abstract scoring, a strong-but-slower model for PDF analysis and briefing synthesis, and the weak/fast model again for per-paper quick-summary compression. That's also the default shape the app ships with, and what the cost tables below assume.
 
 For a narrated end-to-end tour of what each stage actually does in the UI, see [Your first briefing](/using/first-briefing).
 
@@ -57,9 +57,9 @@ All three providers follow the same pipeline: quick filter runs on every input p
 
 Because Stage 4 caps at the top N, cost flattens at high input volumes — PDF analysis dominates on small runs, filter + scoring dominate on large ones.
 
-Per-stage breakdown for Balanced picks. The reference case is a run where 100 papers are fetched, ~50 pass the filter to scoring, and 20 reach deep PDF analysis; the 250-paper column shows what happens at a high input volume where the PDF cap (default 30) kicks in. Totals are list price (no caching); caching discount applies on repeat runs.
+Per-stage breakdown for the recommended picks on each provider. The reference case is a run where 100 papers are fetched, ~50 pass the filter to scoring, and 20 reach deep PDF analysis; the 250-paper column shows what happens at a high input volume where the PDF cap (default 30) kicks in. Totals are list price (no caching); caching discount applies on repeat runs.
 
-### Anthropic Balanced
+### Anthropic
 
 | Stage                   | Model             | 100 papers in | 250 papers in |
 | ----------------------- | ----------------- | ------------: | ------------: |
@@ -69,7 +69,7 @@ Per-stage breakdown for Balanced picks. The reference case is a run where 100 pa
 | Quick summaries         | Claude Haiku 4.5  |         $0.07 |         $0.11 |
 | **Total / run**         |                   |    **~$3.35** |    **~$5.20** |
 
-### Google Balanced
+### Google
 
 | Stage                   | Model                 | 100 papers in | 250 papers in |
 | ----------------------- | --------------------- | ------------: | ------------: |
@@ -79,7 +79,7 @@ Per-stage breakdown for Balanced picks. The reference case is a run where 100 pa
 | Quick summaries         | Gemini 3.1 Flash-Lite |         $0.02 |         $0.03 |
 | **Total / run**         |                       |    **~$1.35** |    **~$2.05** |
 
-### OpenAI Balanced
+### OpenAI
 
 | Stage                   | Model        | 100 papers in | 250 papers in |
 | ----------------------- | ------------ | ------------: | ------------: |

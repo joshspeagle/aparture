@@ -50,7 +50,7 @@ If the key is invalid, you'll see `"Anthropic API key not found"` (env var missi
 
 ## 5. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the Anthropic picks for an all-Anthropic Balanced configuration.
+You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the recommended Anthropic picks for an all-Anthropic setup.
 
 | Stage                               | Model               |
 | ----------------------------------- | ------------------- |
@@ -87,7 +87,7 @@ Current (April 2026) list pricing for every Anthropic model in Aparture's regist
 - **Prompt caching.** Aparture marks the stable prefix of each prompt (template text + your profile) as cacheable. The first call writes the cache at ~1.25× input price; subsequent calls within ~5 minutes read it at ~0.1× input price. Across a session, this nets a 20–40% reduction on input tokens.
 - **Cache warmup on parallel PDFs.** Stage 4 runs Anthropic's first PDF call alone before releasing the other workers, so the cache entry is primed once instead of racing N parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
 
-### Worked calculation: Balanced at 100 input papers
+### Worked calculation: 100 input papers (all-Anthropic lineup)
 
 Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
 
