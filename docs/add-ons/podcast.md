@@ -12,13 +12,13 @@ The podcast flow is entirely optional. Plenty of users skip it and just read the
 
 Once a briefing exists, a <span class="ui-action">NotebookLM Podcast</span> card appears below it in the main area. Clicking <span class="ui-action">Generate NotebookLM bundle</span> downloads a ZIP file containing:
 
-| File                     | Purpose                                                                                                   |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `INSTRUCTIONS.md`        | The three-step upload workflow you're about to do. Not a NotebookLM source — read it and keep it local.   |
-| `briefing.md`            | The full briefing rendered as a single markdown source. Executive summary, themes, paper cards.           |
-| `discussion-guide.md`    | A podcast outline generated from the briefing — theme weighting, talking points, pacing, scaled to duration. The main "content" source NotebookLM reads from. |
-| `papers/<arxivId>.md`    | One file per paper, holding the Stage 4 deep-analysis report. NotebookLM uses these for detail during the conversation. |
-| `focus-prompt.txt`       | The prompt you paste into NotebookLM's audio-customisation box. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation. |
+| File                  | Purpose                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INSTRUCTIONS.md`     | The three-step upload workflow you're about to do. Not a NotebookLM source — read it and keep it local.                                                       |
+| `briefing.md`         | The full briefing rendered as a single markdown source. Executive summary, themes, paper cards.                                                               |
+| `discussion-guide.md` | A podcast outline generated from the briefing — theme weighting, talking points, pacing, scaled to duration. The main "content" source NotebookLM reads from. |
+| `papers/<arxivId>.md` | One file per paper, holding the Stage 4 deep-analysis report. NotebookLM uses these for detail during the conversation.                                       |
+| `focus-prompt.txt`    | The prompt you paste into NotebookLM's audio-customisation box. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation.          |
 
 Everything is plain markdown or text, so you can inspect the bundle before uploading.
 
@@ -80,20 +80,6 @@ This is a JavaScript function (not a markdown template) that produces `focus-pro
 Because this lives in JS, changes require a server restart to take effect. It's less convenient for quick iteration but more powerful, since you can condition the prompt on briefing content or duration programmatically.
 
 For the full prompt reference, see [Reference: prompts](/reference/prompts).
-
-## CLI automation
-
-The CLI tools in `cli/` can drive the full bundle + upload + audio-generation flow unattended. The entry points:
-
-```bash
-npm run analyze            # Full workflow: report + bundle + podcast
-npm run analyze:document   # Bundle only; skip podcast generation
-npm run analyze:podcast    # Podcast only; reuse existing bundle files
-```
-
-These use Playwright to drive a headed browser through NotebookLM. The first podcast run requires an interactive Google sign-in; subsequent runs reuse the cached session at `temp/notebooklm-profile/`. Don't delete that directory unless you're willing to re-authenticate.
-
-The automation in `cli/notebooklm-automation.js` is brittle in the way any UI-scraping tool is brittle — Google updates the NotebookLM interface periodically, and selectors occasionally break. If the CLI fails mid-run, falling back to the manual upload flow above usually works.
 
 ## Common issues
 
