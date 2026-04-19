@@ -32,9 +32,7 @@ Each stage has its own model slot. Current defaults are all Google:
 | `quickSummaryModel`   | Quick-summary model          | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis      |
 | `notebookLMModel`     | (set when generating podcast)| unset until first podcast | Optional NotebookLM document bundle                                            |
 
-<!-- FIXME: verify the Setting label for filterModel. SettingsPanel shows "Quick Filter Model (Stage 1)" but the code comment stage numbering is off — UI hasn't been updated. -->
-
-All slots are disabled while a run is in progress.
+The Settings panel's own stage numbering is a little different from the numbering these docs use (the UI calls the filter "Stage 1"); the labels above are what you'll literally see on screen. All slots are disabled while a run is in progress.
 
 Three rules of thumb for model selection:
 
@@ -116,9 +114,7 @@ Turn it off if run-time matters more than ranking quality, or if you're rapidly 
 
 ### Quick filter
 
-**Quick filter mode** controls whether Stage 2 runs at all (enabled by default — toggle via the `useQuickFilter` config field). Turning it off sends every fetched paper directly to abstract scoring. That's reasonable when your categories are narrow enough that the day's volume is already manageable (under ~30 papers) and the filter is just overhead. For most users, especially on high-volume categories like `cs.LG` or `cs.CL`, the filter usually cuts scoring costs by a meaningful margin.
-
-<!-- FIXME: verify whether useQuickFilter has a UI toggle in the Settings panel or whether it's set only via the `categoriesToScore` + advanced config. SettingsPanel.jsx doesn't show an obvious "quick filter on/off" control. -->
+Whether Stage 2 runs at all is governed by the `useQuickFilter` config flag (default on). It's not currently exposed in the Settings UI — the flag lives in the app's saved state and would need to be edited there to turn off — but it exists. Skipping the filter is reasonable when your categories are narrow enough that the day's volume is already manageable (under ~30 papers) and the filter is just overhead. For most users, especially on high-volume categories like `cs.LG` or `cs.CL`, the filter cuts scoring costs by a meaningful margin and is worth leaving on.
 
 ## Review & confirmation
 

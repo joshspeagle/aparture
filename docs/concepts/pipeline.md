@@ -154,7 +154,7 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.1-pro`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
 4. **Call `/api/check-briefing`** to audit the briefing against the source corpus — a second, independent LLM pass looks for claims that aren't supported by the papers' abstracts, quick summaries, or full reports.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
-6. **Save** the briefing + generation metadata to localStorage with a 90-day rolling window.
+6. **Save** the briefing + generation metadata to the app's local storage (browser-side, 90-day rolling window).
 
 Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model (no caching), and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
 

@@ -43,7 +43,7 @@ You'll see:
 
 Aparture ships with `pauseAfterFilter` and `pauseBeforeBriefing` both **on by default**, so the pipeline will stop twice during the Dry Run and wait for you:
 
-1. **After filtering** — the UI shows three buckets (YES / MAYBE / NO). Click any verdict pill to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
+1. **After filtering** — the UI shows three buckets (YES / MAYBE / NO). Click any verdict button to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
 2. **After PDF analysis, before briefing synthesis** — you can star or dismiss any paper, or add a comment. Then click **Continue to briefing →**.
 
 If the pipeline looks stuck, check whether it's actually waiting for you at one of these gates. You can disable either gate in **Settings → Review & confirmation**, but leaving them on is the realistic first-run experience.
@@ -106,7 +106,7 @@ The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the orig
 When the pipeline pauses at the filter-review gate:
 
 1. Look at the three buckets. If YES + MAYBE together are empty or sparse, you'll need to intervene.
-2. **Click any paper's verdict pill** to cycle it through YES → MAYBE → NO. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
+2. **Click any paper's verdict button** to cycle it through YES → MAYBE → NO. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
 3. Aim for **at least 2–3 papers in YES or MAYBE** so the rest of the pipeline has something to chew on.
 4. Click **Continue to scoring →** once you're happy with the buckets.
 

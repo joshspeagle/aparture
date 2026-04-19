@@ -1,39 +1,52 @@
 # Refining over time
 
-Once you've been giving feedback for a week or two, your profile will usually be due for an update. Rather than rewriting it by hand — trying to remember everything you starred, every paper you wished the pipeline had dismissed — you can hand the accumulated feedback to a flow that proposes profile edits. It reads your current profile plus everything you've marked and returns a list of small, targeted changes, each with its own rationale. You pick which ones to apply.
+Once you've marked a decent amount of feedback — stars, dismisses, comments, filter overrides — your profile will usually be due for an update. Rather than rewriting it by hand, you can hand the accumulated feedback to a flow that proposes profile edits. It reads your current profile plus everything you've marked, and returns a list of small, targeted changes, each with its own rationale. You pick which ones to apply.
 
-This page covers that flow: what it sees, what the review step looks like, and how often it's worth running.
+This page covers that flow: what it sees, what the review step looks like, the per-call guidance field, and when it's worth running.
 
 ## The loop in one sentence
 
 Read a briefing → react (stars, dismisses, comments, filter overrides) → let feedback accumulate → click <span class="ui-action">Suggest improvements →</span> → review the proposed changes one at a time → accept any subset → the next briefing uses the revised profile.
 
-Most of the detail below is about the review step, because that's where you actually make decisions.
+Most of the detail below is about the review step, because that's where the decisions happen.
 
 ## What the flow sees
 
-The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same flow. When you click it, the dialog that opens lists every new feedback event since your last profile revision, with checkboxes so you can include or exclude specific events. All are included by default.
+The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same dialog. The dialog lists every new feedback event since your last profile revision with checkboxes, so you can include or exclude specific events. All are included by default.
 
 When you click <span class="ui-action">Generate suggestion</span>, the model receives:
 
 - Your current profile text.
 - Every paper you've **starred** or **dismissed** — the current state per paper, so if you starred then un-starred a paper, the model only sees that it's un-starred.
-- Every paper with a **filter override** — the current verdict plus what the override signals (too-narrow or too-broad).
-- Your most recent **paper comments** — capped at the most recent 30, so long comment histories get trimmed. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
-- Your most recent **general comments** — same 30-comment cap.
+- Every paper with a **filter override** — the current verdict plus what the override signals (too narrow or too broad).
+- Your most recent **paper comments** — capped at the most recent 30. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
+- Your most recent **general comments** — same 30-item cap. Each one is paired with the briefing it was written against (executive summary, theme titles and arguments, and per-paper pitches), so the model can interpret reactions like *"this one leaned too heavily on interpretability"* with the right context.
+- Any **per-call guidance** you type in (see below).
 
 The model's job is to read these signals and propose surgical edits that bring your profile into better alignment with what the feedback suggests you actually want.
+
+## Per-call guidance
+
+Above the <span class="ui-action">Generate suggestion</span> button sits a small text field labelled *"Guidance for this suggestion (optional)"*. It's the place to type a short, direct note about how you want the profile to change on this one call — examples that work:
+
+- *"Focus on narrowing my astro interests to galactic dynamics specifically."*
+- *"Keep the NLP language, drop the vision-only work."*
+- *"Add a line about preferring methodological papers over applications."*
+
+When you fill this in, it becomes the highest-priority signal the model sees, and it's told to use the feedback events beneath it to ground concrete changes that move the profile in the direction you asked for. Leave it empty and the flow runs from feedback signals alone, the way it always has.
+
+Guidance isn't stored anywhere. It applies to this one suggestion and disappears when the dialog closes. If you want a persistent note, leave a general comment in the Feedback panel instead.
 
 ## Suggested changes, not a rewrite
 
 The output isn't a new profile. It's a list of atomic, non-overlapping changes, each with:
 
-| Field          | What it holds                                                                                             |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| **Edit type**  | `replace`, `insert`, or `delete`.                                                                         |
-| **Anchor**     | An exact substring from your current profile that the change targets.                                     |
-| **Content**    | The new text (for replace and insert). Empty for delete.                                                  |
-| **Rationale**  | A short line explaining why, usually citing specific feedback events by arXiv ID.                         |
+| Field         | What it holds                                                                 |
+| ------------- | ----------------------------------------------------------------------------- |
+| **Edit type** | `replace`, `insert`, or `delete`.                                             |
+| **Anchor**    | An exact substring from your current profile that the change targets.         |
+| **Content**   | The new text (for replace and insert). Empty for delete.                      |
+| **Rationale** | A short line explaining why, usually citing specific feedback events by arXiv ID. |
 
 Changes are guaranteed non-overlapping — if two candidate edits would touch adjacent text, the model merges them into one — so you can accept any subset and the result is still well-formed. The API validates this server-side and retries once if the model returns overlapping edits.
 
@@ -45,7 +58,7 @@ When suggestions come back, the dialog swaps to a per-change review. Top to bott
 
 Each proposed change renders as a card with a checkbox (checked by default), a small label showing the edit type, a diff preview, and the model's rationale below.
 
-The diff preview uses the same colour conventions throughout the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey *"after: …"* context because the anchor itself isn't being touched — the new content is going in right after it.
+The diff preview uses the colour conventions used elsewhere in the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey *"after: …"* context because the anchor itself isn't being touched — the new content is going in right after it.
 
 Rationales tend to look like *"You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this adds MoE to your active topics and removes sparse attention."* Read them. Uncheck anything whose reasoning you don't buy.
 
@@ -71,7 +84,7 @@ This usually comes up when:
 - Your feedback is contradictory. You starred one paper on a topic and dismissed another on the same topic, so the signal is unclear.
 - Your profile already captures the signal. The papers you dismissed were already excluded by your anti-interests; there's nothing to change.
 
-Close the dialog, keep giving feedback, and try again after a few more briefings. The tool's refusal to invent a change it can't justify is the right default.
+Close the dialog, keep giving feedback (or refine the guidance note), and try again once there's more signal. The flow's refusal to invent a change it can't justify is the right default.
 
 ## Versioned history and rollback
 
@@ -83,15 +96,20 @@ Reverting is safe: your current profile is itself archived before the target rev
 
 ## When to run it
 
-Rough guidance, not rules:
+The flow works best when the feedback store has enough signal to spot patterns, not at any particular cadence. Check the counts at the top of the Feedback panel — *new* events since your last refinement — and use roughly this guide:
 
-- **Weekly, roughly.** A week of daily briefings with casual feedback — a few stars, a few dismisses, an override or two — usually gives the flow enough signal to propose meaningful edits. This is the sweet spot.
-- **When a briefing feels off.** If you've just read one that missed papers you care about or included papers you don't, your reactions are fresh and specific — a good time to refine.
-- **After a shift in research focus.** Starting a new project or moving to a new field usually needs 3–5 briefings of feedback on the new focus before the flow has enough to work with.
+| Aggregate volume                           | What to expect                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------- |
+| Fewer than ~10 new events                  | Usually too thin — expect *"no clear change"* or vague proposals.    |
+| ~10–30 new events across a mix of types    | Enough for concrete, defensible edits, especially with a few comments. |
+| 30+ new events including comments          | Rich enough to cite specific reactions and recommend targeted edits. |
 
-::: warning Avoid running it every day
-The flow works best when feedback accumulates across several briefings — it needs both volume and variety to spot patterns. Running it after a single briefing tends to produce *"no clear change"* or to overfit to the one day's papers.
-:::
+This isn't a calendar thing. A heavy first-day session — a dozen filter overrides, half a dozen stars, a general comment or two — is enough to run the flow right away; two quiet weeks of barely-engaged briefings might not be.
+
+Two other triggers worth knowing about:
+
+- **When a briefing feels off.** If you've just read a briefing that missed papers you care about or included papers you don't, your reactions are fresh and specific. Often a good moment to run the flow, especially if you can combine it with a direct guidance note.
+- **After a shift in research focus.** Starting a new project or moving to a new field usually needs 3–5 briefings of feedback on the new focus before the flow has enough to work with. A guidance note can help accelerate this — *"shifting focus to protein structure prediction; integrate this into the profile"* — but don't expect miracles from one session's worth of feedback.
 
 ## A sanity check before accepting
 
@@ -110,7 +128,7 @@ A few things the flow won't do:
 
 - **Write your first profile.** If the current profile is very thin, proposed changes will be too. Write a real profile manually first (see [Writing a good profile](/using/writing-a-profile)), then run refinement once you've given feedback on it.
 - **Know about papers it hasn't seen.** The flow only reads the papers you've reacted to inside Aparture plus your comments and overrides. Stars on arXiv itself don't reach it.
-- **Re-request specific changes later.** If you apply 3 of 5 and then want the other 2 the next day, there's no "apply the rest" — you'd need to run the flow again. Usually that's fine, because accumulated feedback has grown in the meantime.
+- **Re-request specific changes later.** If you apply 3 of 5 and then want the other 2 the next day, there's no *"apply the rest"* — you'd need to run the flow again. Usually that's fine, because accumulated feedback has grown in the meantime.
 
 ## Next
 
