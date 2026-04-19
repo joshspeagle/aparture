@@ -231,11 +231,21 @@ When a retry runs, the synthesis prompt gets a retry hint summarising the flagge
 The retry path fires at most once — a design choice to avoid runaway loops at the cost of accepting one stuck verdict. If the retry also flags, the second briefing is what you see.
 :::
 
+## The Download Report vs the briefing
+
+Two outputs come out of a successful run, and they're different enough that conflating them causes persistent confusion.
+
+The **briefing** is the editorial product: synthesis LLM output with an executive summary, themes, per-paper cards, and a hallucination audit. Stage 5 produces it, `components/briefing/BriefingView.jsx` renders it, and `useBriefing` saves it to the sidebar archive. It's the page you open day-to-day.
+
+The **Download Report** is a flat markdown export compiled by `lib/analyzer/exportReport.js` from Stage 4's per-paper deep-analysis outputs. It has no editorial framing, no theme grouping, no profile-shaped "why it matters" — just the raw technical write-ups stitched together, one after another, with scores and metadata. No LLM call happens at export time; it's a deterministic compile of cached outputs. The card surfaces as soon as Stage 4 finishes, which means **it's visible during the pre-briefing pause** — you can export the technical detail without waiting on or running briefing synthesis at all.
+
+Neither depends on the other existing. Rule of thumb: you'll read a briefing, you'll archive or share a report. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you want only the report (e.g., unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
+
 ## Reading this alongside the UI
 
 - The **Progress Timeline** (left side of the main area during a run) shows each of the six stages with a status icon and live progress counter.
 - The **review-gate UIs** appear when `pauseAfterFilter` or `pauseBeforeBriefing` fire — they occupy the main area until you click "Continue to [next stage]".
-- The **Download Report** card appears after stage 4, regardless of whether stage 5 has run. You don't need a briefing to export a report.
+- The **Download Report** card appears after Stage 4, regardless of whether Stage 5 has run. See the section above for what's in it and how it differs from the briefing.
 
 ## Where to tune what
 

@@ -1,10 +1,10 @@
 # Your first briefing
 
-With a working environment behind you, this page walks through producing your first real briefing — on your own profile, with your own categories, end to end. Plan on ten minutes or so of active attention, spread across a pipeline run you can mostly walk away from.
+Once your environment's set up, this page walks through producing your first real briefing — on your own profile, with your own categories, end to end. It takes around ten minutes of active attention, spread across a pipeline run you can mostly walk away from.
 
-The goal is to get through one complete run, not to write the perfect profile or tune every setting. Everything you see here has a deeper page elsewhere in the Guide; the forward links at each step are safe to skip on the first pass.
+The goal is to get through one complete run. Writing the perfect profile or tuning every setting can wait; everything you see here has a deeper page elsewhere in the Guide, and the forward links at each step are safe to skip on the first pass.
 
-Before you start, you should have done [Install](/getting-started/install), [API keys](/getting-started/api-keys), and [Verify setup](/getting-started/verify-setup). The page assumes your dev server runs cleanly and your Minimal API Test came back green.
+This page assumes you've done [Install](/getting-started/install), [API keys](/getting-started/api-keys), and [Verify setup](/getting-started/verify-setup) — your dev server runs cleanly and your Minimal API Test came back green.
 
 ## 1. Open Aparture and look around
 
@@ -12,15 +12,15 @@ Before you start, you should have done [Install](/getting-started/install), [API
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSWORD`. The app is laid out as a sidebar on the left and a main area that renders whatever the sidebar selects.
+Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSWORD`. The app is a sidebar on the left plus a main area that renders whatever the sidebar selects.
 
-The sidebar has three nav links you'll bounce between for this run: **Profile**, **Settings**, and **Pipeline**. It also carries the briefing archive (empty today) and a light/dark theme toggle. Click through the three nav links so you've seen the shape of each view — don't change anything yet.
+The sidebar carries a list of past briefings (empty for now), a light/dark theme toggle, and three nav links — <span class="ui-action">Profile</span>, <span class="ui-action">Settings</span>, and <span class="ui-action">Pipeline</span> — that you'll cycle between during this run. Click each one now just to get a feel for the layout; there's nothing to fill in or change yet.
 
 ## 2. Write a starter profile
 
-Click **Profile**. The text box at the top is the single source of what Aparture thinks you care about; every stage of the pipeline reads it, so a few minutes of thought here pays off for the rest of the run.
+Open the <span class="ui-action">Profile</span> view. The text box at the top is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
 
-Don't try to write the perfect profile. Describe your main research area in a couple of sentences, list a few method families or application domains you actively follow, and include some things you're explicitly *not* interested in — the filter model leans hard on negatives. Something like:
+A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly *not* interested in (the filter model leans heavily on negatives) is already enough to get useful output. Something like:
 
 ```text
 I am a researcher working on [YOUR FIELD]. I care most about methodological
@@ -41,21 +41,20 @@ I'm not interested in:
 - Engineering or systems work without a research angle
 ```
 
-Edit the bracketed placeholders to match your actual work, then click **Save changes**. Writing a good profile is its own craft — see [Writing a good profile](/using/writing-a-profile) when you're ready to go deeper.
+Edit the bracketed placeholders to match your actual work, then click <span class="ui-action">Save changes</span>. Writing a good profile is its own craft — [Writing a good profile](/using/writing-a-profile) covers it in depth when you're ready.
 
 ## 3. Pick a couple of categories and leave the models alone
 
-Click **Settings**. Two things to set, one to leave alone:
+Open the <span class="ui-action">Settings</span> view. Two things to set, one to leave alone, everything else to skip for now:
 
-- **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers come through on a typical day. If none of those match, see [arXiv categories](/concepts/arxiv-categories).
-- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's Balanced lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) covers the trade-offs in depth.
-- **Everything else** — skip for now.
+- **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
+- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's Balanced lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
-Click **Pipeline** to move on.
+Click back to the <span class="ui-action">Pipeline</span> view when you're done.
 
 ## 4. Start the run — and expect two pauses
 
-The Progress Timeline shows six stages, all empty, next to a **Start Analysis** button. Before you click it, know that the default run will stop and wait for you twice:
+The Pipeline view shows the Progress Timeline (six stages, all empty) next to a <span class="ui-action">Start Analysis</span> button. One thing worth knowing before you click it: the default run stops and waits for you twice along the way.
 
 ```
   1. Fetch papers
@@ -73,55 +72,57 @@ The Progress Timeline shows six stages, all empty, next to a **Start Analysis** 
   5. Briefing           (editorial synthesis + hallucination audit)
 ```
 
-Both pauses are on by default and can be turned off in Settings → Review & confirmation once you're comfortable. For the first run, clicking through them cold is fine — the point is to see them happen.
+Both pauses are on by default and can be turned off in Settings → Review & confirmation once you've seen a few runs. For this run, clicking through them without much ceremony is fine — the point this time is to notice where they fire and what they show.
 
-Click **Start Analysis**.
+Click <span class="ui-action">Start Analysis</span>.
 
 ## 5. Fetch and filter, then the first pause
 
 The timeline lights up stage-by-stage. The first two run without intervention:
 
-1. **Fetch papers** — the arXiv API query runs against your configured categories.
-2. **Filter papers** — the filter model reads each paper's abstract and triages it as YES, MAYBE, or NO, in parallel across batches.
+1. **Fetch papers** — the arXiv API query runs against your categories.
+2. **Filter papers** — the filter model reads each paper's abstract and triages it as <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, or <span class="verdict is-no">NO</span>, batched and parallelised for speed.
 
-When the filter completes, the pipeline parks at a review gate. The main area shows the three buckets with a one-sentence summary and justification per paper, plus a clickable verdict pill next to each one.
+When the filter finishes, the pipeline parks at its first review gate. The main area shows three buckets of papers, each card carrying a one-sentence summary and a short justification, plus a clickable verdict pill you can use to move the paper between buckets.
 
-Spend a minute scanning what landed where. If a paper you'd clearly want is in NO, click its pill to cycle it to MAYBE or YES; the reverse if NO papers slipped into YES. Every override gets logged as a `filter-override` feedback event, which does two things at once: reroutes the paper to scoring on this run, and contributes to the signal that the [Suggest Improvements](/using/refining-over-time) flow uses later to refine your profile.
+Take a minute to scan what landed where. If something you'd clearly want is in <span class="verdict is-no">NO</span>, click its pill to move it to <span class="verdict is-maybe">MAYBE</span> or <span class="verdict is-yes">YES</span>; similarly if something in <span class="verdict is-yes">YES</span> is obviously a miss. Every override gets logged as a `filter-override` feedback event, which reroutes that paper to scoring on this run and also feeds the [Suggest Improvements](/using/refining-over-time) flow later on.
 
 ::: tip First-run habit
-A quick scan is plenty here. If something's obviously in the wrong bucket, click its verdict pill to move it; if not, **Continue to scoring →** is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
+A quick scan is plenty on this run. If something's obviously in the wrong bucket, click its verdict pill to move it; if not, <span class="ui-action">Continue to scoring →</span> is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
 :::
 
 ## 6. Scoring and PDF analysis
 
-The pipeline moves through abstract scoring, an optional post-processing consistency pass, and deep PDF analysis of the top-ranked papers. This is the slowest part of the run — PDF download and the analysis LLM call each take real time, and by default they run three-wide in parallel. Wall-clock here depends heavily on how many papers passed the filter, which model you're using for PDFs, and your provider tier; it's rarely the fastest stage.
+The pipeline moves through abstract scoring, an optional post-processing consistency pass, and then deep PDF analysis of the top-ranked papers. PDF analysis is the slowest stretch of the run by some margin — each paper is downloaded, read, and summarised, with the analyses running in parallel in the background. How long it takes varies with how many papers passed the filter, which model you're using for PDFs, and your provider tier.
 
-This is a good stretch to step away from the browser. The pipeline runs unattended, the timeline and activity log update as each stage completes, and the run survives browser navigation — you can switch tabs or come back later without losing anything.
+This is a good point to step away from the browser for a bit. The timeline and activity log continue updating as each stage completes, and the run survives browser navigation, so you can switch tabs or come back later without losing progress.
 
 ## 7. Second pause — before the briefing writes
 
-Once PDF analysis finishes, the pipeline parks again with the Analysis Results rendered in the main area. Each paper card has three controls:
+Once PDF analysis finishes, the pipeline parks at its second review gate with the Analysis Results rendered in the main area. Each paper card carries three feedback controls:
 
-- **☆ star** — marks the paper as important. The briefing will give it richer treatment and more prominent placement.
-- **⊘ dismiss** — marks it as uninteresting. The briefing will deprioritise it.
-- **+ comment** — a short note. Your comments get woven into the paper's write-up in the briefing.
+- <span class="ui-action">☆ star</span> — marks the paper as important. The eventual briefing will give it richer treatment and more prominent placement.
+- <span class="ui-action">⊘ dismiss</span> — marks it as uninteresting. The briefing will deprioritise it.
+- <span class="ui-action">+ comment</span> — a short note that gets woven into the paper's write-up in the briefing.
 
-On the first run, skim the results and click **Continue to briefing →** without starring or dismissing anything. Come back and do this with intent on your second run — the feedback loop is where Aparture becomes useful over weeks. See [Giving feedback](/using/giving-feedback) for what each control actually does downstream.
+::: info You'll also notice a Download Report card
+A <span class="ui-action">Download Report</span> card appears alongside the results at this gate, and it's tempting to treat it as the final output of the run. It isn't. The report is a flat markdown compile of the per-paper deep analyses — a long, detail-heavy technical document, useful for archiving or sharing, but not the editorial reading view most daily use revolves around. The **briefing** comes next, after this pause. See [The Download Report vs the briefing](/concepts/pipeline#the-download-report-vs-the-briefing) for what's in each and why they exist.
+:::
+
+On this first run, skim the results and click <span class="ui-action">Continue to briefing →</span> without starring or dismissing anything. The feedback controls are where Aparture becomes useful over weeks, not one run; [Giving feedback](/using/giving-feedback) covers what each one actually does downstream when you want to engage with them deliberately.
 
 ## 8. Read what you got
 
-After briefing synthesis completes, the main area fills in. Four blocks stack from top to bottom:
+Once synthesis completes, Aparture saves the new briefing to the sidebar archive and switches the main area to its reading view — the briefing opens on its own page rather than appearing below what you were just looking at. You can always flip back to the run results via the <span class="ui-action">Pipeline</span> nav link, but the briefing view is where most of the useful output lives.
 
-| Block                | What it is                                                       | When you'd use it                                      |
-| -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------ |
-| **Analysis Results** | Ranked paper list with scores (0.0–10.0, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)), justifications, and deep summaries | Source-of-truth lookup; still interactive |
-| **Download Report**  | Markdown export of the full run                                  | You want a standalone file on disk                     |
-| **Briefing**         | Editorial reading view — executive summary, themes, paper cards  | Primary daily reading surface                          |
-| **NotebookLM**       | Bundle generator for a commute-length podcast                    | Optional add-on — see [Generating a podcast](/add-ons/podcast) |
+Four blocks are worth recognising across the two views:
 
-::: info Briefing vs report
-These are two different outputs of the same run. The **briefing** is what you *read* — rendered in the app, grouped by theme, shaped by your feedback signals, and hallucination-audited after synthesis. The **report** is what you *save* — a flat markdown file with the full per-paper detail, no editorial shape. Most daily use revolves around the briefing; the report matters when you want to share or archive a run.
-:::
+| Block                | Where it lives           | What it is                                                       |
+| -------------------- | ------------------------ | ---------------------------------------------------------------- |
+| **Analysis Results** | Pipeline view            | Ranked paper list with scores (0.0–10.0, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)), justifications, and deep summaries — still interactive |
+| **Download Report**  | Pipeline view            | Markdown compile of the per-paper deep analyses (see [report vs briefing](/concepts/pipeline#the-download-report-vs-the-briefing)) |
+| **Briefing**         | Briefing view (archived) | Editorial reading surface — executive summary, themes, paper cards |
+| **NotebookLM**       | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast) |
 
 ::: tip Expect the first briefing to be rough
 The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at either gate. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.

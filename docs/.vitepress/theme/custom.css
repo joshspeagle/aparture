@@ -276,3 +276,77 @@ a.landing-card:hover {
 .landing-footer a {
   color: var(--arxiv-red);
 }
+
+/* ============================================================
+   Inline UI mimicry — light styling for verdicts and controls
+   referenced in the docs. These exist so readers can recognise
+   app elements without the docs trying to rebuild the UI.
+   ============================================================ */
+
+/* Verdict labels (YES / MAYBE / NO). Used for filter buckets,
+   hallucination audit, and anywhere verdict language appears. */
+.verdict {
+  display: inline-block;
+  font-family:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  line-height: 1.5;
+  vertical-align: baseline;
+}
+
+.verdict.is-yes {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.verdict.is-maybe {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.verdict.is-no {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+/* Dark-mode verdict tones */
+.dark .verdict.is-yes {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.dark .verdict.is-maybe {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.dark .verdict.is-no {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* UI action labels — for clickable controls referenced inline in prose,
+   like a star button, a dismiss button, or a "Continue to scoring →" link. */
+.ui-action {
+  display: inline-block;
+  font-family:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--vp-c-default-soft);
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-1);
+  line-height: 1.55;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
