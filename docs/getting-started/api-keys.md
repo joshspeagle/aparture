@@ -73,7 +73,7 @@ Per-stage breakdown for Balanced picks, with the default cap of N=30 PDFs. Total
 
 | Stage                   | Model                 | 100 papers in | 250 papers in |
 | ----------------------- | --------------------- | ------------: | ------------: |
-| Filter                  | Gemini 2.5 Flash-Lite |         $0.01 |         $0.02 |
+| Filter                  | Gemini 3.1 Flash-Lite |         $0.02 |         $0.04 |
 | Scoring                 | Gemini 3 Flash        |         $0.05 |         $0.13 |
 | PDFs + briefing + audit | Gemini 3.1 Pro        |         $1.88 |         $1.88 |
 | Quick summaries         | Gemini 3.1 Flash-Lite |         $0.03 |         $0.03 |

@@ -23,7 +23,7 @@ Each stage has its own model slot. The defaults (as of April 2026) are all Googl
 
 | Slot              | Setting label      | Default                           | What it does                                         |
 | ----------------- | ------------------ | --------------------------------- | ---------------------------------------------------- |
-| `filterModel`       | Filter Model            | `gemini-2.5-flash-lite`           | Stage 2: YES/NO/MAYBE on abstracts                                                |
+| `filterModel`       | Filter Model            | `gemini-3.1-flash-lite`           | Stage 2: YES/NO/MAYBE on abstracts                                                |
 | `scoringModel`      | Scoring Model           | `gemini-3-flash`                  | Stage 3: 0-10 score with justification                                            |
 | `pdfModel`          | PDF Analysis Model      | `gemini-3.1-pro`                  | Stage 4: deep PDF read                                                            |
 | `briefingModel`     | Briefing Model          | `gemini-3.1-pro`                  | Stage 5: cross-paper synthesis + hallucination check                              |
@@ -46,7 +46,7 @@ Briefing synthesis reads all the final-round papers plus your profile. It benefi
 
 ### 2. Don't spend on what filters
 
-The quick filter runs on every fetched paper (often 100-500 per day). A fast, cheap model here is exactly right — it only needs to say "plausibly relevant" or "plausibly not." `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` are all good choices.
+The quick filter runs on every fetched paper (often 100-500 per day). A fast, cheap model here is exactly right — it only needs to say "plausibly relevant" or "plausibly not." `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` are all good choices.
 
 Same logic applies to scoring: you're running it on dozens to hundreds of papers and mostly ranking within them. A mid-tier model is usually enough. `gemini-3-flash` or `claude-sonnet-4.6` works well.
 

@@ -57,7 +57,7 @@ export const DEFAULT_CONFIG = {
   maxCorrections: 1,
   maxRetries: 1,
   useQuickFilter: true,
-  filterModel: 'gemini-2.5-flash-lite',
+  filterModel: 'gemini-3.1-flash-lite',
   filterBatchSize: 3,
   categoriesToScore: ['YES', 'MAYBE'],
   scoringModel: 'gemini-3-flash',
@@ -106,7 +106,7 @@ function migrateLegacyConfig(config) {
 
   // Two-model → three-model setup
   if (config.screeningModel && !config.scoringModel) {
-    config.filterModel = 'gemini-2.5-flash-lite';
+    config.filterModel = 'gemini-3.1-flash-lite';
     config.scoringModel = config.screeningModel;
     config.pdfModel = config.deepAnalysisModel;
     config.filterBatchSize = 3;
@@ -119,7 +119,7 @@ function migrateLegacyConfig(config) {
 
   // Single-model → three-model setup
   if (config.selectedModel) {
-    config.filterModel = 'gemini-2.5-flash-lite';
+    config.filterModel = 'gemini-3.1-flash-lite';
     config.scoringModel = 'gemini-3-flash';
     config.pdfModel = config.selectedModel;
     delete config.selectedModel;

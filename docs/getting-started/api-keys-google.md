@@ -45,18 +45,18 @@ If the key is invalid, you'll see `"Google API key not found"` (env var missing 
 
 ## 5. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the Google picks for an all-Google Balanced configuration.
+You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the Google picks for an all-Google Balanced configuration, with a free-tier-only alternative in the rightmost column.
 
-| Stage                               | Model                                        |
-| ----------------------------------- | -------------------------------------------- |
-| Filter (`filterModel`)              | `gemini-2.5-flash-lite`                      |
-| Scoring (`scoringModel`)            | `gemini-3-flash`                             |
-| PDF analysis (`pdfModel`)           | `gemini-3.1-pro` (or `gemini-2.5-pro` free)  |
-| Briefing (`briefingModel`)          | Same as `pdfModel`                           |
-| Quick summary (`quickSummaryModel`) | `gemini-3.1-flash-lite`                      |
-| NotebookLM (`notebookLMModel`)      | Same as `pdfModel`                           |
+| Stage                               | Balanced (paid Tier 1)  | Free-tier alternative   |
+| ----------------------------------- | ----------------------- | ----------------------- |
+| Filter (`filterModel`)              | `gemini-3.1-flash-lite` | `gemini-2.5-flash-lite` |
+| Scoring (`scoringModel`)            | `gemini-3-flash`        | `gemini-2.5-flash`      |
+| PDF analysis (`pdfModel`)           | `gemini-3.1-pro`        | `gemini-2.5-pro`        |
+| Briefing (`briefingModel`)          | Same as `pdfModel`      | Same as `pdfModel`      |
+| Quick summary (`quickSummaryModel`) | `gemini-3.1-flash-lite` | `gemini-2.5-flash`      |
+| NotebookLM (`notebookLMModel`)      | Same as `pdfModel`      | Same as `pdfModel`      |
 
-**Why 2.5 Flash-Lite for the filter but 3.1 Flash-Lite for quick summaries?** The 2.5 stable series has higher per-minute rate limits than the 3.x previews, which matters for the high-volume filter stage (one call per fetched paper — easily 250+ in a run). Quick summaries only fire once per PDF-analysed paper (≤30 calls per run), so the lower preview allowances don't bite there, and 3.1 Flash-Lite's improved quality is worth using. If you're on paid Tier 1 with generous limits, `gemini-3.1-flash-lite` works fine for the filter too.
+The Balanced column is Aparture's out-of-the-box default. If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps than the 3.x previews, and the only paid-only slot is the Pro tier (`gemini-3.1-pro`), which has no free counterpart at all.
 
 ## 6. Cost estimate
 
@@ -88,7 +88,7 @@ Assume 100 fetched papers, 60 pass the filter and get scored, 30 go through PDF 
 
 | Stage                    | Model                  | Input tokens | Output tokens | Cost                                             |
 | ------------------------ | ---------------------- | ------------ | ------------- | ------------------------------------------------ |
-| Filter (100 abstracts)   | Gemini 2.5 Flash-Lite  | ~40,000      | ~5,000        | 40k × $0.10 / MTok + 5k × $0.40 = ~$0.006        |
+| Filter (100 abstracts)   | Gemini 3.1 Flash-Lite  | ~40,000      | ~5,000        | 40k × $0.25 / MTok + 5k × $1.50 = ~$0.02         |
 | Scoring (60 abstracts)   | Gemini 3 Flash         | ~48,000      | ~9,000        | 48k × $0.50 + 9k × $3 = ~$0.05                   |
 | PDF analysis (30 papers) | Gemini 3.1 Pro         | ~540,000     | ~60,000       | 540k × $2 + 60k × $12 = ~$1.80                   |
 | Quick summaries (30)     | Gemini 3.1 Flash-Lite  | ~45,000      | ~12,000       | 45k × $0.25 + 12k × $1.50 = ~$0.03               |
@@ -106,9 +106,9 @@ Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-
 - **100 papers in** (30 PDFs, capped): ~$2.00 list
 - **250 papers in** (30 PDFs, capped): ~$2.10 list — PDF analysis plateaus; filter + scoring barely budge
 
-### Free tier (all-Flash)
+### Free tier (2.5-stable throughout)
 
-If every model slot is set to a free-tier model — Flash-Lite filter, Flash scoring, Flash or 2.5 Pro for PDF + briefing, Flash-Lite for quick summaries — a fresh account can run Aparture's full end-to-end pipeline without spending anything, subject only to daily request caps.
+If you set every slot to its free-tier alternative from the Recommended models table — `gemini-2.5-flash-lite` for filter, `gemini-2.5-flash` for scoring and quick summaries, `gemini-2.5-pro` for PDF and briefing — a fresh account can run Aparture's full end-to-end pipeline without spending anything, subject only to daily request caps.
 
 | Input papers | Cost/run                                  |
 | ------------ | ----------------------------------------- |

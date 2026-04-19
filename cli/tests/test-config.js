@@ -16,7 +16,7 @@ async function testConfigManager() {
       categories: ['cs.AI', 'cs.CV'],
       scoringCriteria: 'Computer vision papers',
       daysBack: 14,
-      filterModel: 'gemini-2.5-flash-lite',
+      filterModel: 'gemini-3.1-flash-lite',
       scoringModel: 'gemini-3-flash',
     };
     await manager.save('test-config', testConfig);

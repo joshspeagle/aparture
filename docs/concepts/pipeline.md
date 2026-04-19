@@ -65,7 +65,7 @@ Two optional pause gates let you steer the run before expensive work happens. Bo
 
 You can override any verdict in the review-gate UI. Overrides are recorded as `filter-override` feedback events and feed into the Suggest Improvements flow as a "profile may be too narrow or too broad" signal.
 
-**Inputs.** Papers from stage 1, your `profile.content`, `filterModel` (default: `gemini-2.5-flash-lite`), `filterBatchSize` (default: 3), `categoriesToScore` (default: `['YES', 'MAYBE']`).
+**Inputs.** Papers from stage 1, your `profile.content`, `filterModel` (default: `gemini-3.1-flash-lite`), `filterBatchSize` (default: 3), `categoriesToScore` (default: `['YES', 'MAYBE']`).
 
 **Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only YES + MAYBE advance to stage 3.
 

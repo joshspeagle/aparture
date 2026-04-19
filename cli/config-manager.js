@@ -13,7 +13,7 @@ const DEFAULT_CONFIG = {
     'Papers that advance machine learning methods, especially in deep learning, neural networks, or optimization algorithms.',
 
   // Models
-  filterModel: 'gemini-2.5-flash-lite',
+  filterModel: 'gemini-3.1-flash-lite',
   scoringModel: 'gemini-3-flash',
   postProcessingModel: 'gemini-3-flash',
   pdfModel: 'gemini-3.1-pro',

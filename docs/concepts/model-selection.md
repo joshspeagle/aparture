@@ -8,7 +8,7 @@ Aparture's config exposes six independent model slots. You don't have to change 
 
 | Slot                  | What it drives                                                                           | Default                 |
 | --------------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
-| `filterModel`         | Stage 2 quick filter (YES/MAYBE/NO triage)                                               | `gemini-2.5-flash-lite` |
+| `filterModel`         | Stage 2 quick filter (YES/MAYBE/NO triage)                                               | `gemini-3.1-flash-lite` |
 | `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                          | `gemini-3-flash`        |
 | `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                              | `gemini-3-flash`        |
 | `pdfModel`            | Stage 4 deep PDF analysis                                                                | `gemini-3.1-pro`        |
@@ -118,11 +118,11 @@ All-Google, preview models, cheapest realistic path. Good for high-volume catego
 
 ### Balanced (Aparture default)
 
-Gemini Flash-Lite for triage, Gemini 3 Flash for scoring, Gemini 3.1 Pro for the expensive stages. This is what `DEFAULT_CONFIG` ships with.
+Gemini 3.1 Flash-Lite for triage and quick summaries, Gemini 3 Flash for scoring, Gemini 3.1 Pro for the expensive stages. This is what `DEFAULT_CONFIG` ships with.
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
-| `filterModel`         | `gemini-2.5-flash-lite` |
+| `filterModel`         | `gemini-3.1-flash-lite` |
 | `scoringModel`        | `gemini-3-flash`        |
 | `postProcessingModel` | `gemini-3-flash`        |
 | `pdfModel`            | `gemini-3.1-pro`        |
