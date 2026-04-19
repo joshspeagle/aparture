@@ -126,6 +126,10 @@ Stage 4 caps at the top N papers (default 30), so past ~50 input papers the PDF-
 - **Per-model rate limits are dashboard-only.** OpenAI no longer publishes consolidated tables; your current limits are at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits).
 - **Want faster PDF analysis?** OpenAI caches repeated prompt prefixes automatically (no warmup needed), and the Tier 3+ TPM is generous enough to handle higher Stage 4 parallelism than the default of 3. Raise **Parallel PDF analyses** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
 
+## Next
+
+Key added and dev server restarted? Confirm it works: [Verify your setup →](/getting-started/verify-setup)
+
 ---
 
 _Snapshot taken 2026-04-19. OpenAI pricing, tier thresholds, and signup flow may change. Verify against [developers.openai.com/api/docs/pricing](https://developers.openai.com/api/docs/pricing) and your console's live limits at [platform.openai.com/settings/organization/limits](https://platform.openai.com/settings/organization/limits) before committing to real spend._

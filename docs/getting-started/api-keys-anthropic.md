@@ -124,6 +124,10 @@ For authoritative pricing verify against Anthropic's [models page](https://platf
 - **Slow PDF analysis on a new account.** Tier 1 has tight rate limits — a 20-paper deep-analysis stage on Opus can take ~40 minutes. Tier 2 unlocks automatically at ~$40 cumulative spend; until then, Sonnet 4.6 is a much faster option for the PDF stage ([tuning the pipeline](/using/tuning-the-pipeline)).
 - **First PDF feels slow even though analysis is parallel.** Aparture runs a single cache-warmup call before releasing sibling workers on Anthropic, so the first paper takes 3–6 s longer than subsequent ones. This is deliberate — it primes the prompt-cache entry so the remaining N-1 papers hit the cache instead of racing parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
 
+## Next
+
+Key added and dev server restarted? Confirm it works: [Verify your setup →](/getting-started/verify-setup)
+
 ---
 
 _Snapshot taken 2026-04-19. Anthropic pricing, tier thresholds, and signup flow may change. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/api/overview) and [claude.com/pricing](https://claude.com/pricing) before committing to real spend._

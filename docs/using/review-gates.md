@@ -102,6 +102,9 @@ There's no per-run toggle — it's a global setting. For a one-off unattended ru
 
 ## Next
 
+[Tuning the pipeline →](/using/tuning-the-pipeline) — past the pause gates, the rest of the knobs sit in Settings: model slots, batch sizes, score thresholds, parallelism, and retry behaviour.
+
+Also worth reading:
+
 - You want the detail on feedback flowing from overrides and stars. → [Giving feedback](/using/giving-feedback)
 - You want to understand what's happening at each stage, not just at the gates. → [Pipeline](/concepts/pipeline)
-- You want to tune the filter and scoring behavior so overrides happen less. → [Tuning the pipeline](/using/tuning-the-pipeline) and [Writing a good profile](/using/writing-a-profile)

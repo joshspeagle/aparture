@@ -177,6 +177,9 @@ Revert is non-destructive: it just swaps the current version, and the reverted-f
 
 ## Next
 
-- You've written a profile and want to see how it evolves with use. → [Refining over time](/using/refining-over-time)
-- You've written a profile and want to understand what each pipeline stage does with it. → [Pipeline](/concepts/pipeline)
+[Refining over time →](/using/refining-over-time) — with a baseline profile in place, this is the flow that turns accumulated stars, dismisses, and overrides into proposed profile edits you can accept or reject per hunk.
+
+Also worth reading:
+
+- You want to understand what each pipeline stage does with the profile. → [Pipeline](/concepts/pipeline)
 - Your profile is fine but you want to tune how aggressively the pipeline filters. → [Tuning the pipeline](/using/tuning-the-pipeline)

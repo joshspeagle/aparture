@@ -145,6 +145,9 @@ A rough rule: a week of daily briefings with even casual feedback (a few stars, 
 
 ## Next
 
-- The two pause gates are slowing your runs. → [Review gates](/using/review-gates)
-- You want to use accumulated feedback to refine your profile. → [Refining over time](/using/refining-over-time)
-- You want to understand what makes a good profile in the first place. → [Writing a good profile](/using/writing-a-profile)
+[Writing a good profile →](/using/writing-a-profile) — turn everything you've now marked as yes/no feedback into a profile the pipeline can reason about up-front.
+
+Also worth reading:
+
+- You want to use accumulated feedback to refine your profile after a few weeks of use. → [Refining over time](/using/refining-over-time)
+- The two pause gates are slowing your runs and you want to adjust them. → [Review gates](/using/review-gates)

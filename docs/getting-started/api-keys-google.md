@@ -147,6 +147,10 @@ Tier 1 has a **$250/month spend cap per billing account** (non-configurable, ser
 - **Rate-limit numbers are dashboard-only.** Per-model RPM/TPM/RPD aren't in the public docs anymore. Sign in at [aistudio.google.com](https://aistudio.google.com/) to see your current limits.
 - **Want faster PDF analysis?** Google's RPM on Tier 1+ is generous enough to handle higher Stage 4 parallelism than the default of 3. Raise **Parallel PDF analyses** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-analyses)).
 
+## Next
+
+Key added and dev server restarted? Confirm it works: [Verify your setup →](/getting-started/verify-setup)
+
 ---
 
 _Snapshot taken 2026-04-19. Google's pricing and billing tier structure may change. Verify current pricing at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) and per-model rate limits by signing in at [aistudio.google.com](https://aistudio.google.com/) before committing to real spend._

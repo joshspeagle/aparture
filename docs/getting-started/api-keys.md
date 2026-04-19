@@ -113,6 +113,10 @@ Quick lookup for key formats, env-var names, and signup URLs:
 | **Prompt caching**          | Wired in explicitly                                 | Not yet wired in                                                 | Automatic                                                 |
 | **Signup page**             | [platform.claude.com](https://platform.claude.com/) | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | [platform.openai.com](https://platform.openai.com/signup) |
 
+## Next
+
+Key added and dev server restarted? Confirm it works: [Verify your setup →](/getting-started/verify-setup)
+
 ---
 
 _Pricing snapshot taken 2026-04-19. Provider pricing, free-tier policies, and rate-limit tiers drift over time. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/docs/about-claude/models), [developers.openai.com/api/docs](https://developers.openai.com/api/docs/pricing), and [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to production volumes._

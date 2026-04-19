@@ -127,6 +127,10 @@ A few things Suggest-Improvements won't do:
 
 ## Next
 
+[Review gates →](/using/review-gates) — once you understand how feedback flows back into the profile, you're ready to decide whether the two pause gates still earn their keep on every run.
+
+Also worth reading:
+
 - You've refined your profile and want to tune the pipeline — models, thresholds, batch sizes. → [Tuning the pipeline](/using/tuning-the-pipeline)
 - You want a reminder of what each feedback type does. → [Giving feedback](/using/giving-feedback)
 - You're reviewing old briefings and want to see what profile each one used. → [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance-disclosure)

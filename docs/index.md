@@ -88,7 +88,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
   <p>A narrated 10-minute walk through your first real briefing, end to end.</p>
 </a>
 
-Already have Aparture running? The [Guide](/using/first-briefing) covers daily use — running briefings, reading them, giving feedback, writing a profile, refining over time — [Concepts](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
+Already have Aparture running? The [Guide](/using/first-briefing) covers daily use — running briefings, reading them, giving feedback, writing a profile, refining over time — [Under the Hood](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
 
 <div class="landing-footer">
 

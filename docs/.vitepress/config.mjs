@@ -25,16 +25,16 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Get Started', link: '/getting-started/install' },
-      { text: 'Guide', link: '/using/reading-a-briefing' },
-      { text: 'Concepts', link: '/concepts/pipeline' },
+      { text: 'Setup', link: '/getting-started/install' },
+      { text: 'Guide', link: '/using/first-briefing' },
+      { text: 'Under the Hood', link: '/concepts/pipeline' },
       { text: 'Reference', link: '/reference/environment' }
     ],
 
     sidebar: {
       '/getting-started/': [
         {
-          text: 'Get Started',
+          text: 'Setup',
           items: [
             { text: 'Install', link: '/getting-started/install' },
             { text: 'API keys', link: '/getting-started/api-keys', collapsed: false, items: [

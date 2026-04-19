@@ -121,9 +121,12 @@ Be deliberate about dismissing. A dismiss is a strong signal — it tells the sy
 
 For comments and the other feedback types, see [Giving feedback](/using/giving-feedback).
 
-## Where to go next
+## Next
 
-- You want to know what each feedback button actually does, end-to-end. → [Giving feedback](/using/giving-feedback)
+[Giving feedback →](/using/giving-feedback) — the mechanics of stars, dismisses, comments, and filter overrides, and what each one actually does to the next run.
+
+Also worth reading:
+
 - You want the system view — how the briefing is built from prompts and schema. → [Briefing anatomy](/concepts/briefing-anatomy)
 - You want to tune what the briefing prioritises — model choice, thresholds, batch sizes. → [Tuning the pipeline](/using/tuning-the-pipeline)
 - The briefing keeps missing things you care about, or including things you don't. → [Writing a good profile](/using/writing-a-profile) and [Refining over time](/using/refining-over-time)

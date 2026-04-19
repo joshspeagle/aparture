@@ -108,7 +108,10 @@ Expect the first briefing to land as rough-but-legible. The filter model hasn't 
 
 ## Next
 
-- [**Reading a briefing**](/using/reading-a-briefing) — decoding what each section of the editorial view actually means, and how the voice behaves.
+[Reading a briefing →](/using/reading-a-briefing) — decoding what each section of the editorial view actually means, and how the voice behaves. Good to read before your second run.
+
+Also worth reading:
+
 - [**Giving feedback**](/using/giving-feedback) — what stars, dismisses, comments, and filter overrides actually do to the next run.
 - [**Writing a good profile**](/using/writing-a-profile) — rewriting the starter template once you know what you want.
 - [**Refining over time**](/using/refining-over-time) — when to use Suggest Improvements to let the tool propose profile edits from accumulated feedback.
