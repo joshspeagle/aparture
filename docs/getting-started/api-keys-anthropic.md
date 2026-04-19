@@ -95,13 +95,13 @@ Assume 100 fetched papers, 60 pass the filter and get scored, 30 go through PDF 
 | ------------------------ | ---------- | ------------ | ------------- | --------------------------------------- |
 | Filter (100 abstracts)   | Haiku 4.5  | ~40,000      | ~5,000        | 40k × $1 / MTok + 5k × $5 = ~$0.07      |
 | Scoring (60 abstracts)   | Sonnet 4.6 | ~48,000      | ~9,000        | 48k × $3 + 9k × $15 = ~$0.28            |
-| PDF analysis (30 papers) | Opus 4.7   | ~540,000     | ~60,000[^1]   | 540k × $5 + 60k × $25 = ~$4.20          |
+| PDF analysis (30 papers) | Opus 4.7   | ~540,000     | ~60,000       | 540k × $5 + 60k × $25 = ~$4.20          |
 | Quick summaries (30)     | Haiku 4.5  | ~45,000      | ~12,000       | 45k × $1 + 12k × $5 = ~$0.11            |
 | Briefing synthesis       | Opus 4.7   | ~12,000      | ~3,000        | 12k × $5 + 3k × $25 = ~$0.14            |
 | Hallucination audit      | Opus 4.7   | ~8,000       | ~600          | 8k × $5 + 0.6k × $25 = ~$0.06           |
 | **Total, list price**    |            |              |               | **~$4.86**                              |
 
-[^1]: Includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~30,000 tokens total and the PDF-analysis stage lands at ~$3.20 instead of ~$4.20.
+The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~30,000 tokens total and the PDF-analysis stage lands at ~$3.20 instead of ~$4.20.
 
 With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$3.00–3.90 per run** after the first.
 

@@ -66,19 +66,22 @@ All Gemini models bill per million tokens (MTok), separately for input and outpu
 
 List pricing (paid tier) for every Gemini model in Aparture's registry:
 
-| Model                                                    | Free tier | Input ($/MTok)[^p] | Output ($/MTok) |
-| -------------------------------------------------------- | :-------: | -----------------: | --------------: |
-| `gemini-3.1-pro` (preview; recommended PDF + briefing)   |     ✗     |              $2.00 |          $12.00 |
-| `gemini-3-flash` (preview; recommended scoring)          |     ✓*    |              $0.50 |           $3.00 |
-| `gemini-3.1-flash-lite` (preview; recommended q-summary) |     ✓*    |              $0.25 |           $1.50 |
-| `gemini-2.5-pro` (stable)                                |    ✓*\*   |              $1.25 |          $10.00 |
-| `gemini-2.5-flash` (stable)                              |     ✓     |              $0.30 |           $2.50 |
-| `gemini-2.5-flash-lite` (stable; recommended filter)     |     ✓     |              $0.10 |           $0.40 |
+| Model                                                    | Context | Input ($/MTok) | Output ($/MTok) |
+| -------------------------------------------------------- | ------- | -------------: | --------------: |
+| `gemini-3.1-pro` (preview; recommended PDF + briefing)   | 1M      |          $2.00 |          $12.00 |
+| `gemini-3-flash` (preview; recommended scoring)          | 1M      |          $0.50 |           $3.00 |
+| `gemini-3.1-flash-lite` (preview; recommended filter + q-summary) | 1M      |          $0.25 |           $1.50 |
+| `gemini-2.5-pro` (stable)                                | 2M      |          $1.25 |          $10.00 |
+| `gemini-2.5-flash` (stable)                              | 1M      |          $0.30 |           $2.50 |
+| `gemini-2.5-flash-lite` (stable)                         | 1M      |          $0.10 |           $0.40 |
 
-[^p]: Text/image/video input at ≤200k prompt size. Gemini 3.1 Pro and 2.5 Pro both have higher tier pricing above 200k ($4/$18 and $2.50/$15 respectively), which Aparture rarely hits. Audio input is billed at a separate higher rate.
+**Free-tier eligibility** (at reduced RPM/RPD caps):
 
-&nbsp; _\*_ Free-tier eligible but subject to lower RPM/RPD caps than 2.5-stable equivalents.
-_\*\*_ Gemini 2.5 Pro is free-tier eligible for low-volume use, but daily caps bite on larger runs.
+- All models except `gemini-3.1-pro` are free-tier eligible.
+- The 2.5-stable family gets higher free-tier allowances than the 3.x previews, so free-tier-only users should prefer the 2.5 line.
+- `gemini-2.5-pro` is free-tier eligible for low-volume use, but daily caps bite on larger runs.
+
+Prices shown are text/image/video input at ≤200k prompt size. `gemini-3.1-pro` and `gemini-2.5-pro` both have higher tier pricing above 200k ($4/$18 and $2.50/$15 respectively), which Aparture rarely hits. Audio input is billed at a separate higher rate.
 
 Google updates preview pricing periodically and the 3.x tier is still beta, so verify current rates at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to real spend.
 

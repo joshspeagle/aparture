@@ -80,13 +80,15 @@ If you want a quality/cost step down, swap `pdfModel` to GPT-5.4 Mini — that s
 
 ### Per-model pricing
 
-All GPT-5.4 models bill per million tokens (MTok), separately for input and output. **OpenAI caches repeated prompt prefixes automatically** with no configuration needed — the cached-input column in the table below is what repeat runs actually pay on the prefix portion of each call, which typically nets a 20–40% reduction overall.
+All GPT-5.4 models bill per million tokens (MTok), separately for input and output. List pricing for every OpenAI model in Aparture's registry:
 
-| Model                                           | Context | Input ($/MTok) | Cached input ($/MTok) | Output ($/MTok) |
-| ----------------------------------------------- | ------- | -------------: | --------------------: | --------------: |
-| `gpt-5.4` (recommended PDF + briefing)          | 1M      |          $2.50 |                 $0.25 |          $15.00 |
-| `gpt-5.4-mini` (recommended scoring)            | 400k    |          $0.75 |                $0.075 |           $4.50 |
-| `gpt-5.4-nano` (recommended filter + q-summary) | 400k    |          $0.20 |                 $0.02 |           $1.25 |
+| Model                                           | Context | Input ($/MTok) | Output ($/MTok) |
+| ----------------------------------------------- | ------- | -------------: | --------------: |
+| `gpt-5.4` (recommended PDF + briefing)          | 1M      |          $2.50 |          $15.00 |
+| `gpt-5.4-mini` (recommended scoring)            | 400k    |          $0.75 |           $4.50 |
+| `gpt-5.4-nano` (recommended filter + q-summary) | 400k    |          $0.20 |           $1.25 |
+
+**Automatic prompt caching.** OpenAI caches repeated prompt prefixes on its end with no configuration needed. The cached-input rate is roughly **10× cheaper** than the list rate above (`gpt-5.4` $0.25/MTok, `gpt-5.4-mini` $0.075/MTok, `gpt-5.4-nano` $0.02/MTok). That typically nets a 20–40% reduction overall on repeat runs with the same profile.
 
 OpenAI updates pricing periodically. Verify current rates at [developers.openai.com/api/docs/pricing](https://developers.openai.com/api/docs/pricing) before committing to real spend.
 
