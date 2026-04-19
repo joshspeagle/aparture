@@ -32,6 +32,8 @@ Each stage has its own model slot. The defaults (as of April 2026) are all Googl
 
 The `quickSummaryModel` slot also has a companion `quickSummaryConcurrency` integer (default 5, clamped 1–20) that controls how many of those calls fire in parallel. Lower it if you're on a rate-limited tier; raise it on generous tiers to cut wall-clock time.
 
+If you're running a **single-provider setup** (e.g. all-Anthropic or all-OpenAI), you can leave `quickSummaryModel` pointed at a small model from that same provider — the cheapest Haiku, Nano, or Flash-Lite tier works well. There's no benefit to splitting providers just for this stage; the compression task is short enough that even the smallest model in the family handles it cleanly.
+
 Each dropdown lives in the **Model Slots** section of Settings. All slots are disabled while a pipeline run is in progress.
 
 Three principles for model selection:

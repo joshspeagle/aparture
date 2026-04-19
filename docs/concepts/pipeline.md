@@ -136,6 +136,8 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 **Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression run in parallel just before synthesis, default `gemini-3.1-flash-lite`), `quickSummaryConcurrency` (default 5, clamped 1–20), `briefingRetryOnYes` / `briefingRetryOnMaybe` retry policy, accumulated feedback events.
 
+Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model (no caching), and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
+
 **Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports.
 
 **Cost.** ~$0.05–0.30 per briefing:

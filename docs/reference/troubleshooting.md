@@ -308,6 +308,8 @@ If you see persistent 429s on Google, enable the quick-filter stage (it reduces 
 
 **429 specifically during Stage 4 (PDF analysis)**. Aparture now runs PDF analyses in parallel (default 3 workers). If you see provider 429s landing on PDF calls specifically, drop **Settings → Parallel PDF analyses** from 3 to 2 or 1. Conversely, if your tier is generous and PDF analysis feels slow, you can raise it up to 20.
 
+**429 during briefing prep (quick-summary fan-out)**. The briefing stage also parallelises — the per-paper quick-summary step fires `quickSummaryConcurrency` calls at once (default 5). If 429s land there specifically, drop **Settings → Parallel calls** (in the Briefing section) from 5 to 2 or 3.
+
 ### Context overflow
 
 ```
