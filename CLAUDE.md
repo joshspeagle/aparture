@@ -36,13 +36,15 @@ Aparture is a Next.js-based web application for multi-stage research paper disco
 
 ### CLI Automation
 
+Complete browser automation for unattended analysis runs (Playwright-driven via `cli/`). Settings persist in browser localStorage between runs; Google auth cached after first podcast generation. Works on Windows, Linux, and WSL.
+
 - `npm run setup` - Interactive configuration (first-time setup)
-- `npm run analyze` - Full analysis workflow (report + document + podcast)
-- `npm run analyze:report` - Report only (skip NotebookLM features)
+- `npm run analyze` - Full workflow: report + document + podcast
+- `npm run analyze:report` - Report only (skip NotebookLM)
 - `npm run analyze:document` - Report + NotebookLM document (skip podcast)
-- `npm run analyze:podcast` - Podcast only (skip analysis, use existing files)
+- `npm run analyze:podcast` - Podcast only (reuses existing analysis files)
 - `npm run test:dryrun` - Mock API test (fast, no costs)
-- `npm run test:minimal` - Real API test (3 papers, minimal cost)
+- `npm run test:minimal` - Real API test (5 papers, minimal cost)
 
 ### Deployment
 
@@ -69,117 +71,79 @@ Aparture is a Next.js-based web application for multi-stage research paper disco
 
 ### File Structure
 
-- `pages/` - Next.js pages and API routes
-  - `pages/api/` - Backend API endpoints for LLM integrations
-  - `pages/index.js` - Main application entry point
-  - `pages/_app.js` - App shell; wraps routes with next/font CSS variables for the briefing typography
-- `components/` - React components
-  - `components/shell/` - Root shell: `App.jsx` (entry point — owns all hook calls, Zustand selectors, pipeline creation, and the sidebar + main-area layout), `Sidebar.jsx`, `SidebarBriefingList.jsx`, `MainArea.jsx`
-  - `components/ui/` - Warm-palette primitive library: `Button.jsx` (primary/secondary/ghost), `Card.jsx`, `Input.jsx`, `TextArea.jsx`, `Select.jsx`, `Checkbox.jsx`. All use inline styles with `var(--aparture-*)` CSS variables
-  - `components/run/` - `ProgressTimeline.jsx` — 6-stage vertical timeline for live pipeline progress display with filter-override and pre-briefing-review pause support
-  - `components/welcome/` - `WelcomeView.jsx` — persistent getting-started reference page
-  - `components/analyzer/` - `ControlPanel.jsx`
-  - `components/briefing/` - Briefing reading view (BriefingView root + 10 leaf components) + `BriefingCard.jsx` + `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure including hallucination audit)
-  - `components/filter/` - `FilterResultsList.jsx` with inline FilterResultRow + cycle-verdict pill for filter overrides
-  - `components/notebooklm/` - `NotebookLMCard.jsx` (rendered as disclosure below briefing)
-  - `components/profile/` - Your Profile panel: YourProfile, MigrationNotice, HistoryDropdown, SuggestDialog, DiffPreview
-  - `components/feedback/` - Feedback panel: FeedbackPanel, FeedbackHeader, FeedbackFilters, GeneralCommentInput, FeedbackTimeline, FeedbackItem, FeedbackEmptyState + `eventMeta.js`
-  - `components/results/` - results-list cards (AnalysisResultsList, DownloadReportCard)
-  - `components/settings/` - SettingsPanel with "Review & confirmation" section (`pauseAfterFilter` + `pauseBeforeBriefing` + briefing retry checkboxes)
-- `lib/` - Backend and analyzer library code
-  - `lib/analyzer/` - Extracted analyzer internals (see "Analyzer module split" below)
-    - `pipeline.js` - `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` builder. Reads state from Zustand store via `useAnalyzerStore.getState()`. Owns every analysis stage (fetchPapers, performQuickFilter, scoreAbstracts, postProcessScores, analyzePDFs, runBriefingGeneration) plus helpers (makeRobustAPICall, waitForResume, the arXiv query stack). Returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Auto-generates briefing at end of `startProcessing` with optional `pauseBeforeBriefing` and `pauseAfterFilter` gates.
-    - `mockApi.js` - `MockAPITester` class with a DI constructor taking `{abortControllerRef, pauseRef, waitForResume}`. No React imports.
-    - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing (with generationMetadata including hallucination verdict/justification/flaggedClaims) → last-run cache. Takes primitive config values (`briefingModel`, `pdfModel`, `briefingRetryOnYes`, `briefingRetryOnMaybe`) as explicit params.
-    - `exportReport.js` - `buildReportMarkdown()` + `downloadBlob()` + `exportAnalysisReport()` glue.
-  - `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live-mode call to the terminal (`Sending request to <Provider>: {model, promptLength, structured, cacheable?, hasPdf?}`), plus a follow-up `[<provider> cache] read=N create=N` line when the response reports cache-hit tokens.
-  - `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai). Each adapter accepts optional `pdfBase64` for native PDF content blocks and `cacheable`/`cachePrefix` for Anthropic prompt caching.
-  - `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
-  - `lib/profile/` - Profile utilities (migrations, diff, feedbackCap, suggestPrompt)
-  - `lib/briefing/` - Briefing utility code
-    - `lib/briefing/filterBriefings.js` - Pure filter function for sidebar search (dateRange / starredOnly / query)
-- `prompts/` - Editable LLM prompt templates (changes take effect on next call — no rebuild needed)
-  - `prompts/synthesis.md` - Synthesis prompt (the main quality knob — edit to tune briefings)
-  - `prompts/analyze-pdf-quick.md` - Quick-summary compression prompt
-  - `prompts/suggest-profile.md` - Prompt template for the suggest-improvements flow
-  - `prompts/check-briefing.md` - Hallucination-audit prompt for the retry loop
+Top-level layout is conventional Next.js. The list below calls out directories that carry non-obvious responsibilities or cross-cutting conventions. For anything not listed, the filename is the description.
+
+- `pages/api/` - Backend API endpoints for LLM integrations and pipeline stages
+- `pages/_app.js` - App shell; wraps routes with next/font CSS variables for the briefing typography
+- `components/shell/` - Root shell; `App.jsx` is the entry point — owns all hook calls, Zustand selectors, pipeline creation, and the sidebar + main-area layout
+- `components/ui/` - Warm-palette primitives (Button, Card, Input, TextArea, Select, Checkbox). All use inline styles with `var(--aparture-*)` CSS variables
+- `components/run/ProgressTimeline.jsx` - 6-stage vertical timeline with filter-override and pre-briefing-review pause support
+- `components/welcome/WelcomeView.jsx` - Persistent getting-started reference page
+- `components/briefing/` - Briefing reading view (BriefingView root + leaf components) including `GenerationDetails.jsx` (collapsible per-briefing provenance disclosure with hallucination audit)
+- `components/filter/FilterResultsList.jsx` - Inline filter rows with click-cycle verdict pill for overrides
+- `components/settings/SettingsPanel.jsx` - Settings including "Review & confirmation" section (`pauseAfterFilter` + `pauseBeforeBriefing` + briefing retry checkboxes)
+- `lib/analyzer/` - Extracted analyzer internals (see "Analyzer module split" below)
+  - `pipeline.js` - `createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef})` builder. Reads state from Zustand store via `useAnalyzerStore.getState()`. Owns every analysis stage plus helpers. Returns `{startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM}`. Auto-generates briefing at end of `startProcessing` with optional pause gates.
+  - `mockApi.js` - `MockAPITester` class with a DI constructor — no React imports
+  - `briefingClient.js` - `runBriefingGeneration()` orchestrates quick-summary fan-out → synthesize → hallucination check → retry → saveBriefing → last-run cache. Takes primitive config values as explicit params.
+  - `rateLimit.js` - Shared rate-limiting + worker-pool primitives (`ArxivDownloadThrottle`, `AnalysisWorkerPool`). Isomorphic — same code runs in browser and Next.js API routes.
+  - `exportReport.js` - `buildReportMarkdown()` + `downloadBlob()` + `exportAnalysisReport()` glue
+- `lib/llm/` - LLM provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live-mode call to the terminal plus a follow-up `[<provider> cache] read=N create=N` line when the response reports cache-hit tokens.
+- `lib/llm/structured/` - Per-provider structured-output shaping (anthropic/google/openai). Each adapter accepts optional `pdfBase64` for native PDF content blocks and `cacheable`/`cachePrefix` for Anthropic prompt caching.
+- `lib/synthesis/` - Briefing generation (schema, validator, repair, renderPrompt)
+- `lib/profile/` - Profile utilities (migrations, diff, feedbackCap, suggestPrompt)
+- `lib/briefing/filterBriefings.js` - Pure filter function for sidebar search (dateRange / starredOnly / query)
+- `prompts/` - Editable LLM prompt templates (changes take effect on next call — no rebuild needed): `synthesis.md`, `analyze-pdf-quick.md`, `suggest-profile.md`, `check-briefing.md`
 - `hooks/` - React hooks with localStorage persistence
-  - `hooks/useProfile.js` - Research profile hook (structured data model with versioned history). `profile.content` is read by every pipeline stage.
-  - `hooks/useBriefing.js` - Briefing archive with 90-day rolling window. Entries keyed by unique ID + timestamp (multiple briefings per day supported). `saveBriefing(date, briefing, metadata)` returns the new entry's ID. `deleteBriefing(id)`, `toggleArchive(id)` for managing history. `generationMetadata` carries profile snapshot, model IDs, filter verdicts, hallucination check results.
-  - `hooks/useFeedback.js` - Feedback event store persisting to `aparture-feedback` localStorage with latest-wins star/dismiss semantics. Five event types: `star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`. Star/dismiss are latest-wins per paper; comments are append-only.
-  - `hooks/useAnalyzerPersistence.js` - Owns `DEFAULT_CONFIG` (includes `pauseAfterFilter: true`, `pauseBeforeBriefing: true`), `readInitialConfig` (used as lazy useState initializer), load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
-  - `hooks/useTheme.js` - Light/dark/auto theme switching; reads/writes `aparture-theme` localStorage key, applies `data-theme` attribute to `<html>`
-- `stores/` - Zustand state management
-  - `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `useAnalyzerStore.getState()` directly.
-- `tests/` - Vitest test suite (394 tests across 62 files, fully fixture-based)
-  - `tests/unit/` - Pure-function tests (llm/_, synthesis/_, hooks/\*)
-  - `tests/component/` - React component tests via @testing-library/react
-  - `tests/integration/` - API route handler tests with fixture-mode callModel
+  - `useProfile.js` - Research profile hook (structured data model with versioned history). `profile.content` is read by every pipeline stage.
+  - `useBriefing.js` - Briefing archive with 90-day rolling window. Entries keyed by unique ID + timestamp (multiple briefings per day). `generationMetadata` carries profile snapshot, model IDs, filter verdicts, hallucination check results.
+  - `useFeedback.js` - Feedback event store persisting to `aparture-feedback` localStorage with latest-wins star/dismiss semantics. Five event types: `star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`. Comments are append-only.
+  - `useAnalyzerPersistence.js` - Owns `DEFAULT_CONFIG`, `readInitialConfig` (lazy useState initializer), load-on-mount effect, and the debounced save effect for `arxivAnalyzerState`
+  - `useTheme.js` - Light/dark/auto theme switching via `data-theme` on `<html>` + `aparture-theme` localStorage key
+- `stores/analyzerStore.js` - Central Zustand store replacing ~28 useState calls. 9 slices (processing, results, filterResults, processingTiming, testState, notebookLM, briefingUI, auth, reactContext). Pipeline reads from `getState()` directly.
+- `tests/` - Vitest suite, fully fixture-based (no real LLM calls)
   - `tests/fixtures/llm/` - Cached LLM responses keyed by input hash
   - `tests/fixtures/briefing/` - Sample structured briefing for BriefingView test
-- `cli/` - Command-line interface tools and browser automation **(scheduled for deletion in Phase 2)**
-  - `cli/server-manager.js` - Next.js development server lifecycle management
-  - `cli/browser-automation.js` - Playwright-based browser automation wrapper
-  - `cli/notebooklm-automation.js` - Google NotebookLM automation wrapper
-  - `cli/config-manager.js` - Configuration persistence
-  - `cli/setup.js` - Interactive configuration UI
-  - `cli/run-analysis.js` - Full production analysis automation
-  - `cli/tests/` - Automated test scripts for various workflows
-- `utils/` - Utility functions
-  - `utils/models.js` - **Centralized model configuration** (source of truth for all model IDs, names, and capabilities)
+- `cli/` - Command-line browser automation **(scheduled for deletion in Phase 2)**
+- `utils/models.js` - **Centralized model configuration** (source of truth for all model IDs, names, and capabilities)
 - `docs/` - VitePress documentation site
-- `styles/` - Global styles (see "Styling conventions" below for the layering model)
-  - `styles/globals.css` - Tailwind directives + base resets + token/shell/briefing imports
-  - `styles/tokens.css` - Global design tokens (warm palette colors, typography, spacing, app-chrome tokens) in both light and `[data-theme=dark]` variants
-  - `styles/shell.css` - Sidebar + main-area flexbox layout (`.shell`, `.shell-sidebar`, `.shell-main`, `.briefing-surface`, `.config-surface`)
-  - `styles/briefing.css` - `.briefing-prose`-scoped typography rules (consumes tokens from tokens.css)
-- `vitest.config.mjs` - Vitest configuration (jsdom env, React plugin, 68ch measure)
-- `reports/` - **Runtime state** (gitignored): generated analysis reports, NotebookLM documents, and podcasts. Historical outputs accumulate here across runs. See "Runtime state directories" below.
-- `temp/` - **Runtime state** (gitignored): Playwright browser profiles + cached PDF downloads. See "Runtime state directories" below.
+- `styles/` - Global styles (see "Styling conventions" below for the layering model): `globals.css`, `tokens.css`, `shell.css`, `briefing.css`
+- `reports/`, `temp/` - **Runtime state** (gitignored). See "Runtime state directories" below.
 
 ### Runtime state directories
 
 `reports/` and `temp/` are **not source code** — they hold runtime state generated by CLI/API workflows. They are gitignored but must remain at the repo root because `cli/run-analysis.js`, `cli/notebooklm-automation.js`, and `pages/api/analyze-pdf.js` reference them via paths relative to `process.cwd()`.
 
-**`reports/`** - Historical analysis outputs organized by date. Each run writes a markdown report, optional NotebookLM document, and optional podcast audio. Can grow large over time (current: ~730 MB). Safe to manually prune old monthly subdirectories or individual report folders you no longer need.
+**`reports/`** - Historical analysis outputs organized by date. Can grow large over time. Safe to manually prune old monthly subdirectories.
 
 **`temp/`** - Three persistent Playwright browser profiles plus cached PDFs:
 
-- `temp/playwright-profile/` - Chromium profile holding arXiv cookies + reCAPTCHA bypass state. **Do NOT delete** — losing it forces re-solving reCAPTCHA on the next PDF download run.
-- `temp/browser-profile/` - Aparture web-UI automation profile used by `cli/browser-automation.js`.
-- `temp/notebooklm-profile/` - Google NotebookLM session cookies (largest by far). **Do NOT delete** — losing it forces an interactive Google re-login on the next podcast run.
-- `temp/*.pdf`, `temp/individual/`, `temp/screenshots/`, `temp/test-screenshots/` - Cached PDFs and automation artifacts. Safe to prune freely.
+- `temp/playwright-profile/` - Chromium profile with arXiv cookies + reCAPTCHA bypass state. **Do NOT delete** — losing it forces re-solving reCAPTCHA on the next PDF run.
+- `temp/notebooklm-profile/` - Google NotebookLM session cookies. **Do NOT delete** — losing it forces interactive Google re-login on the next podcast run.
+- `temp/browser-profile/` - Aparture web-UI automation profile used by `cli/browser-automation.js`
+- `temp/*.pdf`, `temp/individual/`, `temp/screenshots/` - Cached PDFs and automation artifacts. Safe to prune freely.
 
-**Phase 2 migration:** both directories move to `~/aparture/{reports,cache}/` when the Electron wrapper ships, so the repo root becomes source-only. Until then, treat them as local scratch space that happens to live inside the repo.
+**Phase 2 migration:** both directories move to `~/aparture/{reports,cache}/` when the Electron wrapper ships, so the repo root becomes source-only.
 
 ### API Integration
 
-The application integrates with Anthropic, OpenAI, and Google LLM APIs. See the **Model Information** section below for the current set of models, IDs, and pricing.
+API routes in `pages/api/` handle one pipeline stage each. Source of truth for models is `utils/models.js` — always update `MODEL_REGISTRY` (API model ID) and `AVAILABLE_MODELS` (user-facing metadata) together.
 
-**IMPORTANT**: All model names, IDs, and configurations are defined in `utils/models.js`. When adding or updating models:
-
-1. Update `MODEL_REGISTRY` with the correct API model ID
-2. Update `AVAILABLE_MODELS` with user-facing metadata
-3. Ensure consistency between web interface and CLI automation
-4. Refer to official provider documentation for accurate model names and pricing
-
-API routes in `pages/api/` handle:
-
-- `quick-filter.js` - Fast YES/NO/MAYBE filtering of papers with one-sentence summary + justification per paper (Stage 1)
-- `score-abstracts.js` - Batch processing of paper abstracts for relevance scoring (Stage 2)
-- `rescore-abstracts.js` - Post-processing for score consistency across papers
-- `analyze-pdf.js` - Deep PDF analysis with summarization (Stage 3)
-  - Implements automatic fallback: tries direct fetch first, uses Playwright if reCAPTCHA detected
-  - Rate-limited PDF downloads (2-second delay between papers)
-- `generate-notebooklm.js` - Generate NotebookLM-optimized documents for podcast creation. When a briefing exists, receives the briefing's `executiveSummary` + themes as an EDITORIAL CONTEXT block in the prompt, shaping narrative emphasis without being treated as a source.
-- `synthesize.js` - Cross-paper synthesis into a structured briefing. Loads `prompts/synthesis.md`, renders with profile/papers/history, calls the chosen LLM with provider-native structured output, validates via `lib/synthesis/validator.js`, runs a two-pass repair via `lib/synthesis/repair.js` if validation fails. Returns a typed briefing object for `components/briefing/BriefingView.jsx` to render.
-- `analyze-pdf-quick.js` - Compresses an existing per-paper full technical report into a ~300-word pre-reading summary using a smaller/cheaper model. Used by the Generate Briefing flow to populate the inline-expansion quick summaries.
-- `suggest-profile.js` - Accepts `{currentProfile, feedback, briefingModel, provider, apiKey|password}`, loads `prompts/suggest-profile.md`, calls the LLM via `lib/llm/callModel.js` with a zod schema for structured output, runs two-pass repair on validation failure, returns `{revisedProfile, changes, noChangeReason?}`. Used by the SuggestDialog in the manual memory loop.
-- `check-briefing.js` - Audits a briefing against the source corpus and returns a YES/MAYBE/NO hallucination verdict with justification + flagged claims. User-configurable retry criteria (checkboxes in Settings) trigger a second synthesis pass with a retry hint when the check fails.
+- `quick-filter.js` - Stage 2 YES/NO/MAYBE filtering with one-sentence summary + justification per paper
+- `score-abstracts.js` - Stage 3 batch relevance scoring
+- `rescore-abstracts.js` - Stage 3.5 comparative consistency pass
+- `analyze-pdf.js` - Stage 4 deep PDF analysis
+  - arXiv downloads serialized via module-level `ArxivDownloadThrottle` (~5s spacing, honors `Retry-After` on 429/503)
+  - Automatic fallback: direct fetch first, Playwright with persistent browser profile if reCAPTCHA detected
+- `analyze-pdf-quick.js` - Stage 5 per-paper compression (~300 words) using `quickSummaryModel`, called in parallel during briefing prep
+- `synthesize.js` - Stage 5 cross-paper briefing. Loads `prompts/synthesis.md`, renders with profile/papers/history, validates via `lib/synthesis/validator.js`, runs two-pass repair via `lib/synthesis/repair.js` on validation failure.
+- `check-briefing.js` - Hallucination audit. Returns YES/MAYBE/NO verdict + flagged claims. User-configurable retry checkboxes trigger a second synthesis pass with a retry hint.
+- `suggest-profile.js` - Accepts current profile + accumulated feedback; returns a revised profile with per-change rationales or a `noChangeReason`. Used by `SuggestDialog`.
+- `generate-notebooklm.js` - NotebookLM-optimized document generation. When a briefing exists, receives the briefing's `executiveSummary` + themes as an EDITORIAL CONTEXT block to shape narrative emphasis.
 
 **Auth pattern:** All API routes accept EITHER a client-supplied `apiKey` (for future BYOK flows) OR a `password` field validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the requested provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). The existing web UI uses the password path; Phase 2's Electron app will use the client-supplied apiKey path from OS keychain.
 
-**Model slot separation:** The config has distinct `briefingModel` and `pdfModel` fields. `briefingModel` drives `/api/synthesize` and `/api/suggest-profile`, while `pdfModel` drives Stage 3 `/api/analyze-pdf`. Both default to the same model on first run, but can be tuned independently.
+**Model slot separation:** The config has distinct `briefingModel` and `pdfModel` fields. `briefingModel` drives `/api/synthesize` and `/api/suggest-profile`; `pdfModel` drives `/api/analyze-pdf`. Both default to the same model on first run but can be tuned independently.
 
 ### Security
 
@@ -204,15 +168,13 @@ Required in `.env.local`:
 
 ### Analysis Workflow
 
-1. **Quick Filter** (Optional Stage 1): Fast YES/NO/MAYBE filtering to reduce paper volume. Returns a one-sentence summary + justification per paper. The UI displays both and adds a click-cycle pill for users to override the verdict; overrides are recorded as a `filter-override` feedback event, which flows into the suggest-profile prompt as a "profile may be too narrow/broad" signal.
-2. **Abstract Scoring** (Stage 2): Detailed relevance scoring (0-10 scale) with justifications
-3. **Post-Processing** (Optional): Re-score papers for consistency using comparative analysis
-4. **PDF Analysis** (Stage 3): Deep analysis of top papers with full PDF content. Star/dismiss/+comment feedback is available on every paper in the Analysis Results list as soon as deep analysis completes (not gated on briefing generation).
-5. **Report Generation**: Export comprehensive markdown report (no auto-download — user triggers via Download Report card)
-6. **Briefing Generation (auto, with optional pause)**: After PDF analysis, the pipeline auto-generates a briefing via `briefingClient.js`. If `pauseBeforeBriefing` is on (default), the pipeline pauses at `'pre-briefing-review'` to let the user review results and add stars/dismissals before generating. Quick summaries are generated in parallel (5-at-a-time), then `/api/synthesize` produces a structured briefing, `/api/check-briefing` audits for hallucinations (results persisted in `generationMetadata`), and the briefing is saved and rendered via `<BriefingView>`.
-7. **NotebookLM Integration**: Generate structured documents optimized for podcast creation (only visible after briefing exists).
+Pipeline stages follow `docs/concepts/pipeline.md` numbering (Stage 1 fetch → Stage 5 briefing, with Stage 3.5 post-processing). What CLAUDE.md adds beyond that doc:
 
-Layout order in the main area after a run: Results → Download Report → Briefing → NotebookLM.
+- **Stage 2 filter-override pill.** The UI click-cycles YES/MAYBE/NO verdicts; each override is recorded as a `filter-override` feedback event and flows into the suggest-profile prompt as a "profile may be too narrow/broad" signal.
+- **Stage 4 parallelism.** Runs N workers (`pdfAnalysisConcurrency`, default 3, clamped 1–20). arXiv downloads are serialized server-side; LLM calls run in parallel. Anthropic gets a single-flight cache-warmup barrier so worker 0 primes the prompt-cache entry before siblings start.
+- **Feedback is open after Stage 4**, not gated on briefing generation. Star/dismiss/comment are available on every paper as soon as deep analysis completes.
+- **Briefing auto-runs at the end** via `briefingClient.js`. If `pauseBeforeBriefing` is on (default), pipeline stops at `'pre-briefing-review'` for user review first. Flow: quick summaries (parallel, `quickSummaryConcurrency` default 5) → `/api/synthesize` → `/api/check-briefing` → optional one-shot retry → save via `useBriefing` → render `<BriefingView>`.
+- **Main-area layout order after a run:** Results → Download Report → Briefing → NotebookLM.
 
 ### Styling conventions
 
@@ -361,11 +323,11 @@ Aparture's "Your Profile" panel at the top of the app is the single source of re
 **Frontend briefing data flow:**
 
 1. Pipeline's `startProcessing` in `lib/analyzer/pipeline.js` auto-calls `runBriefingGeneration` from `lib/analyzer/briefingClient.js` after PDF analysis completes (with optional `pauseBeforeBriefing` gate)
-2. `briefingClient.js` calls `/api/analyze-pdf-quick` in parallel (5-at-a-time) to generate per-paper quick summaries, then `/api/synthesize` with the profile + papers + recent history, then `/api/check-briefing` to audit for hallucinations (results persisted in `generationMetadata`), then optionally retries synthesis with a retry hint
-3. Saves via `hooks/useBriefing.js` (localStorage, 90-day window, ID-keyed entries supporting multiple briefings per day)
+2. `briefingClient.js` calls `/api/analyze-pdf-quick` in parallel to generate per-paper quick summaries, then `/api/synthesize`, then `/api/check-briefing` for the hallucination audit, then optionally retries synthesis with a retry hint
+3. Saves via `hooks/useBriefing.js` (localStorage, 90-day window, ID-keyed entries)
 4. `App.jsx` navigates to the new briefing via `stableSaveBriefingAndSwitch`; renders via `components/briefing/BriefingView.jsx`. Flagged hallucination claims are surfaced in a disclosure (`GenerationDetails.jsx`) below the briefing.
 
-**To tune synthesis quality:** edit `prompts/synthesis.md`. Changes take effect on the next `/api/synthesize` call — no rebuild needed. The 150-line prompt is the single most important quality knob.
+**To tune synthesis quality:** edit `prompts/synthesis.md`. Changes take effect on the next `/api/synthesize` call — no rebuild needed. This prompt is the single most important quality knob.
 
 **To tune suggest-improvements quality:** edit `prompts/suggest-profile.md`. Takes effect on the next suggest call.
 
@@ -375,7 +337,7 @@ Aparture's "Your Profile" panel at the top of the app is the single source of re
 
 **To add a new feedback type:** extend the event type union in `hooks/useFeedback.js`, add a variant in `components/feedback/FeedbackItem.jsx`, and add a new section in `lib/profile/suggestPrompt.js`'s `renderFeedbackSection`.
 
-**Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a new fixture, run the helper at `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests. The entire suite runs in ~30s and costs $0 because no real LLM calls are made.
+**Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a new fixture, run the helper at `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests.
 
 **Test escape hatches:**
 
@@ -385,13 +347,13 @@ Aparture's "Your Profile" panel at the top of the app is the single source of re
 
 ### LLM Dispatcher + Prompt Caching
 
-All 9 LLM-calling API routes go through `lib/llm/callModel.js`. No route calls a provider API directly — the legacy inline `callClaude` / `callOpenAI` / `callGemini` helpers are gone. When adding a new LLM call, always route it through `callModel`.
+All LLM-calling API routes go through `lib/llm/callModel.js`. No route calls a provider API directly. When adding a new LLM call, always route it through `callModel`.
 
-**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template text + user profile) and a variable `prompt` (per-batch/per-call content). When `cacheable: true` is passed to `callModel`, the Anthropic adapter (`lib/llm/structured/anthropic.js`) emits a multi-block `content` array with `cache_control: {type: 'ephemeral'}` on the prefix block. The invariant `cachePrefix + prompt === fullRenderedPrompt` must hold byte-for-byte — test each route's split logic against a known-good rendering. OpenAI caches automatically when prompt prefixes repeat, no code changes needed. Google caching is not enabled.
+**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template text + user profile) and a variable `prompt` (per-batch/per-call content). When `cacheable: true` is passed to `callModel`, the Anthropic adapter emits a multi-block `content` array with `cache_control: {type: 'ephemeral'}` on the prefix block. The invariant `cachePrefix + prompt === fullRenderedPrompt` must hold byte-for-byte — test each route's split logic against a known-good rendering. OpenAI caches automatically when prompt prefixes repeat, no code changes needed. Google caching is not enabled.
 
 **PDF content blocks.** All 3 adapters accept an optional `pdfBase64` input field. When present: Anthropic emits `{type: 'document', source: {type: 'base64', ...}}`, Google emits `{inlineData: {mimeType: 'application/pdf', ...}}` in `parts`, OpenAI switches to `/v1/responses` via `buildOpenAIResponsesRequest` (different shape from Chat Completions — parses `response.output[].content[].text`, not `output_text`).
 
-**Cache-hit measurement.** `callModel` surfaces `cacheReadTok` / `cacheCreateTok` in its normalized return (Anthropic from `usage.cache_read_input_tokens` + `cache_creation_input_tokens`; OpenAI from `usage.prompt_tokens_details.cached_tokens`). The dispatcher logs them as `[anthropic cache] read=N create=N` so cache effectiveness is observable during a run.
+**Cache-hit measurement.** `callModel` surfaces `cacheReadTok` / `cacheCreateTok` in its normalized return. The dispatcher logs them as `[anthropic cache] read=N create=N` so cache effectiveness is observable during a run.
 
 **Route pattern (canonical example: `pages/api/synthesize.js`):**
 
@@ -403,7 +365,7 @@ All 9 LLM-calling API routes go through `lib/llm/callModel.js`. No route calls a
 
 ### Analyzer module split
 
-The analysis pipeline lives in extracted modules under `lib/analyzer/` (see File Structure above for per-file summaries), each unit-testable in isolation. `App.jsx` wires the pipeline by creating it once via `useMemo(() => createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef}), [])`. The pipeline reads all state from `useAnalyzerStore.getState()` — including the `reactContext` slice which holds React-hook-derived values (profile, config, saveBriefing, briefingHistory). `App.jsx` publishes these into the store's `reactContext` on every render. Pipeline stage handlers (`startProcessing`, `runDryRunTest`, `runMinimalTest`, `generateNotebookLM`) are destructured from the memoized pipeline object and passed down to `ControlPanel` as callbacks.
+The analysis pipeline lives in extracted modules under `lib/analyzer/` (see File Structure above), each unit-testable in isolation. `App.jsx` wires the pipeline by creating it once via `useMemo(() => createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef}), [])`. The pipeline reads all state from `useAnalyzerStore.getState()` — including the `reactContext` slice which holds React-hook-derived values (profile, config, saveBriefing, briefingHistory). `App.jsx` publishes these into the store's `reactContext` on every render. Pipeline stage handlers are destructured from the memoized pipeline object and passed down to `ControlPanel` as callbacks.
 
 **To add a new pipeline stage:**
 
@@ -414,56 +376,16 @@ The analysis pipeline lives in extracted modules under `lib/analyzer/` (see File
 
 **To unit-test a pipeline stage:** mock the Zustand store via `useAnalyzerStore.setState(...)` with the required state, then call `createAnalysisPipeline({...refs})` and invoke the returned handler. Internal stages aren't exported — test them via `startProcessing` with mocked API responses.
 
-### CLI Automation
-
-The `cli/` directory provides complete browser automation for unattended analysis runs. See the File Structure section above for per-file responsibilities.
-
-**Production usage** (settings persist in browser localStorage between runs; Google auth cached after first podcast generation):
-
-```bash
-npm run setup              # First-time interactive configuration
-npm run analyze            # Full workflow: report + document + podcast
-npm run analyze:report     # Report only (skip NotebookLM)
-npm run analyze:document   # Report + NotebookLM doc (skip podcast)
-npm run analyze:podcast    # Podcast only (skip analysis, reuse existing files)
-npm run test:dryrun        # Mock API test
-npm run test:minimal       # Real API test (3 papers)
-```
-
-Tracks stages (fetching → filtering → scoring → post-processing → pdf-analysis), captures progress screenshots, and validates downloaded reports. Works on Windows, Linux, and WSL.
-
-### Testing Features
-
-- **Mock Dry Run**: Complete workflow testing with simulated API responses
-- **Minimal API Test**: Small-scale testing with real API calls (3 papers)
-- **Visual Indicators**: Clear "TEST MODE" badges when using mock data
-- **Comprehensive Mock API**: Tests error handling, retries, and edge cases
-
 ### ArXiv PDF Download Handling
 
-The application includes robust PDF download handling to work around arXiv's bot protection:
+`pages/api/analyze-pdf.js` tries a direct fetch first; if the response isn't a PDF (missing `%PDF-` magic bytes), it falls back to Playwright with a persistent browser profile at `temp/playwright-profile/` that caches arXiv session cookies + reCAPTCHA bypass state.
 
-**Automatic Fallback System:**
+Concurrency control lives in `lib/analyzer/rateLimit.js`:
 
-1. **Direct Fetch** (Primary): Attempts standard HTTP fetch with User-Agent header
-2. **reCAPTCHA Detection**: Checks response for PDF magic bytes (`%PDF-`)
-3. **Playwright Fallback** (Automatic): If HTML/reCAPTCHA detected, uses Playwright with persistent browser context
-   - Launches headless Chromium with saved cookies/session
-   - Navigates to abstract page, then fetches PDF with browser context
-   - Bypasses reCAPTCHA using legitimate browser session
+- **`ArxivDownloadThrottle`** — module-level singleton in the API route. Serializes arXiv fetches to ~5s spacing across concurrent POSTs, honors `Retry-After` on 429/503 responses (capped at 60s). Only the download step is throttled — the LLM call runs in parallel.
+- **`AnalysisWorkerPool`** — client-side N-wide queue in `analyzePDFs`. Optional `cacheWarmup` barrier runs worker 0's first task alone so Anthropic's ephemeral prompt-cache entry is primed before siblings start; Google/OpenAI skip warmup (OpenAI auto-caches, Google has no caching).
 
-**Implementation Details:**
-
-- Rate limiting: 2-second delay between PDF downloads
-- Persistent browser profile stored in `temp/playwright-profile/`
-- Automatic retry on failure
-- Detailed logging for debugging
-
-**Known Issues:**
-
-- arXiv may trigger reCAPTCHA after multiple rapid PDF downloads
-- Playwright fallback adds ~5-10 seconds per PDF but reliably bypasses blocks
-- First Playwright download may be slower while setting up browser profile
+Playwright fallback adds ~5-10 s per paper but reliably bypasses reCAPTCHA. If Playwright is unavailable (e.g. Vercel), the route returns HTTP 422 `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA` and the pipeline aggregates skips into `skippedDueToRecaptcha` without halting the run.
 
 ### Documentation Development
 
@@ -489,65 +411,20 @@ The documentation is built with VitePress and includes:
 
 ### Refactor Context
 
-Design specs and implementation plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — check for existence before referencing). Most relevant:
+Design specs and implementation plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — check for existence before referencing). Phase 2 scope is in the v2 spec §11 (Electron wrapper, filesystem-first state, OS keychain, first-run wizard, memory loop, daily scheduler, full NotebookLM ZIP bundle, HTML export, cross-platform installers).
 
-- `docs/superpowers/specs/2026-04-13-aparture-refactor-design.md` - v2 design doc (positioning, architecture, scope, v1/v2/v2.1/stretch, migration plan)
-- `docs/superpowers/specs/2026-04-15-phase-b-web-ux-redesign-design.md` - UX redesign (sidebar + main-area layout, warm palette, briefing archive)
-- `docs/superpowers/specs/2026-04-16-notebooklm-podcast-redesign-design.md` - NotebookLM podcast redesign
-- `docs/superpowers/specs/2026-04-17-llm-dispatcher-migration-caching-design.md` - LLM dispatcher + prompt caching migration
-- `docs/superpowers/specs/2026-04-17-analyze-pdf-dispatcher-migration-design.md` - analyze-pdf dispatcher migration + native PDF blocks
+## Model Information
 
-**Phase 2 is planned but not scoped in detail yet** — see the v2 spec §11 for the list: Electron wrapper, filesystem-first state (`~/aparture/`), OS keychain via `keytar`, first-run wizard, memory loop, daily scheduler, full NotebookLM ZIP bundle, HTML export, cross-platform installers. Phase 2 will need its own detailed implementation plan written before execution begins.
+**Source of truth:** `utils/models.js` (`MODEL_REGISTRY` + `AVAILABLE_MODELS`). Read it for the current set of model IDs, API IDs, context windows, and pricing. Don't duplicate those tables here — they rot fast.
 
-## Model Information (Source of Truth)
+**Model slots:** `filterModel` (Stage 2 quick filter), `scoringModel` (Stage 3 abstract scoring), `pdfModel` (Stage 4 deep analysis), `briefingModel` (Stage 5 synthesis + suggest-profile), `quickSummaryModel` (Stage 5 per-paper compression), `notebookLMModel` (NotebookLM document).
 
-**Always refer to `utils/models.js` for accurate model information.**
+**Anthropic adaptive thinking (non-obvious).** All Anthropic calls include `thinking: {type: "adaptive"}`. With thinking enabled, `tool_choice` must be `{type: "auto"}` — forced tool choice is incompatible. The model still reliably calls the provided tool. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
 
-**Model slots:** `filterModel` (Stage 1 quick filter), `scoringModel` (Stage 2 abstract scoring), `pdfModel` (Stage 3 deep analysis), `briefingModel` (synthesis + suggest-profile), `notebookLMModel` (NotebookLM document generation).
+**Not in the registry:** OpenAI o-series (`o3`, `o4-mini`) and xAI Grok. Adding Grok would need a new `lib/llm/structured/xai.js` adapter — xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
 
-Current models (as of April 2026). The user-facing ID (left) is what goes into `MODEL_REGISTRY` and the UI; the API ID (right) is what gets sent to the provider.
-
-**Anthropic — current:**
-
-- Claude Opus 4.7: `claude-opus-4.7` → `claude-opus-4-7` (1M context, $5/$25 per MTok, adaptive thinking)
-- Claude Opus 4.6: `claude-opus-4.6` → `claude-opus-4-6` (1M context, $5/$25 per MTok)
-- Claude Sonnet 4.6: `claude-sonnet-4.6` → `claude-sonnet-4-6` (1M context, $3/$15 per MTok)
-- Claude Haiku 4.5: `claude-haiku-4.5` → `claude-haiku-4-5` (200k context, $1/$5 per MTok)
-
-**Anthropic — legacy (still available):**
-
-- Claude Opus 4.5: `claude-opus-4.5` → `claude-opus-4-5`
-- Claude Opus 4.1: `claude-opus-4.1` → `claude-opus-4-1`
-- Claude Sonnet 4.5: `claude-sonnet-4.5` → `claude-sonnet-4-5`
-- Claude Haiku 3.5: `claude-haiku-3.5` → `claude-3-5-haiku-20241022`
-
-**Anthropic adaptive thinking:** All Anthropic API calls now include `thinking: {type: "adaptive"}`. With thinking enabled, `tool_choice` must be `{type: "auto"}` (forced tool choice is incompatible with thinking). The model still calls the provided tool reliably. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` raised to 16000 to accommodate thinking overhead.
-
-**OpenAI (GPT-5.4 family):**
-
-- GPT-5.4: `gpt-5.4` (1M context)
-- GPT-5.4 Mini: `gpt-5.4-mini` (400k context)
-- GPT-5.4 Nano: `gpt-5.4-nano` (400k context)
-
-**Google — Gemini 3.x previews:**
-
-- Gemini 3.1 Pro (Preview): `gemini-3.1-pro` → `gemini-3.1-pro-preview`
-- Gemini 3 Flash (Preview): `gemini-3-flash` → `gemini-3-flash-preview`
-- Gemini 3.1 Flash-Lite (Preview): `gemini-3.1-flash-lite` → `gemini-3.1-flash-lite-preview`
-
-**Google — Gemini 2.5 stable:**
-
-- Gemini 2.5 Pro: `gemini-2.5-pro`
-- Gemini 2.5 Flash: `gemini-2.5-flash`
-- Gemini 2.5 Flash-Lite: `gemini-2.5-flash-lite`
-
-**Not currently in the registry:** OpenAI o-series (`o3`, `o4-mini`, etc.) and xAI Grok. Adding Grok would require a new `lib/llm/structured/xai.js` adapter because xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
-
-When updating documentation or code, verify current model names and pricing via:
-
-- Anthropic: https://platform.claude.com/docs/en/docs/about-claude/models
-- OpenAI: https://developers.openai.com/api/docs/models
-- Google: https://ai.google.dev/gemini-api/docs/models
+When verifying current model names/pricing against provider docs:
+[Anthropic](https://platform.claude.com/docs/en/docs/about-claude/models) · [OpenAI](https://developers.openai.com/api/docs/models) · [Google](https://ai.google.dev/gemini-api/docs/models)
 
 ## UX architecture
 
