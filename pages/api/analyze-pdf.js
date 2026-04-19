@@ -1,8 +1,32 @@
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
+import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
+
+// Module-level throttle for arXiv PDF downloads. Serializes fetches across
+// all concurrent /api/analyze-pdf requests served by this Node process so a
+// client-side parallel fan-out (introduced with `pdfAnalysisConcurrency`)
+// doesn't blow past arXiv's 1-req/3s cap. Spacing defaults to 5s per
+// docs/superpowers/specs/2026-04-17-pdf-parallelism-design.md §2.2.
+//
+// Single-process assumption: Aparture is a local dev-server (npm run dev),
+// so module state is shared across all requests. If this ever moves to a
+// serverless/edge deployment, replace with a shared-store implementation.
+const downloadThrottle = new ArxivDownloadThrottle();
+
+// Parse a Retry-After header (either delta-seconds or HTTP-date format) into ms.
+function parseRetryAfterMs(header) {
+  if (!header) return null;
+  const asSeconds = parseInt(header, 10);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) return asSeconds * 1000;
+  const asDate = new Date(header);
+  if (!Number.isNaN(asDate.getTime())) {
+    return Math.max(0, asDate.getTime() - Date.now());
+  }
+  return null;
+}
 
 // Playwright is an optional dependency. It's only needed when arXiv serves a
 // reCAPTCHA page instead of the PDF bytes. If it's not installed, we return a
@@ -279,13 +303,34 @@ export default async function handler(req, res) {
         let usedPlaywright = false;
 
         try {
-          // Try direct fetch first
-          const pdfResponse = await fetch(pdfUrl, {
+          // Throttle arXiv direct-fetch: serialized across concurrent
+          // requests, min 5s spacing, honors Retry-After. See spec §2.2.
+          await downloadThrottle.acquire();
+          let pdfResponse = await fetch(pdfUrl, {
             headers: {
               'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },
           });
+
+          // On 429/503 with a Retry-After, honor the header and retry once
+          // before giving up. Avoids cascading failures when arXiv briefly
+          // tightens enforcement.
+          if (pdfResponse.status === 429 || pdfResponse.status === 503) {
+            const retryHeader = pdfResponse.headers.get('retry-after');
+            const retryAfterMs = parseRetryAfterMs(retryHeader) ?? 10000;
+            console.warn(
+              `arXiv ${pdfResponse.status} on direct fetch (retry-after ${retryAfterMs}ms); waiting and retrying once...`
+            );
+            downloadThrottle.rateLimited({ retryAfterMs });
+            await downloadThrottle.acquire();
+            pdfResponse = await fetch(pdfUrl, {
+              headers: {
+                'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              },
+            });
+          }
 
           if (!pdfResponse.ok) {
             throw new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
@@ -318,6 +363,9 @@ export default async function handler(req, res) {
             );
             throw new Error(PLAYWRIGHT_UNAVAILABLE_ERR);
           }
+          // Playwright fallback also hits arXiv — take the throttle again
+          // before navigating so the browser fetch respects the same pacing.
+          await downloadThrottle.acquire();
           pdfBuffer = await downloadPDFWithPlaywright(playwrightMod.chromium, pdfUrl);
           usedPlaywright = true;
         }

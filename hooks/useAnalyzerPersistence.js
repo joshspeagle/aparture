@@ -67,6 +67,10 @@ export const DEFAULT_CONFIG = {
   postProcessingBatchSize: 5,
   postProcessingModel: 'gemini-3-flash',
   pdfModel: 'gemini-3.1-pro',
+  // Stage 3 parallel analysis width. Default 3 is safe across provider tiers
+  // (Anthropic Tier 1 with cache warmup; Google/OpenAI have headroom). Clamped
+  // 1–20 in pipeline.js.
+  pdfAnalysisConcurrency: 3,
   briefingModel: 'gemini-3.1-pro',
   // Quick summaries compress each full PDF analysis into a ~300-word pre-read.
   // Small/cheap text-only model is appropriate (input is the text of the full

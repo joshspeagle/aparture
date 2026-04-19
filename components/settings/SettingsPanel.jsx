@@ -1338,6 +1338,31 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                       Final papers to display
                     </p>
                   </div>
+                  <div style={{ flex: 1 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-sm)',
+                        fontWeight: 500,
+                        color: 'var(--aparture-mute)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      Parallel PDF Analyses
+                    </label>
+                    <Input {...integerInputProps('pdfAnalysisConcurrency', 3, 1, 20)} />
+                    <p
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Stage 3 workers (1–20). Raise for higher provider tiers.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
