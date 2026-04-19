@@ -6,14 +6,14 @@ Each pipeline stage reads from its own model slot, and picking the right model f
 
 Aparture exposes six independent model slots plus one for the optional podcast add-on. Every slot ships with a default so you can run without touching them, and every slot can be swapped per run without restarting the server.
 
-| Slot                  | What it drives                                                              | Default                 |
-| --------------------- | --------------------------------------------------------------------------- | ----------------------- |
-| `filterModel`         | Stage 2 quick filter (YES / MAYBE / NO triage)                              | `gemini-3.1-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                             | `gemini-3-flash`        |
-| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                 | `gemini-3-flash`        |
-| `pdfModel`            | Stage 4 deep PDF analysis                                                   | `gemini-3.1-pro`        |
-| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow         | `gemini-3.1-pro`        |
-| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis | `gemini-3.1-flash-lite` |
+| Slot                  | What it drives                                                                                                                                              | Default                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `filterModel`         | Stage 2 quick filter (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage) | `gemini-3.1-flash-lite` |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3-flash`        |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3-flash`        |
+| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.1-pro`        |
+| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.1-pro`        |
+| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis                                                                                 | `gemini-3.1-flash-lite` |
 
 A separate `notebookLMModel` slot drives the podcast-bundle generator in [the podcast add-on](/add-ons/podcast) — no default, you pick it per generation. The related `quickSummaryConcurrency` knob (default 5, clamped 1–20) controls how many quick-summary calls fire in parallel before synthesis.
 

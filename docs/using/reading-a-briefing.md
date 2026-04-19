@@ -29,24 +29,24 @@ From top to bottom, a briefing stacks like this:
 
 The editorial lead at the top: two to four paragraphs of serif prose. It's the densest summary of the day in the briefing and often enough on its own if you're short on time.
 
-The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 2 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of *"if you read one paper today, make it [arxivId] because…"* — usually the clearest pointer in the whole briefing.
+The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 2 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of _"if you read one paper today, make it [arxivId] because…"_ — usually the clearest pointer in the whole briefing.
 
 ### Themes
 
 Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension; every paper lands in exactly one theme, and no paper is left out.
 
-A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. *"1. Interpretability converges on attention heads"*, not *"Interpretability papers"*). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
+A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. _"1. Interpretability converges on attention heads"_, not _"Interpretability papers"_). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
 
 ### Paper cards
 
 Each theme contains one or more paper cards. This is where individual papers are summarised — a card gives you enough to decide whether to open the PDF:
 
-| Part                 | What it shows                                                                                                                    |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Score badge**      | A 0.0–10.0 relevance score (one decimal place), more brightly highlighted at 9+ — see [how scoring works](/concepts/pipeline#stage-3-score-abstracts) |
-| **Title + arXiv ID** | Linked to the arXiv abstract page                                                                                                |
-| **One-line pitch**   | A 15–25 word italic sell — closer to "what would this paper say if it were selling itself in one sentence" than a summary        |
-| **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                      |
+| Part                 | What it shows                                                                                                                                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Score badge**      | A 0.0–10.0 relevance score (one decimal place), more brightly highlighted at 9+ — see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)                                                                   |
+| **Title + arXiv ID** | Linked to the arXiv abstract page                                                                                                                                                                                       |
+| **One-line pitch**   | A 15–25 word italic sell — closer to "what would this paper say if it were selling itself in one sentence" than a summary                                                                                               |
+| **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                                                                                                             |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
 The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 2 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
@@ -71,11 +71,11 @@ Below the briefing body sit two small sections that are easy to miss but worth o
 
 After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
 
-| Verdict                                     | Meaning                                                                                                                                  |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| <span class="verdict is-yes">NO</span>      | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                          |
-| <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list.       |
-| <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                                  |
+| Verdict                                     | Meaning                                                                                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| <span class="verdict is-yes">NO</span>      | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                    |
+| <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list. |
+| <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                            |
 
 If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (both default on), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
 
@@ -89,15 +89,15 @@ A <span class="verdict is-no">YES</span> verdict on a major claim in the executi
 
 Below the audit is a small expandable link: <span class="ui-action">Generation details ▸</span>. Clicking it reveals everything that went into producing this particular briefing:
 
-| Field                   | What it carries                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Profile snapshot**    | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable) |
-| **Models**              | Model IDs used at each stage: filter, scoring, PDF analysis, briefing, quick summary                  |
-| **Categories**          | arXiv categories selected for the run, as small badges                                                |
-| **Filter verdicts**     | YES / MAYBE / NO counts from the quick-filter stage                                                   |
-| **Settings flags**      | Whether pause gates and retry checks were on or off                                                   |
-| **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                   |
-| **Generated at**        | ISO timestamp                                                                                         |
+| Field                   | What it carries                                                                                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Profile snapshot**    | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable)                                                            |
+| **Models**              | Model IDs used at each stage: filter, scoring, PDF analysis, briefing, quick summary                                                                             |
+| **Categories**          | arXiv categories selected for the run, as small badges                                                                                                           |
+| **Filter verdicts**     | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> counts from the quick-filter stage |
+| **Settings flags**      | Whether pause gates and retry checks were on or off                                                                                                              |
+| **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                                                                              |
+| **Generated at**        | ISO timestamp                                                                                                                                                    |
 
 You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired. Briefings are archived for 90 days in the sidebar, and this panel is the permanent record of how each one was made.
 

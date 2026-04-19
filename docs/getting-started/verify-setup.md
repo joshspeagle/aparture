@@ -43,7 +43,7 @@ You'll see:
 
 Aparture ships with `pauseAfterFilter` and `pauseBeforeBriefing` both **on by default**, so the pipeline will stop twice during the Dry Run and wait for you:
 
-1. **After filtering** — the UI shows three buckets (YES / MAYBE / NO). Click any verdict button to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
+1. **After filtering** — the UI shows three buckets (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>). Click any verdict button to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
 2. **After PDF analysis, before briefing synthesis** — you can star or dismiss any paper, or add a comment. Then click **Continue to briefing →**.
 
 If the pipeline looks stuck, check whether it's actually waiting for you at one of these gates. You can disable either gate in **Settings → Review & confirmation**, but leaving them on is the realistic first-run experience.
@@ -101,13 +101,13 @@ Cache-hit metrics on Anthropic and OpenAI show as `[anthropic cache] read=N crea
 
 ### ⚠️ You may need to manually override the filter results
 
-The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the original Transformer paper, and Mamba. Depending on how narrow your profile is, the filter may route all or most of them into the **NO** bucket — and if YES and MAYBE both end up empty, scoring and PDF analysis have nothing to work on.
+The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the original Transformer paper, and Mamba. Depending on how narrow your profile is, the filter may route all or most of them into the <span class="verdict is-no">NO</span> bucket — and if <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> both end up empty, scoring and PDF analysis have nothing to work on.
 
 When the pipeline pauses at the filter-review gate:
 
-1. Look at the three buckets. If YES + MAYBE together are empty or sparse, you'll need to intervene.
-2. **Click any paper's verdict button** to cycle it through YES → MAYBE → NO. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
-3. Aim for **at least 2–3 papers in YES or MAYBE** so the rest of the pipeline has something to chew on.
+1. Look at the three buckets. If <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span> together are empty or sparse, you'll need to intervene.
+2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
+3. Aim for **at least 2–3 papers in <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so the rest of the pipeline has something to chew on.
 4. Click **Continue to scoring →** once you're happy with the buckets.
 
 This is also your first encounter with the filter-override mechanic, which becomes part of the feedback loop that powers [profile refinement](/using/refining-over-time). Behaviour of this gate is controlled by `pauseAfterFilter` and `categoriesToScore` in **Settings → Review & confirmation**.
@@ -116,17 +116,17 @@ This is also your first encounter with the filter-override mechanic, which becom
 
 The error surface here is real — most failures indicate a real issue with keys or billing.
 
-| Symptom                                                                 | Likely cause                                    | Fix                                                                                                                                 |
-| ----------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `Filter API error: 401 - Invalid password`                              | Password mismatch in `.env.local`               | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                     |
-| `Filter API error: 401 - Unauthorized` (or `UNAUTHENTICATED` on Google) | Bad or missing API key                          | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                  |
-| `429 insufficient_quota` (OpenAI)                                       | No credit balance                               | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                              |
-| `429 rate_limit_exceeded`                                               | Provider throttled your request                 | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)       |
-| `402` / `billing_error` (Anthropic)                                     | Billing issue or unpaid invoice                 | Log into console, fix billing                                                                                                       |
-| `PERMISSION_DENIED` (Google)                                            | Model gated (e.g., Gemini 3.1 Pro on free tier) | Either enable billing or switch the affected slots to a Flash model in Settings                                                     |
+| Symptom                                                                 | Likely cause                                    | Fix                                                                                                                                                    |
+| ----------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Filter API error: 401 - Invalid password`                              | Password mismatch in `.env.local`               | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
+| `Filter API error: 401 - Unauthorized` (or `UNAUTHENTICATED` on Google) | Bad or missing API key                          | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
+| `429 insufficient_quota` (OpenAI)                                       | No credit balance                               | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
+| `429 rate_limit_exceeded`                                               | Provider throttled your request                 | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
+| `402` / `billing_error` (Anthropic)                                     | Billing issue or unpaid invoice                 | Log into console, fix billing                                                                                                                          |
+| `PERMISSION_DENIED` (Google)                                            | Model gated (e.g., Gemini 3.1 Pro on free tier) | Either enable billing or switch the affected slots to a Flash model in Settings                                                                        |
 | `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`               | arXiv blocked a PDF download                    | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
-| `Initial parse failed: JSON.parse error`                                | Provider returned malformed JSON                | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                       |
-| Hangs on "Filter batch 1/1" with no terminal output                     | Route stuck; network blocked; firewall          | Check terminal for provider error. Try a curl smoke test from the provider page                                                     |
+| `Initial parse failed: JSON.parse error`                                | Provider returned malformed JSON                | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
+| Hangs on "Filter batch 1/1" with no terminal output                     | Route stuck; network blocked; firewall          | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
 
 Deep dives for each of these live on the [troubleshooting page](/reference/troubleshooting).
 

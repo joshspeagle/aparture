@@ -28,13 +28,13 @@ Both gates pause a running pipeline until you click a <span class="ui-action">Co
 
 ### What it does
 
-The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.1-flash-lite`) runs YES / MAYBE / NO triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
+The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.1-flash-lite`) runs <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
 
-When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. The progress timeline shows *"Filter complete — review results before scoring"* and the main area fills in with the filter results, grouped into three buckets.
+When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. The progress timeline shows _"Filter complete — review results before scoring"_ and the main area fills in with the filter results, grouped into three buckets.
 
 ### What you see
 
-Each paper in the list shows its title and authors, the filter's one-sentence summary (italic), and a *"Verdict reasoning:"* line with the model's justification. On the right are three verdict buttons — <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, <span class="verdict is-no">NO</span>. The current verdict is filled; the other two are outlined. Clicking a different one moves the paper to that bucket and marks the choice with a small `⇄` to indicate it was overridden.
+Each paper in the list shows its title and authors, the filter's one-sentence summary (italic), and a _"Verdict reasoning:"_ line with the model's justification. On the right are three verdict buttons — <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, <span class="verdict is-no">NO</span>. The current verdict is filled; the other two are outlined. Clicking a different one moves the paper to that bucket and marks the choice with a small `⇄` to indicate it was overridden.
 
 Above the buckets sits <span class="ui-action">Continue to scoring →</span>, which advances the pipeline with whatever verdicts are in effect at that moment, overrides included.
 
@@ -62,11 +62,11 @@ You don't have to review every paper. Overrides usually happen in the <span clas
 
 After Stage 4 (PDF analysis) completes, the pipeline has scores, deep-analysis summaries, and a ranked list of papers. The next step is synthesis: the briefing model reads your profile, the analysed papers, and your feedback, then writes the executive summary, themes, and paper cards.
 
-When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before synthesis runs. The timeline shows *"Analysis complete — review results and add stars/dismissals before generating your briefing"*, and the main area shows the Analysis Results list with every PDF-analysed paper, score, and summary.
+When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before synthesis runs. The timeline shows _"Analysis complete — review results and add stars/dismissals before generating your briefing"_, and the main area shows the Analysis Results list with every PDF-analysed paper, score, and summary.
 
 ### What to do there
 
-Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest *"why it matters"* treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
+Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest _"why it matters"_ treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
 
 The difference between Gate 2 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
 
@@ -101,7 +101,7 @@ Both gates live in <span class="ui-action">Settings</span> under **Review & conf
 - **Pause after filter to review overrides** — controls Gate 1 (`pauseAfterFilter`).
 - **Pause before briefing to review scores and add feedback** — controls Gate 2 (`pauseBeforeBriefing`).
 
-Two sibling checkboxes nearby — **Auto-retry briefing if hallucination check returns YES** (on by default) and **…MAYBE** (off by default) — govern the briefing retry loop, not the pause gates.
+Two sibling checkboxes nearby — **Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>** (on by default) and **…<span class="verdict is-maybe">MAYBE</span>** (off by default) — govern the briefing retry loop, not the pause gates.
 
 Toggles are disabled while a pipeline run is in progress (you can't change gate behaviour mid-run), and changes take effect on the next run.
 
