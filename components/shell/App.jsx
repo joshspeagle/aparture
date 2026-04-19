@@ -1078,9 +1078,9 @@ export default function App() {
           onGenerateBriefing={handleGenerateBriefing}
           // Feedback panel
           feedbackCutoff={profile?.lastFeedbackCutoff ?? 0}
-          onAddGeneralComment={(text) => {
+          onAddGeneralComment={(text, briefingId) => {
             const today = new Date().toISOString().slice(0, 10);
-            feedback.addGeneralComment(text, today);
+            feedback.addGeneralComment(text, today, briefingId);
           }}
           // NotebookLM
           podcastDuration={podcastDuration}
@@ -1102,6 +1102,7 @@ export default function App() {
         onClose={() => setShowSuggestDialog(false)}
         profile={profile?.content ?? ''}
         newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
+        briefingHistory={briefingHistory}
         cap={{ commentCap: 30 }}
         briefingModel={config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro'}
         provider={(

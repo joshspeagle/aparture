@@ -295,6 +295,7 @@ export default function MainArea({
           <FeedbackPanel
             events={feedbackEvents}
             cutoff={feedbackCutoff}
+            briefingId={entry.id}
             onAddGeneralComment={onAddGeneralComment}
             onSuggestClick={onSuggestClick}
           />

@@ -5,7 +5,13 @@ import FeedbackFilters from './FeedbackFilters.jsx';
 import FeedbackTimeline from './FeedbackTimeline.jsx';
 import FeedbackEmptyState from './FeedbackEmptyState.jsx';
 
-export default function FeedbackPanel({ events, cutoff, onAddGeneralComment, onSuggestClick }) {
+export default function FeedbackPanel({
+  events,
+  cutoff,
+  briefingId,
+  onAddGeneralComment,
+  onSuggestClick,
+}) {
   const [filters, setFilters] = useState({
     type: 'all',
     newOnly: false,
@@ -39,7 +45,9 @@ export default function FeedbackPanel({ events, cutoff, onAddGeneralComment, onS
       />
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
-        <GeneralCommentInput onSave={onAddGeneralComment} />
+        <GeneralCommentInput
+          onSave={(text) => onAddGeneralComment?.(text, briefingId)}
+        />
       </div>
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>

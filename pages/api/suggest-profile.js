@@ -96,6 +96,8 @@ export default async function handler(req, res) {
   const {
     currentProfile,
     feedback,
+    briefings,
+    guidance,
     briefingModel,
     provider,
     apiKey: clientApiKey,
@@ -141,6 +143,8 @@ export default async function handler(req, res) {
     const fullPrompt = renderSuggestPrompt(template, {
       profile: currentProfile,
       events: feedback,
+      briefings: briefings ?? {},
+      guidance: typeof guidance === 'string' ? guidance : '',
     });
 
     // The stable cache prefix is the template text before {{profile}} (the static

@@ -86,7 +86,7 @@ export function useFeedback() {
     });
   }, []);
 
-  const addGeneralComment = useCallback((text, briefingDate) => {
+  const addGeneralComment = useCallback((text, briefingDate, briefingId) => {
     setEvents((prev) => {
       const event = {
         id: makeId(),
@@ -94,6 +94,7 @@ export function useFeedback() {
         text,
         timestamp: Date.now(),
         briefingDate,
+        ...(briefingId ? { briefingId } : {}),
       };
       const next = [...prev, event];
       persist(next);
