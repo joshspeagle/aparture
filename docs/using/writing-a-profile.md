@@ -8,7 +8,7 @@ Most useful profiles are 150–300 words, so this isn't a big writing exercise. 
 
 A profile is a description of research interests in prose. It's not a keyword list, a set of hard rules, or a block of instructions to the LLM — it's the kind of paragraph you'd write if a new collaborator asked what you work on.
 
-The pipeline's LLMs read it the way that collaborator would: to understand who you are, what you work on, what's adjacent to your work, and what you explicitly don't care about. You don't need to be clever about wording or anticipate how the model interprets specific words. Writing plainly usually is enough.
+The pipeline's LLMs read it the way that collaborator would: to understand who you are, what you work on, what's adjacent to your work, and what you explicitly don't care about. You don't need to be clever about wording or anticipate how the model interprets specific words. Writing plainly is usually enough.
 
 ## What reads your profile
 
@@ -23,7 +23,7 @@ It's worth knowing where your profile actually lands in the pipeline. Every stag
 | **Stage 5 — briefing synthesis**          | Produces the executive summary, themes, and "why it matters" paragraphs, weighing your profile against your starred, dismissed, and commented papers.           |
 | **The refinement flow**                   | When you ask the tool to propose profile edits, your current profile is the baseline it diffs against.                                                          |
 
-Every refinement to the profile improves all of these downstream stages. A good profile gets leveraged many times per run.
+Because every stage reads it, a single refinement to the profile shows up in every downstream decision the pipeline makes. A good profile does a lot of work per run.
 
 ## What to include
 
@@ -43,13 +43,11 @@ Methods plus applications together define the intersection where your interests 
 
 ### Breadth and depth preferences
 
-Are you only interested in methodological papers, or also applied ones? Do you care about theory papers? Review papers? Empirical work that benchmarks known methods?
-
-State the preference explicitly. *"I prefer methodological contributions over pure benchmarking."* *"I want a mix of applied and theoretical."* *"I don't care about review papers."* The filter and scoring stages both lean on these signals.
+The pipeline can't infer whether you're after methodological contributions, empirical benchmarks, theory papers, or review articles — it'll try to give you a mix unless you say otherwise. A sentence or two in the profile saves a lot of downstream confusion: *"I prefer methodological contributions over pure benchmarking."* *"I want a mix of applied and theoretical."* *"I don't care about review papers."* Both the filter and scoring stages lean on this kind of signal.
 
 ### Anti-interests
 
-Name the things you explicitly don't want to see. This is often more impactful than listing what you do want — it tells the pipeline where *not* to pull from.
+A profile that only describes what you want tends to produce briefings that over-select on adjacent work. Spelling out what you *don't* want — as directly as the rest of the profile — usually shifts the output more than the positive descriptions do:
 
 *"Not interested in vision-only papers without methodological contribution."* *"Not interested in purely empirical leaderboard papers."* *"Skip papers on reinforcement learning unless they present a new theoretical result."*
 
