@@ -39,10 +39,10 @@ These are inline in the route or library code. Editing any of them means restart
 
 | Location                                 | What it controls                                                                                       | When it runs                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `pages/api/quick-filter.js`              | Stage 1 quick-filter rubric — YES / MAYBE / NO verdict, one-sentence summary, one-sentence justification | Every Stage 1 batch call                                         |
-| `pages/api/score-abstracts.js`           | Stage 2 abstract-scoring rubric — 0.0–10.0 scale, alignment × quality split, scoring guidance          | Every Stage 2 batch call                                         |
-| `pages/api/rescore-abstracts.js`         | Optional post-processing pass — comparative re-scoring across a batch for consistency                  | Every post-processing batch when the stage is enabled            |
-| `pages/api/analyze-pdf.js`               | Stage 3 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score  | Every paper that reaches Stage 3                                 |
+| `pages/api/quick-filter.js`              | Stage 2 quick-filter rubric — YES / MAYBE / NO verdict, one-sentence summary, one-sentence justification | Every Stage 2 batch call                                         |
+| `pages/api/score-abstracts.js`           | Stage 3 abstract-scoring rubric — 0.0–10.0 scale, alignment × quality split, scoring guidance          | Every Stage 3 batch call                                         |
+| `pages/api/rescore-abstracts.js`         | Stage 3.5 post-processing pass — comparative re-scoring across a batch for consistency                 | Every post-processing batch when the stage is enabled            |
+| `pages/api/analyze-pdf.js`               | Stage 4 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score  | Every paper that reaches Stage 4                                 |
 | `lib/notebooklm/buildFocusPrompt.js`     | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets                        | During podcast bundle generation; output lands in `focus-prompt.txt` |
 | `lib/synthesis/repair.js`                | Synthesis schema-repair template                                                                       | Only when `/api/synthesize` output fails zod validation          |
 | `pages/api/check-briefing.js`            | Hallucination-check schema-repair template                                                             | Only when `/api/check-briefing` output fails validation          |
@@ -50,15 +50,15 @@ These are inline in the route or library code. Editing any of them means restart
 
 ### Where the scoring rubric lives
 
-The Stage 2 and Stage 3 scoring scale — what a 7 means versus a 9, the 50/50 blend of research alignment and paper quality — lives inline in `pages/api/score-abstracts.js` and `pages/api/analyze-pdf.js`, not in any `prompts/*.md` file. The `buildCachePrefix(scoringCriteria)` function in each route assembles the rubric by wrapping your profile text (the variable portion) in the rubric scaffolding (the stable portion). The stable portion is cached under Anthropic prompt caching when the model supports it.
+The Stage 3 and Stage 4 scoring scale — what a 7 means versus a 9, the 50/50 blend of research alignment and paper quality — lives inline in `pages/api/score-abstracts.js` and `pages/api/analyze-pdf.js`, not in any `prompts/*.md` file. The `buildCachePrefix(scoringCriteria)` function in each route assembles the rubric by wrapping your profile text (the variable portion) in the rubric scaffolding (the stable portion). The stable portion is cached under Anthropic prompt caching when the model supports it.
 
-The quick-filter rubric (Stage 1 — YES / MAYBE / NO) follows the same pattern in `pages/api/quick-filter.js`, and the post-processing rubric in `pages/api/rescore-abstracts.js`.
+The quick-filter rubric (Stage 2 — YES / MAYBE / NO) follows the same pattern in `pages/api/quick-filter.js`, and the post-processing rubric (Stage 3.5) in `pages/api/rescore-abstracts.js`.
 
 ## What to tune for which quality knob
 
 Match the symptom to a file.
 
-**Briefings don't feel editorial enough. Themes read as category labels. Pitches are generic.** Edit `prompts/synthesis.md`. This is the largest lever in the system — a ~180-line prompt very specific about what each field should sound like. Reading the whole prompt first is usually worth it; small edits (one more bullet in the pitch guidance, one extra example in the theme-title section) often have visible downstream effects.
+**Briefings don't feel editorial enough. Themes read as category labels. Pitches are generic.** Edit `prompts/synthesis.md`. This is the largest lever in the system — a detailed prompt specifying what each field should sound like. Reading the whole prompt first is usually worth it; small edits (one more bullet in the pitch guidance, one extra example in the theme-title section) often have visible downstream effects.
 
 **Quick summaries come out too long, too short, or too hedged.** Edit `prompts/analyze-pdf-quick.md`. Controls the compression ratio, the ordering (finding vs. caveats), and the voice.
 
