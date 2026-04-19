@@ -153,7 +153,7 @@ export default function MainArea({
   // Pipeline view — ProgressTimeline + ControlPanel + results + reports.
   if (activeView === 'pipeline') {
     return (
-      <div className="config-surface" style={{ maxWidth: '900px' }}>
+      <div className="config-surface">
         <ProgressTimeline
           onSetVerdict={onSetVerdict}
           pauseAfterFilter={config?.pauseAfterFilter ?? true}

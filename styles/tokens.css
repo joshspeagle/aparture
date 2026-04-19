@@ -33,12 +33,12 @@
   --aparture-font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* Type scale */
-  --aparture-text-xs: 13px;
-  --aparture-text-sm: 14px;
-  --aparture-text-base: 17px;
-  --aparture-text-lg: 20px;
-  --aparture-text-xl: 24px;
-  --aparture-text-2xl: 32px;
+  --aparture-text-xs: 14px;
+  --aparture-text-sm: 15px;
+  --aparture-text-base: 18px;
+  --aparture-text-lg: 21px;
+  --aparture-text-xl: 25px;
+  --aparture-text-2xl: 33px;
 
   /* Spacing */
   --aparture-space-1: 4px;

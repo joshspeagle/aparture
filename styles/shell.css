@@ -37,7 +37,7 @@
 }
 
 .config-surface {
-  max-width: 640px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--aparture-space-8) var(--aparture-space-6);
 }

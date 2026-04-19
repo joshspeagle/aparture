@@ -54,7 +54,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
   const integerInputProps = (configKey, defaultVal, min, max) => ({
     type: 'text',
     inputMode: 'numeric',
-    value: config[configKey],
+    value: config[configKey] ?? defaultVal,
     onChange: (e) => {
       const raw = e.target.value;
       // Allow empty + digits while typing; parseInt on blur does the real validation
@@ -409,7 +409,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                   marginBottom: 'var(--aparture-space-2)',
                 }}
               >
-                Quick Filter Model (Stage 1)
+                Quick Filter Model
               </label>
               <p
                 style={{
@@ -467,7 +467,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                   marginBottom: 'var(--aparture-space-2)',
                 }}
               >
-                Abstract Scoring Model (Stage 2)
+                Abstract Scoring Model
               </label>
               <p
                 style={{
@@ -524,7 +524,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                   marginBottom: 'var(--aparture-space-2)',
                 }}
               >
-                Deep PDF Analysis Model (Stage 3)
+                Deep PDF Analysis Model
               </label>
               <p
                 style={{
@@ -566,6 +566,69 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                   }}
                 >
                   {AVAILABLE_MODELS.find((m) => m.id === config.pdfModel)?.description}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-xs)',
+                  fontWeight: 500,
+                  color: 'var(--aparture-mute)',
+                  marginBottom: 'var(--aparture-space-2)',
+                }}
+              >
+                Quick-Summary Model (briefing prep)
+              </label>
+              <p
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: '11px',
+                  color: 'var(--aparture-mute)',
+                  margin: '0 0 8px 0',
+                  lineHeight: 1.5,
+                }}
+              >
+                Compresses each analyzed PDF into a ~300-word pre-read before briefing synthesis.
+                Independent of the briefing model — lightweight models work well here.
+              </p>
+              <Select
+                value={config.quickSummaryModel ?? 'gemini-3.1-flash-lite'}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, quickSummaryModel: e.target.value }))
+                }
+                disabled={processing.isRunning}
+              >
+                {AVAILABLE_MODELS.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </Select>
+              <div
+                style={{
+                  marginTop: 'var(--aparture-space-2)',
+                  padding: 'var(--aparture-space-2)',
+                  background: 'var(--aparture-bg)',
+                  borderRadius: '4px',
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                    margin: 0,
+                  }}
+                >
+                  {
+                    AVAILABLE_MODELS.find(
+                      (m) => m.id === (config.quickSummaryModel ?? 'gemini-3.1-flash-lite')
+                    )?.description
+                  }
                 </p>
               </div>
             </div>
@@ -629,119 +692,6 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Quick-summary model + concurrency (briefing prep sub-stage) */}
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-4)',
-              padding: 'var(--aparture-space-3)',
-              background: 'var(--aparture-bg)',
-              border: '1px solid var(--aparture-hairline)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                fontWeight: 500,
-                color: 'var(--aparture-mute)',
-                marginBottom: 'var(--aparture-space-2)',
-              }}
-            >
-              Quick-summary model &amp; concurrency
-            </p>
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: '11px',
-                color: 'var(--aparture-mute)',
-                margin: '0 0 var(--aparture-space-3) 0',
-                lineHeight: 1.5,
-              }}
-            >
-              Briefing generation runs one quick-summary call per PDF-analyzed paper (text
-              compression of each full report into a ~300-word pre-read). These fire in parallel
-              before the main synthesis call. The model is independent of the briefing model —
-              Flash-Lite handles this well and much cheaper.
-            </p>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '2fr 1fr',
-                gap: 'var(--aparture-space-3)',
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontFamily: 'var(--aparture-font-sans)',
-                    fontSize: 'var(--aparture-text-xs)',
-                    fontWeight: 500,
-                    color: 'var(--aparture-mute)',
-                    marginBottom: 'var(--aparture-space-1)',
-                  }}
-                >
-                  Quick-summary model
-                </label>
-                <Select
-                  value={config.quickSummaryModel ?? 'gemini-3.1-flash-lite'}
-                  onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, quickSummaryModel: e.target.value }))
-                  }
-                  disabled={processing.isRunning}
-                >
-                  {AVAILABLE_MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontFamily: 'var(--aparture-font-sans)',
-                    fontSize: 'var(--aparture-text-xs)',
-                    fontWeight: 500,
-                    color: 'var(--aparture-mute)',
-                    marginBottom: 'var(--aparture-space-1)',
-                  }}
-                >
-                  Parallel calls
-                </label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={config.quickSummaryConcurrency ?? 5}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    setConfig((prev) => ({
-                      ...prev,
-                      quickSummaryConcurrency: Number.isFinite(v) ? v : 5,
-                    }));
-                  }}
-                  disabled={processing.isRunning}
-                />
-              </div>
-            </div>
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: '11px',
-                color: 'var(--aparture-mute)',
-                margin: 'var(--aparture-space-2) 0 0 0',
-                fontStyle: 'italic',
-              }}
-            >
-              Parallel-calls default is 5. Lower it if you hit provider rate limits on large runs;
-              raise it if you&apos;re on a generous tier and want shorter wall-clock time. Clamped
-              to 1–20.
-            </p>
           </div>
 
           <div
@@ -1086,7 +1036,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginTop: '4px',
                       }}
                     >
-                      Stage 2 workers (1–20)
+                      Max concurrent calls
                     </p>
                   </div>
                   <div style={{ flex: 2 }}>
@@ -1235,7 +1185,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginTop: '4px',
                       }}
                     >
-                      Stage 3 workers (1–20)
+                      Max concurrent calls
                     </p>
                   </div>
                   {config.enableScorePostProcessing && (
@@ -1287,7 +1237,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                             marginTop: '4px',
                           }}
                         >
-                          Stage 3.5 workers (1–20)
+                          Max concurrent calls
                         </p>
                       </div>
                       <div style={{ flex: 1 }}>
@@ -1399,9 +1349,9 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginBottom: '4px',
                       }}
                     >
-                      Summaries to Output
+                      Final Shortlist
                     </label>
-                    <Input {...integerInputProps('finalOutputCount', 15, 1, 50)} />
+                    <Input {...integerInputProps('finalOutputCount', 30, 1, 50)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -1410,7 +1360,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginTop: '4px',
                       }}
                     >
-                      Final papers to display
+                      Top-ranked after deep analysis. Shown in the report and sent to the briefing.
                     </p>
                   </div>
                   <div style={{ flex: 1 }}>
@@ -1424,7 +1374,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginBottom: '4px',
                       }}
                     >
-                      Parallel PDF Analyses
+                      Parallel PDF Calls
                     </label>
                     <Input {...integerInputProps('pdfAnalysisConcurrency', 3, 1, 20)} />
                     <p
@@ -1435,7 +1385,56 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                         marginTop: '4px',
                       }}
                     >
-                      Stage 3 workers (1–20). Raise for higher provider tiers.
+                      Max concurrent calls
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 'var(--aparture-space-4)',
+                  paddingTop: 'var(--aparture-space-4)',
+                  borderTop: '1px solid var(--aparture-hairline)',
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    fontWeight: 600,
+                    color: 'var(--aparture-mute)',
+                    marginBottom: 'var(--aparture-space-2)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Briefing Options
+                </p>
+                <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+                  <div style={{ flex: 1 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-sm)',
+                        fontWeight: 500,
+                        color: 'var(--aparture-mute)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      Parallel Quick-Summary Calls
+                    </label>
+                    <Input {...integerInputProps('quickSummaryConcurrency', 5, 1, 20)} />
+                    <p
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Max concurrent calls
                     </p>
                   </div>
                 </div>
