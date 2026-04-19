@@ -21,7 +21,7 @@ From top to bottom, a briefing stacks like this:
   │  Theme 2 … 5                       │
   ├────────────────────────────────────┤
   │  Hallucination audit               │  verdict + flagged claims
-  │  Generation details ▸              │  provenance disclosure
+  │  Generation details ▸              │  how this briefing was made
   └────────────────────────────────────┘
 ```
 
@@ -57,19 +57,19 @@ Paper cards are short by design — they're a triage tool, not a replacement for
 
 **Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.1-flash-lite`) in parallel during briefing synthesis. Click again to collapse.
 
-**Full report** — click <span class="ui-action">→ full report</span> to open a side panel sliding in from the right (about 55% of the viewport). This shows the full per-paper technical report from Stage 4, usually around 700–1000 words of key findings, methodology notes, and limitations. Use it when you want to understand a paper deeply without opening the PDF itself. Close with `X` or by clicking outside the panel.
+**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4, usually around 700–1000 words of key findings, methodology notes, and limitations. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
 
 ::: tip Expansions are free at read time
 Both the quick summary and the full report are generated once during the pipeline run and cached. Opening either costs nothing — no API calls, no waiting — so there's no reason to hesitate before clicking.
 :::
 
-## The two disclosure panels
+## Two smaller panels underneath
 
-Below the briefing body sit two small panels that are easy to miss but worth opening at least once.
+Below the briefing body sit two small sections that are easy to miss but worth opening at least once.
 
 ### Hallucination audit
 
-After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge with an optional "flagged claim(s) · click to view" disclosure:
+After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
 
 | Verdict                                     | Meaning                                                                                                                                  |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,7 +87,7 @@ A <span class="verdict is-no">YES</span> verdict on a major claim in the executi
 
 ### Generation provenance
 
-Below the audit is a small collapsible link: <span class="ui-action">Generation details ▸</span>. Expanding it reveals everything that went into producing this particular briefing:
+Below the audit is a small expandable link: <span class="ui-action">Generation details ▸</span>. Clicking it reveals everything that went into producing this particular briefing:
 
 | Field                   | What it carries                                                                                       |
 | ----------------------- | ----------------------------------------------------------------------------------------------------- |

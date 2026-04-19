@@ -83,12 +83,12 @@ The timeline lights up stage-by-stage. The first two run without intervention:
 1. **Fetch papers** — the arXiv API query runs against your categories.
 2. **Filter papers** — the filter model reads each paper's abstract and triages it as <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, or <span class="verdict is-no">NO</span>, batched and parallelised for speed.
 
-When the filter finishes, the pipeline parks at its first review gate. The main area shows three buckets of papers, each card carrying a one-sentence summary and a short justification, plus a clickable verdict pill you can use to move the paper between buckets.
+When the filter finishes, the pipeline parks at its first review gate. The main area shows three buckets of papers, each card carrying a one-sentence summary and a short justification, plus a clickable verdict button you can use to move the paper between buckets.
 
 Take a minute to scan what landed where. If something you'd clearly want is in <span class="verdict is-no">NO</span>, click its pill to move it to <span class="verdict is-maybe">MAYBE</span> or <span class="verdict is-yes">YES</span>; similarly if something in <span class="verdict is-yes">YES</span> is obviously a miss. Every override gets logged as a `filter-override` feedback event, which reroutes that paper to scoring on this run and also feeds the [Suggest Improvements](/using/refining-over-time) flow later on.
 
 ::: tip First-run habit
-A quick scan is plenty on this run. If something's obviously in the wrong bucket, click its verdict pill to move it; if not, <span class="ui-action">Continue to scoring →</span> is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
+A quick scan is plenty on this run. If something's obviously in the wrong bucket, click its verdict button to move it; if not, <span class="ui-action">Continue to scoring →</span> is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
 :::
 
 ## 6. Scoring and PDF analysis

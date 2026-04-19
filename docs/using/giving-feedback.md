@@ -1,12 +1,10 @@
 # Giving feedback
 
-Feedback is how Aparture learns what you actually care about over time. Small signals — stars, dismisses, comments, filter overrides — accumulate into a store that the [Suggest Improvements](/using/refining-over-time) flow reads later to propose profile edits. None of this is required to get usable briefings on day one, but it's the main way the system evolves past your starter profile.
+Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts — build up quietly as you use the tool. Later on, you can hand them to the flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per-change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile text.
 
-This page covers the five feedback types, where each one lives in the UI, and how their semantics differ.
+This page walks through the five kinds of feedback Aparture supports, where each one lives in the interface, how they differ in behaviour, and how much feedback you typically need before the refinement flow is worth running. The related page on [refining over time](/using/refining-over-time) goes deeper on the refinement step itself.
 
 ## The five feedback types
-
-There are five kinds of feedback signal. Each has a specific job.
 
 <div class="landing-cards">
 
@@ -14,7 +12,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### ★ Star
 
-*Latest-wins, per paper.* "This paper is important to me." Tied to the paper by arXiv ID. Stars given *before* a briefing's synthesis shape its "why it matters" paragraph; stars given afterwards persist on the paper and feed Suggest-Improvements as aggregate signal.
+Your way of saying "this one matters to me". Stars you give before a briefing writes make the paper get more attention in the editorial treatment; starring a paper on a briefing you're already reading doesn't retroactively change it, but the star is kept against that paper and becomes input to the refinement flow.
 
 </div>
 
@@ -22,7 +20,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### ⊘ Dismiss
 
-*Latest-wins, per paper.* "This paper is not what I want." Same semantics as star: a dismiss given before synthesis deprioritises the paper in the current briefing; dismisses given afterwards persist on the paper and accumulate as a "profile may be too broad here" signal for Suggest-Improvements.
+The opposite of star: "this one isn't for me". Before a briefing writes, it pushes the paper lower in the treatment. Afterwards, it accumulates as a "my profile might be too broad here" signal for the refinement flow.
 
 </div>
 
@@ -30,7 +28,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### 💬 Paper comment
 
-*Append-only, per paper.* "Here's my thought on this specific paper." Comments given before synthesis get woven into the current briefing's "why it matters" paragraph; comments given afterwards accumulate as signal for Suggest-Improvements (where they're among the strongest inputs the flow sees — specific, varied, paper-grounded). Every comment is a new entry — old comments never get overwritten.
+A short note about one specific paper. Comments you leave before a briefing writes get woven into that paper's *why it matters* paragraph; comments you leave afterwards don't change what you're reading, but they're among the strongest inputs the refinement flow has — specific, varied, paper-grounded.
 
 </div>
 
@@ -38,7 +36,7 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### 💬 General comment
 
-*Append-only, profile-level.* "Here's a note that isn't tied to one paper." Profile-level observations like "I'm shifting focus to Bayesian methods this month." Lives in the Feedback panel under Profile.
+A note that isn't about any one paper. Examples: *"I'm shifting focus to Bayesian methods this month"*, or *"stop recommending vision-only papers"*. General comments go to the refinement flow as profile-wide cues rather than paper-level ones.
 
 </div>
 
@@ -46,108 +44,103 @@ There are five kinds of feedback signal. Each has a specific job.
 
 ### ⇄ Filter override
 
-*Latest-wins, per paper.* "The quick filter got this verdict wrong." Only available at Gate 1 (the pause after filtering). Flows into Suggest-Improvements as scope-calibration: *too narrow* (<span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span>) or *too broad* (<span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span>).
+A correction on the filter's <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> call for a specific paper. Only available at Gate 1, the pause after the filter runs. Moving a paper from <span class="verdict is-no">NO</span> to <span class="verdict is-yes">YES</span> tells the refinement flow your profile might be too narrow on that kind of work; moving <span class="verdict is-yes">YES</span> to <span class="verdict is-no">NO</span> says it might be too broad.
 
 </div>
 
 </div>
 
-All five feed the same feedback store (persisted to `aparture-feedback` localStorage). Suggest-Improvements reads the entire store when generating a revised profile.
+Every signal feeds into one local feedback store. When you trigger the refinement flow, it reads everything in the store when deciding what edits to propose.
 
 ## Where each one appears
 
-### Star and dismiss — paper cards
+### Stars and dismisses live on paper cards
 
-Stars and dismisses appear on every paper card that shows paper-level controls, in three places:
+Any paper card in Aparture carries a <span class="ui-action">☆ star</span> and a <span class="ui-action">⊘ dismiss</span> button. You'll see them in three places:
 
-- **Analysis Results list** (Pipeline view) — as soon as Stage 4 finishes, each card has <span class="ui-action">☆ star</span> and <span class="ui-action">⊘ dismiss</span> buttons. Available as soon as deep analysis completes; you don't need to wait for the briefing.
-- **Briefing paper cards** — same two buttons in the rendered briefing. Synthesis only saw feedback that existed *at synthesis time*, so toggling here doesn't change what you're reading. The feedback accumulates on the paper and feeds Suggest-Improvements, which is how today's feedback reaches tomorrow's briefings.
-- **Filter results list** (when the pipeline pauses at Gate 1) — each paper has the three verdict pills (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>) and, once scoring completes, the star/dismiss affordances.
+- **Analysis Results list** (Pipeline view). As soon as the PDF-analysis stage finishes, each card is fully interactive; you don't have to wait for the briefing to write before marking papers.
+- **Paper cards inside a briefing.** Same two buttons in the rendered briefing. The briefing itself was written from whatever signals existed when synthesis ran, so marking papers here doesn't change what you're reading — the feedback feeds the refinement flow instead.
+- **Filter results** at Gate 1. Once scoring has run on a given paper, its card gets the star and dismiss buttons too.
 
-Clicking <span class="ui-action">☆ star</span> turns it into <span class="ui-action">★ starred</span> (filled, amber). Clicking again unstars. Dismiss works the same way: <span class="ui-action">⊘ dismiss</span> → <span class="ui-action">⊘ dismissed</span> → click to reverse.
+Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way.
 
-### Paper comments — the + comment button on paper cards
+### Paper comments live on the + comment button
 
-Every paper card also has a <span class="ui-action">+ comment</span> button. Clicking it reveals a small textarea ("Your thoughts on this paper…") and a Save/Cancel pair. Type, save, and the comment is stored against that paper.
+Every paper card also has a <span class="ui-action">+ comment</span> button. Clicking it opens a small text box labelled *"Your thoughts on this paper…"*, with <span class="ui-action">Save</span> and <span class="ui-action">Cancel</span>. Save, and the comment is attached to that paper from then on.
 
-Comments given before synthesis get pulled into the synthesis prompt — the "why it matters" paragraph will often quote or reference them. A comment like "skeptical of the evaluation" gets acknowledged in the framing; "want to compare with last week's approach" shapes how the paper is positioned. Comments given on the rendered briefing don't affect it retroactively, but they accumulate as signal for the Suggest-Improvements flow, where specific paper-grounded comments are among the richest inputs it sees.
+Comments given before a briefing writes get quoted or paraphrased in that paper's *why it matters* paragraph. A comment like *"skeptical of the evaluation"* usually gets acknowledged in the framing; *"want to compare with last week's approach"* shapes how the paper gets positioned. Comments you leave on a briefing you're reading don't change it, but they feed the refinement flow, where a well-placed comment is one of the clearest signals it has.
 
-### General comments — the Feedback panel
+### General comments live in the Feedback panel
 
-General comments are notes that aren't tied to one paper: "I'm shifting focus to Bayesian methods this month", or "Stop recommending vision-only papers." They live in the **Feedback panel** under the Profile view.
+Every briefing view has a section at the bottom of the main area labelled **Feedback**. Scroll past the briefing itself to find it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — *"General comment on this week's briefing or your research interests…"* — for notes that aren't tied to any one paper.
 
-To add one, navigate to <span class="ui-action">Profile</span> in the sidebar, scroll to the **Feedback** panel, find the **General comment** textarea, type, and save. General comments flow into Suggest-Improvements as profile-level signal rather than per-paper signal.
+These are often the most useful kind of signal for the refinement flow because they describe intent directly. They're also how you tell the system about a shift in focus, a frustration with a recent briefing's emphasis, or a direction you want your reading to go.
 
-### Filter overrides — the verdict pills at Gate 1
+### Filter overrides live on the verdict buttons at Gate 1
 
-When the pipeline pauses after the quick filter, each paper in the filter results has three clickable verdict pills: <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, <span class="verdict is-no">NO</span>. The current verdict is highlighted; the others are transparent-bordered.
+When the pipeline pauses at Gate 1, each paper in the filter results has three clickable buttons for the filter's verdict: <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, <span class="verdict is-no">NO</span>. The current verdict is filled in; the other two are outlined. Clicking a different one switches the paper to that bucket, and a small `⇄` appears on the new choice to mark it as an override.
 
-Click a pill to switch the verdict. If you change it from the filter's original verdict, a small `⇄` arrow appears on the active pill to indicate override; hovering reveals a tooltip with the original vs. current state.
+Every override is recorded as a scope signal. Moving a paper from <span class="verdict is-no">NO</span> to <span class="verdict is-yes">YES</span> tells the refinement flow your profile is probably too narrow in that area; <span class="verdict is-yes">YES</span> to <span class="verdict is-no">NO</span> suggests it's too broad. <span class="verdict is-maybe">MAYBE</span> overrides tell it where the line is ambiguous.
 
-Each override is recorded as a `filter-override` feedback event. These are scope-calibration signals: moving <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> means the profile may be too narrow on that dimension, and moving <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span> means it may be too broad. Suggest-Improvements treats them that way.
+Overrides only work at this stage. Once you continue to scoring, the buttons deactivate.
 
-Overrides only make sense before you continue to scoring — once the pipeline moves past Gate 1, the pills disable.
+## How the different types behave
 
-## Latest-wins vs. append-only semantics
+Stars, dismisses, and filter overrides are togglable: only the most recent state matters. If you star a paper, unstar it, then star it again, the refinement flow sees that it's currently starred. The intermediate states are kept in history but don't count as signal on their own.
 
-There are two semantic models at work, and the distinction matters in practice.
-
-Stars, dismisses, and filter overrides are **latest-wins per paper**. If you star a paper, un-star it, then star it again, only the most recent state matters. Internally the store keeps the event history, but when Suggest-Improvements asks "is this paper starred?", it sees the latest state.
-
-Paper comments and general comments are **append-only**. Every comment is a new entry. If you comment "interesting method" on Monday and "but the evaluation is thin" on Tuesday, the system keeps both — and Suggest-Improvements sees both, in chronological order.
+Comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave *"interesting method"* on Monday and *"but the evaluation is thin"* on Tuesday, the flow sees both, in order.
 
 ::: tip Practical consequence
-Stars and dismisses are cheap: you can toggle them freely because only the current state counts. Comments are durable: they accumulate, so they have a longer shadow on the profile. A useful habit is staying loose with the votes and thoughtful with the comments.
+Toggle stars and dismisses freely; only the current state counts, so there's no cost to changing your mind. Leave comments a bit more deliberately — they accumulate, so their effect on the profile over time is longer-lasting.
 :::
 
 ## The Feedback panel
 
-Under the <span class="ui-action">Profile</span> view, you'll find a panel labelled **Feedback** with a count badge (e.g. "12 new / 47 total"). This is your central view of every signal you've ever left. It has four parts.
+The Feedback panel is the central view for everything you've marked across all runs. It sits at the bottom of every briefing, just below the NotebookLM card. It has four parts.
 
-### Header and Suggest button
+### Counts and the Suggest button
 
-The header shows counts of new versus total events. *New* means events since the last time you ran Suggest-Improvements — as you accumulate feedback, the new count grows. The <span class="ui-action">Suggest improvements</span> button opens the SuggestDialog (see [Refining over time](/using/refining-over-time)).
+The top of the panel shows two counts: *new* events since the last time you ran the refinement flow, and *total* events ever recorded. *New* grows as you feed back and resets when you run the flow. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
 
-### General comment input
+The same button also appears on the Profile page in its own card, right next to your profile text. Either trigger opens the same flow.
 
-A textarea at the top lets you add a general comment without tying it to a paper. This is where profile-level observations go — "This briefing felt off", "I want more statistics papers", and so on.
+### The general comment field
+
+The <span class="ui-action">+ Add a comment</span> button expands a larger text box for adding a general comment from the briefing view. This is the only place in the app where general comments can be added.
 
 ### Filters
 
-- **Type filter** — dropdown: All types / Stars / Dismissals / Comments / Overrides. Useful for reviewing just one kind of signal.
-- **New feedback only** — checkbox. When checked, shows only events since the last Suggest call.
-- **Date range** — All time / Last week / Last 30 days / etc.
+Three controls for narrowing the timeline below:
 
-### Timeline
+- A **Type** menu: all types, stars, dismisses, comments, or overrides.
+- A **New only** toggle: show only events since the last time you ran the refinement flow.
+- A **Date range** menu: all time, last week, last 30 days, and so on.
 
-A chronological list of every feedback event, most recent first. Each entry shows:
+### The timeline
 
-- Timestamp (date + time).
-- An icon for the type: ★ star, ⊘ dismiss, 💬 comment, ⇄ override.
-- The paper title (for paper-scoped events) or the comment text (for general comments).
-- Metadata: paper score, briefing date the event came from.
+A chronological list of every feedback event, most recent first. Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, ⇄), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
 
-The timeline is useful both for orienting ("what have I been marking?") and for catching patterns ("I keep dismissing interpretability papers — maybe the profile needs adjusting there").
+The timeline is useful for two things: reminding yourself what you've been marking, and spotting patterns you hadn't noticed. *"I keep dismissing interpretability papers"* is often a hint the profile is a little off in that area.
 
 ## How much feedback is enough?
 
-Suggest-Improvements works from the aggregate of all your feedback — filter overrides, stars, dismisses, paper comments, general comments — so what matters is *how much signal* the store holds, not how long you've been using Aparture. A rough guide:
+The refinement flow works from the aggregate of everything you've given it — all five types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
 
-| Aggregate volume                    | What to expect from Suggest-Improvements                                                                          |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Fewer than ~10 events total         | Thin. Proposals tend to be vague or come back with a "no clear change" reason.                                    |
-| ~10–30 events across a mix of types | Usually enough for concrete, defensible edits — especially if at least a few comments are in the mix.             |
-| 30+ events including comments       | Rich enough that proposals can cite specific reactions you've had and propose targeted additions or exclusions.   |
+| Aggregate volume                    | What to expect from the refinement flow                                                                          |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Fewer than ~10 events total         | Thin. Proposals tend to be vague, or the flow comes back with a "no clear change" reason.                        |
+| ~10–30 events across a mix of types | Usually enough for concrete, defensible edits — especially if a few comments are in the mix.                     |
+| 30+ events including comments       | Rich enough that proposals can cite specific reactions and recommend targeted additions or exclusions.           |
 
-Volume isn't tied to elapsed time. A heavy first-day session with a dozen filter overrides, half a dozen stars, and a few general comments gives Suggest-Improvements plenty to work with, and proposing profile edits right away is fine. Conversely, two weeks of barely-engaged briefings can still be thin. The Feedback panel header shows total counts — glance at it before running Suggest.
+This isn't a time thing. A heavy first-day session — say a dozen filter overrides, half a dozen stars, and a couple of general comments — gives the flow plenty to work with, so running it that day is fine. Two quiet weeks of barely-engaged briefings might still be too thin.
 
-One more factor beyond raw volume: **diversity of signal**. All stars and no dismisses, or all overrides and no comments, leaves Suggest-Improvements with less to reason about than a mix that includes each type. If the panel shows lots of signal but the proposals still feel thin, try adding a general comment or two to the mix before running again.
+Diversity matters as much as raw volume. All stars and no dismisses, or all overrides and no comments, leaves the flow with less to reason about than a mix across types. If the store is full but the proposals feel light, adding a general comment or two before running the flow again often helps.
 
 ## Next
 
-[Writing a good profile →](/using/writing-a-profile) — turn everything you've now marked as yes/no feedback into a profile the pipeline can reason about up-front.
+[Writing a good profile →](/using/writing-a-profile) — turn the signals you've been marking into a profile the pipeline can reason about more directly.
 
 Also worth reading:
 
-- You want to use accumulated feedback to refine your profile. → [Refining over time](/using/refining-over-time)
+- Go deeper on the refinement flow itself. → [Refining over time](/using/refining-over-time)
 - The two pause gates are slowing your runs and you want to adjust them. → [Review gates](/using/review-gates)
