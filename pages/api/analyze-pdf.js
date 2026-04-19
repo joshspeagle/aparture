@@ -325,7 +325,9 @@ export default async function handler(req, res) {
       const { cachePrefix, variableTail } = await loadRubricPrompt(
         'rubric-pdf.md',
         { profile: scoringCriteria ?? '' },
-        { originalScore: String(originalScore) }
+        // Guard against `originalScore` being absent — String(undefined)
+        // would otherwise substitute the literal "undefined" into the prompt.
+        { originalScore: String(originalScore ?? '') }
       );
       const cacheable = provider === 'anthropic';
       // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based

@@ -154,6 +154,58 @@ describe('pipeline — parallel rescoring (Stage 3.5)', () => {
     }
   );
 
+  test(
+    'Anthropic scoringModel: warmup barrier fires based on scoringModel, not postProcessingModel',
+    { timeout: 30000 },
+    async () => {
+      // Regression guard: the rescore route dispatches `config.scoringModel`
+      // (not postProcessingModel), so the cache-warmup provider check must
+      // use scoringModel too. Setting postProcessingModel to a non-Anthropic
+      // provider catches a regression where the warmup lookup falls back to
+      // postProcessingModel.
+      setupStore({
+        scoringModel: 'claude-haiku-4.5',
+        postProcessingModel: 'gemini-3-flash',
+        postProcessingConcurrency: 3,
+        postProcessingBatchSize: 1,
+        postProcessingCount: 5,
+      });
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
+
+      let inFlight = 0;
+      const inFlightHistory = [];
+
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          return buildScoredBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && url.includes('/api/rescore-abstracts')) {
+          inFlight += 1;
+          inFlightHistory.push(inFlight);
+          await new Promise((r) => setTimeout(r, 30));
+          inFlight -= 1;
+          return buildRescoreBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
+          return buildPDFResponse(8.0, body.title ?? 'paper');
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+
+      // Warmup must fire (first call alone) because scoringModel is Anthropic,
+      // regardless of postProcessingModel being Google.
+      expect(inFlightHistory[0]).toBe(1);
+      expect(Math.max(...inFlightHistory)).toBeGreaterThanOrEqual(2);
+    }
+  );
+
   test('dry-run forces serial rescoring regardless of config', { timeout: 15000 }, async () => {
     setupStore({
       postProcessingConcurrency: 10,

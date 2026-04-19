@@ -113,4 +113,31 @@ describe('loadRubricPrompt', () => {
     expect(variableTail).toContain('Papers to score:');
     expect(fullPrompt).toBe(cachePrefix + variableTail);
   });
+
+  // Regression guard: verifies that every shipped rubric places `{{profile}}`
+  // on the cache-stable side of the boundary, and the per-batch variable
+  // content (papers, originalScore) on the variable side. Catches a future
+  // edit that accidentally moves the {{profile}} placeholder below the
+  // boundary — which would break Anthropic prompt caching even though the
+  // byte-exact invariant still holds.
+  test.each([
+    { file: 'rubric-filter.md', varKey: 'papers', varValue: 'PAPERS_MARKER' },
+    { file: 'rubric-scoring.md', varKey: 'papers', varValue: 'PAPERS_MARKER' },
+    { file: 'rubric-rescoring.md', varKey: 'papers', varValue: 'PAPERS_MARKER' },
+    { file: 'rubric-pdf.md', varKey: 'originalScore', varValue: 'SCORE_MARKER' },
+  ])(
+    '$file: profile lands in cachePrefix, variable vars land in variableTail',
+    async ({ file, varKey, varValue }) => {
+      const { cachePrefix, variableTail } = await loadRubricPrompt(
+        file,
+        { profile: 'PROFILE_MARKER' },
+        { [varKey]: varValue }
+      );
+
+      expect(cachePrefix).toContain('PROFILE_MARKER');
+      expect(cachePrefix).not.toContain(varValue);
+      expect(variableTail).toContain(varValue);
+      expect(variableTail).not.toContain('PROFILE_MARKER');
+    }
+  );
 });

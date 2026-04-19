@@ -149,6 +149,52 @@ describe('pipeline — parallel filter (Stage 2)', () => {
   );
 
   test(
+    'Anthropic filterModel: warmup barrier serializes first call, then parallelism kicks in',
+    { timeout: 30000 },
+    async () => {
+      setupStore({
+        filterModel: 'claude-haiku-4.5',
+        scoringModel: 'claude-haiku-4.5',
+        filterConcurrency: 3,
+        filterBatchSize: 1,
+      });
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
+
+      let inFlight = 0;
+      const inFlightHistory = [];
+
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/quick-filter')) {
+          inFlight += 1;
+          inFlightHistory.push(inFlight);
+          await new Promise((r) => setTimeout(r, 30));
+          inFlight -= 1;
+          return buildFilterBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          return buildScoredBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
+          return buildPDFResponse(8.0, body.title ?? 'paper');
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+
+      // First dispatch must see inFlight === 1 (warmup alone)
+      expect(inFlightHistory[0]).toBe(1);
+      // Later dispatches should see overlap once warmup releases
+      expect(Math.max(...inFlightHistory)).toBeGreaterThanOrEqual(2);
+    }
+  );
+
+  test(
     'dry-run forces serial filter execution regardless of config',
     { timeout: 15000 },
     async () => {

@@ -126,6 +126,46 @@ describe('pipeline — parallel scoring (Stage 3)', () => {
     }
   );
 
+  test(
+    'Anthropic scoringModel: warmup barrier serializes first call, then parallelism kicks in',
+    { timeout: 30000 },
+    async () => {
+      setupStore({
+        scoringModel: 'claude-haiku-4.5',
+        scoringConcurrency: 3,
+        scoringBatchSize: 1,
+      });
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
+
+      let inFlight = 0;
+      const inFlightHistory = [];
+
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          inFlight += 1;
+          inFlightHistory.push(inFlight);
+          await new Promise((r) => setTimeout(r, 30));
+          inFlight -= 1;
+          return buildScoredBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
+          return buildPDFResponse(8.0, body.title ?? 'paper');
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+
+      expect(inFlightHistory[0]).toBe(1);
+      expect(Math.max(...inFlightHistory)).toBeGreaterThanOrEqual(2);
+    }
+  );
+
   test('dry-run forces serial scoring regardless of config', { timeout: 15000 }, async () => {
     setupStore({ scoringConcurrency: 10, scoringBatchSize: 1 });
 
