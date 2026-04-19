@@ -300,7 +300,7 @@ Free-tier OpenAI accounts (approximately 3 RPM on GPT-5.4-class models) will 429
 
 **Google 429** (`google request failed (429)` with `RESOURCE_EXHAUSTED`). The error body names the exhausted quota. Google's free tier is 60 RPM across all models per API key — the default pipeline (filter batches + scoring + PDF analysis + quick-summary fan-out) can exceed this on a medium run. Enable quick-filter to reduce downstream calls, reduce batch sizes, or move to a paid tier.
 
-**429 specifically during Stage 3 (PDF analysis).** Aparture runs PDF analyses in parallel with a default concurrency of 3 (`pdfAnalysisConcurrency`). If 429s land on PDF calls specifically, drop Settings → Parallel PDF analyses from 3 to 2 or 1. If your tier is generous and the stage feels slow, you can raise it up to 20.
+**429 specifically during Stage 4 (PDF analysis).** Aparture runs PDF analyses in parallel with a default concurrency of 3 (`pdfAnalysisConcurrency`). If 429s land on PDF calls specifically, drop Settings → Parallel PDF analyses from 3 to 2 or 1. If your tier is generous and the stage feels slow, you can raise it up to 20.
 
 **429 during briefing prep (quick-summary fan-out).** The briefing stage fans out quick-summary calls with default concurrency 5 (`quickSummaryConcurrency`). If 429s land there, drop Settings → Parallel calls in the Briefing section.
 
@@ -311,7 +311,7 @@ Free-tier OpenAI accounts (approximately 3 RPM on GPT-5.4-class models) will 429
 ... FAILED_PRECONDITION ...
 ```
 
-Prompt + content exceeded the model's context window. Most common on Stage 3 PDF analysis with large papers and a small-context model.
+Prompt + content exceeded the model's context window. Most common on Stage 4 PDF analysis with large papers and a small-context model.
 
 Switch `pdfModel` in Settings to a larger-context model:
 
@@ -332,7 +332,7 @@ Aparture doesn't yet surface real-time spend. To check during a run:
 Common drivers:
 
 - **Correction loops.** A malformed-JSON response can trigger up to 12 LLM calls per batch in the worst case (2 backend corrections × 3 client retries × 2 extra backend calls). Repeated `validation failed` in the terminal suggests the model is struggling — switch to a stronger slot for that stage.
-- **Premium model on Stage 3.** Claude Opus on 100 PDFs is expensive. [Model selection](/concepts/model-selection) has cheaper per-stage configs.
+- **Premium model on Stage 4.** Claude Opus on 100 PDFs is expensive. [Model selection](/concepts/model-selection) has cheaper per-stage configs.
 - **Deep analysis on too many papers.** Lower `maxDeepAnalysis` (default 30).
 
 ### Stuck stage
@@ -475,4 +475,4 @@ Include:
 
 ---
 
-_Snapshot taken 2026-04-18. Provider error-code tables reflect Anthropic, OpenAI, and Google documentation as of that date. Rate-limit specifics and free-tier quotas may have shifted since._
+_Snapshot taken 2026-04-19. Provider error-code tables reflect Anthropic, OpenAI, and Google documentation as of that date. Rate-limit specifics and free-tier quotas may have shifted since._
