@@ -69,15 +69,15 @@ Below the briefing body sit two affordances that are easy to miss but worth know
 
 ### Hallucination audit
 
-After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict pill with an optional "flagged claim(s) · click to view" disclosure:
+After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge with an optional "flagged claim(s) · click to view" disclosure:
 
-| Verdict   | Pill  | Meaning                                                                                                                                  |
+| Verdict   | Badge | Meaning                                                                                                                                  |
 | --------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **NO**    | Green | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                          |
 | **MAYBE** | Amber | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list.       |
 | **YES**   | Red   | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                                  |
 
-If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (both default on), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict pill shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
+If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (both default on), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
 
 The flagged-claims list shows each excerpt, the paper it's about (by arXiv ID), and what the auditor's concern was. At a glance you can usually tell whether a flag is a real hallucination or a paraphrase the auditor was too strict about.
 
@@ -93,7 +93,7 @@ Below the audit is a small collapsible link: **Generation details ▸**. Expandi
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | **Profile snapshot**      | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable)      |
 | **Models**                | Model IDs used at each stage: filter, scoring, PDF analysis, briefing, quick summary                       |
-| **Categories**            | arXiv categories selected for the run, as pill badges                                                      |
+| **Categories**            | arXiv categories selected for the run, as small badges                                                     |
 | **Filter verdicts**       | YES / MAYBE / NO counts from the quick-filter stage                                                        |
 | **Settings flags**        | Whether pause gates and retry checks were on or off                                                        |
 | **Hallucination audit**   | Full verdict, flagged claims, and the auditor's justification prose                                        |
