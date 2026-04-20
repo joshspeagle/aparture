@@ -71,9 +71,10 @@ export default async function handler(req, res) {
   } = req.body ?? {};
 
   // Resolve provider from model registry (needed before auth to pick env key)
-  const modelConfig = MODEL_REGISTRY[model];
+  const modelToUse = model || 'gemini-3-flash';
+  const modelConfig = MODEL_REGISTRY[modelToUse];
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
-  const modelApiId = modelConfig?.apiId ?? model;
+  const modelApiId = modelConfig?.apiId ?? modelToUse;
 
   // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
   let apiKey = clientApiKey;
@@ -93,6 +94,11 @@ export default async function handler(req, res) {
   const callMode = callModelMode ?? { mode: 'live' };
   const isFixture = callMode.mode === 'fixture';
   const cacheable = provider === 'anthropic';
+
+  // Early return if no papers to score (used by App.jsx to verify password during login)
+  if (!papers || papers.length === 0) {
+    return res.status(200).json({ scores: [], rawResponse: '[]' });
+  }
 
   try {
     let responseText;

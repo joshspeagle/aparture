@@ -89,9 +89,10 @@ export default async function handler(req, res) {
   } = req.body ?? {};
 
   // Resolve provider from model registry (needed before auth to pick env key)
-  const modelConfig = MODEL_REGISTRY[model];
+  const modelToUse = model || 'gemini-3-flash';
+  const modelConfig = MODEL_REGISTRY[modelToUse];
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
-  const modelApiId = modelConfig?.apiId ?? model;
+  const modelApiId = modelConfig?.apiId ?? modelToUse;
 
   // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
   let apiKey = clientApiKey;
