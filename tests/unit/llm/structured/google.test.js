@@ -31,6 +31,71 @@ describe('buildGoogleRequest', () => {
     });
   });
 
+  it('strips additionalProperties and $schema/$id/$ref from responseSchema (v1beta does not support them)', () => {
+    const req = buildGoogleRequest({
+      model: 'gemini-3-flash',
+      prompt: 'p',
+      apiKey: 'KEY',
+      structuredOutput: {
+        name: 'filter_response',
+        schema: {
+          $schema: 'https://json-schema.org/draft/2020-12/schema',
+          $id: 'https://example.com/filter',
+          type: 'object',
+          additionalProperties: false,
+          required: ['verdicts'],
+          properties: {
+            verdicts: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['paperIndex'],
+                properties: { paperIndex: { type: 'integer' } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const schema = req.body.generationConfig.responseSchema;
+    // additionalProperties is stripped (v1beta responseSchema still rejects it)
+    expect(schema.additionalProperties).toBeUndefined();
+    expect(schema.properties.verdicts.items.additionalProperties).toBeUndefined();
+    // $schema and $id are stripped
+    expect(schema.$schema).toBeUndefined();
+    expect(schema.$id).toBeUndefined();
+    // Structural fields preserved
+    expect(schema.required).toEqual(['verdicts']);
+    expect(schema.properties.verdicts.items.required).toEqual(['paperIndex']);
+    expect(schema.properties.verdicts.items.properties.paperIndex.type).toBe('integer');
+  });
+
+  it('converts ["T","null"] type unions to nullable: true (OpenAPI-3.0 subset)', () => {
+    const req = buildGoogleRequest({
+      model: 'gemini-3-flash',
+      prompt: 'p',
+      apiKey: 'KEY',
+      structuredOutput: {
+        name: 'suggest_profile',
+        schema: {
+          type: 'object',
+          properties: {
+            noChangeReason: { type: ['string', 'null'] },
+            value: { type: ['number', 'null'] },
+            plain: { type: 'string' },
+          },
+          required: ['noChangeReason', 'value', 'plain'],
+        },
+      },
+    });
+    const schema = req.body.generationConfig.responseSchema;
+    expect(schema.properties.noChangeReason).toEqual({ type: 'string', nullable: true });
+    expect(schema.properties.value).toEqual({ type: 'number', nullable: true });
+    // Non-union type left alone
+    expect(schema.properties.plain).toEqual({ type: 'string' });
+  });
+
   it('produces a single text part when no pdfBase64', () => {
     const req = buildGoogleRequest({
       model: 'gemini-2.5-flash',

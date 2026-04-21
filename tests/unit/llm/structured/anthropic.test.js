@@ -16,7 +16,7 @@ describe('buildAnthropicRequest', () => {
     expect(req.body.tools).toBeUndefined();
   });
 
-  it('uses tool_choice auto with structured output (required by thinking)', () => {
+  it('uses tool_choice auto with structured output on Opus (thinking enabled)', () => {
     const req = buildAnthropicRequest({
       model: 'claude-opus-4-7',
       prompt: 'Summarize.',
@@ -28,12 +28,31 @@ describe('buildAnthropicRequest', () => {
     });
     expect(req.body.tools).toHaveLength(1);
     expect(req.body.tools[0].name).toBe('summary');
+    // strict: true enables grammar-constrained sampling so tool inputs
+    // exactly match the schema (no `"2"` vs `2` type drift).
+    expect(req.body.tools[0].strict).toBe(true);
     expect(req.body.tools[0].input_schema).toEqual({
       type: 'object',
       properties: { headline: { type: 'string' } },
     });
     // Thinking requires tool_choice "auto" — "tool" is not supported
     expect(req.body.tool_choice).toEqual({ type: 'auto' });
+  });
+
+  it('disables thinking and forces tool_choice on Haiku (thinking unsupported)', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-haiku-4-5',
+      prompt: 'Summarize.',
+      structuredOutput: {
+        name: 'summary',
+        schema: { type: 'object', properties: { headline: { type: 'string' } } },
+      },
+    });
+    // No thinking block — Haiku models reject adaptive thinking.
+    expect(req.body.thinking).toBeUndefined();
+    // With thinking off, forced tool_choice is allowed and used for
+    // guaranteed structured output.
+    expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
   });
 
   it('defaults max_tokens to 16000 for thinking overhead', () => {

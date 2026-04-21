@@ -18,6 +18,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Full walkthrough: [Getting Started →](https://joshspeagle.github.io/aparture/getting-started/install)
 
+> **On ARM64 (Apple Silicon, Linux ARM, Windows ARM)?** `npm install` mostly works, but `npm test` may fail with `Cannot find module '@rolldown/binding-*'` due to an npm optional-deps bug. Fix with `npm install --no-save @rolldown/binding-<your-platform>` — see [troubleshooting → rolldown binding](https://joshspeagle.github.io/aparture/reference/troubleshooting#npm-install-failures).
+
 ## Documentation
 
 [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — complete docs.

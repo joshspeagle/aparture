@@ -1,0 +1,60 @@
+{
+  "hash": "24f8e8dbddca093c7701806b801ff77a",
+  "input": {
+    "apiKey": null,
+    "cachePrefix": "",
+    "cacheable": false,
+    "model": "claude-haiku-4-5",
+    "prompt": "SCORE_ABSTRACTS_TEST_FIXTURE",
+    "provider": "anthropic",
+    "structuredOutput": {
+      "name": "scoring_response",
+      "description": "Aparture batch paper scoring results",
+      "schema": {
+        "type": "object",
+        "required": ["scores"],
+        "additionalProperties": false,
+        "properties": {
+          "scores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["paperIndex", "score", "justification"],
+              "additionalProperties": false,
+              "properties": {
+                "paperIndex": {
+                  "type": "integer"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "justification": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "text": "",
+    "structured": {
+      "scores": [
+        {
+          "paperIndex": 1,
+          "score": 7.5,
+          "justification": "Paper A directly addresses interpretability concerns relevant to the stated research focus."
+        },
+        {
+          "paperIndex": 2,
+          "score": 5,
+          "justification": "Paper B has tangential relevance through neural network analysis methodologies."
+        }
+      ]
+    },
+    "tokensIn": 150,
+    "tokensOut": 80
+  }
+}

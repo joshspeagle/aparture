@@ -33,6 +33,7 @@ function checkBriefingJsonSchema() {
   return {
     type: 'object',
     required: ['verdict', 'justification', 'flaggedClaims'],
+    additionalProperties: false,
     properties: {
       verdict: { type: 'string', enum: ['YES', 'MAYBE', 'NO'] },
       justification: { type: 'string' },
@@ -41,6 +42,7 @@ function checkBriefingJsonSchema() {
         items: {
           type: 'object',
           required: ['excerpt', 'paperArxivId', 'concern'],
+          additionalProperties: false,
           properties: {
             excerpt: { type: 'string' },
             paperArxivId: { type: 'string' },

@@ -98,6 +98,30 @@ describe('buildOpenAIResponsesRequest', () => {
       },
       { type: 'input_text', text: 'Analyze this paper.' },
     ]);
+    expect(req.body.text).toBeUndefined();
+  });
+
+  it('adds text.format.json_schema when structuredOutput is provided', () => {
+    const schema = {
+      type: 'object',
+      required: ['answer'],
+      additionalProperties: false,
+      properties: { answer: { type: 'string' } },
+    };
+    const req = buildOpenAIResponsesRequest({
+      model: 'gpt-5.4',
+      prompt: 'p',
+      pdfBase64: 'CCCC',
+      structuredOutput: { name: 'paper_analysis', schema },
+    });
+    expect(req.body.text).toEqual({
+      format: {
+        type: 'json_schema',
+        name: 'paper_analysis',
+        strict: true,
+        schema,
+      },
+    });
   });
 });
 
@@ -135,5 +159,28 @@ describe('parseOpenAIResponsesResponse', () => {
     });
     expect(out.tokensIn).toBe(0);
     expect(out.tokensOut).toBe(0);
+  });
+
+  it('parses structured JSON when expectStructured is true', () => {
+    const response = {
+      output: [
+        {
+          type: 'message',
+          content: [{ type: 'output_text', text: '{"answer":"42"}' }],
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    };
+    const out = parseOpenAIResponsesResponse(response, { expectStructured: true });
+    expect(out.structured).toEqual({ answer: '42' });
+  });
+
+  it('throws when expectStructured is true and text is not JSON', () => {
+    const response = {
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'not json' }] }],
+    };
+    expect(() => parseOpenAIResponsesResponse(response, { expectStructured: true })).toThrow(
+      /failed to parse OpenAI Responses structured output/
+    );
   });
 });

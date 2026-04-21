@@ -111,6 +111,16 @@ npm install
 - Linux: `sudo apt install -y build-essential` (or your distro's equivalent)
 - Windows native: install the Visual Studio Build Tools, C++ workload
 
+**Missing rolldown native binding (ARM64 only).** Surfaces as `npm test` failing with `Cannot find module '@rolldown/binding-linux-arm64-gnu'` (or `win32-arm64-msvc` / `darwin-arm64`). This is [npm/cli#4828](https://github.com/npm/cli/issues/4828) — npm occasionally fails to install the correct platform-specific binding from vitest's optional dependencies. Only affects vitest; `npm run dev` is fine either way.
+
+```bash
+# Direct fix for Linux ARM64 (substitute your platform slug if different):
+npm install --no-save @rolldown/binding-linux-arm64-gnu
+
+# Or reinstall from scratch:
+rm -rf node_modules package-lock.json && npm install
+```
+
 ### Playwright install failures
 
 `npx playwright install chromium` downloads a ~300 MB browser. Common failures:

@@ -166,6 +166,11 @@ If all four pass, the local setup is ready. `npm run dev` still won't work until
 
 - `Error: Cannot find module` after `nvm install`: your shell init didn't load nvm. Check that `~/.bashrc` contains the nvm block and that you sourced it (or just open a new terminal).
 - Playwright complains about `libnss3.so`: run `npx playwright install-deps chromium` (needs sudo).
+- **ARM64 only** — `npm test` fails with `Cannot find module '@rolldown/binding-linux-arm64-gnu'`: npm occasionally fails to install the correct platform-specific native binding for vitest's rolldown dependency ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). The dev server (`npm run dev`) is unaffected; only vitest needs the binding. Fix:
+  ```bash
+  npm install --no-save @rolldown/binding-linux-arm64-gnu
+  ```
+  If a plain reinstall is preferred: `rm -rf node_modules package-lock.json && npm install`. Same situation applies on Windows ARM64 (`@rolldown/binding-win32-arm64-msvc`) and macOS ARM64 (`@rolldown/binding-darwin-arm64`) if npm's optional-deps handling misses the matching binding.
 
 **Windows native**
 

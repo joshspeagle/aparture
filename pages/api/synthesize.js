@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
+import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
@@ -27,26 +28,25 @@ export default async function handler(req, res) {
     retryHint,
   } = req.body ?? {};
 
-  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
-  let apiKey = clientApiKey;
-  if (!apiKey && password) {
-    if (password !== process.env.ACCESS_PASSWORD) {
-      res.status(401).json({ error: 'invalid password' });
-      return;
-    }
-    // Pick the env key for the requested provider
-    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
-  }
-
   if (!profile || !Array.isArray(papers) || !provider || !model) {
     res.status(400).json({
       error: 'missing required fields: profile, papers[], provider, model',
     });
     return;
   }
-  if (!apiKey) {
+
+  // Resolve API key via the shared helper (validates password, picks env key
+  // by provider). This matches the pattern used by the other briefing routes
+  // (check-briefing, suggest-profile, analyze-pdf).
+  const resolved = resolveApiKey({ clientApiKey, password, provider });
+  if (resolved.error) {
+    res.status(resolved.status).json({ error: resolved.error });
+    return;
+  }
+  const apiKey = resolved.apiKey;
+  // Skip the auth check in fixture mode — fixture-based tests don't need a
+  // real key because callModel never actually hits the network.
+  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
     res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }

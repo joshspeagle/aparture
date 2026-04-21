@@ -1,0 +1,66 @@
+{
+  "hash": "49ff77423a243925ebe1422e2eb0b455",
+  "input": {
+    "apiKey": null,
+    "cachePrefix": "",
+    "cacheable": false,
+    "model": "claude-haiku-4-5",
+    "prompt": "QUICK_FILTER_TEST_FIXTURE",
+    "provider": "anthropic",
+    "structuredOutput": {
+      "name": "filter_response",
+      "description": "Aparture quick-filter batch verdicts",
+      "schema": {
+        "type": "object",
+        "required": ["verdicts"],
+        "additionalProperties": false,
+        "properties": {
+          "verdicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["paperIndex", "verdict", "summary", "justification"],
+              "additionalProperties": false,
+              "properties": {
+                "paperIndex": {
+                  "type": "integer"
+                },
+                "verdict": {
+                  "type": "string",
+                  "enum": ["YES", "NO", "MAYBE"]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "justification": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "text": "",
+    "structured": {
+      "verdicts": [
+        {
+          "paperIndex": 1,
+          "verdict": "YES",
+          "summary": "Paper A investigates AI interpretability.",
+          "justification": "Directly aligns with interpretability research interests."
+        },
+        {
+          "paperIndex": 2,
+          "verdict": "MAYBE",
+          "summary": "Paper B explores neural network behavior.",
+          "justification": "Potentially relevant to interpretability depending on methodology."
+        }
+      ]
+    },
+    "tokensIn": 100,
+    "tokensOut": 50
+  }
+}

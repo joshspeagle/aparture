@@ -16,6 +16,7 @@ Standard scripts are in `package.json` (`npm run dev|build|test|lint|format:fix`
 - `npm run analyze[:report|:document|:podcast]` — unattended browser automation (Playwright-driven, Win/Linux/WSL). Settings persist in browser localStorage; Google auth cached after first podcast run.
 - `npm run test:dryrun` — mock API test (fast, no cost)
 - `npm run test:minimal` — real API test (5 papers, minimal cost)
+- `node scripts/smoke-llm-routes.mjs` — calls every LLM-backed API route in-process against all 3 providers with minimal-cost payloads (1–2 papers, short text). Requires `.env.local` with `ACCESS_PASSWORD` + provider keys. Sets `NODE_ENV=test` so analyze-pdf uses the `_testPdfBase64` escape hatch (no real PDF download). Bills the user — keep payloads small. Flags: `--only=route1,route2`, `--providers=anthropic,google`, `--model-<provider>=<id>` (override both batch + briefing models for a provider, e.g. `--model-anthropic=claude-sonnet-4.6` to test an Opus/Sonnet thinking path), `--batch-model-<provider>=<id>` / `--briefing-model-<provider>=<id>` for split overrides. On Windows Node, must be launched via `file://` URL loader (the script's `importRoute` helper handles this automatically).
 
 ## Architecture
 
@@ -132,17 +133,52 @@ All LLM-calling routes go through `lib/llm/callModel.js` — never call a provid
 
 **Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template + profile) and variable `prompt` (per-batch content). When `cacheable: true`, the adapter emits multi-block `content` with `cache_control: {type: 'ephemeral'}` on the prefix. **Invariant:** `cachePrefix + prompt === fullRenderedPrompt` byte-for-byte — test each route's split logic against a known-good rendering. OpenAI auto-caches on repeated prefixes; Google caching is not enabled.
 
-**PDF content blocks.** All 3 adapters accept `pdfBase64`. When present: Anthropic emits a `document` block; Google emits `inlineData` in `parts`; OpenAI switches to `/v1/responses` via `buildOpenAIResponsesRequest` (different shape from Chat Completions — parses `response.output[].content[].text`, not `output_text`).
+**PDF content blocks.** All 3 adapters accept `pdfBase64`. When present: Anthropic emits a `document` block; Google emits `inlineData` in `parts`; OpenAI switches to `/v1/responses` via `buildOpenAIResponsesRequest` (different shape from Chat Completions — parses `response.output[].content[].text`, not `output_text`). OpenAI Responses structured output uses `text.format.json_schema`, not `response_format`.
+
+**Structured-output schema constraints.** The three providers disagree on which JSON Schema fields are supported. Keep schemas in the **portable subset** and enforce value constraints (count, range, length) in the server-side validator, not the schema. All Aparture routes use the same provider-portable shape:
+
+| Keyword                                                          | Anthropic strict tool_use | Google `responseSchema` (v1beta)                               | OpenAI strict json_schema                                                     |
+| ---------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `type`, `properties`, `required`, `items`, `enum`, `description` | ✅                        | ✅                                                             | ✅                                                                            |
+| `additionalProperties: false`                                    | ✅ **required**           | ❌ 400 (stripped by `sanitizeSchemaForGoogle`)                 | ✅ **required on every object**                                               |
+| `minimum`, `maximum`, `multipleOf`, `pattern`                    | ❌ stripped/400           | ✅ (`minimum`/`maximum` only)                                  | ❌ 400                                                                        |
+| `minLength`, `maxLength`                                         | ❌ stripped/400           | ❌ silently ignored                                            | ❌ 400                                                                        |
+| `minItems`, `maxItems`                                           | ❌ stripped/400           | ✅                                                             | ❌ 400                                                                        |
+| `oneOf`/`allOf`/`anyOf` at root                                  | ❌ 400                    | ❌ unsupported                                                 | n/a                                                                           |
+| Top-level `type: 'array'`                                        | ❌ object-rooted          | ❌ object-rooted                                               | ❌ **wrap in `{items: [...]}`**                                               |
+| Optional properties (not in `required`)                          | ✅                        | ✅                                                             | ❌ **all properties must be in `required`** — use `["T","null"]` for optional |
+| `["T","null"]` nullable type union                               | ✅                        | ❌ 400 (converted to `{type: T, nullable: true}` by sanitizer) | ✅ canonical OpenAI optional-field pattern                                    |
+
+**About the Google column:** Nov 2025 added native `additionalProperties` support to Gemini's newer `response_json_schema` field, but NOT to the `responseSchema` field used by our v1beta adapter — verified via live 400 error. If we ever migrate to `response_json_schema` the sanitizer should drop the `additionalProperties` strip.
+
+**Concrete portability rules for new routes:**
+
+1. Every object MUST include `additionalProperties: false`. Anthropic strict requires it, OpenAI strict 400s without it, and Google's sanitizer strips it cleanly.
+2. Every property MUST appear in `required`. For semantically optional fields, use `["string","null"]` so OpenAI strict accepts them. The zod schema should then be `z.union([z.string(), z.null()]).transform(v => v ?? '')` or similar. The Google sanitizer auto-converts `["T","null"]` → `{type: T, nullable: true}` for Google's OpenAPI subset.
+3. Top-level schema MUST be `type: 'object'`. Wrap arrays as `{items: [...]}`.
+4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce these in the server-side validator instead.
+
+**Adapter behavior:**
+
+- **Anthropic** (`lib/llm/structured/anthropic.js`): tool definition emits `strict: true` for grammar-constrained sampling. Adaptive thinking is gated on model family: enabled for Opus and Sonnet (`claude-opus-*`, `claude-sonnet-*`), disabled for Haiku (live 400: "adaptive thinking is not supported on this model"). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}` for guaranteed structured output.
+- **Google** (`lib/llm/structured/google.js`): `sanitizeSchemaForGoogle` strips `additionalProperties`, `$schema`, `$id`, `$ref`, and converts `["T","null"]` type unions to OpenAPI-3.0 `nullable: true`.
+- **OpenAI Chat Completions** (`buildOpenAIRequest`): structured output via `response_format: {type: 'json_schema', json_schema: {name, strict: true, schema}}`.
+- **OpenAI Responses API** (`buildOpenAIResponsesRequest`): used when `pdfBase64` is present. Structured output via `text.format: {type: 'json_schema', name, strict: true, schema}` (NOT `response_format`). Response parsed at `output[].content[].text` where `output[].type === 'message'`.
 
 **Cache-hit measurement.** `callModel` surfaces `cacheReadTok` / `cacheCreateTok`; dispatcher logs `[anthropic cache] read=N create=N`.
 
-**Route pattern (canonical: `pages/api/synthesize.js`):**
+**Route pattern.** Two patterns coexist depending on whether the route uses the rubric template loader (`loadRubricPrompt`) or assembles its own prompt:
 
-- Accept `apiKey` (BYOK) OR `password` (env lookup per provider), validated before body checks
-- Resolve `provider` (lowercased) from `MODEL_REGISTRY[model]?.provider` before auth
-- Compute `const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` — all three conditions required
-- Conditional spread: `...(useCaching ? { cachePrefix, cacheable: true } : {})` so fields don't appear in the fixture hash when caching is off
-- Accept `callModelMode` from body and pass as 2nd arg to `callModel`
+- **Batch routes** (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`): always pass `cachePrefix` and `cacheable` as explicit object keys (with `''` and `false` when caching is disabled). Fixture hashes therefore include these keys as empty values, but cleanly within fixture mode.
+- **Briefing routes** (`synthesize`, `check-briefing`, `suggest-profile`, `analyze-pdf-quick`): use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})` so cache fields are absent from the input when caching is off.
+
+Both patterns are consistent within their own fixture sets — the two cannot share fixtures across modes. Route requirements:
+
+- Accept `apiKey` (BYOK) OR `password` (env lookup per provider). Briefing routes use the shared `resolveApiKey()` helper; batch routes inline the same logic.
+- Resolve `provider` (lowercased) from `MODEL_REGISTRY[model]?.provider` before auth.
+- Skip the `!apiKey` 401 when `callModelMode?.mode === 'fixture'` so fixture-based tests don't need a fake key.
+- Compute `const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` — all three conditions required.
+- Accept `callModelMode` from body and pass as 2nd arg to `callModel`.
 
 ### Analyzer module split
 
@@ -176,7 +212,7 @@ Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/s
 
 **Source of truth:** `utils/models.js` (`MODEL_REGISTRY` + `AVAILABLE_MODELS`). Don't duplicate IDs/pricing here — they rot fast.
 
-**Anthropic adaptive thinking (non-obvious).** All Anthropic calls include `thinking: {type: "adaptive"}`. With thinking enabled, `tool_choice` must be `{type: "auto"}` — forced tool choice is incompatible. The model still reliably calls the provided tool. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
+**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is gated on model family — enabled for Opus/Sonnet, disabled for Haiku. When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
 
 **Not in the registry:** OpenAI o-series (`o3`, `o4-mini`) and xAI Grok. Adding Grok would need a new `lib/llm/structured/xai.js` adapter — xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
 

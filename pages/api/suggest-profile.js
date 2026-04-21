@@ -10,49 +10,73 @@ import {
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 // Zod schema for the per-hunk suggested profile structured output.
+// `content` and `noChangeReason` are nullable rather than optional: OpenAI
+// strict json_schema does not support optional properties (every property must
+// appear in `required`), so the provider schema marks them as `["string",
+// "null"]` and the model returns null when not applicable. Downstream usages
+// already null-coerce (DiffPreview uses `edit.content ?? ''`, SuggestDialog
+// uses `response.noChangeReason && ...`).
 const SuggestProfileChangeSchema = z.object({
   id: z.string().min(1),
   rationale: z.string().min(1),
   edit: z.object({
     type: z.enum(['replace', 'insert', 'delete']),
     anchor: z.string().min(1),
-    content: z.string().optional().default(''),
+    content: z
+      .union([z.string(), z.null()])
+      .transform((v) => v ?? '')
+      .default(''),
   }),
 });
 
 const SuggestedProfileSchema = z.object({
   changes: z.array(SuggestProfileChangeSchema),
-  noChangeReason: z.string().optional(),
+  noChangeReason: z
+    .union([z.string(), z.null()])
+    .transform((v) => v ?? undefined)
+    .optional(),
 });
 
 // JSON Schema for provider-native structured output. Hand-written to mirror
 // the lib/synthesis/schema.js approach.
+//
+// `additionalProperties: false` is required on every object: OpenAI strict
+// json_schema rejects schemas without it, Anthropic strict tool_use requires
+// it, and Google supports it natively (Nov 2025).
+//
+// Optional fields (`content`, `noChangeReason`) are typed as `["string",
+// "null"]` and listed in `required` because OpenAI strict mode does not
+// support truly optional fields — the model must always emit the key, but
+// can return null when not applicable.
 function suggestedProfileJsonSchema() {
   return {
     type: 'object',
-    required: ['changes'],
+    required: ['changes', 'noChangeReason'],
+    additionalProperties: false,
     properties: {
       changes: {
         type: 'array',
         items: {
           type: 'object',
           required: ['id', 'rationale', 'edit'],
+          additionalProperties: false,
           properties: {
             id: { type: 'string' },
             rationale: { type: 'string' },
             edit: {
               type: 'object',
-              required: ['type', 'anchor'],
+              required: ['type', 'anchor', 'content'],
+              additionalProperties: false,
               properties: {
                 type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
                 anchor: { type: 'string' },
-                content: { type: 'string' },
+                content: { type: ['string', 'null'] },
               },
             },
           },
         },
       },
-      noChangeReason: { type: 'string' },
+      noChangeReason: { type: ['string', 'null'] },
     },
   };
 }

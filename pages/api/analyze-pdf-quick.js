@@ -37,7 +37,9 @@ export default async function handler(req, res) {
     });
     return;
   }
-  if (!apiKey) {
+  // Skip the auth check in fixture mode — fixture-based tests don't need a
+  // real key because callModel never actually hits the network.
+  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
     res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }

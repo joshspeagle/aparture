@@ -1,0 +1,60 @@
+{
+  "hash": "48de965bef16596f62f9fdff99f5e8a5",
+  "input": {
+    "apiKey": "test-key",
+    "cacheable": false,
+    "cachePrefix": "",
+    "model": "claude-haiku-4-5",
+    "prompt": "Fix this JSON response.",
+    "provider": "anthropic",
+    "structuredOutput": {
+      "name": "pdf_analysis",
+      "description": "Aparture PDF deep-analysis result",
+      "schema": {
+        "type": "object",
+        "required": [
+          "summary",
+          "keyFindings",
+          "methodology",
+          "limitations",
+          "relevanceAssessment",
+          "updatedScore"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "keyFindings": {
+            "type": "string"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "limitations": {
+            "type": "string"
+          },
+          "relevanceAssessment": {
+            "type": "string"
+          },
+          "updatedScore": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "text": "",
+    "structured": {
+      "summary": "Corrected analysis summary reflecting the paper's primary contributions and experimental scope across multiple paragraphs.\n\nThis represents the repaired output for a failed initial analysis call.",
+      "keyFindings": "The paper demonstrates measurable improvements over prior interpretability methods across multiple benchmarks.",
+      "methodology": "A sparse dictionary learning approach applied to intermediate activations under L1 regularization constraints.",
+      "limitations": "Scalability to very large models remains an open question for the proposed manual-inspection labeling step.",
+      "relevanceAssessment": "Highly aligned with mechanistic interpretability research priorities and advances the state of the art meaningfully.",
+      "updatedScore": 7.2
+    },
+    "tokensIn": 200,
+    "tokensOut": 80
+  }
+}

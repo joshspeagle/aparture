@@ -7,49 +7,82 @@ function checkPassword(password) {
   return password === process.env.ACCESS_PASSWORD;
 }
 
-// Function to validate response structure
-function validateScoringResponse(responseText, expectedCount) {
+// Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
+// Portable subset only; value constraints enforced in validateScoringResponse.
+function scoringResponseJsonSchema() {
+  return {
+    type: 'object',
+    required: ['scores'],
+    additionalProperties: false,
+    properties: {
+      scores: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['paperIndex', 'score', 'justification'],
+          additionalProperties: false,
+          properties: {
+            paperIndex: { type: 'integer' },
+            score: { type: 'number' },
+            justification: { type: 'string' },
+          },
+        },
+      },
+    },
+  };
+}
+
+function validateScoringResponse(parsed, expectedCount) {
+  const scores = Array.isArray(parsed) ? parsed : parsed?.scores;
+  if (!Array.isArray(scores)) {
+    return {
+      isValid: false,
+      errors: ['Response is not an array (and not {scores: [...]})'],
+      scores: [],
+    };
+  }
+
+  const errors = [];
+  if (scores.length !== expectedCount) {
+    errors.push(`Expected ${expectedCount} scores, got ${scores.length}`);
+  }
+
+  const seenIndices = new Set();
+  scores.forEach((item, i) => {
+    if (typeof item?.paperIndex !== 'number') {
+      errors.push(`Item ${i}: paperIndex is not a number`);
+    } else {
+      if (item.paperIndex < 1 || item.paperIndex > expectedCount) {
+        errors.push(`Item ${i}: paperIndex ${item.paperIndex} out of range [1..${expectedCount}]`);
+      }
+      if (seenIndices.has(item.paperIndex)) {
+        errors.push(`Item ${i}: duplicate paperIndex ${item.paperIndex}`);
+      }
+      seenIndices.add(item.paperIndex);
+    }
+    if (typeof item?.score !== 'number' || item.score < 0 || item.score > 10) {
+      errors.push(`Item ${i}: score is not a valid number (0-10)`);
+    }
+    if (typeof item?.justification !== 'string' || item.justification.length < 10) {
+      errors.push(`Item ${i}: justification is missing or too short`);
+    }
+  });
+
+  return { isValid: errors.length === 0, errors, scores };
+}
+
+function extractParsed(result) {
+  if (result?.structured !== undefined && result.structured !== null) {
+    return result.structured;
+  }
   try {
-    const parsed = JSON.parse(responseText);
-
-    if (!Array.isArray(parsed)) {
-      return { isValid: false, errors: ['Response is not an array'] };
-    }
-
-    const errors = [];
-
-    // Check if we have the right number of scores
-    if (parsed.length !== expectedCount) {
-      errors.push(`Expected ${expectedCount} scores, got ${parsed.length}`);
-    }
-
-    // Validate each score object
-    parsed.forEach((item, index) => {
-      if (typeof item.paperIndex !== 'number') {
-        errors.push(`Item ${index}: paperIndex is not a number`);
-      }
-      if (typeof item.score !== 'number' || item.score < 0 || item.score > 10) {
-        errors.push(`Item ${index}: score is not a valid number (0-10)`);
-      }
-      if (typeof item.justification !== 'string' || item.justification.length < 10) {
-        errors.push(`Item ${index}: justification is missing or too short`);
-      }
-    });
-
-    return { isValid: errors.length === 0, errors };
-  } catch (e) {
-    return { isValid: false, errors: ['Invalid JSON: ' + e.message] };
+    const cleaned = extractJsonFromLlmOutput(result?.text ?? '');
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
   }
 }
 
-/**
- * Build the static cacheable prefix: instruction block + user scoring criteria.
- * This portion is identical for every batch call with the same scoringCriteria,
- * making it a good candidate for Anthropic prompt caching.
- */
-/**
- * Format the per-batch paper list for the {{papers}} slot in rubric-scoring.md.
- */
 function formatPapersForBatch(papers) {
   return papers
     .map((p, idx) => `Paper ${idx + 1}: Title: ${p.title} Abstract: ${p.abstract}`)
@@ -71,13 +104,11 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  // Resolve provider from model registry (needed before auth to pick env key)
   const modelToUse = model || 'gemini-3-flash';
   const modelConfig = MODEL_REGISTRY[modelToUse];
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
   const modelApiId = modelConfig?.apiId ?? modelToUse;
 
-  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
   let apiKey = clientApiKey;
   if (!apiKey && password) {
     if (!checkPassword(password)) {
@@ -101,12 +132,18 @@ export default async function handler(req, res) {
     return res.status(200).json({ scores: [], rawResponse: '[]' });
   }
 
+  const expectedCount = papers.length;
+  const structuredOutput = {
+    name: 'scoring_response',
+    description: 'Aparture batch paper scoring results',
+    schema: scoringResponseJsonSchema(),
+  };
+
   try {
     let responseText;
+    let parsed;
 
     if (correctionPrompt) {
-      // Correction path: pass the whole correction prompt as the variable tail,
-      // no caching (cache misses are fine here since corrections are rare).
       const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt;
       const result = await callModel(
         {
@@ -116,20 +153,18 @@ export default async function handler(req, res) {
           cachePrefix: '',
           cacheable: false,
           apiKey,
+          structuredOutput,
         },
         callMode
       );
       responseText = result.text;
+      parsed = extractParsed(result);
     } else {
-      // Normal path: split prompt into static prefix (cacheable) + variable tail.
       const { cachePrefix, variableTail } = await loadRubricPrompt(
         'rubric-scoring.md',
         { profile: scoringCriteria ?? '' },
-        { papers: formatPapersForBatch(papers ?? []) }
+        { papers: formatPapersForBatch(papers) }
       );
-      // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
-      // tests. When the override is active, disable caching so the fixture hash
-      // keys only on {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
       const finalPrompt = promptOverride ?? variableTail;
       const useCaching = cacheable && !isFixture && !promptOverride;
@@ -142,82 +177,53 @@ export default async function handler(req, res) {
           cachePrefix: useCaching ? cachePrefix : '',
           cacheable: useCaching,
           apiKey,
+          structuredOutput,
         },
         callMode
       );
       responseText = result.text;
-    }
+      parsed = extractParsed(result);
 
-    // Clean up response text (remove markdown formatting if present)
-    let cleanedText = extractJsonFromLlmOutput(responseText);
-
-    // Always validate response structure (not just on parse failure)
-    const validation = validateScoringResponse(cleanedText, (papers ?? []).length);
-
-    // If validation fails and this isn't already a correction attempt, try to correct
-    if (!validation.isValid && !correctionPrompt) {
-      console.log('Initial response validation failed:', validation.errors);
-
-      // Build correction prompt with specific errors
-      const correctionRequest = `The previous response had formatting/structure errors:
-${validation.errors.join('\n')}
-
-Original response:
-${cleanedText}
-
-Please provide a corrected response with exactly ${(papers ?? []).length} paper scores.
-Each item must have: paperIndex (number), score (0.0-10.0), justification (string).
-
-Your entire response MUST ONLY be a valid JSON array in this exact format:
-[
-  {
-    "paperIndex": 1,
-    "score": 5.5,
-    "justification": "Brief explanation here"
-  }
-]`;
-
-      // Try correction (no caching for corrections)
-      const finalCorrectionPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionRequest;
-      const correctedResult = await callModel(
-        {
-          provider,
-          model: modelApiId,
-          prompt: finalCorrectionPrompt,
-          cachePrefix: '',
-          cacheable: false,
-          apiKey,
-        },
-        callMode
-      );
-      responseText = correctedResult.text;
-      cleanedText = extractJsonFromLlmOutput(responseText);
-    }
-
-    let scores;
-    try {
-      scores = JSON.parse(cleanedText);
-
-      // Final validation even after correction
-      const finalValidation = validateScoringResponse(cleanedText, (papers ?? []).length);
-      if (!finalValidation.isValid) {
-        console.warn('Response still invalid after correction:', finalValidation.errors);
+      const validation = validateScoringResponse(parsed, expectedCount);
+      if (!validation.isValid) {
+        console.log('Initial scoring response validation failed:', validation.errors);
+        const errorHint = [
+          '',
+          '# RETRY NOTICE',
+          'Your previous output had these issues:',
+          ...validation.errors.map((e) => `- ${e}`),
+          `Regenerate the complete response now. Return exactly ${expectedCount} scores,`,
+          'one per paper in the input list above, with paperIndex values 1..' + expectedCount + '.',
+        ].join('\n');
+        const retryPrompt = (promptOverride ?? variableTail) + errorHint;
+        const correctedResult = await callModel(
+          {
+            provider,
+            model: modelApiId,
+            prompt: retryPrompt,
+            cachePrefix: useCaching ? cachePrefix : '',
+            cacheable: false,
+            apiKey,
+            structuredOutput,
+          },
+          callMode
+        );
+        responseText = correctedResult.text;
+        parsed = extractParsed(correctedResult);
       }
-    } catch (parseError) {
-      // If this is a correction attempt that still failed, return the raw response for debugging
-      if (correctionPrompt) {
-        return res.status(200).json({
-          scores: [],
-          rawResponse: responseText,
-          error: `Correction parsing failed: ${parseError.message}`,
-        });
-      }
-      throw parseError;
     }
 
-    // Return both the parsed scores and the raw response
+    const finalValidation = validateScoringResponse(parsed, expectedCount);
+    if (!finalValidation.isValid) {
+      return res.status(502).json({
+        error: 'scoring validation failed after correction',
+        errors: finalValidation.errors,
+        rawResponse: responseText,
+      });
+    }
+
     res.status(200).json({
-      scores,
+      scores: finalValidation.scores,
       rawResponse: responseText,
     });
   } catch (error) {

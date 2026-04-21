@@ -32,29 +32,32 @@ const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime-overlap');
 function perHunkJsonSchema() {
   return {
     type: 'object',
-    required: ['changes'],
+    required: ['changes', 'noChangeReason'],
+    additionalProperties: false,
     properties: {
       changes: {
         type: 'array',
         items: {
           type: 'object',
           required: ['id', 'rationale', 'edit'],
+          additionalProperties: false,
           properties: {
             id: { type: 'string' },
             rationale: { type: 'string' },
             edit: {
               type: 'object',
-              required: ['type', 'anchor'],
+              required: ['type', 'anchor', 'content'],
+              additionalProperties: false,
               properties: {
                 type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
                 anchor: { type: 'string' },
-                content: { type: 'string' },
+                content: { type: ['string', 'null'] },
               },
             },
           },
         },
       },
-      noChangeReason: { type: 'string' },
+      noChangeReason: { type: ['string', 'null'] },
     },
   };
 }

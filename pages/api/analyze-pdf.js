@@ -126,40 +126,74 @@ async function downloadPDFWithPlaywright(chromium, pdfUrl) {
   }
 }
 
-// Function to validate PDF analysis response structure
-function validatePDFAnalysisResponse(responseText) {
-  try {
-    const parsed = JSON.parse(responseText);
-
-    const errors = [];
-
-    // Check required fields
-    const requiredFields = [
+// JSON schema for the PDF analysis response. Portable subset only; value
+// constraints (minimum length, score range) enforced in validatePDFAnalysisResponse.
+function pdfAnalysisJsonSchema() {
+  return {
+    type: 'object',
+    required: [
       'summary',
       'keyFindings',
       'methodology',
       'limitations',
       'relevanceAssessment',
       'updatedScore',
-    ];
+    ],
+    additionalProperties: false,
+    properties: {
+      summary: { type: 'string' },
+      keyFindings: { type: 'string' },
+      methodology: { type: 'string' },
+      limitations: { type: 'string' },
+      relevanceAssessment: { type: 'string' },
+      updatedScore: { type: 'number' },
+    },
+  };
+}
 
-    requiredFields.forEach((field) => {
-      if (!(field in parsed)) {
-        errors.push(`Missing required field: ${field}`);
-      } else if (field === 'updatedScore') {
-        if (typeof parsed[field] !== 'number' || parsed[field] < 0 || parsed[field] > 10) {
-          errors.push(`updatedScore must be a number between 0 and 10`);
-        }
-      } else {
-        if (typeof parsed[field] !== 'string' || parsed[field].length < 20) {
-          errors.push(`${field} must be a string with meaningful content`);
-        }
+function validatePDFAnalysisResponse(parsed) {
+  if (!parsed || typeof parsed !== 'object') {
+    return { isValid: false, errors: ['Response is not a JSON object'] };
+  }
+
+  const errors = [];
+  const requiredFields = [
+    'summary',
+    'keyFindings',
+    'methodology',
+    'limitations',
+    'relevanceAssessment',
+    'updatedScore',
+  ];
+
+  requiredFields.forEach((field) => {
+    if (!(field in parsed)) {
+      errors.push(`Missing required field: ${field}`);
+    } else if (field === 'updatedScore') {
+      if (typeof parsed[field] !== 'number' || parsed[field] < 0 || parsed[field] > 10) {
+        errors.push(`updatedScore must be a number between 0 and 10`);
       }
-    });
+    } else {
+      if (typeof parsed[field] !== 'string' || parsed[field].length < 20) {
+        errors.push(`${field} must be a string with meaningful content`);
+      }
+    }
+  });
 
-    return { isValid: errors.length === 0, errors };
-  } catch (e) {
-    return { isValid: false, errors: ['Invalid JSON: ' + e.message] };
+  return { isValid: errors.length === 0, errors };
+}
+
+// Normalize a callModel result to a parsed payload. Prefer the provider's
+// native structured output; fall back to parsing the text field.
+function extractParsed(result) {
+  if (result?.structured !== undefined && result.structured !== null) {
+    return result.structured;
+  }
+  try {
+    const cleaned = extractJsonFromLlmOutput(result?.text ?? '');
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
   }
 }
 
@@ -213,11 +247,18 @@ export default async function handler(req, res) {
 
   const callMode = callModelMode ?? { mode: 'live' };
 
+  const structuredOutput = {
+    name: 'pdf_analysis',
+    description: 'Aparture PDF deep-analysis result',
+    schema: pdfAnalysisJsonSchema(),
+  };
+
   try {
     let responseText;
+    let parsed;
 
     if (correctionPrompt) {
-      // Correction path: text-only, no PDF
+      // Client-triggered correction: text-only, no PDF, but still force schema.
       const result = await callModel(
         {
           provider,
@@ -226,10 +267,12 @@ export default async function handler(req, res) {
           cachePrefix: '',
           cacheable: false,
           apiKey,
+          structuredOutput,
         },
         callMode
       );
       responseText = result.text;
+      parsed = extractParsed(result);
     } else {
       // Main PDF path
       let base64Data;
@@ -349,86 +392,60 @@ export default async function handler(req, res) {
           cachePrefix: useCaching ? cachePrefix : '',
           cacheable: useCaching,
           apiKey,
+          structuredOutput,
         },
         callMode
       );
       responseText = result.text;
-    }
+      parsed = extractParsed(result);
 
-    // Clean up response text (remove markdown formatting if present)
-    let cleanedText = extractJsonFromLlmOutput(responseText);
-
-    // Always validate response structure (not just on parse failure)
-    const validation = validatePDFAnalysisResponse(cleanedText);
-
-    // If validation fails and this isn't already a correction attempt, try to correct
-    if (!validation.isValid && !correctionPrompt) {
-      console.log('Initial PDF analysis response validation failed:', validation.errors);
-
-      // Build correction prompt with specific errors
-      const correctionRequest = `The previous response had formatting/structure errors:
-${validation.errors.join('\n')}
-
-Original response:
-${cleanedText}
-
-Please provide a corrected response with all required fields.
-Required fields: summary, keyFindings, methodology, limitations, relevanceAssessment, updatedScore
-
-Your entire response MUST ONLY be a valid JSON object in this exact format:
-{
-  "summary": "Multi-paragraph summary with \\n\\n between paragraphs",
-  "keyFindings": "Key findings paragraph",
-  "methodology": "Methodology paragraph",
-  "limitations": "Limitations paragraph",
-  "relevanceAssessment": "Relevance assessment paragraph",
-  "updatedScore": 5.5
-}`;
-
-      // Correction goes through text-only path (no PDF)
-      const finalCorrectionPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionRequest;
-      const correctedResult = await callModel(
-        {
-          provider,
-          model: modelApiId,
-          prompt: finalCorrectionPrompt,
-          cachePrefix: '',
-          cacheable: false,
-          apiKey,
-        },
-        callMode
-      );
-      responseText = correctedResult.text;
-      cleanedText = extractJsonFromLlmOutput(responseText);
-    }
-
-    let analysis;
-    try {
-      analysis = JSON.parse(cleanedText);
-
-      // Final validation even after correction
-      const finalValidation = validatePDFAnalysisResponse(cleanedText);
-      if (!finalValidation.isValid) {
-        console.warn(
-          'PDF analysis response still invalid after correction:',
-          finalValidation.errors
+      // Backend auto-correction: re-submit the PDF + prompt with an error hint
+      // appended, so the model has full context to re-analyze (not just the
+      // broken prose from the first attempt).
+      const validation = validatePDFAnalysisResponse(parsed);
+      if (!validation.isValid) {
+        console.log('Initial PDF analysis response validation failed:', validation.errors);
+        const errorHint = [
+          '',
+          '# RETRY NOTICE',
+          'Your previous output had these issues:',
+          ...validation.errors.map((e) => `- ${e}`),
+          'Regenerate the complete response now, producing a single JSON object with',
+          'all six required fields (summary, keyFindings, methodology, limitations,',
+          'relevanceAssessment, updatedScore).',
+        ].join('\n');
+        const retryPrompt = (promptOverride ?? variableTail) + errorHint;
+        const correctedResult = await callModel(
+          {
+            provider,
+            model: modelApiId,
+            prompt: retryPrompt,
+            pdfBase64: base64Data,
+            cachePrefix: useCaching ? cachePrefix : '',
+            cacheable: false,
+            apiKey,
+            structuredOutput,
+          },
+          callMode
         );
+        responseText = correctedResult.text;
+        parsed = extractParsed(correctedResult);
       }
-    } catch (parseError) {
-      // If this is a correction attempt that still failed, return the raw response for debugging
-      if (correctionPrompt) {
-        return res.status(200).json({
-          analysis: null,
-          rawResponse: responseText,
-          error: `Correction parsing failed: ${parseError.message}`,
-        });
-      }
-      throw parseError;
     }
 
-    // Return both the parsed analysis and the raw response
+    // Final validation — fail hard so the client's makeRobustAPICall triggers
+    // its retry loop instead of silently accepting bad data.
+    const finalValidation = validatePDFAnalysisResponse(parsed);
+    if (!finalValidation.isValid) {
+      return res.status(502).json({
+        error: 'PDF analysis validation failed after correction',
+        errors: finalValidation.errors,
+        rawResponse: responseText,
+      });
+    }
+
     res.status(200).json({
-      analysis,
+      analysis: parsed,
       rawResponse: responseText,
     });
   } catch (error) {

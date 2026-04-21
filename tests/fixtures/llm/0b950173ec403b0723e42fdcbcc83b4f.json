@@ -1,5 +1,5 @@
 {
-  "hash": "edb3ef54c40e5c03f7c1e336e5ba13fb",
+  "hash": "0b950173ec403b0723e42fdcbcc83b4f",
   "input": {
     "provider": "anthropic",
     "model": "claude-opus-4-6",
@@ -33,7 +33,8 @@
                     "type": "string"
                   }
                 }
-              }
+              },
+              "additionalProperties": false
             }
           },
           "papers": {
@@ -57,10 +58,12 @@
                 "whyMatters": {
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             }
           }
-        }
+        },
+        "additionalProperties": false
       }
     }
   },
