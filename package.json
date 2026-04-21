@@ -1,6 +1,9 @@
 {
   "name": "aparture",
   "version": "2.0.0-beta.1",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
