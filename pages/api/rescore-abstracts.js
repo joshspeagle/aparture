@@ -1,4 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
+import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
@@ -161,10 +162,7 @@ export default async function handler(req, res) {
     }
 
     // Clean up response text (remove markdown formatting if present)
-    let cleanedText = responseText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
+    let cleanedText = extractJsonFromLlmOutput(responseText);
 
     // Always validate response structure (not just on parse failure)
     const validation = validateRescoreResponse(cleanedText, (papers ?? []).length);
@@ -207,10 +205,7 @@ Your entire response MUST ONLY be a valid JSON array in this exact format:
         callMode
       );
       responseText = correctedResult.text;
-      cleanedText = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
+      cleanedText = extractJsonFromLlmOutput(responseText);
     }
 
     let rescores;
