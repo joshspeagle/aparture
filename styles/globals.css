@@ -1,3 +1,10 @@
+/* @import rules MUST come before all other CSS rules per the CSS spec.
+   Next.js 16's PostCSS pipeline enforces this strictly (Next 14 was
+   lenient and silently accepted them at the bottom). */
+@import './tokens.css';
+@import './shell.css';
+@import './briefing.css';
+
 /* tailwindcss */
 @tailwind base;
 @tailwind components;
@@ -29,7 +36,3 @@ a {
 * {
   box-sizing: border-box;
 }
-
-@import './tokens.css';
-@import './shell.css';
-@import './briefing.css';
