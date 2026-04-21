@@ -182,8 +182,13 @@ export default async function handler(req, res) {
         { papers: formatPapersForBatch(papers ?? []) }
       );
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
-      const finalPrompt = promptOverride ?? variableTail;
       const useCaching = cacheable && !isFixture && !promptOverride;
+      // When caching: LLM receives `cachePrefix` + `prompt` as separate blocks.
+      // When NOT caching: the rubric + profile must be included in `prompt` or
+      // the model never sees them. `variableTail` alone is just the papers
+      // section ("Papers to screen:\n<papers>").
+      const finalPrompt =
+        promptOverride ?? (useCaching ? variableTail : cachePrefix + variableTail);
 
       const result = await callModel(
         {
@@ -216,7 +221,12 @@ export default async function handler(req, res) {
           `Regenerate the complete response now. Return exactly ${expectedCount} verdicts,`,
           'one per paper in the input list above, with paperIndex values 1..' + expectedCount + '.',
         ].join('\n');
-        const retryPrompt = (promptOverride ?? variableTail) + errorHint;
+        // Retry body must include the rubric + profile. When caching is off
+        // we prepend cachePrefix to the retry prompt so the model sees the
+        // full context; when caching is on the prefix goes through cachePrefix.
+        const retryBody =
+          promptOverride ?? (useCaching ? variableTail : cachePrefix + variableTail);
+        const retryPrompt = retryBody + errorHint;
         const correctedResult = await callModel(
           {
             provider,

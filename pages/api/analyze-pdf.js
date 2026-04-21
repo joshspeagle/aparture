@@ -380,8 +380,11 @@ export default async function handler(req, res) {
       // {provider, model, prompt, apiKey} — a predictable value.
       const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
       const isFixture = callMode.mode === 'fixture';
-      const finalPrompt = promptOverride ?? variableTail;
       const useCaching = cacheable && !isFixture && !promptOverride;
+      // When not caching, the rubric + profile must be in `prompt` or the
+      // model never sees them (variableTail alone is just the per-paper tail).
+      const finalPrompt =
+        promptOverride ?? (useCaching ? variableTail : cachePrefix + variableTail);
 
       const result = await callModel(
         {
@@ -414,7 +417,10 @@ export default async function handler(req, res) {
           'all six required fields (summary, keyFindings, methodology, limitations,',
           'relevanceAssessment, updatedScore).',
         ].join('\n');
-        const retryPrompt = (promptOverride ?? variableTail) + errorHint;
+        // Retry body must include the rubric + profile when caching is off.
+        const retryBody =
+          promptOverride ?? (useCaching ? variableTail : cachePrefix + variableTail);
+        const retryPrompt = retryBody + errorHint;
         const correctedResult = await callModel(
           {
             provider,
