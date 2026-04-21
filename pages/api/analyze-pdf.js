@@ -1,4 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
+import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
@@ -355,10 +356,7 @@ export default async function handler(req, res) {
     }
 
     // Clean up response text (remove markdown formatting if present)
-    let cleanedText = responseText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
+    let cleanedText = extractJsonFromLlmOutput(responseText);
 
     // Always validate response structure (not just on parse failure)
     const validation = validatePDFAnalysisResponse(cleanedText);
@@ -401,10 +399,7 @@ Your entire response MUST ONLY be a valid JSON object in this exact format:
         callMode
       );
       responseText = correctedResult.text;
-      cleanedText = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
-        .trim();
+      cleanedText = extractJsonFromLlmOutput(responseText);
     }
 
     let analysis;
