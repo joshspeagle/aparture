@@ -189,7 +189,7 @@ describe('AnalysisWorkerPool', () => {
     let maxInFlight = 0;
     const tasks = Array.from({ length: 6 }, (_, i) => i);
     const starts = [];
-    await pool.run(tasks, async (task) => {
+    await pool.run(tasks, async (_task) => {
       starts.push(Date.now());
       inFlight++;
       maxInFlight = Math.max(maxInFlight, inFlight);
