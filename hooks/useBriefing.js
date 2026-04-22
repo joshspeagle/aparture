@@ -141,8 +141,25 @@ export function useBriefing({ password = '' } = {}) {
     passwordRef.current = password;
   }, [password]);
 
+  // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
+  // don't throw, since hot-tier state already reflects the save.
+  const postBriefing = useCallback(async (entry) => {
+    try {
+      const res = await fetch('/api/briefings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordRef.current, entry }),
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.warn('[useBriefing] failed to persist briefing to disk:', err);
+    }
+  }, []);
+
   const saveBriefing = useCallback(
-    (
+    async (
       date,
       briefing,
       generationMetadata,
@@ -167,9 +184,10 @@ export function useBriefing({ password = '' } = {}) {
         persistHistory(next);
         return next;
       });
+      await postBriefing(entry);
       return id;
     },
-    []
+    [postBriefing]
   );
 
   const deleteBriefing = useCallback((id) => {

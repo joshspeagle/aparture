@@ -4,6 +4,18 @@ import { useBriefing } from '../../../hooks/useBriefing.js';
 
 beforeEach(() => {
   window.localStorage.clear();
+  // saveBriefing now POSTs to /api/briefings. Tests that don't care about
+  // the disk tier just need a no-op fetch; describe blocks that care override
+  // this per-test.
+  vi.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ id: 'x', bytesWritten: 0 }),
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 const makeBriefing = (summary = 'Test') => ({
@@ -53,20 +65,20 @@ describe('useBriefing', () => {
     expect(entry.archived).toBe(false);
   });
 
-  it('saveBriefing returns the new entry id', () => {
+  it('saveBriefing returns the new entry id', async () => {
     const { result } = renderHook(() => useBriefing());
     let returnedId;
-    act(() => {
-      returnedId = result.current.saveBriefing('2026-04-13', makeBriefing());
+    await act(async () => {
+      returnedId = await result.current.saveBriefing('2026-04-13', makeBriefing());
     });
     expect(returnedId).toBe(result.current.current.id);
   });
 
-  it('multiple saves on the same date create separate entries', () => {
+  it('multiple saves on the same date create separate entries', async () => {
     const { result } = renderHook(() => useBriefing());
-    act(() => {
-      result.current.saveBriefing('2026-04-13', makeBriefing('First'));
-      result.current.saveBriefing('2026-04-13', makeBriefing('Second'));
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-13', makeBriefing('First'));
+      await result.current.saveBriefing('2026-04-13', makeBriefing('Second'));
     });
     const entriesForDate = result.current.history.filter((b) => b.date === '2026-04-13');
     expect(entriesForDate).toHaveLength(2);
@@ -76,21 +88,21 @@ describe('useBriefing', () => {
     expect(entriesForDate[1].briefing.executiveSummary).toBe('First');
   });
 
-  it('keeps at most 90 past briefings in history', () => {
+  it('keeps at most 90 past briefings in history', async () => {
     const { result } = renderHook(() => useBriefing());
     const empty = makeBriefing('x');
-    act(() => {
+    await act(async () => {
       for (let i = 0; i < 100; i++) {
         const d = new Date(Date.UTC(2025, 0, 1));
         d.setUTCDate(d.getUTCDate() + i);
         const iso = d.toISOString().slice(0, 10);
-        result.current.saveBriefing(iso, empty);
+        await result.current.saveBriefing(iso, empty);
       }
     });
     expect(result.current.history.length).toBe(90);
   });
 
-  it('persists generationMetadata on each saved entry', () => {
+  it('persists generationMetadata on each saved entry', async () => {
     const { result } = renderHook(() => useBriefing());
     const briefing = makeBriefing();
     const metadata = {
@@ -107,18 +119,18 @@ describe('useBriefing', () => {
       pauseAfterFilter: true,
       timestamp: '2026-04-15T10:00:00.000Z',
     };
-    act(() => {
-      result.current.saveBriefing('2026-04-15', briefing, metadata);
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-15', briefing, metadata);
     });
     expect(result.current.current.generationMetadata).toEqual(metadata);
     // History is index-only: generationMetadata lives on current + on disk.
     expect(result.current.history[0].generationMetadata).toBeUndefined();
   });
 
-  it('saveBriefing without metadata arg omits the field from the stored entry', () => {
+  it('saveBriefing without metadata arg omits the field from the stored entry', async () => {
     const { result } = renderHook(() => useBriefing());
-    act(() => {
-      result.current.saveBriefing('2026-04-11', makeBriefing('no-metadata'));
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-11', makeBriefing('no-metadata'));
     });
     expect(result.current.current.date).toBe('2026-04-11');
     expect(result.current.current.generationMetadata).toBeUndefined();
@@ -126,59 +138,59 @@ describe('useBriefing', () => {
 
   // --- deleteBriefing ---
 
-  it('deleteBriefing removes an entry by id', () => {
+  it('deleteBriefing removes an entry by id', async () => {
     const { result } = renderHook(() => useBriefing());
     let id1, id2;
-    act(() => {
-      id1 = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
-      id2 = result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    await act(async () => {
+      id1 = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      id2 = await result.current.saveBriefing('2026-04-11', makeBriefing('B'));
     });
     expect(result.current.history).toHaveLength(2);
-    act(() => {
-      result.current.deleteBriefing(id1);
+    await act(async () => {
+      await result.current.deleteBriefing(id1);
     });
     expect(result.current.history).toHaveLength(1);
     expect(result.current.history[0].id).toBe(id2);
   });
 
-  it('deleteBriefing clears current if the deleted entry is current', () => {
+  it('deleteBriefing clears current if the deleted entry is current', async () => {
     const { result } = renderHook(() => useBriefing());
     let id;
-    act(() => {
-      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    await act(async () => {
+      id = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
     });
     expect(result.current.current).not.toBeNull();
-    act(() => {
-      result.current.deleteBriefing(id);
+    await act(async () => {
+      await result.current.deleteBriefing(id);
     });
     expect(result.current.current).toBeNull();
   });
 
-  it('deleteBriefing does not clear current if a different entry is deleted', () => {
+  it('deleteBriefing does not clear current if a different entry is deleted', async () => {
     const { result } = renderHook(() => useBriefing());
     let id1;
-    act(() => {
-      id1 = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
-      result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    await act(async () => {
+      id1 = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      await result.current.saveBriefing('2026-04-11', makeBriefing('B'));
     });
     // current is now B
     expect(result.current.current.briefing.executiveSummary).toBe('B');
-    act(() => {
-      result.current.deleteBriefing(id1);
+    await act(async () => {
+      await result.current.deleteBriefing(id1);
     });
     expect(result.current.current).not.toBeNull();
     expect(result.current.current.briefing.executiveSummary).toBe('B');
   });
 
-  it('deleteBriefing persists to localStorage', () => {
+  it('deleteBriefing persists to localStorage', async () => {
     const { result } = renderHook(() => useBriefing());
     let id;
-    act(() => {
-      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
-      result.current.saveBriefing('2026-04-11', makeBriefing('B'));
+    await act(async () => {
+      id = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+      await result.current.saveBriefing('2026-04-11', makeBriefing('B'));
     });
-    act(() => {
-      result.current.deleteBriefing(id);
+    await act(async () => {
+      await result.current.deleteBriefing(id);
     });
     const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
     expect(stored).toHaveLength(1);
@@ -187,31 +199,31 @@ describe('useBriefing', () => {
 
   // --- toggleArchive ---
 
-  it('toggleArchive flips the archived flag', () => {
+  it('toggleArchive flips the archived flag', async () => {
     const { result } = renderHook(() => useBriefing());
     let id;
-    act(() => {
-      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    await act(async () => {
+      id = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
     });
     expect(result.current.history[0].archived).toBe(false);
-    act(() => {
-      result.current.toggleArchive(id);
+    await act(async () => {
+      await result.current.toggleArchive(id);
     });
     expect(result.current.history[0].archived).toBe(true);
-    act(() => {
-      result.current.toggleArchive(id);
+    await act(async () => {
+      await result.current.toggleArchive(id);
     });
     expect(result.current.history[0].archived).toBe(false);
   });
 
-  it('toggleArchive persists to localStorage', () => {
+  it('toggleArchive persists to localStorage', async () => {
     const { result } = renderHook(() => useBriefing());
     let id;
-    act(() => {
-      id = result.current.saveBriefing('2026-04-10', makeBriefing('A'));
+    await act(async () => {
+      id = await result.current.saveBriefing('2026-04-10', makeBriefing('A'));
     });
-    act(() => {
-      result.current.toggleArchive(id);
+    await act(async () => {
+      await result.current.toggleArchive(id);
     });
     const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
     expect(stored[0].archived).toBe(true);
@@ -219,13 +231,13 @@ describe('useBriefing', () => {
 
   // --- quickSummariesById / fullReportsById persistence ---
 
-  it('persists quickSummariesById and fullReportsById when provided', () => {
+  it('persists quickSummariesById and fullReportsById when provided', async () => {
     const { result } = renderHook(() => useBriefing());
     const briefing = makeBriefing();
     const quick = { '2504.01234': 'A quick summary' };
     const full = { '2504.01234': 'Full detailed report...' };
-    act(() => {
-      result.current.saveBriefing('2026-04-16', briefing, null, {
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-16', briefing, null, {
         quickSummariesById: quick,
         fullReportsById: full,
       });
@@ -237,24 +249,24 @@ describe('useBriefing', () => {
     expect(result.current.history[0].fullReportsById).toBeUndefined();
   });
 
-  it('omits quickSummariesById/fullReportsById when not provided', () => {
+  it('omits quickSummariesById/fullReportsById when not provided', async () => {
     const { result } = renderHook(() => useBriefing());
-    act(() => {
-      result.current.saveBriefing('2026-04-16', makeBriefing());
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-16', makeBriefing());
     });
     expect(result.current.current.quickSummariesById).toBeUndefined();
     expect(result.current.current.fullReportsById).toBeUndefined();
   });
 
-  it('persists pipelineArchive when provided', () => {
+  it('persists pipelineArchive when provided', async () => {
     const { result } = renderHook(() => useBriefing());
     const archive = {
       filterResults: { yes: [{ arxivId: '2504.01234' }], maybe: [], no: [], total: 1 },
       scoredPapers: [{ arxivId: '2504.01234', relevanceScore: 8.5 }],
       finalRanking: [{ arxivId: '2504.01234', score: 9.0 }],
     };
-    act(() => {
-      result.current.saveBriefing('2026-04-16', makeBriefing(), null, {
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-16', makeBriefing(), null, {
         pipelineArchive: archive,
       });
     });
@@ -355,14 +367,14 @@ describe('useBriefing', () => {
       warnSpy.mockRestore();
     });
 
-    it('saveBriefing does not throw when HISTORY_KEY quota is exceeded', () => {
+    it('saveBriefing does not throw when HISTORY_KEY quota is exceeded', async () => {
       throwOnKeys.add('aparture-briefing-index');
       const { result } = renderHook(() => useBriefing());
-      expect(() => {
-        act(() => {
-          result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
-        });
-      }).not.toThrow();
+      await expect(
+        act(async () => {
+          await result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
+        })
+      ).resolves.not.toThrow();
       // In-memory state still reflects the save
       expect(result.current.current.date).toBe('2026-04-16');
       expect(result.current.history).toHaveLength(1);
@@ -370,19 +382,19 @@ describe('useBriefing', () => {
       expect(warnSpy).toHaveBeenCalled();
     });
 
-    it('saveBriefing does not throw when CURRENT_KEY quota is exceeded', () => {
+    it('saveBriefing does not throw when CURRENT_KEY quota is exceeded', async () => {
       throwOnKeys.add('aparture-briefing-current');
       const { result } = renderHook(() => useBriefing());
-      expect(() => {
-        act(() => {
-          result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
-        });
-      }).not.toThrow();
+      await expect(
+        act(async () => {
+          await result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
+        })
+      ).resolves.not.toThrow();
       expect(result.current.current.date).toBe('2026-04-16');
       expect(warnSpy).toHaveBeenCalled();
     });
 
-    it('persists a stripped entry when the full entry hits quota', () => {
+    it('persists a stripped entry when the full entry hits quota', async () => {
       const { result } = renderHook(() => useBriefing());
       const heavy = {
         pipelineArchive: { scoredPapers: [{ a: 1 }] },
@@ -405,8 +417,8 @@ describe('useBriefing', () => {
         return realSetItem.call(this, key, value);
       });
 
-      act(() => {
-        result.current.saveBriefing('2026-04-16', makeBriefing('strip'), null, heavy);
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-16', makeBriefing('strip'), null, heavy);
       });
       // In-memory still has the heavy fields
       expect(result.current.current.pipelineArchive).toBeDefined();
@@ -418,18 +430,73 @@ describe('useBriefing', () => {
       expect(callCount).toBeGreaterThan(2); // full attempt + stripped retry for both keys
     });
 
-    it('re-throws non-quota errors', () => {
+    it('re-throws non-quota errors', async () => {
       setItemSpy.mockImplementation(() => {
         const err = new Error('permission denied');
         err.name = 'SecurityError';
         throw err;
       });
       const { result } = renderHook(() => useBriefing());
-      expect(() => {
-        act(() => {
-          result.current.saveBriefing('2026-04-16', makeBriefing('sec'));
+      await expect(
+        act(async () => {
+          await result.current.saveBriefing('2026-04-16', makeBriefing('sec'));
+        })
+      ).rejects.toThrow(/permission denied/);
+    });
+  });
+
+  // --- Filesystem tier (Task 9) ---
+
+  describe('saveBriefing — filesystem tier', () => {
+    let fetchSpy;
+
+    beforeEach(() => {
+      fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'x', bytesWritten: 0 }),
+      });
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it('POSTs the full entry to /api/briefings with the password', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-21', makeBriefing('x'), null, {
+          pipelineArchive: { a: 1 },
         });
-      }).toThrow(/permission denied/);
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/briefings',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"password":"test-pw"'),
+        })
+      );
+
+      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      expect(body.entry.pipelineArchive).toEqual({ a: 1 });
+      expect(body.entry.briefing.executiveSummary).toBe('x');
+    });
+
+    it('returns the id even if the POST fails (in-memory state preserved)', async () => {
+      fetchSpy.mockRejectedValueOnce(new Error('network down'));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      let id;
+      await act(async () => {
+        id = await result.current.saveBriefing('2026-04-21', makeBriefing('y'));
+      });
+
+      expect(id).toBeDefined();
+      expect(result.current.current.briefing.executiveSummary).toBe('y');
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 });
