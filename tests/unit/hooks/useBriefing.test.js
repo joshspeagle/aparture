@@ -619,4 +619,98 @@ describe('useBriefing', () => {
       );
     });
   });
+
+  // --- Migration from aparture-briefing-history (legacy key) — Task 12 ---
+
+  describe('migration from aparture-briefing-history', () => {
+    let fetchSpy;
+
+    beforeEach(() => {
+      fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'x', bytesWritten: 0 }),
+      });
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it('POSTs each legacy entry and removes the legacy key', async () => {
+      const legacy = [
+        {
+          id: 'e1',
+          date: '2026-04-20',
+          timestamp: 1,
+          archived: false,
+          briefing: {
+            executiveSummary: 'one',
+            papers: [{ arxivId: 'a', title: 'A', score: 5 }],
+          },
+          pipelineArchive: { scoredPapers: [{ x: 1 }] },
+        },
+        {
+          id: 'e2',
+          date: '2026-04-19',
+          timestamp: 2,
+          archived: true,
+          briefing: { executiveSummary: 'two', papers: [] },
+        },
+      ];
+      window.localStorage.setItem('aparture-briefing-history', JSON.stringify(legacy));
+
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+
+      // Wait for the migration effect
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(window.localStorage.getItem('aparture-briefing-history')).toBeNull();
+
+      const index = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
+      expect(index).toHaveLength(2);
+      expect(index[0].briefing.executiveSummary).toBe('one');
+      expect(index[0].pipelineArchive).toBeUndefined();
+
+      // In-memory state reflects migrated entries
+      expect(result.current.history).toHaveLength(2);
+    });
+
+    it('keeps going on failed POSTs (skip-and-log, no retry)', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      fetchSpy.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
+      fetchSpy.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) });
+
+      const legacy = [
+        {
+          id: 'fail',
+          date: '2026-04-20',
+          timestamp: 1,
+          archived: false,
+          briefing: { executiveSummary: 'bad', papers: [] },
+        },
+        {
+          id: 'ok',
+          date: '2026-04-19',
+          timestamp: 2,
+          archived: false,
+          briefing: { executiveSummary: 'good', papers: [] },
+        },
+      ];
+      window.localStorage.setItem('aparture-briefing-history', JSON.stringify(legacy));
+
+      renderHook(() => useBriefing({ password: 'test-pw' }));
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      expect(window.localStorage.getItem('aparture-briefing-history')).toBeNull();
+      const index = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
+      expect(index.map((b) => b.id)).toEqual(['ok']); // failed entry not in index
+      warnSpy.mockRestore();
+    });
+  });
 });

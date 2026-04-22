@@ -116,6 +116,53 @@ function readStoredCurrent() {
   }
 }
 
+const LEGACY_HISTORY_KEY = 'aparture-briefing-history';
+
+// One-shot migration: move legacy single-key history entries to per-file
+// storage + rebuild the index. Runs on every mount; no-op when the legacy
+// key is absent. Per spec: skip-and-log on per-entry failures, then remove
+// the legacy key regardless of per-entry success so we don't retry forever.
+async function migrateLegacyHistoryIfNeeded({ password }) {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(LEGACY_HISTORY_KEY);
+  if (!raw) return null;
+
+  let legacy;
+  try {
+    legacy = JSON.parse(raw);
+  } catch {
+    window.localStorage.removeItem(LEGACY_HISTORY_KEY);
+    return null;
+  }
+  if (!Array.isArray(legacy)) {
+    window.localStorage.removeItem(LEGACY_HISTORY_KEY);
+    return null;
+  }
+
+  const newIndex = [];
+  for (let i = 0; i < legacy.length; i++) {
+    const entry = migrateEntry(legacy[i], i);
+    try {
+      const res = await fetch('/api/briefings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, entry }),
+      });
+      if (!res.ok) {
+        console.warn(`[useBriefing migration] POST failed for ${entry.id}: HTTP ${res.status}`);
+        continue;
+      }
+      newIndex.push(buildIndexEntry(entry));
+    } catch (err) {
+      console.warn(`[useBriefing migration] POST threw for ${entry.id}:`, err);
+    }
+  }
+
+  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(newIndex));
+  window.localStorage.removeItem(LEGACY_HISTORY_KEY);
+  return newIndex;
+}
+
 function readStoredHistory() {
   if (typeof window === 'undefined') return [];
   try {
@@ -157,6 +204,15 @@ export function useBriefing({ password = '' } = {}) {
   useEffect(() => {
     historyRef.current = history;
   }, [history]);
+
+  // One-shot migration from the legacy single-key history to filesystem +
+  // search-capable index. No-op when the legacy key is absent; the ref-in-
+  // empty-deps pattern keeps this from firing on every render.
+  useEffect(() => {
+    migrateLegacyHistoryIfNeeded({ password: passwordRef.current }).then((migrated) => {
+      if (migrated) setHistory(migrated);
+    });
+  }, []);
 
   // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
   // don't throw, since hot-tier state already reflects the save.
