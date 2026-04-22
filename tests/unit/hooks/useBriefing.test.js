@@ -499,4 +499,71 @@ describe('useBriefing', () => {
       warnSpy.mockRestore();
     });
   });
+
+  // --- loadBriefing (Task 10) ---
+
+  describe('loadBriefing', () => {
+    let fetchSpy;
+
+    beforeEach(() => {
+      fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+        if (typeof url === 'string' && url.startsWith('/api/briefings/known')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              id: 'known',
+              date: '2026-04-21',
+              briefing: { executiveSummary: 'loaded' },
+            }),
+          };
+        }
+        if (typeof url === 'string' && url.startsWith('/api/briefings/missing')) {
+          return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ id: 'x', bytesWritten: 0 }),
+        };
+      });
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it('returns the current briefing synchronously when id matches current', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-21', makeBriefing('in-memory'));
+      });
+      const id = result.current.current.id;
+      const loaded = await result.current.loadBriefing(id);
+      expect(loaded.briefing.executiveSummary).toBe('in-memory');
+    });
+
+    it('fetches from /api/briefings/[id] for other ids', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      const loaded = await result.current.loadBriefing('known');
+      expect(loaded.briefing.executiveSummary).toBe('loaded');
+      expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/briefings/known'));
+    });
+
+    it('returns null on 404', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      const loaded = await result.current.loadBriefing('missing');
+      expect(loaded).toBeNull();
+    });
+
+    it('returns null on network error', async () => {
+      fetchSpy.mockRejectedValueOnce(new Error('network down'));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      const loaded = await result.current.loadBriefing('any');
+      expect(loaded).toBeNull();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
 });

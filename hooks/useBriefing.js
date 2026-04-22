@@ -141,6 +141,14 @@ export function useBriefing({ password = '' } = {}) {
     passwordRef.current = password;
   }, [password]);
 
+  // Current briefing ref for loadBriefing's fast path — lets the callback
+  // read the latest `current` without listing it as a dep (which would
+  // force the callback to re-create on every briefing save).
+  const currentRef = useRef(current);
+  useEffect(() => {
+    currentRef.current = current;
+  }, [current]);
+
   // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
   // don't throw, since hot-tier state already reflects the save.
   const postBriefing = useCallback(async (entry) => {
@@ -190,6 +198,24 @@ export function useBriefing({ password = '' } = {}) {
     [postBriefing]
   );
 
+  const loadBriefing = useCallback(async (id) => {
+    // Fast path: the current briefing has heavy fields in memory already.
+    const state = currentRef.current;
+    if (state?.id === id) return state;
+
+    try {
+      const res = await fetch(
+        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('[useBriefing] failed to load briefing', id, err);
+      return null;
+    }
+  }, []);
+
   const deleteBriefing = useCallback((id) => {
     setHistory((prev) => {
       const next = prev.filter((b) => b.id !== id);
@@ -215,5 +241,5 @@ export function useBriefing({ password = '' } = {}) {
     });
   }, []);
 
-  return { current, history, saveBriefing, deleteBriefing, toggleArchive };
+  return { current, history, saveBriefing, deleteBriefing, toggleArchive, loadBriefing };
 }
