@@ -566,4 +566,57 @@ describe('useBriefing', () => {
       warnSpy.mockRestore();
     });
   });
+
+  // --- deleteBriefing / toggleArchive — filesystem tier (Task 11) ---
+
+  describe('deleteBriefing / toggleArchive — filesystem tier', () => {
+    let fetchSpy;
+
+    beforeEach(() => {
+      fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true }),
+      });
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it('deleteBriefing sends DELETE /api/briefings/[id]', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      let id;
+      await act(async () => {
+        id = await result.current.saveBriefing('2026-04-21', makeBriefing('x'));
+      });
+      fetchSpy.mockClear();
+      await act(async () => {
+        await result.current.deleteBriefing(id);
+      });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/briefings/${id}`),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('toggleArchive sends PATCH with the new archived flag', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      let id;
+      await act(async () => {
+        id = await result.current.saveBriefing('2026-04-21', makeBriefing('y'));
+      });
+      fetchSpy.mockClear();
+      await act(async () => {
+        await result.current.toggleArchive(id);
+      });
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/briefings/${id}`),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: expect.stringContaining('"archived":true'),
+        })
+      );
+    });
+  });
 });

@@ -149,6 +149,15 @@ export function useBriefing({ password = '' } = {}) {
     currentRef.current = current;
   }, [current]);
 
+  // History ref for toggleArchive so we can read the current archived flag
+  // synchronously outside the setHistory updater (React 18 batches state
+  // updaters so reading a closed-over variable written inside the updater
+  // races the rest of the callback).
+  const historyRef = useRef(history);
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
   // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
   // don't throw, since hot-tier state already reflects the save.
   const postBriefing = useCallback(async (entry) => {
@@ -216,7 +225,7 @@ export function useBriefing({ password = '' } = {}) {
     }
   }, []);
 
-  const deleteBriefing = useCallback((id) => {
+  const deleteBriefing = useCallback(async (id) => {
     setHistory((prev) => {
       const next = prev.filter((b) => b.id !== id);
       persistHistory(next);
@@ -231,14 +240,40 @@ export function useBriefing({ password = '' } = {}) {
       }
       return prev;
     });
+
+    try {
+      await fetch(
+        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`,
+        { method: 'DELETE' }
+      );
+    } catch (err) {
+      console.warn('[useBriefing] delete failed for', id, err);
+    }
   }, []);
 
-  const toggleArchive = useCallback((id) => {
+  const toggleArchive = useCallback(async (id) => {
+    const entry = historyRef.current.find((b) => b.id === id);
+    if (!entry) return;
+    const nextArchived = !entry.archived;
+
     setHistory((prev) => {
-      const next = prev.map((b) => (b.id === id ? { ...b, archived: !b.archived } : b));
+      const next = prev.map((b) => (b.id === id ? { ...b, archived: nextArchived } : b));
       persistHistory(next);
       return next;
     });
+
+    try {
+      await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: passwordRef.current,
+          patch: { archived: nextArchived },
+        }),
+      });
+    } catch (err) {
+      console.warn('[useBriefing] toggleArchive failed for', id, err);
+    }
   }, []);
 
   return { current, history, saveBriefing, deleteBriefing, toggleArchive, loadBriefing };
