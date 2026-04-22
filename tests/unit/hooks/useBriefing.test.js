@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBriefing } from '../../../hooks/useBriefing.js';
 
@@ -313,5 +313,112 @@ describe('useBriefing', () => {
     expect(entry.id).toBe('my-uuid');
     expect(entry.timestamp).toBe(1700000000000);
     expect(entry.archived).toBe(true);
+  });
+
+  // --- Quota handling ---
+
+  describe('localStorage quota handling', () => {
+    let setItemSpy;
+    let warnSpy;
+    let throwOnKeys;
+    let realSetItem;
+
+    beforeEach(() => {
+      throwOnKeys = new Set();
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      realSetItem = window.Storage.prototype.setItem;
+      setItemSpy = vi
+        .spyOn(window.Storage.prototype, 'setItem')
+        .mockImplementation(function (key, value) {
+          if (throwOnKeys.has(key)) {
+            const err = new Error('mock quota');
+            err.name = 'QuotaExceededError';
+            throw err;
+          }
+          return realSetItem.call(this, key, value);
+        });
+    });
+
+    afterEach(() => {
+      setItemSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    it('saveBriefing does not throw when HISTORY_KEY quota is exceeded', () => {
+      throwOnKeys.add('aparture-briefing-history');
+      const { result } = renderHook(() => useBriefing());
+      expect(() => {
+        act(() => {
+          result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
+        });
+      }).not.toThrow();
+      // In-memory state still reflects the save
+      expect(result.current.current.date).toBe('2026-04-16');
+      expect(result.current.history).toHaveLength(1);
+      // Warning was logged
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('saveBriefing does not throw when CURRENT_KEY quota is exceeded', () => {
+      throwOnKeys.add('aparture-briefing-current');
+      const { result } = renderHook(() => useBriefing());
+      expect(() => {
+        act(() => {
+          result.current.saveBriefing('2026-04-16', makeBriefing('quota'));
+        });
+      }).not.toThrow();
+      expect(result.current.current.date).toBe('2026-04-16');
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('persists a stripped entry when the full entry hits quota', () => {
+      const { result } = renderHook(() => useBriefing());
+      const heavy = {
+        pipelineArchive: { scoredPapers: [{ a: 1 }] },
+        quickSummariesById: { '2504.01': 'summary' },
+        fullReportsById: { '2504.01': 'report' },
+      };
+      // First setItem call fails (full entry). The second call (stripped)
+      // succeeds because the heavy fields are gone.
+      let callCount = 0;
+      setItemSpy.mockImplementation(function (key, value) {
+        if (key === 'aparture-briefing-current' || key === 'aparture-briefing-history') {
+          callCount++;
+          // Heavy entries contain pipelineArchive/fullReports; strip succeeds.
+          if (value.includes('pipelineArchive') || value.includes('fullReportsById')) {
+            const err = new Error('mock quota');
+            err.name = 'QuotaExceededError';
+            throw err;
+          }
+        }
+        return realSetItem.call(this, key, value);
+      });
+
+      act(() => {
+        result.current.saveBriefing('2026-04-16', makeBriefing('strip'), null, heavy);
+      });
+      // In-memory still has the heavy fields
+      expect(result.current.current.pipelineArchive).toBeDefined();
+      // Storage has the stripped version
+      const storedCurrent = JSON.parse(window.localStorage.getItem('aparture-briefing-current'));
+      expect(storedCurrent.pipelineArchive).toBeUndefined();
+      expect(storedCurrent.fullReportsById).toBeUndefined();
+      expect(storedCurrent.briefing.executiveSummary).toBe('strip');
+      expect(callCount).toBeGreaterThan(2); // full attempt + stripped retry for both keys
+    });
+
+    it('re-throws non-quota errors', () => {
+      setItemSpy.mockImplementation(() => {
+        const err = new Error('permission denied');
+        err.name = 'SecurityError';
+        throw err;
+      });
+      const { result } = renderHook(() => useBriefing());
+      expect(() => {
+        act(() => {
+          result.current.saveBriefing('2026-04-16', makeBriefing('sec'));
+        });
+      }).toThrow(/permission denied/);
+    });
   });
 });
