@@ -23,7 +23,7 @@ import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 export default function MainArea({
   activeView,
   // For briefing views
-  briefingHistory,
+  selectedEntry,
   currentBriefing,
   quickSummariesById,
   fullReportsById,
@@ -235,31 +235,40 @@ export default function MainArea({
   // Pipeline details view — paired with a briefing via "pipeline:<id>"
   if (activeView.startsWith('pipeline:')) {
     const entryKey = activeView.slice('pipeline:'.length);
-    const entry = briefingHistory?.find((b) => b.id === entryKey);
+    // selectedEntry is async-resolved by App's useSelectedBriefing effect.
+    if (!selectedEntry || selectedEntry.id !== entryKey) {
+      return (
+        <div className="briefing-surface">
+          <p style={{ color: 'var(--aparture-mute)', fontFamily: 'var(--aparture-font-sans)' }}>
+            Loading…
+          </p>
+        </div>
+      );
+    }
     return (
-      <PipelineArchiveView entry={entry} onBack={() => onNavigate?.(`briefing:${entryKey}`)} />
+      <PipelineArchiveView
+        entry={selectedEntry}
+        onBack={() => onNavigate?.(`briefing:${entryKey}`)}
+      />
     );
   }
 
   // Briefing view — matched by "briefing:<id>" pattern
   if (activeView.startsWith('briefing:')) {
     const entryKey = activeView.slice('briefing:'.length);
-    const entry = briefingHistory?.find((b) => b.id === entryKey);
-
-    if (!entry) {
+    // selectedEntry is async-resolved by App's useSelectedBriefing effect.
+    // While loading (or during a view switch) selectedEntry may be null or
+    // stale; show a loading shim until it matches.
+    if (!selectedEntry || selectedEntry.id !== entryKey) {
       return (
         <div className="briefing-surface">
-          <p
-            style={{
-              color: 'var(--aparture-mute)',
-              fontFamily: 'var(--aparture-font-sans)',
-            }}
-          >
-            No briefing found for {entryKey}.
+          <p style={{ color: 'var(--aparture-mute)', fontFamily: 'var(--aparture-font-sans)' }}>
+            Loading…
           </p>
         </div>
       );
     }
+    const entry = selectedEntry;
 
     return (
       <div className="briefing-surface">

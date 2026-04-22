@@ -458,8 +458,30 @@ export default function App() {
     saveBriefing,
     deleteBriefing,
     toggleArchive,
+    loadBriefing,
   } = useBriefing({ password });
   const feedback = useFeedback();
+
+  // Resolve the active briefing entry. Current briefing returns synchronously
+  // via loadBriefing's fast path; archived briefings trigger an async fetch
+  // from the filesystem tier. Sidebar list + search still render from the
+  // lightweight index in `briefingHistory`.
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  useEffect(() => {
+    if (!activeView?.startsWith('briefing:') && !activeView?.startsWith('pipeline:')) {
+      setSelectedEntry(null);
+      return;
+    }
+    const id = activeView.slice(activeView.indexOf(':') + 1);
+    let cancelled = false;
+    setSelectedEntry(null);
+    loadBriefing(id).then((entry) => {
+      if (!cancelled) setSelectedEntry(entry);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, loadBriefing]);
 
   // Phase 1.5: draft-vs-committed profile editing.
   const [draftContent, setDraftContent] = useState(profile?.content ?? '');
@@ -1004,7 +1026,7 @@ export default function App() {
           activeView={activeView}
           onNavigate={setActiveView}
           // Briefing views
-          briefingHistory={briefingHistory}
+          selectedEntry={selectedEntry}
           currentBriefing={currentBriefing}
           quickSummariesById={quickSummariesById}
           fullReportsById={fullReportsById}
@@ -1013,12 +1035,19 @@ export default function App() {
           onStar={feedback.addStar}
           onDismiss={feedback.addDismiss}
           onAddComment={(arxivId, text) => {
-            // Look for the paper in the current briefing first, then in
-            // the active briefing entry for the selected view.
+            // Resolve the paper from whichever briefing is active. Current
+            // briefing has full in-memory papers; archived briefings use the
+            // async-loaded selectedEntry. Sidebar index has arxivId/title/score
+            // too, so it's fine as a last-resort fallback.
             const entryKey = activeView.startsWith('briefing:')
               ? activeView.slice('briefing:'.length)
               : currentBriefing?.id;
-            const entry = briefingHistory?.find((b) => b.id === entryKey);
+            const entry =
+              currentBriefing?.id === entryKey
+                ? currentBriefing
+                : selectedEntry?.id === entryKey
+                  ? selectedEntry
+                  : briefingHistory?.find((b) => b.id === entryKey);
             const paper = entry?.briefing?.papers?.find((p) => p.arxivId === arxivId);
             if (!paper) return;
             feedback.addPaperComment(
