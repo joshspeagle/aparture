@@ -449,13 +449,16 @@ export default function App() {
     migrationNotice,
     dismissMigrationNotice,
   } = useProfile({ scoringCriteria: config.scoringCriteria });
+  // Read password before useBriefing so it can be passed in; the store read
+  // is cheap and this is a render-time closure.
+  const password = useAnalyzerStore((s) => s.password);
   const {
     current: currentBriefing,
     history: briefingHistory,
     saveBriefing,
     deleteBriefing,
     toggleArchive,
-  } = useBriefing();
+  } = useBriefing({ password });
   const feedback = useFeedback();
 
   // Phase 1.5: draft-vs-committed profile editing.
@@ -476,7 +479,6 @@ export default function App() {
   const filterResults = useAnalyzerStore((s) => s.filterResults);
   const processingTiming = useAnalyzerStore((s) => s.processingTiming);
   const testState = useAnalyzerStore((s) => s.testState);
-  const password = useAnalyzerStore((s) => s.password);
   const isAuthenticated = useAnalyzerStore((s) => s.isAuthenticated);
 
   const {

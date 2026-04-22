@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { buildIndexEntry } from '../lib/briefing/buildIndexEntry.js';
 
 const CURRENT_KEY = 'aparture-briefing-current';
@@ -128,9 +128,18 @@ function readStoredHistory() {
   }
 }
 
-export function useBriefing() {
+export function useBriefing({ password = '' } = {}) {
   const [current, setCurrent] = useState(readStoredCurrent);
   const [history, setHistory] = useState(readStoredHistory);
+
+  // Password is plumbed through a ref so async methods read the latest value
+  // without forcing the callbacks to re-create on every render. The ref is
+  // kept in sync via an effect (assigning during render would trip the
+  // react-hooks/refs rule).
+  const passwordRef = useRef(password);
+  useEffect(() => {
+    passwordRef.current = password;
+  }, [password]);
 
   const saveBriefing = useCallback(
     (

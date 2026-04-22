@@ -22,6 +22,11 @@ describe('useBriefing', () => {
     expect(result.current.history).toEqual([]);
   });
 
+  it('accepts a password argument without throwing', () => {
+    const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+    expect(result.current.current).toBeNull();
+  });
+
   it('sets the current briefing and appends to history', () => {
     const { result } = renderHook(() => useBriefing());
     const briefing = makeBriefing();
