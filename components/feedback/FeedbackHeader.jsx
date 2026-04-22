@@ -1,7 +1,6 @@
 import Button from '../ui/Button.jsx';
 
 export default function FeedbackHeader({ newCount, totalCount, onSuggestClick }) {
-  const hasNew = newCount > 0;
   return (
     <header
       style={{
@@ -33,7 +32,7 @@ export default function FeedbackHeader({ newCount, totalCount, onSuggestClick })
           {newCount} new since last revision · {totalCount} total
         </p>
       </div>
-      <Button variant="primary" onClick={onSuggestClick} disabled={!hasNew}>
+      <Button variant="primary" onClick={onSuggestClick}>
         Suggest improvements
       </Button>
     </header>

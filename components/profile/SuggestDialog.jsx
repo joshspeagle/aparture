@@ -149,7 +149,11 @@ export default function SuggestDialog({
 
   const hasFeedback = newFeedback.length > 0;
   const hasSelection = selectedIds.size > 0;
-  const canGenerate = hasFeedback && hasSelection;
+  const hasGuidance = guidance.trim().length > 0;
+  // Generate is allowed when there's *some* input for the LLM: either
+  // selected feedback events to react to, or free-form guidance describing
+  // the revision. Both empty = no signal, keep disabled.
+  const canGenerate = (hasFeedback && hasSelection) || hasGuidance;
 
   async function handleGenerate() {
     setError(null);
@@ -331,82 +335,82 @@ export default function SuggestDialog({
                   </div>
                 )}
 
-                {!hasFeedback ? (
+                {hasFeedback ? (
+                  <div
+                    style={{
+                      maxHeight: '40vh',
+                      overflowY: 'auto',
+                      borderRadius: '4px',
+                      border: '1px solid var(--aparture-hairline)',
+                      background: 'var(--aparture-bg)',
+                      padding: '8px',
+                    }}
+                  >
+                    {newFeedback.map((e) => (
+                      <FeedbackRow
+                        key={e.id}
+                        event={e}
+                        checked={selectedIds.has(e.id)}
+                        onToggle={() => toggle(e.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
                   <p
                     style={{
                       fontFamily: 'var(--aparture-font-sans)',
                       fontSize: 'var(--aparture-text-sm)',
                       color: 'var(--aparture-mute)',
+                      margin: 0,
                     }}
                   >
-                    No new feedback since your last profile revision. Nothing to suggest from.
+                    No recent feedback — describe below what you&apos;d like changed and the LLM
+                    will revise your profile from guidance alone.
                   </p>
-                ) : (
-                  <>
-                    <div
+                )}
+
+                <div style={{ marginTop: 'var(--aparture-space-4)' }}>
+                  <label
+                    htmlFor="suggest-guidance"
+                    style={{
+                      display: 'block',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      fontWeight: 600,
+                      color: 'var(--aparture-ink)',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    Guidance for this suggestion{' '}
+                    <span
                       style={{
-                        maxHeight: '40vh',
-                        overflowY: 'auto',
-                        borderRadius: '4px',
-                        border: '1px solid var(--aparture-hairline)',
-                        background: 'var(--aparture-bg)',
-                        padding: '8px',
+                        fontWeight: 400,
+                        color: 'var(--aparture-mute)',
                       }}
                     >
-                      {newFeedback.map((e) => (
-                        <FeedbackRow
-                          key={e.id}
-                          event={e}
-                          checked={selectedIds.has(e.id)}
-                          onToggle={() => toggle(e.id)}
-                        />
-                      ))}
-                    </div>
-
-                    <div style={{ marginTop: 'var(--aparture-space-4)' }}>
-                      <label
-                        htmlFor="suggest-guidance"
-                        style={{
-                          display: 'block',
-                          fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: 'var(--aparture-text-sm)',
-                          fontWeight: 600,
-                          color: 'var(--aparture-ink)',
-                          marginBottom: '4px',
-                        }}
-                      >
-                        Guidance for this suggestion{' '}
-                        <span
-                          style={{
-                            fontWeight: 400,
-                            color: 'var(--aparture-mute)',
-                          }}
-                        >
-                          (optional)
-                        </span>
-                      </label>
-                      <TextArea
-                        id="suggest-guidance"
-                        rows={3}
-                        value={guidance}
-                        onChange={(e) => setGuidance(e.target.value)}
-                        placeholder="e.g. &quot;focus on narrowing my interests to galactic dynamics&quot; or &quot;keep the NLP language, drop vision-only work&quot;"
-                      />
-                      <p
-                        style={{
-                          margin: '4px 0 0 0',
-                          fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: 'var(--aparture-text-xs)',
-                          color: 'var(--aparture-mute)',
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        A short, direct note about how you want the profile to change. Applies to
-                        this suggestion only; not stored as feedback.
-                      </p>
-                    </div>
-                  </>
-                )}
+                      {hasFeedback ? '(optional)' : '(required without feedback)'}
+                    </span>
+                  </label>
+                  <TextArea
+                    id="suggest-guidance"
+                    rows={3}
+                    value={guidance}
+                    onChange={(e) => setGuidance(e.target.value)}
+                    placeholder='e.g. "focus on narrowing my interests to galactic dynamics" or "keep the NLP language, drop vision-only work"'
+                  />
+                  <p
+                    style={{
+                      margin: '4px 0 0 0',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-mute)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    A short, direct note about how you want the profile to change. Applies to this
+                    suggestion only; not stored as feedback.
+                  </p>
+                </div>
               </>
             )}
 

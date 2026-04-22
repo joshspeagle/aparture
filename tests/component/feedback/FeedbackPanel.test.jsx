@@ -50,10 +50,12 @@ describe('FeedbackPanel', () => {
     expect(screen.getByText(/3 total/i)).toBeInTheDocument();
   });
 
-  it('disables the Suggest improvements button when newCount is 0', () => {
+  it('keeps the Suggest improvements button clickable even when newCount is 0', () => {
+    // The dialog lets the user drive revisions from guidance alone (no feedback
+    // required), so the entry button stays live regardless of newCount.
     const events = [makeStar('s1', 'p1', 1000)];
     render(<FeedbackPanel {...defaultProps} events={events} cutoff={5000} />);
-    expect(screen.getByRole('button', { name: /suggest improvements/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /suggest improvements/i })).not.toBeDisabled();
   });
 
   it('calls onSuggestClick when Suggest improvements is clicked', () => {

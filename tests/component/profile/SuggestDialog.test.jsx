@@ -80,10 +80,15 @@ describe('SuggestDialog — selection state', () => {
     expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeDisabled();
   });
 
-  it('shows empty state when newFeedback is empty', () => {
+  it('shows empty state when newFeedback is empty, but still offers guidance-only flow', () => {
     render(<SuggestDialog {...defaultProps} newFeedback={[]} />);
-    expect(screen.getByText(/no new feedback/i)).toBeInTheDocument();
+    expect(screen.getByText(/no recent feedback/i)).toBeInTheDocument();
+    // Generate stays disabled until the user writes guidance
     expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeDisabled();
+    // ...but enables once guidance is provided
+    const textarea = screen.getByLabelText(/guidance/i);
+    fireEvent.change(textarea, { target: { value: 'clean up the profile' } });
+    expect(screen.getByRole('button', { name: /generate suggestion/i })).not.toBeDisabled();
   });
 
   it('calls onClose when Cancel is clicked', () => {
