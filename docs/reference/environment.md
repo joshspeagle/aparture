@@ -2,7 +2,7 @@
 
 Aparture reads its secrets and a few runtime flags from `.env.local` at the repo root. The file is gitignored; if you don't have one yet, [Install](/getting-started/install) walks through creating it.
 
-There are four variables you'll usually care about — one required password, three API keys (at least one required) — plus two optional ones (`PORT`, `NODE_ENV`) and a handful of test-only overrides that should never appear in a real dev file.
+There are four variables you'll usually care about — one required password, three API keys (at least one required) — plus three optional ones (`PORT`, `NODE_ENV`, `ARXIV_CONTACT_EMAIL`) and a handful of test-only overrides that should never appear in a real dev file.
 
 ```bash
 # .env.local — gitignored, project root
@@ -13,6 +13,7 @@ GOOGLE_AI_API_KEY=
 
 # Optional
 # PORT=3001
+# ARXIV_CONTACT_EMAIL=you@example.edu
 ```
 
 ::: warning Restart after editing
@@ -29,6 +30,7 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 | `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js` | Google models unavailable if unset    |
 | `PORT`                                  | No                        | Next.js CLI (not read from source)                  | `3000`                                |
 | `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)      | `development` (set by Next)           |
+| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/fetch-arxiv.js`                          | Unset — no `From` header sent         |
 | `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`    | Unset                                 |
 | `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                              | Unset                                 |
 | `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                      | Unset                                 |
@@ -89,6 +91,16 @@ PORT=3001
 ### `NODE_ENV`
 
 Set automatically by `next dev` (`development`), `next start` (`production`), and `vitest` (`test`). You usually don't set this in `.env.local`. One source-level effect: when `NODE_ENV === 'test'`, `pages/api/analyze-pdf.js` honors the `_testPdfBase64` request body field (see below) and skips the download path. In any other environment that field is ignored.
+
+### `ARXIV_CONTACT_EMAIL`
+
+Contact email sent as an HTTP `From` header on every request proxied through `pages/api/fetch-arxiv.js`. arXiv's API user manual politely asks clients to identify themselves so their ops team can reach the maintainer if the traffic pattern causes issues. Not authenticated — arXiv has no API-key or account system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics. If unset, no `From` header is sent (the request still works; it's just anonymous).
+
+```bash
+ARXIV_CONTACT_EMAIL=you@example.edu
+```
+
+Institutional addresses (`.edu`, `.ac.*`) tend to carry more weight than generic webmail domains.
 
 ## Test-only overrides
 

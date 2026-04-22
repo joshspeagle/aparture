@@ -193,6 +193,16 @@ Both patterns are consistent within their own fixture sets — the two cannot sh
 
 **To unit-test a stage:** mock the store via `useAnalyzerStore.setState(...)`, then call `createAnalysisPipeline({...refs})` and invoke the returned handler. Internal stages aren't exported — test via `startProcessing` with mocked API responses.
 
+### ArXiv Metadata Queries
+
+`pages/api/fetch-arxiv.js` proxies the public `export.arxiv.org/api/query` endpoint. Three hygiene rules that aren't obvious from the code alone:
+
+- **No `sortBy`/`sortOrder` in the URL.** arXiv's user manual flags sorted queries as more expensive and more throttled. `lib/analyzer/pipeline.js` sorts client-side after the merge. Don't add the params back.
+- **Inter-request spacing is jittered 3000–5000ms** via `arxivSpacingMs()` in `pipeline.js`. 3s is arXiv's stated floor — deterministic 3000ms back-to-back trips their sliding-window heuristics more often than jittered spacing.
+- **5xx maps onto the 429 retry path.** The proxy rewrites upstream 5xx to a 429-shaped response with `upstreamStatus` passed through; the client retry ladder in `executeArxivQuery` handles both identically (5 / 15 / 45-second exponential backoff, honoring `Retry-After`). Keep them unified — arXiv's 503s behave like their 429s in practice.
+
+**Optional `ARXIV_CONTACT_EMAIL` env var.** When set, sent as the HTTP `From` header on every proxied request. Not authenticated — purely a goodwill signal for arXiv's abuse team. Documented in `docs/reference/environment.md` and `docs/getting-started/install.md` §4.
+
 ### ArXiv PDF Download Handling
 
 `pages/api/analyze-pdf.js` tries direct fetch first; if the response lacks `%PDF-` magic bytes, it falls back to Playwright with a persistent profile at `temp/playwright-profile/` that caches arXiv cookies + reCAPTCHA bypass state. Fallback adds ~5–10s/paper.
@@ -226,20 +236,21 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 
 **Trigger → impacted docs:**
 
-| Code area                                                         | Impacted docs                                                                   |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                    |
-| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md` |
-| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                          |
-| Any `prompts/*.md`                                                | `reference/prompts.md`                                                          |
-| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                  |
-| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                      |
-| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                   |
-| `components/feedback/*`                                           | `using/giving-feedback.md`                                                      |
-| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                     |
-| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                         |
-| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                  |
-| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                            |
-| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                    |
+| Code area                                                         | Impacted docs                                                                                       |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                        |
+| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                     |
+| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                              |
+| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                              |
+| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                      |
+| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                          |
+| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                       |
+| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                          |
+| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                         |
+| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                             |
+| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                      |
+| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                |
+| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                        |
+| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits) |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).

@@ -102,5 +102,69 @@ describe('fetch-arxiv API route', () => {
 
     expect(statusCode).toBe(429);
     expect(jsonBody.retryAfter).toBe(30);
+    expect(jsonBody.upstreamStatus).toBe(429);
+  });
+
+  it('maps arXiv 5xx responses onto the 429 backoff path', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      headers: { get: (header) => (header === 'retry-after' ? '45' : null) },
+      text: async () => 'service unavailable',
+    });
+
+    const { req, res, getResponse } = createMockReqRes({
+      password: 'test-pw',
+      query: 'cat:cs.AI',
+    });
+
+    await handler(req, res);
+    const { statusCode, jsonBody } = getResponse();
+
+    expect(statusCode).toBe(429);
+    expect(jsonBody.upstreamStatus).toBe(503);
+    expect(jsonBody.retryAfter).toBe(45);
+  });
+
+  it('omits sortBy/sortOrder from the arXiv query URL', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => SAMPLE_ARXIV_XML,
+      headers: { get: () => null },
+    });
+
+    const { req, res } = createMockReqRes({
+      password: 'test-pw',
+      query: 'cat:cs.AI',
+    });
+    await handler(req, res);
+
+    const requestedUrl = fetchSpy.mock.calls[0][0];
+    expect(requestedUrl).not.toContain('sortBy');
+    expect(requestedUrl).not.toContain('sortOrder');
+  });
+
+  it('sends a From header only when ARXIV_CONTACT_EMAIL is set', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => SAMPLE_ARXIV_XML,
+      headers: { get: () => null },
+    });
+
+    // Not set → no From header
+    delete process.env.ARXIV_CONTACT_EMAIL;
+    const first = createMockReqRes({ password: 'test-pw', query: 'cat:cs.AI' });
+    await handler(first.req, first.res);
+    expect(fetchSpy.mock.calls[0][1].headers.From).toBeUndefined();
+
+    // Set → From header present and matches
+    process.env.ARXIV_CONTACT_EMAIL = 'contact@example.edu';
+    const second = createMockReqRes({ password: 'test-pw', query: 'cat:cs.AI' });
+    await handler(second.req, second.res);
+    expect(fetchSpy.mock.calls[1][1].headers.From).toBe('contact@example.edu');
+
+    delete process.env.ARXIV_CONTACT_EMAIL;
   });
 });

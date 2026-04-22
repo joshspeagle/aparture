@@ -124,7 +124,24 @@ Aparture gates the web UI behind this password — the login screen prompts for 
 
 You'll also add your LLM API key to this same `.env.local` file on the next page. Don't start the dev server yet — it will fail without at least one API key.
 
-## 4. Playwright (optional fallback for reCAPTCHA)
+## 4. Identify yourself to arXiv (optional but encouraged)
+
+arXiv's API docs ask clients to include a contact email on every request, so their ops team can reach whoever's responsible if traffic from your IP starts causing issues. Aparture sends this as an HTTP `From` header when `ARXIV_CONTACT_EMAIL` is set in `.env.local`, and sends nothing when it isn't:
+
+```bash
+# .env.local
+ARXIV_CONTACT_EMAIL=you@example.edu
+```
+
+This is not an arXiv account — there's no signup, no password, no verification. arXiv has no auth system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics.
+
+::: tip Academic addresses carry more weight
+Institutional emails (`.edu`, `.ac.*`) get better treatment from arXiv's rate-limit heuristics than generic webmail (`@gmail.com`, `@outlook.com`). If you have one, use it. If not, setting a webmail address is still better than leaving the variable unset — at least you're reachable.
+:::
+
+Skipping this step is fine — Aparture will still work — but enabling it reduces your chance of being throttled, especially on dense runs across many arXiv categories.
+
+## 5. Playwright (optional fallback for reCAPTCHA)
 
 Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
 
@@ -143,7 +160,7 @@ npx playwright install-deps chromium
 The first PDF download that hits reCAPTCHA may prompt you to solve it interactively in a headed browser. Once you solve it, Playwright caches the session in `temp/playwright-profile/` and subsequent runs proceed without prompts. Deleting that folder forces a re-solve on the next affected paper.
 :::
 
-## 5. Verify the toolchain
+## 6. Verify the toolchain
 
 Before moving on, confirm everything installed cleanly:
 
@@ -175,6 +192,10 @@ If all four pass, the local setup is ready. `npm run dev` still won't work until
 **Windows native**
 
 - `ENAMETOOLONG` during `npm install`: long paths aren't enabled. Re-run the long-paths step from §1 and set `git config --global core.longpaths true`.
+
+**arXiv rate limits**
+
+- Hitting `arXiv rate limit: exhausted 3 retries` repeatedly on otherwise-modest runs: set `ARXIV_CONTACT_EMAIL` in `.env.local` (see §4) and restart `npm run dev`. See [troubleshooting → arXiv rate limits](/reference/troubleshooting#arxiv-rate-limits) for the full retry/backoff behavior.
 
 **WSL2**
 

@@ -16,29 +16,34 @@ export default async function handler(req, res) {
   }
 
   try {
+    // No sortBy/sortOrder: arXiv's user manual flags sorted queries as more
+    // likely to time out or be throttled. The pipeline sorts client-side.
     const params = new URLSearchParams({
       search_query: query,
       start: 0,
       max_results: maxResults,
-      sortBy: 'submittedDate',
-      sortOrder: 'descending',
     });
 
     const url = `https://export.arxiv.org/api/query?${params.toString()}`;
 
     console.log(`Proxying arXiv request: ${query}`);
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Aparture/1.0 (arXiv paper discovery tool)',
-      },
-    });
+    const headers = {
+      'User-Agent': 'Aparture/1.0 (arXiv paper discovery tool)',
+    };
+    const contactEmail = process.env.ARXIV_CONTACT_EMAIL;
+    if (contactEmail) {
+      headers.From = contactEmail;
+    }
 
-    if (response.status === 429) {
+    const response = await fetch(url, { headers });
+
+    if (response.status === 429 || response.status >= 500) {
       const retryAfter = response.headers.get('retry-after');
-      console.warn(`arXiv rate-limited (429)${retryAfter ? `, Retry-After: ${retryAfter}` : ''}`);
+      console.warn(`arXiv ${response.status}${retryAfter ? `, Retry-After: ${retryAfter}` : ''}`);
       return res.status(429).json({
-        error: 'arXiv rate limit',
+        error: response.status === 429 ? 'arXiv rate limit' : `arXiv ${response.status}`,
+        upstreamStatus: response.status,
         retryAfter: retryAfter ? Number(retryAfter) || null : null,
       });
     }

@@ -236,7 +236,7 @@ If the prefix looks right but the key still fails, run the [Minimal API Test](/g
 arXiv rate limit: exhausted 3 retries
 ```
 
-ArXiv caps metadata fetches at roughly one request per 3 seconds across all clients on your IP. Parallelising across categories doesn't help — the fetch path already serialises at that rate.
+ArXiv caps metadata fetches at roughly one request per 3 seconds across all clients on your IP. Aparture serialises at that rate (with 3–5s jitter between consecutive requests) and back-off for 5 / 15 / 45 seconds on a 429, so a single run in isolation rarely trips the cap. Parallelising across categories doesn't help — the fetch path already serialises.
 
 You'll hit this when:
 
@@ -244,7 +244,11 @@ You'll hit this when:
 - You selected many categories and the serialised fetch exhausted the 5 / 15 / 45-second retry ladder.
 - ArXiv is rate-limiting your IP from other traffic.
 
-Wait five minutes or so, then rerun with fewer categories and no concurrent runs. Persistent 503s rather than 429s suggest arXiv-side maintenance — check [arxiv.org](https://arxiv.org) for announcements.
+Wait five minutes or so, then rerun with fewer categories and no concurrent runs. Persistent 503s surface as the same `arXiv rate limit` error — Aparture maps upstream 5xx onto the same retry path as 429 because arXiv's `Retry-After` semantics are identical — with the upstream status logged alongside. Sustained 5xx rather than 429 suggests arXiv-side maintenance; check [arxiv.org](https://arxiv.org) for announcements.
+
+::: tip Reduce your chance of being throttled
+Set `ARXIV_CONTACT_EMAIL` in `.env.local` ([environment.md](/reference/environment#arxiv_contact_email)) — arXiv weights requests from identified clients more leniently in their abuse heuristics. Academic `.edu`/`.ac.*` addresses tend to get the best treatment. Not a fix once you're already blocked, but a meaningful reduction in how often you hit this to begin with.
+:::
 
 ### reCAPTCHA on PDF downloads
 
@@ -289,7 +293,7 @@ The papers aren't lost — they stay in the briefing ranked by their abstract sc
 npx playwright install chromium
 ```
 
-See [Install → Playwright](/getting-started/install#_4-playwright-optional-fallback-for-recaptcha) for the full recipe.
+See [Install → Playwright](/getting-started/install#_5-playwright-optional-fallback-for-recaptcha) for the full recipe.
 
 ### Provider rate limits
 
@@ -431,7 +435,7 @@ Per-request LLM dispatch:
 Per-route logs:
 
 - `Proxying arXiv request: <query>` — every arXiv metadata fetch.
-- `arXiv rate-limited (429), Retry-After: X` — rate limit with the server's backoff value.
+- `arXiv 429, Retry-After: X` / `arXiv 503, Retry-After: X` — rate limit or upstream 5xx with the server's backoff value. Both trigger the same 5 / 15 / 45-second client retry ladder.
 - `[anthropic] API error 429` / `[openai] API error 400` / `[google] API error 503` — raw provider error (server-side only; the browser sees a sanitised `<provider> request failed (<status>)`).
 - `Initial PDF analysis response validation failed: [<errors>]` — backend correction pass triggered.
 - `PDF analysis response still invalid after correction: [<errors>]` — backend correction failed; the client has 3 more retries.
