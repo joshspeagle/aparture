@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
+import { buildIndexEntry } from '../lib/briefing/buildIndexEntry.js';
 
 const CURRENT_KEY = 'aparture-briefing-current';
-const HISTORY_KEY = 'aparture-briefing-history';
+const HISTORY_KEY = 'aparture-briefing-index';
 const MAX_HISTORY = 90;
 
 // Fields that can be dropped on quota pressure without losing the briefing
@@ -121,7 +122,7 @@ function readStoredHistory() {
     const raw = window.localStorage.getItem(HISTORY_KEY);
     if (!raw) return [];
     const entries = JSON.parse(raw);
-    return entries.map((b, i) => migrateEntry(b, i));
+    return entries.map((b, i) => buildIndexEntry(migrateEntry(b, i)));
   } catch {
     return [];
   }
@@ -153,7 +154,7 @@ export function useBriefing() {
       setCurrent(entry);
       persistCurrent(entry);
       setHistory((prev) => {
-        const next = [entry, ...prev].slice(0, MAX_HISTORY);
+        const next = [buildIndexEntry(entry), ...prev].slice(0, MAX_HISTORY);
         persistHistory(next);
         return next;
       });

@@ -106,7 +106,8 @@ describe('useBriefing', () => {
       result.current.saveBriefing('2026-04-15', briefing, metadata);
     });
     expect(result.current.current.generationMetadata).toEqual(metadata);
-    expect(result.current.history[0].generationMetadata).toEqual(metadata);
+    // History is index-only: generationMetadata lives on current + on disk.
+    expect(result.current.history[0].generationMetadata).toBeUndefined();
   });
 
   it('saveBriefing without metadata arg omits the field from the stored entry', () => {
@@ -174,7 +175,7 @@ describe('useBriefing', () => {
     act(() => {
       result.current.deleteBriefing(id);
     });
-    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-history'));
+    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
     expect(stored).toHaveLength(1);
     expect(stored[0].briefing.executiveSummary).toBe('B');
   });
@@ -207,7 +208,7 @@ describe('useBriefing', () => {
     act(() => {
       result.current.toggleArchive(id);
     });
-    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-history'));
+    const stored = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
     expect(stored[0].archived).toBe(true);
   });
 
@@ -226,8 +227,9 @@ describe('useBriefing', () => {
     });
     expect(result.current.current.quickSummariesById).toEqual(quick);
     expect(result.current.current.fullReportsById).toEqual(full);
-    expect(result.current.history[0].quickSummariesById).toEqual(quick);
-    expect(result.current.history[0].fullReportsById).toEqual(full);
+    // History is index-only: heavy fields live on current + on disk (Task 9+).
+    expect(result.current.history[0].quickSummariesById).toBeUndefined();
+    expect(result.current.history[0].fullReportsById).toBeUndefined();
   });
 
   it('omits quickSummariesById/fullReportsById when not provided', () => {
@@ -252,14 +254,19 @@ describe('useBriefing', () => {
       });
     });
     expect(result.current.current.pipelineArchive).toEqual(archive);
-    expect(result.current.history[0].pipelineArchive).toEqual(archive);
+    // History is index-only: pipelineArchive lives on current + on disk (Task 9+).
+    expect(result.current.history[0].pipelineArchive).toBeUndefined();
   });
 
   // --- Back-compat / migration ---
 
-  it('tolerates legacy entries without id/timestamp/archived and migrates them', () => {
+  it('tolerates legacy-shape entries in the index key and migrates them', () => {
+    // Legacy entries (no id/timestamp/archived) in the new index key should
+    // still be migrated by readStoredHistory. Migration from the OLD
+    // 'aparture-briefing-history' key to the new 'aparture-briefing-index'
+    // key + filesystem is tested separately (Task 12).
     window.localStorage.setItem(
-      'aparture-briefing-history',
+      'aparture-briefing-index',
       JSON.stringify([
         {
           date: '2026-04-10',
@@ -282,7 +289,6 @@ describe('useBriefing', () => {
     expect(typeof entry.timestamp).toBe('number');
     expect(entry.timestamp).toBeGreaterThan(0);
     expect(entry.archived).toBe(false);
-    expect(entry.generationMetadata).toBeUndefined();
   });
 
   it('migrates legacy current entry on read', () => {
@@ -307,7 +313,7 @@ describe('useBriefing', () => {
       briefing: { executiveSummary: 'already migrated' },
       archived: true,
     };
-    window.localStorage.setItem('aparture-briefing-history', JSON.stringify([existing]));
+    window.localStorage.setItem('aparture-briefing-index', JSON.stringify([existing]));
     const { result } = renderHook(() => useBriefing());
     const entry = result.current.history[0];
     expect(entry.id).toBe('my-uuid');
@@ -345,7 +351,7 @@ describe('useBriefing', () => {
     });
 
     it('saveBriefing does not throw when HISTORY_KEY quota is exceeded', () => {
-      throwOnKeys.add('aparture-briefing-history');
+      throwOnKeys.add('aparture-briefing-index');
       const { result } = renderHook(() => useBriefing());
       expect(() => {
         act(() => {
@@ -382,7 +388,7 @@ describe('useBriefing', () => {
       // succeeds because the heavy fields are gone.
       let callCount = 0;
       setItemSpy.mockImplementation(function (key, value) {
-        if (key === 'aparture-briefing-current' || key === 'aparture-briefing-history') {
+        if (key === 'aparture-briefing-current' || key === 'aparture-briefing-index') {
           callCount++;
           // Heavy entries contain pipelineArchive/fullReports; strip succeeds.
           if (value.includes('pipelineArchive') || value.includes('fullReportsById')) {
