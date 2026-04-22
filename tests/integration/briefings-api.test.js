@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import handler from '../../pages/api/briefings/index.js';
+import idHandler from '../../pages/api/briefings/[id].js';
 
 let tmpDir;
 
@@ -90,5 +91,63 @@ describe('POST /api/briefings — auth + validation', () => {
     const { req, res, getResponse } = mockReqRes({}, 'PUT');
     await handler(req, res);
     expect(getResponse().statusCode).toBe(405);
+  });
+});
+
+function mockReqResWithQuery(query, method = 'GET', body) {
+  const req = { method, query, body };
+  const state = { statusCode: 200, jsonBody: undefined };
+  const res = {
+    status(code) {
+      state.statusCode = code;
+      return this;
+    },
+    json(data) {
+      state.jsonBody = data;
+      return this;
+    },
+  };
+  return { req, res, getResponse: () => state };
+}
+
+describe('GET /api/briefings/[id]', () => {
+  it('reads an existing briefing file', async () => {
+    const entry = {
+      id: 'seed1',
+      date: '2026-04-21',
+      timestamp: 42,
+      archived: false,
+      briefing: { executiveSummary: 'seeded' },
+    };
+    await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'seed1.json'), JSON.stringify(entry), 'utf8');
+
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'seed1', password: 'test-pw' });
+    await idHandler(req, res);
+
+    const { statusCode, jsonBody } = getResponse();
+    expect(statusCode).toBe(200);
+    expect(jsonBody).toEqual(entry);
+  });
+
+  it('returns 404 for missing briefing', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'missing', password: 'test-pw' });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(404);
+  });
+
+  it('rejects invalid id with 400', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({
+      id: '../etc/passwd',
+      password: 'test-pw',
+    });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(400);
+  });
+
+  it('rejects wrong password with 401', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'anything', password: 'wrong' });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(401);
   });
 });
