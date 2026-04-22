@@ -188,3 +188,48 @@ describe('DELETE /api/briefings/[id]', () => {
     expect(getResponse().statusCode).toBe(401);
   });
 });
+
+describe('PATCH /api/briefings/[id]', () => {
+  it('merges whitelisted fields only', async () => {
+    const entry = {
+      id: 'pat1',
+      date: '2026-04-21',
+      timestamp: 0,
+      archived: false,
+      briefing: { executiveSummary: 'keep' },
+    };
+    await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'pat1.json'), JSON.stringify(entry), 'utf8');
+
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'pat1' }, 'PATCH', {
+      password: 'test-pw',
+      patch: { archived: true, briefing: { executiveSummary: 'HACKED' } },
+    });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(200);
+
+    const stored = JSON.parse(
+      await fs.readFile(path.join(tmpDir, 'briefings', 'pat1.json'), 'utf8')
+    );
+    expect(stored.archived).toBe(true); // whitelisted: applied
+    expect(stored.briefing.executiveSummary).toBe('keep'); // not whitelisted: ignored
+  });
+
+  it('returns 404 when patching a missing file', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'nonexistent' }, 'PATCH', {
+      password: 'test-pw',
+      patch: { archived: true },
+    });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(404);
+  });
+
+  it('rejects wrong password with 401', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'anything' }, 'PATCH', {
+      password: 'wrong',
+      patch: { archived: true },
+    });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+});

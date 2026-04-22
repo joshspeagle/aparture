@@ -62,5 +62,36 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  if (req.method === 'PATCH') {
+    const { password, patch } = req.body ?? {};
+    if (password !== process.env.ACCESS_PASSWORD) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    if (!patch || typeof patch !== 'object') {
+      return res.status(400).json({ error: 'Missing patch' });
+    }
+
+    const MUTABLE_FIELDS = new Set(['archived']);
+    const safePatch = {};
+    for (const [key, value] of Object.entries(patch)) {
+      if (MUTABLE_FIELDS.has(key)) safePatch[key] = value;
+    }
+
+    try {
+      const raw = await fs.readFile(resolved.filePath, 'utf8');
+      const current = JSON.parse(raw);
+      const merged = { ...current, ...safePatch };
+      const serialized = JSON.stringify(merged, null, 2);
+      const tmpPath = `${resolved.filePath}.tmp`;
+      await fs.writeFile(tmpPath, serialized, 'utf8');
+      await fs.rename(tmpPath, resolved.filePath);
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: 'Not found' });
+      console.error('[briefings PATCH] merge failed:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
