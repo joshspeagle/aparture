@@ -31,6 +31,7 @@ function PaperCard({
   starred,
   dismissed,
   briefingDate,
+  feedbackEvents = [],
   onStar,
   onDismiss,
   onComment,
@@ -339,6 +340,57 @@ function PaperCard({
               </div>
               {showCommentInput && (
                 <div style={{ marginTop: '8px' }}>
+                  {(() => {
+                    const pastComments = feedbackEvents.filter(
+                      (e) => e.type === 'paper-comment' && e.arxivId === paper.id
+                    );
+                    if (pastComments.length === 0) return null;
+                    return (
+                      <div
+                        style={{
+                          marginBottom: '8px',
+                          padding: '6px 8px',
+                          borderRadius: '4px',
+                          background: 'var(--aparture-bg)',
+                          border: '1px solid var(--aparture-hairline)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: 'var(--aparture-font-sans)',
+                            fontSize: '10px',
+                            color: 'var(--aparture-mute)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          Past comments ({pastComments.length})
+                        </div>
+                        {pastComments.map((c) => (
+                          <div
+                            key={c.id}
+                            style={{
+                              display: 'flex',
+                              gap: '6px',
+                              fontFamily: 'var(--aparture-font-sans)',
+                              fontSize: 'var(--aparture-text-xs)',
+                              lineHeight: 1.4,
+                              marginBottom: '2px',
+                            }}
+                          >
+                            <span style={{ color: 'var(--aparture-mute)', flexShrink: 0 }}>
+                              {new Date(c.timestamp).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                            <span style={{ color: 'var(--aparture-ink)' }}>{c.comment}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <textarea
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
@@ -426,6 +478,7 @@ PaperCard.propTypes = {
   starred: PropTypes.bool,
   dismissed: PropTypes.bool,
   briefingDate: PropTypes.string,
+  feedbackEvents: PropTypes.array,
   onStar: PropTypes.func,
   onDismiss: PropTypes.func,
   onComment: PropTypes.func,
@@ -877,6 +930,7 @@ export default function App() {
         starred={entry?.starred ?? false}
         dismissed={entry?.dismissed ?? false}
         briefingDate={paperCardBriefingDate}
+        feedbackEvents={feedback.events}
         onStar={feedback.addStar}
         onDismiss={feedback.addDismiss}
         onComment={feedback.addPaperComment}
