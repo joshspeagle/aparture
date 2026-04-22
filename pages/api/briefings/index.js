@@ -13,6 +13,25 @@ function validateId(id) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    const password = req.query.password;
+    if (password !== process.env.ACCESS_PASSWORD) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    const dir = getBriefingsDir();
+    try {
+      const files = await fs.readdir(dir);
+      const ids = files
+        .filter((f) => f.endsWith('.json') && !f.endsWith('.tmp'))
+        .map((f) => f.slice(0, -'.json'.length));
+      return res.status(200).json({ ids });
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(200).json({ ids: [] });
+      console.error('[briefings GET list] readdir failed:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   if (req.method === 'POST') {
     const { password, entry } = req.body ?? {};
     if (password !== process.env.ACCESS_PASSWORD) {

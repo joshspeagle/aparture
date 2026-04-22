@@ -233,3 +233,47 @@ describe('PATCH /api/briefings/[id]', () => {
     expect(getResponse().statusCode).toBe(401);
   });
 });
+
+describe('GET /api/briefings', () => {
+  it('lists all briefing ids on disk', async () => {
+    await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'a.json'), '{}');
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'b.json'), '{}');
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'ignore.txt'), 'not json');
+
+    const req = { method: 'GET', query: { password: 'test-pw' } };
+    const state = { statusCode: 200, jsonBody: undefined };
+    const res = {
+      status(code) {
+        state.statusCode = code;
+        return this;
+      },
+      json(data) {
+        state.jsonBody = data;
+        return this;
+      },
+    };
+    await handler(req, res);
+
+    expect(state.statusCode).toBe(200);
+    expect(state.jsonBody.ids).toEqual(expect.arrayContaining(['a', 'b']));
+    expect(state.jsonBody.ids).not.toContain('ignore');
+  });
+
+  it('returns [] when the dir does not exist', async () => {
+    const req = { method: 'GET', query: { password: 'test-pw' } };
+    const state = { statusCode: 200, jsonBody: undefined };
+    const res = {
+      status(code) {
+        state.statusCode = code;
+        return this;
+      },
+      json(data) {
+        state.jsonBody = data;
+        return this;
+      },
+    };
+    await handler(req, res);
+    expect(state.jsonBody).toEqual({ ids: [] });
+  });
+});
