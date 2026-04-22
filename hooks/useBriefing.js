@@ -318,6 +318,15 @@ export function useBriefing({ password = '' } = {}) {
       return next;
     });
 
+    // Keep the current briefing in sync when the toggled entry IS current,
+    // so loadBriefing's fast path doesn't return a stale archived flag.
+    setCurrent((prev) => {
+      if (prev?.id !== id) return prev;
+      const next = { ...prev, archived: nextArchived };
+      persistCurrent(next);
+      return next;
+    });
+
     try {
       await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
         method: 'PATCH',
