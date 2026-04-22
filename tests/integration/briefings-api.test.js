@@ -151,3 +151,40 @@ describe('GET /api/briefings/[id]', () => {
     expect(getResponse().statusCode).toBe(401);
   });
 });
+
+describe('DELETE /api/briefings/[id]', () => {
+  it('removes an existing briefing file', async () => {
+    const entry = { id: 'del1', date: '2026-04-21', timestamp: 0, archived: false, briefing: {} };
+    await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'briefings', 'del1.json'), JSON.stringify(entry), 'utf8');
+
+    const { req, res, getResponse } = mockReqResWithQuery(
+      { id: 'del1', password: 'test-pw' },
+      'DELETE'
+    );
+    await idHandler(req, res);
+
+    expect(getResponse().statusCode).toBe(200);
+    expect(getResponse().jsonBody).toEqual({ ok: true });
+    await expect(fs.access(path.join(tmpDir, 'briefings', 'del1.json'))).rejects.toThrow();
+  });
+
+  it('returns 200 for already-missing briefing (idempotent)', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery(
+      { id: 'missing', password: 'test-pw' },
+      'DELETE'
+    );
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(200);
+    expect(getResponse().jsonBody).toEqual({ ok: true });
+  });
+
+  it('rejects wrong password with 401', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery(
+      { id: 'anything', password: 'wrong' },
+      'DELETE'
+    );
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+});

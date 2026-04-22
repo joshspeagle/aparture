@@ -45,5 +45,22 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === 'DELETE') {
+    const password = req.query.password;
+    if (password !== process.env.ACCESS_PASSWORD) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+    try {
+      await fs.unlink(resolved.filePath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        console.error('[briefings DELETE] unlink failed:', err);
+        return res.status(500).json({ error: err.message });
+      }
+      // Idempotent: missing file is fine.
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
