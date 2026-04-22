@@ -203,6 +203,22 @@ Both patterns are consistent within their own fixture sets — the two cannot sh
 
 **Optional `ARXIV_CONTACT_EMAIL` env var.** When set, sent as the HTTP `From` header on every proxied request. Not authenticated — purely a goodwill signal for arXiv's abuse team. Documented in `docs/reference/environment.md` and `docs/getting-started/install.md` §4.
 
+### Briefing persistence (tiered store)
+
+Briefings are persisted in two tiers, introduced 2026-04-21 to replace the single-key localStorage approach that hit browser quota after ~10–20 runs.
+
+- **Hot tier (localStorage):**
+  - `aparture-briefing-current` — full current entry, instant boot render.
+  - `aparture-briefing-index` — newest-first array of search-capable index entries (`{id, date, timestamp, archived, briefing: {executiveSummary, papers[{arxivId, title, score}]}}`). Keeps `filterBriefings` synchronous.
+- **Cold tier (filesystem):** `reports/briefings/<id>.json` via `POST /api/briefings`, `GET/PATCH/DELETE /api/briefings/[id]`. Read lazily by `useBriefing.loadBriefing(id)` when an archived briefing is opened. Base path overridable via `APARTURE_REPORTS_DIR`.
+- **Migration:** `hooks/useBriefing.js` checks for the legacy `aparture-briefing-history` key on mount and moves entries to files once (silent, no retry on per-entry failure).
+
+**Seam for Phase 2:** one constant (`BRIEFINGS_DIR` computed via `getBriefingsDir()` in the two API-route files) changes to `~/aparture/briefings/`.
+
+**Extending the PATCH whitelist:** `pages/api/briefings/[id].js` has a `MUTABLE_FIELDS` set for `PATCH` — currently `['archived']`. Add new mutable fields there rather than expanding into arbitrary merges.
+
+**Adding a heavy field:** extend the `HEAVY_FIELDS` array in `hooks/useBriefing.js` if the new field should be strippable under quota pressure. If the field should also NOT appear in the search-capable index, extend `buildIndexEntry` in `lib/briefing/buildIndexEntry.js` to drop it.
+
 ### ArXiv PDF Download Handling
 
 `pages/api/analyze-pdf.js` tries direct fetch first; if the response lacks `%PDF-` magic bytes, it falls back to Playwright with a persistent profile at `temp/playwright-profile/` that caches arXiv cookies + reCAPTCHA bypass state. Fallback adds ~5–10s/paper.
@@ -236,21 +252,22 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 
 **Trigger → impacted docs:**
 
-| Code area                                                         | Impacted docs                                                                                       |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                        |
-| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                     |
-| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                              |
-| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                              |
-| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                      |
-| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                          |
-| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                       |
-| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                          |
-| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                         |
-| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                             |
-| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                      |
-| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                |
-| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                        |
-| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits) |
+| Code area                                                         | Impacted docs                                                                                                      |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                       |
+| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                    |
+| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                             |
+| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                                             |
+| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                                     |
+| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                                         |
+| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                                      |
+| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                                         |
+| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                        |
+| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                                            |
+| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                                     |
+| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                               |
+| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                                       |
+| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                |
+| `hooks/useBriefing.js`, `pages/api/briefings/*`                   | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures) |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).

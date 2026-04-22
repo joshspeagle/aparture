@@ -2,7 +2,7 @@
 
 Aparture reads its secrets and a few runtime flags from `.env.local` at the repo root. The file is gitignored; if you don't have one yet, [Install](/getting-started/install) walks through creating it.
 
-There are four variables you'll usually care about — one required password, three API keys (at least one required) — plus three optional ones (`PORT`, `NODE_ENV`, `ARXIV_CONTACT_EMAIL`) and a handful of test-only overrides that should never appear in a real dev file.
+There are four variables you'll usually care about — one required password, three API keys (at least one required) — plus four optional ones (`PORT`, `NODE_ENV`, `ARXIV_CONTACT_EMAIL`, `APARTURE_REPORTS_DIR`) and a handful of test-only overrides that should never appear in a real dev file.
 
 ```bash
 # .env.local — gitignored, project root
@@ -31,6 +31,7 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 | `PORT`                                  | No                        | Next.js CLI (not read from source)                  | `3000`                                |
 | `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)      | `development` (set by Next)           |
 | `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/fetch-arxiv.js`                          | Unset — no `From` header sent         |
+| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js`                          | `<cwd>/reports`                       |
 | `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`    | Unset                                 |
 | `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                              | Unset                                 |
 | `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                      | Unset                                 |
@@ -101,6 +102,17 @@ ARXIV_CONTACT_EMAIL=you@example.edu
 ```
 
 Institutional addresses (`.edu`, `.ac.*`) tend to carry more weight than generic webmail domains.
+
+### `APARTURE_REPORTS_DIR`
+
+Base directory for runtime-state files. Today the briefing persistence layer writes to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`; future runtime outputs may live alongside. Defaults to `<cwd>/reports`, matching the existing `reports/` convention.
+
+```bash
+# .env.local (rarely set in practice)
+APARTURE_REPORTS_DIR=/path/to/alternate/reports
+```
+
+Primarily useful to point Vitest at a `tmp` directory so integration tests don't touch `reports/` in the repo. Phase 2 replaces this with `~/aparture/` as the unified working directory.
 
 ## Test-only overrides
 

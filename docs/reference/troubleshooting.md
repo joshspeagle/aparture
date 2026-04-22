@@ -230,6 +230,21 @@ If the prefix looks right but the key still fails, run the [Minimal API Test](/g
 
 ## Mid-run issues
 
+### Briefing disk writes failing
+
+```
+[useBriefing] failed to persist briefing to disk: <reason>
+```
+
+Since 2026-04-21, each briefing is written to `reports/briefings/<id>.json` via `POST /api/briefings`. The in-memory state is preserved even when disk writes fail — the live briefing renders normally. The only symptom is that opening the briefing after a page refresh or in a later session returns a "briefing not available" placeholder (the file is missing).
+
+Common causes:
+
+- **Permission denied on `reports/`.** Fix with `chmod u+w reports/` or run Aparture from a directory you own.
+- **Disk full.** Check `df -h`. Each briefing is typically 200 KB to 1 MB; a year of daily runs is well under 1 GB.
+- **`APARTURE_REPORTS_DIR` points somewhere invalid.** Unset it or confirm the path exists and is writable.
+- **`ACCESS_PASSWORD` not set or mismatched.** The POST auth check is the same as every other API route — if the server log shows `401 Invalid password` on `POST /api/briefings`, rotate the env var and restart `npm run dev`.
+
 ### arXiv rate limits
 
 ```
