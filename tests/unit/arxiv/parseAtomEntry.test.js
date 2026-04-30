@@ -48,6 +48,13 @@ describe('parseAtomEntry', () => {
     expect(parseAtomEntry(entry, 'cs.AI')).toBeNull();
   });
 
+  it('returns null for an id missing the /abs/ path', () => {
+    // Malformed feed where the id URL doesn't contain "/abs/" — parser must not throw.
+    const xml = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><entry><id>http://arxiv.org/2604.01234</id></entry></feed>`;
+    const entry = parseFirstEntry(xml);
+    expect(parseAtomEntry(entry, 'cs.AI')).toBeNull();
+  });
+
   it('handles missing optional fields gracefully', () => {
     const xml = `<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
