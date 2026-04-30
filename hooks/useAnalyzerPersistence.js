@@ -14,7 +14,7 @@ const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
 
 export const DEFAULT_CONFIG = {
-  version: 2,
+  version: 3,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -91,6 +91,7 @@ export const DEFAULT_CONFIG = {
   briefingRetryOnYes: true,
   briefingRetryOnMaybe: false,
   maxAbstractDisplay: 500,
+  arxivIngestion: 'atom-only',
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -106,8 +107,14 @@ function migrateLegacyConfig(config) {
   }
 
   // Outdated version → fresh defaults
-  if (!config.version || config.version < DEFAULT_CONFIG.version) {
+  if (!config.version || config.version < 2) {
     return null;
+  }
+
+  // v2 → v3: introduces arxivIngestion key
+  if (config.version === 2) {
+    config.arxivIngestion = 'atom-only';
+    config.version = 3;
   }
 
   // Two-model → three-model setup
