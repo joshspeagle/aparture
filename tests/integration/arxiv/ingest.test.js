@@ -79,4 +79,29 @@ describe('ingest.harvest — atom-only mode', () => {
 
     expect(result.papers.map((p) => p.id)).toEqual(['B', 'A']);
   });
+
+  it('reports progress after each subcategory and awaits waitForResume between them', async () => {
+    const fetchAtomImpl = vi
+      .fn()
+      .mockResolvedValueOnce([examplePaper('A', 'cs.AI')])
+      .mockResolvedValueOnce([examplePaper('B', 'cs.LG')]);
+    const progressCallback = vi.fn();
+    const waitForResume = vi.fn().mockResolvedValue();
+
+    await harvest(baseWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl,
+      harvestOaiImpl: vi.fn(),
+      progressCallback,
+      waitForResume,
+    });
+
+    // Two subcategories → two progress callbacks (1/2, 2/2) and two pause checks.
+    expect(progressCallback.mock.calls).toEqual([
+      [1, 2],
+      [2, 2],
+    ]);
+    expect(waitForResume).toHaveBeenCalledTimes(2);
+  });
 });
