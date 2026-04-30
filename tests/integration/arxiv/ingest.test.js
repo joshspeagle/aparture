@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { harvest } from '../../../lib/arxiv/ingest.js';
+import { ArxivThrottledError } from '../../../lib/arxiv/errors.js';
 
 const examplePaper = (id, fetchedCategory) => ({
   id,
@@ -166,5 +167,74 @@ describe('ingest.harvest — oai-only mode', () => {
     // 'C' has both cs.LG and cs.AI in its categories. Selected order is ['cs.AI', 'cs.LG'],
     // so cs.AI wins as the first-selected match.
     expect(c.fetchedCategory).toBe('cs.AI');
+  });
+});
+
+describe('ingest.harvest — auto mode', () => {
+  it('uses OAI for all prefixes when OAI succeeds', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', ''), categories: ['cs.AI'] }])
+      .mockResolvedValueOnce([{ ...examplePaper('B', ''), categories: ['stat.ML'] }]);
+    const fetchAtomImpl = vi.fn();
+
+    const result = await harvest(
+      { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
+      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+    );
+
+    expect(result.modeUsed).toBe('auto-oai');
+    expect(fetchAtomImpl).not.toHaveBeenCalled();
+  });
+
+  it('falls back to Atom for the failing prefix and all subsequent prefixes', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new ArxivThrottledError('rate limit'))
+      .mockResolvedValueOnce([{ ...examplePaper('Z', ''), categories: ['stat.ML'] }]);
+    const fetchAtomImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', 'cs.AI'), categories: ['cs.AI'] }])
+      .mockResolvedValueOnce([{ ...examplePaper('B', 'stat.ML'), categories: ['stat.ML'] }]);
+
+    const result = await harvest(
+      { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
+      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+    );
+
+    expect(result.modeUsed).toBe('auto-atom');
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(1); // tripped on first prefix
+    expect(fetchAtomImpl).toHaveBeenCalledTimes(2); // cs.AI then stat.ML
+  });
+
+  it('records auto-mixed when first prefix succeeded but second failed', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', ''), categories: ['cs.AI'] }])
+      .mockRejectedValueOnce(new ArxivThrottledError('rate limit'));
+    const fetchAtomImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('B', 'stat.ML'), categories: ['stat.ML'] }]);
+
+    const result = await harvest(
+      { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
+      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+    );
+
+    expect(result.modeUsed).toBe('auto-mixed');
+  });
+
+  it('propagates Atom failure when both paths fail in auto mode', async () => {
+    const harvestOaiImpl = vi.fn().mockRejectedValueOnce(new ArxivThrottledError('rate limit'));
+    const fetchAtomImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new ArxivThrottledError('also rate limited'));
+
+    await expect(
+      harvest(
+        { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI'] },
+        { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+      )
+    ).rejects.toBeInstanceOf(ArxivThrottledError);
   });
 });
