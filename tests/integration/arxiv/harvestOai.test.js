@@ -153,6 +153,93 @@ describe('harvestOai', () => {
     ).rejects.toThrow(/aborted/i);
   });
 
+  it('restarts the harvest once when an OAI error indicates the resumption token expired', async () => {
+    // Page 1 returns 1 record + a resumption token; page 2 returns badResumptionToken;
+    // the driver discards page 1's accumulated state and restarts from scratch (no token).
+    // The restart returns 1 different record + no token, completing the harvest.
+    const tokenExpiredXml = `<?xml version="1.0"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <error code="badResumptionToken">expired</error>
+</OAI-PMH>`;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          xml: buildPageXml(sampleRecord('PRE-EXPIRY'), 'expired-tok'),
+          resumptionToken: 'expired-tok',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ xml: tokenExpiredXml, resumptionToken: '' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          xml: buildPageXml(sampleRecord('AFTER-RESTART'), ''),
+          resumptionToken: '',
+        }),
+      });
+
+    const records = await harvestOai({
+      ...baseArgs,
+      fetchImpl,
+      sleepImpl: () => Promise.resolve(),
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    // Pre-expiry record is discarded; restart's records are what we keep.
+    expect(records.map((r) => r.id)).toEqual(['AFTER-RESTART']);
+    // The third call should be the restart (no resumptionToken, full set/from/until).
+    const restartBody = JSON.parse(fetchImpl.mock.calls[2][1].body);
+    expect(restartBody.resumptionToken).toBeUndefined();
+    expect(restartBody.set).toBe('cs');
+  });
+
+  it('throws when the resumption token expires twice in a row', async () => {
+    const tokenExpiredXml = `<?xml version="1.0"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <error code="badResumptionToken">expired</error>
+</OAI-PMH>`;
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          xml: buildPageXml(sampleRecord('A'), 'tok'),
+          resumptionToken: 'tok',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ xml: tokenExpiredXml, resumptionToken: '' }),
+      })
+      // After restart, page 1 hands out another token that page 2 says expired.
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          xml: buildPageXml(sampleRecord('B'), 'tok2'),
+          resumptionToken: 'tok2',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ xml: tokenExpiredXml, resumptionToken: '' }),
+      });
+
+    await expect(
+      harvestOai({ ...baseArgs, fetchImpl, sleepImpl: () => Promise.resolve() })
+    ).rejects.toThrow(/expired/i);
+  });
+
   it('parses the trimmed fixture without errors', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
