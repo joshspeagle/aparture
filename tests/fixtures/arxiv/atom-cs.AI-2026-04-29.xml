@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <title>ArXiv Query: cs.AI</title>
+  <entry>
+    <id>http://arxiv.org/abs/2604.10001v1</id>
+    <title>Atom Fixture Paper One</title>
+    <summary>Abstract for atom fixture paper one.</summary>
+    <author><name>Test Author A</name></author>
+    <published>2026-04-28T00:00:00Z</published>
+    <updated>2026-04-28T00:00:00Z</updated>
+    <category term="cs.AI"/>
+    <category term="cs.LG"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2604.10002v2</id>
+    <title>Atom Fixture Paper Two</title>
+    <summary>Abstract for atom fixture paper two.</summary>
+    <author><name>Test Author B</name></author>
+    <author><name>Test Author C</name></author>
+    <published>2026-04-28T00:00:00Z</published>
+    <updated>2026-04-29T00:00:00Z</updated>
+    <category term="cs.AI"/>
+  </entry>
+</feed>
