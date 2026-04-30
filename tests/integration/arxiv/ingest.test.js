@@ -105,3 +105,66 @@ describe('ingest.harvest — atom-only mode', () => {
     expect(waitForResume).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('ingest.harvest — oai-only mode', () => {
+  it('issues one harvestOai call per top-level prefix', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { ...examplePaper('A', 'cs.AI'), categories: ['cs.AI', 'cs.LG'] },
+        { ...examplePaper('B', 'cs.LG'), categories: ['cs.LG'] },
+      ])
+      .mockResolvedValueOnce([{ ...examplePaper('C', 'stat.ML'), categories: ['stat.ML'] }]);
+    const fetchAtomImpl = vi.fn();
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI', 'cs.LG', 'stat.ML'],
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl,
+      }
+    );
+
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(2); // one for cs, one for stat
+    expect(harvestOaiImpl.mock.calls[0][0]).toMatchObject({ set: 'cs' });
+    expect(harvestOaiImpl.mock.calls[1][0]).toMatchObject({ set: 'stat' });
+    expect(result.papers).toHaveLength(3);
+    expect(fetchAtomImpl).not.toHaveBeenCalled();
+  });
+
+  it('filters records to selected subcategories and assigns fetchedCategory', async () => {
+    const harvestOaiImpl = vi.fn().mockResolvedValueOnce([
+      { ...examplePaper('A', ''), categories: ['cs.AI'] },
+      { ...examplePaper('B', ''), categories: ['cs.OS'] }, // unselected
+      { ...examplePaper('C', ''), categories: ['cs.LG', 'cs.AI'] },
+    ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI', 'cs.LG'],
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['A', 'C']);
+    const a = result.papers.find((p) => p.id === 'A');
+    const c = result.papers.find((p) => p.id === 'C');
+    expect(a.fetchedCategory).toBe('cs.AI');
+    // 'C' has both cs.LG and cs.AI in its categories. Selected order is ['cs.AI', 'cs.LG'],
+    // so cs.AI wins as the first-selected match.
+    expect(c.fetchedCategory).toBe('cs.AI');
+  });
+});
