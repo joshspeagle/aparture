@@ -1071,6 +1071,74 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     </p>
                   </div>
                 </div>
+                <div style={{ marginTop: 'var(--aparture-space-3)' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      fontWeight: 500,
+                      color: 'var(--aparture-mute)',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    Window Semantics
+                  </label>
+                  <div
+                    role="radiogroup"
+                    style={{
+                      display: 'inline-flex',
+                      border: '1px solid var(--aparture-hairline)',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {[
+                      { value: 'submitted-only', label: 'Submitted only' },
+                      { value: 'submitted-or-updated', label: 'Include updates' },
+                    ].map((opt, idx) => {
+                      const selected =
+                        (config.arxivWindowSemantics ?? 'submitted-only') === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() =>
+                            setConfig((prev) => ({ ...prev, arxivWindowSemantics: opt.value }))
+                          }
+                          disabled={processing.isRunning}
+                          style={{
+                            padding: '6px 12px',
+                            background: selected ? 'var(--aparture-accent)' : 'var(--aparture-bg)',
+                            color: selected ? 'var(--aparture-bg)' : 'var(--aparture-ink)',
+                            border: 'none',
+                            borderLeft: idx === 0 ? 'none' : '1px solid var(--aparture-hairline)',
+                            cursor: processing.isRunning ? 'not-allowed' : 'pointer',
+                            fontFamily: 'var(--aparture-font-sans)',
+                            fontSize: 'var(--aparture-text-sm)',
+                            fontWeight: selected ? 600 : 400,
+                            opacity: processing.isRunning ? 0.6 : 1,
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-mute)',
+                      marginTop: '4px',
+                    }}
+                  >
+                    Submitted only matches legacy behavior; Include updates also surfaces v2 of
+                    older papers
+                  </p>
+                </div>
               </div>
 
               <div

@@ -14,7 +14,7 @@ const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
 
 export const DEFAULT_CONFIG = {
-  version: 5,
+  version: 6,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -95,6 +95,7 @@ export const DEFAULT_CONFIG = {
   minPapersPerSubcategory: 5,
   lookbackExtensions: [3, 7, 14],
   arxivCacheTtlMinutes: 60,
+  arxivWindowSemantics: 'submitted-only',
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -133,6 +134,13 @@ function migrateLegacyConfig(config) {
   if (config.version === 4) {
     config.arxivCacheTtlMinutes = 60;
     config.version = 5;
+  }
+
+  // v5 → v6: introduces arxivWindowSemantics. Default 'submitted-only' preserves
+  // pre-OAI behavior (drops v2-of-old papers); users opt in to 'submitted-or-updated'.
+  if (config.version === 5) {
+    config.arxivWindowSemantics = 'submitted-only';
+    config.version = 6;
   }
 
   // Two-model → three-model setup
