@@ -91,7 +91,7 @@ export const DEFAULT_CONFIG = {
   briefingRetryOnYes: true,
   briefingRetryOnMaybe: false,
   maxAbstractDisplay: 500,
-  arxivIngestion: 'atom-only',
+  arxivIngestion: 'auto',
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -111,9 +111,11 @@ function migrateLegacyConfig(config) {
     return null;
   }
 
-  // v2 → v3: introduces arxivIngestion key
+  // v2 → v3: introduces arxivIngestion key. v2 users predate the new default,
+  // so give them the same 'auto' default as fresh installs — they can opt out
+  // via advanced settings if the breaker fallback ever surprises them.
   if (config.version === 2) {
-    config.arxivIngestion = 'atom-only';
+    config.arxivIngestion = 'auto';
     config.version = 3;
   }
 
