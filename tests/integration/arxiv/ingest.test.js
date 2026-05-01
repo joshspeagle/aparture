@@ -326,3 +326,73 @@ describe('ingest.harvest — cache', () => {
     expect(result.papers).toHaveLength(1);
   });
 });
+
+describe('ingest.harvest — windowSemantics', () => {
+  it('drops updated-not-created papers when submitted-only', async () => {
+    const harvestOaiImpl = vi.fn().mockResolvedValueOnce([
+      {
+        ...examplePaper('NEW', ''),
+        categories: ['cs.AI'],
+        published: '2026-04-28',
+        updated: '2026-04-28',
+      },
+      {
+        ...examplePaper('OLD-V2', ''),
+        categories: ['cs.AI'],
+        published: '2025-01-01',
+        updated: '2026-04-28',
+      },
+    ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI'],
+        windowSemantics: 'submitted-only',
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id)).toEqual(['NEW']);
+  });
+
+  it('keeps updated-not-created papers when submitted-or-updated', async () => {
+    const harvestOaiImpl = vi.fn().mockResolvedValueOnce([
+      {
+        ...examplePaper('NEW', ''),
+        categories: ['cs.AI'],
+        published: '2026-04-28',
+        updated: '2026-04-28',
+      },
+      {
+        ...examplePaper('OLD-V2', ''),
+        categories: ['cs.AI'],
+        published: '2025-01-01',
+        updated: '2026-04-28',
+      },
+    ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI'],
+        windowSemantics: 'submitted-or-updated',
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['NEW', 'OLD-V2']);
+  });
+});
