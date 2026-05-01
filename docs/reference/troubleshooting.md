@@ -59,6 +59,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                           | [`.env.local` not loading](#env-local-not-loading)                        |
 | `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                     | [API key format issues](#api-key-format-issues)                           |
 | `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                            | [arXiv rate limits](#arxiv-rate-limits)                                   |
+| Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                       | [arXiv rate-limited](#arxiv-rate-limited)                                 |
 | `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`            | ArXiv served reCAPTCHA HTML instead of PDF bytes                  | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
 | End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                    | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
 | `Filter/Score/PDF API error: 429`                                    | Provider rate-limit                                               | [Provider rate limits](#provider-rate-limits)                             |
@@ -264,6 +265,10 @@ Wait five minutes or so, then rerun with fewer categories and no concurrent runs
 ::: tip Reduce your chance of being throttled
 Set `ARXIV_CONTACT_EMAIL` in `.env.local` ([environment.md](/reference/environment#arxiv_contact_email)) — arXiv weights requests from identified clients more leniently in their abuse heuristics. Academic `.edu`/`.ac.*` addresses tend to get the best treatment. Not a fix once you're already blocked, but a meaningful reduction in how often you hit this to begin with.
 :::
+
+### arXiv rate-limited
+
+Symptoms: `npm run dev` logs show `arXiv 429` repeatedly, run reports `arXiv: auto-atom`, much slower than usual. Cause: arXiv has throttled `/api/query` (the Atom fallback). Fix: wait 30-60 minutes; verify with the manual probe `node scripts/probe-arxiv.mjs`. See [arXiv ingestion](../concepts/arxiv-ingestion.md#troubleshooting) for full diagnosis steps.
 
 ### reCAPTCHA on PDF downloads
 

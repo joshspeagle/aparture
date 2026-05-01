@@ -59,6 +59,8 @@ Wall-clock duration varies widely with provider latency, paper volume, and which
 
 **Pause gates.** None.
 
+See [arXiv ingestion](./arxiv-ingestion.md) for the two-path architecture (OAI-PMH primary, Atom fallback) and the configurable knobs (mode, window semantics, fill-ups, cache).
+
 ## Stage 2: quick filter
 
 **What it does.** Batches papers and asks a fast, cheap model to give each one a <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict against your research profile, along with a one-sentence summary and a short justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. The stage can be disabled entirely via `useQuickFilter: false` in config.

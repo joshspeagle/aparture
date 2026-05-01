@@ -149,6 +149,10 @@ The two pause gates are the training wheels. Leaving them on is the right starti
 
 The retry checkboxes trade tokens for quality. A retry is a full second synthesis pass plus a second audit — cheap compared to Stage 4, but not free. Retry-on-<span class="verdict is-no">YES</span> is usually worth keeping on (a confident "hallucinations detected" verdict is rare but worth fixing). Retry-on-<span class="verdict is-maybe">MAYBE</span> is more defensible to turn off — the <span class="verdict is-maybe">MAYBE</span> verdict often catches paraphrases the auditor is unusually strict about rather than genuine hallucinations. The retry path fires at most once per briefing either way.
 
+## arXiv fetching
+
+Five Advanced-settings controls govern how Aparture talks to arXiv: ingestion mode, window semantics, min papers per subcategory, fill-up lookback days, cache TTL. See [arXiv ingestion](../concepts/arxiv-ingestion.md) for what each does and when to change defaults.
+
 ## A few common configurations
 
 The defaults ship tuned sensibly — all-Google models, both pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
