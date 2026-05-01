@@ -484,15 +484,3 @@ describe('downloadBlob — DOM glue smoke test', () => {
     expect(() => downloadBlob('hello world', 'test.md', 'text/markdown')).not.toThrow();
   });
 });
-
-// ---------------------------------------------------------------------------
-// exportAnalysisReport — placeholder (orchestrates buildReportMarkdown + downloadBlob)
-// ---------------------------------------------------------------------------
-
-describe('exportAnalysisReport — orchestrator smoke test', () => {
-  it.skip('is covered indirectly by buildReportMarkdown and downloadBlob tests', () => {
-    // exportAnalysisReport is a thin glue layer: it calls buildReportMarkdown to get content
-    // and downloadBlob to trigger a browser download. Both underlying functions are tested above.
-    // A full integration test would require a headless browser environment.
-  });
-});
