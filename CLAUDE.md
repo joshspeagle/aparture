@@ -193,7 +193,30 @@ Both patterns are consistent within their own fixture sets — the two cannot sh
 
 **To unit-test a stage:** mock the store via `useAnalyzerStore.setState(...)`, then call `createAnalysisPipeline({...refs})` and invoke the returned handler. Internal stages aren't exported — test via `startProcessing` with mocked API responses.
 
-### ArXiv Metadata Queries
+### ArXiv Ingestion
+
+Aparture has two ingestion paths for arXiv metadata:
+
+- **Primary: OAI-PMH** (`https://oaipmh.arxiv.org/oai`) via `pages/api/harvest-arxiv.js` and `lib/arxiv/harvestOai.js`. arXiv's officially-recommended bulk-harvest path. Lives in a separate rate-limit bucket from `/api/query` (verified live during the 2026-04-29 throttle incident). One request per top-level set covers all subcategories of that group, so users picking 8 cs.\* subcategories make 1 request instead of 8.
+- **Fallback: Atom** (`https://export.arxiv.org/api/query`) via `pages/api/fetch-arxiv.js` and `lib/arxiv/fetchAtom.js`. The legacy path; one request per subcategory. Lives in the throttled "expensive query" bucket. Used only as fallback when OAI fails (auto mode) or when explicitly selected.
+
+**Mode selection:** `config.arxivIngestion: 'auto' | 'oai-only' | 'atom-only'`. Default `'auto'`. Auto: try OAI per prefix; per-run circuit breaker trips on first hard OAI failure (throttled / network / parse), all subsequent prefixes use Atom for the rest of the run. The result records `result.modeUsed` as `auto-oai | auto-mixed | auto-atom | oai-only | atom-only`. The run-summary status line surfaces this plus paper count + fill-up + cache-hit counts.
+
+**Window semantics:** `config.arxivWindowSemantics: 'submitted-only' | 'submitted-or-updated'`. Default `'submitted-only'` (preserves pre-OAI behavior — drops v2-of-old papers; matches what `/api/query`'s `submittedDate` filter would have returned). Set to `'submitted-or-updated'` to include updated-but-not-newly-submitted papers. The filter runs after broad fetches and before fill-up evaluation; fill-up records pass through unfiltered (v1 design choice).
+
+**Fill-ups:** when a selected subcategory returns fewer than `config.minPapersPerSubcategory` (default 5) papers from the broad fetch, the orchestrator fires narrow fill-up requests using `config.lookbackExtensions` (default `[3, 7, 14]`, cumulative extra days) until the threshold is met or all steps are exhausted. Fill-ups go through the same driver as the broad fetch (auto with breaker tripped → Atom; otherwise OAI). Each step fetches only the new outer date slice — no re-download of the inner data.
+
+**Cache:** `config.arxivCacheTtlMinutes` (default 60). localStorage-backed under key `aparture-arxiv-cache`, schema-versioned. Key is `(set, from, until, mode)`. Fill-ups cache separately under their narrow-set (or per-subcategory atom) key. On `QuotaExceededError`, evicts oldest 50% and retries. Set to `0` to disable.
+
+**Set hierarchy:** hand-mapped in `lib/arxiv/sets.js`. arXiv's set hierarchy is _almost_ `<group>:<archive>:<CATEGORY>` but physics is multi-level (`physics:astro-ph:HE`). The map drives off the same catalog as `utils/arxivCategories.js`.
+
+**Module layout:** all ingestion logic lives under `lib/arxiv/` (`harvestOai.js`, `parseOaiRecord.js`, `fetchAtom.js`, `parseAtomEntry.js`, `ingest.js`, `fillups.js`, `cache.js`, `sets.js`, `errors.js`, `types.js`). `pipeline.fetchPapers` is a thin orchestrator that builds a `HarvestWindow` from config and calls `ingest.harvest`. Tests in `tests/unit/arxiv/` and `tests/integration/arxiv/`. Live-network probe: `scripts/probe-arxiv.mjs` (manual; never CI).
+
+**For full-archive bulk backfill (out of scope for this implementation):** arXiv recommends the Kaggle dump (`Cornell-University/arxiv`), refreshed weekly. OAI-PMH is for incremental harvesting; Kaggle is for "import 5 years of cs.AI papers."
+
+### ArXiv Metadata Queries (Atom fallback)
+
+**This section covers only the legacy Atom fallback.** The primary ingestion path is OAI-PMH; see "ArXiv Ingestion" above.
 
 `pages/api/fetch-arxiv.js` proxies the public `export.arxiv.org/api/query` endpoint. Three hygiene rules that aren't obvious from the code alone:
 
@@ -252,22 +275,23 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 
 **Trigger → impacted docs:**
 
-| Code area                                                         | Impacted docs                                                                                                      |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                       |
-| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                    |
-| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                             |
-| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                                             |
-| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                                     |
-| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                                         |
-| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                                      |
-| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                                         |
-| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                        |
-| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                                            |
-| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                                     |
-| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                               |
-| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                                       |
-| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                |
-| `hooks/useBriefing.js`, `pages/api/briefings/*`                   | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures) |
+| Code area                                                         | Impacted docs                                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                                                      |
+| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                                                   |
+| `lib/arxiv/*`                                                     | `concepts/pipeline.md`, `concepts/arxiv-ingestion.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md`, `reference/environment.md` |
+| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                                                            |
+| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                                                                            |
+| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                                                                    |
+| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                                                                        |
+| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                                                                     |
+| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                                                                        |
+| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                                                       |
+| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                                                                           |
+| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                                                                    |
+| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                                                              |
+| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                                                                      |
+| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                                               |
+| `hooks/useBriefing.js`, `pages/api/briefings/*`                   | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures)                                |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).
