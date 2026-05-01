@@ -14,7 +14,7 @@ const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
 
 export const DEFAULT_CONFIG = {
-  version: 3,
+  version: 4,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -92,6 +92,8 @@ export const DEFAULT_CONFIG = {
   briefingRetryOnMaybe: false,
   maxAbstractDisplay: 500,
   arxivIngestion: 'auto',
+  minPapersPerSubcategory: 5,
+  lookbackExtensions: [3, 7, 14],
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -117,6 +119,13 @@ function migrateLegacyConfig(config) {
   if (config.version === 2) {
     config.arxivIngestion = 'auto';
     config.version = 3;
+  }
+
+  // v3 → v4: introduces fill-up controls (matches DEFAULT_CONFIG values).
+  if (config.version === 3) {
+    config.minPapersPerSubcategory = 5;
+    config.lookbackExtensions = [3, 7, 14];
+    config.version = 4;
   }
 
   // Two-model → three-model setup
