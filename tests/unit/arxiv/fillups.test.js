@@ -124,7 +124,7 @@ describe('applyFillups', () => {
 
   it('empty schedule disables fill-up', async () => {
     const fetchFn = vi.fn();
-    const result = await applyFillups({
+    await applyFillups({
       papers: [],
       selectedSubcategories: ['cs.GT'],
       schedule: [],

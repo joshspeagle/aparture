@@ -2,11 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { harvestOai } from '../../../lib/arxiv/harvestOai.js';
-import {
-  ArxivThrottledError,
-  ArxivNetworkError,
-  ArxivParseError,
-} from '../../../lib/arxiv/errors.js';
+import { ArxivThrottledError, ArxivParseError } from '../../../lib/arxiv/errors.js';
 
 const TRIMMED_XML = fs.readFileSync(
   path.resolve('tests/fixtures/arxiv/oai-cs-2026-04-29-trimmed.xml'),

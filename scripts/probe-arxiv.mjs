@@ -13,7 +13,7 @@ async function probe(url, label) {
   const t0 = Date.now();
   let response, body;
   try {
-    response = await fetch(url, { headers: { 'User-Agent': 'Aparture/probe' } });
+    response = await globalThis.fetch(url, { headers: { 'User-Agent': 'Aparture/probe' } });
     body = await response.text();
   } catch (err) {
     console.log(`${label}: ERROR ${err.message}`);
@@ -21,7 +21,9 @@ async function probe(url, label) {
   }
   const ms = Date.now() - t0;
   const recordCount = (body.match(/<entry>|<record>/g) ?? []).length;
-  console.log(`${label}: HTTP ${response.status} | ${ms}ms | ${recordCount} records | ${body.length} bytes`);
+  console.log(
+    `${label}: HTTP ${response.status} | ${ms}ms | ${recordCount} records | ${body.length} bytes`
+  );
 }
 
 console.log(`Probing arXiv from ${yesterday} to ${today}`);
