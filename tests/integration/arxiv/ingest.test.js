@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { harvest } from '../../../lib/arxiv/ingest.js';
 import { ArxivThrottledError } from '../../../lib/arxiv/errors.js';
 
@@ -276,5 +276,53 @@ describe('ingest.harvest — fill-ups', () => {
     expect(result.fillups).toEqual([
       { subcategory: 'cs.GT', triggeredAt: 1, finalCount: 5, stepsUsed: 1 },
     ]);
+  });
+});
+
+import { clear as clearCache } from '../../../lib/arxiv/cache.js';
+
+describe('ingest.harvest — cache', () => {
+  beforeEach(() => clearCache());
+
+  it('serves a cache hit without invoking drivers', async () => {
+    // Prime cache by running once
+    const harvestOaiImpl1 = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', ''), categories: ['cs.AI'] }]);
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI'],
+        cacheTtlMinutes: 60,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl: harvestOaiImpl1,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    // Second run with same window: cache hit, no driver calls
+    const harvestOaiImpl2 = vi.fn();
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI'],
+        cacheTtlMinutes: 60,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl: harvestOaiImpl2,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(harvestOaiImpl2).not.toHaveBeenCalled();
+    expect(result.perPrefix[0]).toMatchObject({ driver: 'cache', cached: true });
+    expect(result.papers).toHaveLength(1);
   });
 });
