@@ -14,7 +14,7 @@ const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
 
 export const DEFAULT_CONFIG = {
-  version: 4,
+  version: 5,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -94,6 +94,7 @@ export const DEFAULT_CONFIG = {
   arxivIngestion: 'auto',
   minPapersPerSubcategory: 5,
   lookbackExtensions: [3, 7, 14],
+  arxivCacheTtlMinutes: 60,
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -126,6 +127,12 @@ function migrateLegacyConfig(config) {
     config.minPapersPerSubcategory = 5;
     config.lookbackExtensions = [3, 7, 14];
     config.version = 4;
+  }
+
+  // v4 → v5: introduces arxivCacheTtlMinutes (matches DEFAULT_CONFIG value).
+  if (config.version === 4) {
+    config.arxivCacheTtlMinutes = 60;
+    config.version = 5;
   }
 
   // Two-model → three-model setup

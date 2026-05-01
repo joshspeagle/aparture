@@ -980,7 +980,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     letterSpacing: '0.05em',
                   }}
                 >
-                  ArXiv Fill-Ups
+                  ArXiv Fetching
                 </p>
                 <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
                   <div style={{ flex: 1 }}>
@@ -1043,6 +1043,31 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                       }}
                     >
                       Comma-separated days for staged fill-ups
+                    </p>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-sm)',
+                        fontWeight: 500,
+                        color: 'var(--aparture-mute)',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      Cache TTL (minutes)
+                    </label>
+                    <Input {...integerInputProps('arxivCacheTtlMinutes', 60, 0, 4320)} />
+                    <p
+                      style={{
+                        fontFamily: 'var(--aparture-font-sans)',
+                        fontSize: 'var(--aparture-text-xs)',
+                        color: 'var(--aparture-mute)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      Reuse recent arXiv responses (0 disables)
                     </p>
                   </div>
                 </div>
