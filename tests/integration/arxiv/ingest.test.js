@@ -238,3 +238,43 @@ describe('ingest.harvest — auto mode', () => {
     ).rejects.toBeInstanceOf(ArxivThrottledError);
   });
 });
+
+describe('ingest.harvest — fill-ups', () => {
+  it('triggers narrow fetch via the chosen driver when a subcat is below threshold', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      // Broad cs fetch returns 1 cs.GT paper (below threshold)
+      .mockResolvedValueOnce([{ ...examplePaper('seed', ''), categories: ['cs.GT'] }])
+      // Narrow cs:cs:GT fill-up returns 4 more cs.GT papers
+      .mockResolvedValueOnce([
+        { ...examplePaper('f1', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f2', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f3', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f4', ''), categories: ['cs.GT'] },
+      ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3, 7, 14],
+        minPapersPerSubcategory: 5,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(2); // broad + 1 fill-up step
+    // The second call uses the narrow set
+    expect(harvestOaiImpl.mock.calls[1][0]).toMatchObject({ set: 'cs:cs:GT' });
+    expect(result.papers).toHaveLength(5);
+    expect(result.fillups).toEqual([
+      { subcategory: 'cs.GT', triggeredAt: 1, finalCount: 5, stepsUsed: 1 },
+    ]);
+  });
+});
