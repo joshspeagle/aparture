@@ -22,7 +22,7 @@ Standard scripts are in `package.json` (`npm run dev|build|test|lint|format:fix`
 
 ### Tech Stack (non-obvious bits)
 
-- **State:** Zustand (`stores/analyzerStore.js`) — central store replacing ~28 useState calls; 9 slices incl. `reactContext`. Pipeline reads via `getState()`. React hooks (`useProfile`, `useBriefing`, `useFeedback`) wrap localStorage persistence.
+- **State:** Zustand (`stores/analyzerStore.js`) — central store replacing ~28 useState calls; 10 slices incl. `reactContext`. Pipeline reads via `getState()`. React hooks (`useProfile`, `useBriefing`, `useFeedback`) wrap localStorage persistence.
 - **Typography (briefing view):** Source Serif 4 + Inter + JetBrains Mono via `next/font/google` in `pages/_app.js`.
 - **Structured output:** `zod` schema + provider-native structured output (Anthropic `tool_use`, Google `responseSchema`, OpenAI `response_format` strict).
 - **Testing:** Vitest + @testing-library/react + jsdom, **fully fixture-based — zero real LLM calls**.
