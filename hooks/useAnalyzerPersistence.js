@@ -324,7 +324,11 @@ export function useAnalyzerPersistence({
         // Merge cold heavy fields into the existing hot finalRanking so
         // we don't overwrite it with whatever the cold tier had (cold may
         // be slightly stale if save was mid-flight at refresh time).
+        // Spread `prev` and `cold.results` so non-canonical slice fields
+        // (e.g. `failedPapers` from scoreAbstracts) survive the round-trip.
         setResults((prev) => ({
+          ...(prev ?? {}),
+          ...(cold.results ?? {}),
           allPapers: cold.results?.allPapers ?? [],
           scoredPapers: cold.results?.scoredPapers ?? [],
           finalRanking: prev?.finalRanking?.length

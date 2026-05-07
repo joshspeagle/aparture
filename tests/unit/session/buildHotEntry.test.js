@@ -98,4 +98,19 @@ describe('buildColdEntry', () => {
     expect(cold.timestamp).toBeGreaterThanOrEqual(before);
     expect(cold.timestamp).toBeLessThanOrEqual(Date.now());
   });
+
+  it('preserves additional `results` slice fields like failedPapers', () => {
+    const cold = buildColdEntry({
+      sessionId: 'sess-1',
+      results: {
+        allPapers: [{ id: '1' }],
+        scoredPapers: [],
+        finalRanking: [],
+        failedPapers: [{ id: '2', failureReason: 'Scored as 0 relevance' }],
+      },
+    });
+    expect(cold.results.failedPapers).toEqual([
+      { id: '2', failureReason: 'Scored as 0 relevance' },
+    ]);
+  });
 });

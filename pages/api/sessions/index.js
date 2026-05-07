@@ -11,6 +11,15 @@
 import path from 'path';
 import fs from 'fs/promises';
 
+// Next.js' default API body limit is 1mb; a full session payload (allPapers
+// + scoredPapers + full filterResults verdicts) for a 600+-paper run is in
+// the 7-15 MB range. Raise the limit so cold-tier saves don't 413.
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '20mb' },
+  },
+};
+
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function getSessionsDir() {
