@@ -6,6 +6,14 @@ import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
 import DiffPreview from './DiffPreview.jsx';
 
+// Pre-filled into the guidance field when the dialog opens with no feedback.
+// Editable — users can trim, replace, or augment before generating. Targets
+// the four dimensions that most hurt downstream pipeline stages: vague
+// vocabulary, implicit scope, flat priority, methodology/application
+// orientation.
+const DEFAULT_CLARITY_GUIDANCE =
+  'Sharpen the clarity and specificity of my profile. Look for vague terms that could be replaced with concrete methods or subfields, implicit scope boundaries that should be made explicit (what’s in vs. out of scope), priority signals that aren’t yet legible (primary vs. secondary interests), and places where methodology vs. application orientation is ambiguous.';
+
 // Pull out the briefings referenced by general-comment events and return a
 // map keyed by briefingId, shaped so the suggest-profile prompt can render
 // them inline. We include only the editorial layer (executive summary,
@@ -117,7 +125,9 @@ export default function SuggestDialog({
   const feedbackSignature = useMemo(() => newFeedback.map((e) => e.id).join('|'), [newFeedback]);
   const [lastSignature, setLastSignature] = useState(feedbackSignature);
   const [selectedIds, setSelectedIds] = useState(() => new Set(newFeedback.map((e) => e.id)));
-  const [guidance, setGuidance] = useState('');
+  const [guidance, setGuidance] = useState(() =>
+    newFeedback.length === 0 ? DEFAULT_CLARITY_GUIDANCE : ''
+  );
   const [state, setState] = useState('selection');
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
@@ -125,7 +135,7 @@ export default function SuggestDialog({
   if (feedbackSignature !== lastSignature) {
     setLastSignature(feedbackSignature);
     setSelectedIds(new Set(newFeedback.map((e) => e.id)));
-    setGuidance('');
+    setGuidance(newFeedback.length === 0 ? DEFAULT_CLARITY_GUIDANCE : '');
     setState('selection');
     setResponse(null);
     setError(null);

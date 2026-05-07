@@ -205,7 +205,8 @@ export default function YourProfile({
                   marginBottom: 'var(--aparture-space-3)',
                 }}
               >
-                No new feedback since your last profile revision.
+                No new feedback since your last revision — you can still suggest improvements via
+                written guidance.
               </p>
             )}
 
@@ -219,16 +220,12 @@ export default function YourProfile({
                 marginBottom: 'var(--aparture-space-4)',
               }}
             >
-              The briefing model will review your recent feedback and propose specific edits to your
-              profile.
+              The briefing model will propose specific edits based on your feedback and/or written
+              guidance.
               {dirty ? ' Save or discard your unsaved changes first.' : ''}
             </p>
 
-            <Button
-              variant="primary"
-              onClick={handleSuggest}
-              disabled={disabled || dirty || totalNew === 0}
-            >
+            <Button variant="primary" onClick={handleSuggest} disabled={disabled || dirty}>
               Suggest improvements →
             </Button>
           </Card>

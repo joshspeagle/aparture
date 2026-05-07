@@ -94,9 +94,13 @@ describe('YourProfile', () => {
     expect(onSuggestClick).toHaveBeenCalledOnce();
   });
 
-  it('Suggest improvements is disabled when no new feedback', () => {
-    render(<Harness {...defaultProps} newFeedback={[]} />);
-    expect(screen.getByRole('button', { name: /suggest improvements/i })).toBeDisabled();
+  it('Suggest improvements stays enabled when no new feedback (guidance-only path)', () => {
+    const onSuggestClick = vi.fn();
+    render(<Harness {...defaultProps} newFeedback={[]} onSuggestClick={onSuggestClick} />);
+    const btn = screen.getByRole('button', { name: /suggest improvements/i });
+    expect(btn).not.toBeDisabled();
+    fireEvent.click(btn);
+    expect(onSuggestClick).toHaveBeenCalledOnce();
   });
 
   it('shows feedback breakdown in the suggest section', () => {

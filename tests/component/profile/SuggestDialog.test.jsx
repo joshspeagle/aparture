@@ -80,13 +80,17 @@ describe('SuggestDialog — selection state', () => {
     expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeDisabled();
   });
 
-  it('shows empty state when newFeedback is empty, but still offers guidance-only flow', () => {
+  it('shows empty state when newFeedback is empty, with default clarity guidance pre-filled', () => {
     render(<SuggestDialog {...defaultProps} newFeedback={[]} />);
     expect(screen.getByText(/no recent feedback/i)).toBeInTheDocument();
-    // Generate stays disabled until the user writes guidance
-    expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeDisabled();
-    // ...but enables once guidance is provided
+    // Guidance is pre-filled with the default clarity prompt, so Generate is enabled immediately
     const textarea = screen.getByLabelText(/guidance/i);
+    expect(textarea.value).toMatch(/sharpen the clarity/i);
+    expect(screen.getByRole('button', { name: /generate suggestion/i })).not.toBeDisabled();
+    // Clearing the textarea disables Generate (no signal at all)
+    fireEvent.change(textarea, { target: { value: '' } });
+    expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeDisabled();
+    // Re-typing custom guidance re-enables it
     fireEvent.change(textarea, { target: { value: 'clean up the profile' } });
     expect(screen.getByRole('button', { name: /generate suggestion/i })).not.toBeDisabled();
   });
