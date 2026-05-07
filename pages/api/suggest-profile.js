@@ -3,6 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
+import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import {
   renderSuggestPrompt,
   validateNonOverlappingChanges,
@@ -354,6 +355,7 @@ export default async function handler(req, res) {
       ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),
     });
   } catch (err) {
+    if (sendProviderErrorResponse(res, err)) return;
     res.status(500).json({ error: 'suggest-profile failed', details: String(err?.message ?? err) });
   }
 }

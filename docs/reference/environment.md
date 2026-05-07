@@ -105,7 +105,12 @@ Institutional addresses (`.edu`, `.ac.*`) tend to carry more weight than generic
 
 ### `APARTURE_REPORTS_DIR`
 
-Base directory for runtime-state files. Today the briefing persistence layer writes to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`; future runtime outputs may live alongside. Defaults to `<cwd>/reports`, matching the existing `reports/` convention.
+Base directory for runtime-state files. Today two persistence layers write here:
+
+- briefing tier writes to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`,
+- analyzer session tier writes to `<APARTURE_REPORTS_DIR>/sessions/<sessionId>.json` (full `allPapers` + `scoredPapers` + filter verdicts; the localStorage hot blob keeps only a summary so quota is never the limit).
+
+Defaults to `<cwd>/reports`, matching the existing `reports/` convention.
 
 ```bash
 # .env.local (rarely set in practice)

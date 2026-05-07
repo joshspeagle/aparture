@@ -34,8 +34,10 @@ const DEFAULT_CONFIG = {
   minAbstractScore: 7.0,
   maxPapersForPDF: 10,
 
-  // Retry/correction settings
-  maxRetries: 3,
+  // Retry/correction settings.
+  // 5 attempts (initial + 4 retries) with exponential + jittered backoff
+  // covers typical Gemini free-tier 60s RPM dips. Tunable in Settings.
+  maxRetries: 4,
   maxCorrections: 1,
 
   // NotebookLM settings

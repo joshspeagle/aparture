@@ -89,6 +89,8 @@ Same Anthropic cache-warmup behavior as filter.
 
 Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google has aggressive RPM caps on Flash-Lite, so start at 2–3 if you're relying on the free tier for filtering.
 
+Aparture self-heals on transient 429s: when one batch hits a rate limit, every concurrent worker for the same provider pauses for the `Retry-After` window (or up to 60 s if the provider doesn't tell us), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If your filter model is a free-tier Gemini Flash-Lite slot and your concurrency × batch count is likely to exceed 60 RPM, Aparture also emits a pre-flight warning before the stage starts.
+
 ## Batch sizes
 
 Each stage batches papers into API calls to avoid per-paper overhead. Bigger batches are faster but risk hitting context limits or giving each paper less careful attention.

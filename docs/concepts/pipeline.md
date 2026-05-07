@@ -139,6 +139,8 @@ The stage runs with a worker pool. PDF downloads are serialised server-side (~5 
 
 On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, and the remaining workers then start and hit the cache on every subsequent paper. This costs a few extra seconds on the first paper in exchange for a large input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
 
+Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's RPM cap — Gemini's free-tier 60 RPM in particular.
+
 **Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.1-pro`), `pdfAnalysisConcurrency` (default 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.

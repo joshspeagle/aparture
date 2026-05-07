@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { buildIndexEntry } from '../lib/briefing/buildIndexEntry.js';
+import { safeSetItem } from '../lib/persistence/safeStorage.js';
 
 const CURRENT_KEY = 'aparture-briefing-current';
 const HISTORY_KEY = 'aparture-briefing-index';
@@ -12,33 +13,10 @@ const MAX_HISTORY = 90;
 // briefing readable.
 const HEAVY_FIELDS = ['pipelineArchive', 'quickSummariesById', 'fullReportsById'];
 
-function isQuotaError(err) {
-  if (!err) return false;
-  // Name varies across browsers; numeric codes 22 / 1014 are the legacy forms.
-  const name = err.name || '';
-  return (
-    name === 'QuotaExceededError' ||
-    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    err.code === 22 ||
-    err.code === 1014
-  );
-}
-
 function stripHeavy(entry) {
   const out = { ...entry };
   for (const key of HEAVY_FIELDS) delete out[key];
   return out;
-}
-
-function safeSetItem(key, value) {
-  if (typeof window === 'undefined') return true;
-  try {
-    window.localStorage.setItem(key, value);
-    return true;
-  } catch (err) {
-    if (isQuotaError(err)) return false;
-    throw err;
-  }
 }
 
 // Persist a newest-first array of briefings. On quota, prune oldest entries

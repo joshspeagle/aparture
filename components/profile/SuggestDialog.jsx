@@ -179,7 +179,17 @@ export default function SuggestDialog({
         }),
       });
       if (!res.ok) {
-        throw new Error(`Suggestion failed: ${res.status}`);
+        // Surface the route's structured details (e.g. provider rate-limit
+        // message) instead of the bare HTTP code.
+        let bodyMsg = `Suggestion failed: ${res.status}`;
+        try {
+          const errBody = await res.json();
+          if (errBody?.details) bodyMsg = errBody.details;
+          else if (errBody?.error) bodyMsg = errBody.error;
+        } catch {
+          // body wasn't JSON — keep the status-based message
+        }
+        throw new Error(bodyMsg);
       }
       const data = await res.json();
       setResponse(data);
