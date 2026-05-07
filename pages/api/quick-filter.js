@@ -1,6 +1,7 @@
 import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
+import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 function checkPassword(password) {
@@ -262,6 +263,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Error filtering papers:', error);
+    if (sendProviderErrorResponse(res, error)) return;
     res.status(500).json({
       error: 'Failed to filter papers',
       details: error.message,

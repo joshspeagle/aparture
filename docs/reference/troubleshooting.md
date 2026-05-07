@@ -246,6 +246,22 @@ Common causes:
 - **`APARTURE_REPORTS_DIR` points somewhere invalid.** Unset it or confirm the path exists and is writable.
 - **`ACCESS_PASSWORD` not set or mismatched.** The POST auth check is the same as every other API route — if the server log shows `401 Invalid password` on `POST /api/briefings`, rotate the env var and restart `npm run dev`.
 
+### Session disk writes failing
+
+```
+[useAnalyzerPersistence] failed to persist session to disk: <reason>
+```
+
+Analyzer session state (full `allPapers` + `scoredPapers` + filter verdicts) is written to `reports/sessions/<sessionId>.json` via `POST /api/sessions` on every debounced save. The hot tier (localStorage `arxivAnalyzerState`) carries only a small summary — `config`, `finalRanking` (top 30), and filter counts — so the live UI keeps working even when the cold tier write fails. After a page refresh, however, the cold tier is consulted to restore `allPapers`/`scoredPapers`; if it's missing, the page renders with the summary only.
+
+Same fixes as briefings disk writes (permissions, disk full, `APARTURE_REPORTS_DIR`, `ACCESS_PASSWORD`).
+
+### Browser localStorage quota
+
+Symptom (pre-2026-05-07 builds): a `QuotaExceededError` from `useAnalyzerPersistence` would surface as a Next.js red box and abort the run. Current builds catch this transparently via the `safeSetItem` ladder shared with the briefings tier — heavy session fields live on the filesystem, the localStorage hot blob stays under ~600 KB, and quota pressure logs a single `console.warn` without disrupting the run.
+
+If you still see the warning repeatedly, you likely have a very old `arxivAnalyzerState` blob from a previous Aparture install that's not being shrunk. Clear it: in DevTools console run `localStorage.removeItem('arxivAnalyzerState')` and refresh.
+
 ### arXiv rate limits
 
 ```
@@ -317,6 +333,19 @@ See [Install → Playwright](/getting-started/install#_5-playwright-optional-fal
 
 ### Provider rate limits
 
+Aparture honors `Retry-After` from every provider and pauses ALL concurrent
+workers for the same provider when one batch trips a 429 (Gemini's RPM cap is
+project-scoped, so siblings are about to trip too). The retry ladder uses
+exponential backoff with ±20 % jitter capped at 30 s, with up to
+`maxRetries` retries (default 4 → 5 attempts). On a 429 with `Retry-After`,
+the ladder honors that value first (capped at 60 s). End-of-stage activity-log
+lines call out how many batches were rate-limited so you know whether to
+adjust concurrency or upgrade tier.
+
+If you're on a free-tier Google key, Aparture also emits a pre-flight warning
+when the configured concurrency × batch count is likely to exceed 60 RPM —
+the run still proceeds and self-heals via the barrier, but expect more retries.
+
 Each provider has several flavours of 429, each with its own fix.
 
 **Anthropic 429** (`anthropic request failed (429)`).
@@ -327,7 +356,7 @@ Each provider has several flavours of 429, each with its own fix.
 
 **OpenAI 429** (`openai request failed (429)`).
 
-- _"Rate limit reached for requests"_ — transient. Aparture's client-side retry loop handles this automatically up to 3 times.
+- _"Rate limit reached for requests"_ — transient. Aparture's client-side retry loop handles this automatically up to `maxRetries` times (default 4) with exponential backoff + provider `Retry-After` honoring.
 - _"You exceeded your current quota"_ — billing issue, not transient. Check usage limits and billing status at [platform.openai.com](https://platform.openai.com).
 
 Free-tier OpenAI accounts (approximately 3 RPM on GPT-5.4-class models) will 429 on almost any real run. Move to a paid tier before attempting more than the Minimal API Test.

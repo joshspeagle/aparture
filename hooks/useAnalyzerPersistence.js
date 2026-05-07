@@ -6,12 +6,27 @@
 //   used as useState(readInitialConfig) so hooks that depend on config see
 //   the real persisted values on first render, not the hardcoded default).
 // - The on-mount load effect that restores non-config state.
-// - The debounced save effect that writes the full session snapshot.
+// - The debounced save effect that writes a tiered session snapshot:
+//   hot tier (localStorage, capped ~600KB via buildHotEntry) + cold tier
+//   (filesystem via POST /api/sessions, full results + filter verdicts).
+//
+// Tiered store mirrors hooks/useBriefing.js (briefings tier shipped 2026-04-21).
+// Heavy fields (results.allPapers, results.scoredPapers, full filterResults
+// arrays) are dropped from the hot blob — they live only on disk now.
 
 import { useEffect, useRef } from 'react';
+import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
+
+function generateSessionId() {
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 export const DEFAULT_CONFIG = {
   version: 6,
@@ -55,7 +70,10 @@ export const DEFAULT_CONFIG = {
   daysBack: 1,
   batchSize: 3,
   maxCorrections: 1,
-  maxRetries: 1,
+  // 5 attempts (initial + 4 retries) with exponential + jittered backoff in
+  // makeRobustAPICall covers a ~31s quota dip — well within Gemini's 60s
+  // RPM reset window. Tunable via Settings.
+  maxRetries: 4,
   useQuickFilter: true,
   filterModel: 'gemini-3.1-flash-lite',
   filterBatchSize: 3,
@@ -192,6 +210,23 @@ export function readInitialConfig() {
   }
 }
 
+// Lazy-fetch the cold-tier session payload by id. Returns null on any
+// failure (404, network, parse) so the load effect can fall through to
+// the hot-tier-only state.
+async function fetchColdSession(sessionId, password) {
+  if (!sessionId) return null;
+  try {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(sessionId)}?password=${encodeURIComponent(password ?? '')}`
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('[useAnalyzerPersistence] failed to load cold session:', err);
+    return null;
+  }
+}
+
 export function useAnalyzerPersistence({
   // state values (for save)
   config,
@@ -215,56 +250,121 @@ export function useAnalyzerPersistence({
   setPassword,
   setIsAuthenticated,
 }) {
+  // Persistent session id. Read from the hot blob on first load if present;
+  // otherwise lazily generated on the first save. Survives renders via ref.
+  const sessionIdRef = useRef(null);
+
   // Load on mount. Config is already restored by readInitialConfig at
   // useState init time, so this effect only restores non-config state.
+  // Two paths:
+  //   1) New (tiered) blob — hot tier carries finalRanking + filter counts;
+  //      full allPapers/scoredPapers/verdicts come from cold tier via fetch.
+  //   2) Legacy blob — full results + filterResults inline; restored as-is.
+  //      No migration: next save converts to tiered shape.
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
+    let parsed;
     try {
-      const parsed = JSON.parse(raw);
-      if (parsed.results) setResults(parsed.results);
-      if (parsed.filterResults) {
-        // Restore persisted verdicts; reset transient progress fields so a
-        // refresh mid-run doesn't strand the UI in an 'inProgress' state.
-        setFilterResults({
-          total: parsed.filterResults.total ?? 0,
-          yes: parsed.filterResults.yes ?? [],
-          maybe: parsed.filterResults.maybe ?? [],
-          no: parsed.filterResults.no ?? [],
-          inProgress: false,
-          currentBatch: 0,
-          totalBatches: 0,
-        });
-      }
-      if (parsed.processingTiming) {
-        const timing = { ...parsed.processingTiming };
-        if (timing.startTime) timing.startTime = new Date(timing.startTime);
-        if (timing.endTime) timing.endTime = new Date(timing.endTime);
-        setProcessingTiming(timing);
-      }
-      if (parsed.testState) setTestState(parsed.testState);
-      if (parsed.notebookLM) {
-        if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
-        if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
-        if (parsed.notebookLM.content) setNotebookLMContent(parsed.notebookLM.content);
-      }
-      if (parsed.password) {
-        setPassword(parsed.password);
-        setIsAuthenticated(true);
-      }
+      parsed = JSON.parse(raw);
     } catch (e) {
-      console.error('Failed to load saved state:', e);
+      console.error('Failed to parse saved analyzer state:', e);
+      return;
+    }
+
+    // Adopt the hot blob's sessionId if present so subsequent saves write
+    // back to the same cold-tier file.
+    if (parsed.sessionId) sessionIdRef.current = parsed.sessionId;
+
+    // Restore hot-tier fields synchronously. Legacy blobs carry full results
+    // here; new blobs carry only finalRanking. Either way, this is what the
+    // first render sees.
+    if (parsed.results) setResults(parsed.results);
+    if (parsed.filterResults) {
+      // Legacy blob has yes/maybe/no arrays; tiered blob has only counts.
+      // Either way, reset transient progress fields so a refresh mid-run
+      // doesn't strand the UI in an 'inProgress' state.
+      setFilterResults({
+        total: parsed.filterResults.total ?? 0,
+        yes: parsed.filterResults.yes ?? [],
+        maybe: parsed.filterResults.maybe ?? [],
+        no: parsed.filterResults.no ?? [],
+        inProgress: false,
+        currentBatch: 0,
+        totalBatches: 0,
+      });
+    }
+    if (parsed.processingTiming) {
+      const timing = { ...parsed.processingTiming };
+      if (timing.startTime) timing.startTime = new Date(timing.startTime);
+      if (timing.endTime) timing.endTime = new Date(timing.endTime);
+      setProcessingTiming(timing);
+    }
+    if (parsed.testState) setTestState(parsed.testState);
+    if (parsed.notebookLM) {
+      if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
+      if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
+      if (parsed.notebookLM.content) setNotebookLMContent(parsed.notebookLM.content);
+    }
+    if (parsed.password) {
+      setPassword(parsed.password);
+      setIsAuthenticated(true);
+    }
+
+    // Tiered blob with sessionId but missing heavy fields → fetch cold tier.
+    // Detection: hot blob says sessionId + no allPapers/scoredPapers in
+    // results. Legacy blobs always have allPapers if they have results, so
+    // they don't trigger the fetch.
+    const hotHasHeavy =
+      (parsed.results?.allPapers?.length ?? 0) > 0 ||
+      (parsed.results?.scoredPapers?.length ?? 0) > 0;
+    if (parsed.sessionId && !hotHasHeavy) {
+      fetchColdSession(parsed.sessionId, parsed.password).then((cold) => {
+        if (!cold) return;
+        // Merge cold heavy fields into the existing hot finalRanking so
+        // we don't overwrite it with whatever the cold tier had (cold may
+        // be slightly stale if save was mid-flight at refresh time).
+        // Spread `prev` and `cold.results` so non-canonical slice fields
+        // (e.g. `failedPapers` from scoreAbstracts) survive the round-trip.
+        setResults((prev) => ({
+          ...(prev ?? {}),
+          ...(cold.results ?? {}),
+          allPapers: cold.results?.allPapers ?? [],
+          scoredPapers: cold.results?.scoredPapers ?? [],
+          finalRanking: prev?.finalRanking?.length
+            ? prev.finalRanking
+            : (cold.results?.finalRanking ?? []),
+        }));
+        if (cold.filterResults) {
+          setFilterResults((prev) => ({
+            total: cold.filterResults.total ?? prev.total ?? 0,
+            yes: cold.filterResults.yes ?? [],
+            maybe: cold.filterResults.maybe ?? [],
+            no: cold.filterResults.no ?? [],
+            inProgress: false,
+            currentBatch: 0,
+            totalBatches: 0,
+          }));
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounced save. A trailing 400ms debounce stops ~167 sequential
   // stringifies during a 500-paper filter batch loop.
+  //
+  // Two tiers per save:
+  //   1) Hot (localStorage): buildHotEntry → safeSetItem. Stays under quota
+  //      because allPapers/scoredPapers/full verdicts are excluded.
+  //   2) Cold (filesystem): buildColdEntry → fire-and-forget POST. Best
+  //      effort; failures log but don't disrupt the live run.
   const saveTimeoutRef = useRef(null);
   useEffect(() => {
     const hasResults =
       (results?.allPapers?.length ?? 0) > 0 ||
       (results?.scoredPapers?.length ?? 0) > 0 ||
+      (results?.finalRanking?.length ?? 0) > 0 ||
       (filterResults?.yes?.length ?? 0) > 0 ||
       (filterResults?.maybe?.length ?? 0) > 0 ||
       (filterResults?.no?.length ?? 0) > 0;
@@ -272,27 +372,50 @@ export function useAnalyzerPersistence({
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          config,
+      // Lazy session-id allocation. Subsequent saves reuse the same id so
+      // the cold-tier file is overwritten in place rather than churning.
+      if (!sessionIdRef.current) sessionIdRef.current = generateSessionId();
+      const sessionId = sessionIdRef.current;
+
+      // Hot tier — bounded blob, safe under localStorage quota.
+      const hotEntry = buildHotEntry({
+        config,
+        sessionId,
+        finalRanking: results?.finalRanking,
+        filterResults,
+        processingTiming,
+        testState,
+        podcastDuration,
+        notebookLMModel,
+        notebookLMContent,
+        password,
+        isAuthenticated,
+      });
+      const ok = safeSetItem(STORAGE_KEY, JSON.stringify(hotEntry));
+      if (!ok) {
+        console.warn(
+          '[useAnalyzerPersistence] localStorage quota exceeded; analyzer state could not be persisted (in-memory state preserved for this session)'
+        );
+      }
+
+      // Cold tier — full payload, only POSTed when there's actual results
+      // worth shipping to disk. Skips empty saves (password-only changes
+      // don't need a cold write). Best-effort.
+      if (hasResults && isAuthenticated && password) {
+        const coldEntry = buildColdEntry({
+          sessionId,
           results,
-          filterResults: {
-            total: filterResults.total,
-            yes: filterResults.yes,
-            maybe: filterResults.maybe,
-            no: filterResults.no,
-          },
+          filterResults,
           processingTiming,
-          testState,
-          notebookLM: {
-            duration: podcastDuration,
-            model: notebookLMModel,
-            content: notebookLMContent,
-          },
-          password: isAuthenticated ? password : '',
-        })
-      );
+        });
+        fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password, entry: coldEntry }),
+        }).catch((err) => {
+          console.warn('[useAnalyzerPersistence] failed to persist session to disk:', err);
+        });
+      }
     }, SAVE_DEBOUNCE_MS);
 
     return () => {

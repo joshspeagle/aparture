@@ -242,6 +242,29 @@ Briefings are persisted in two tiers, introduced 2026-04-21 to replace the singl
 
 **Adding a heavy field:** extend the `HEAVY_FIELDS` array in `hooks/useBriefing.js` if the new field should be strippable under quota pressure. If the field should also NOT appear in the search-capable index, extend `buildIndexEntry` in `lib/briefing/buildIndexEntry.js` to drop it.
 
+**`safeSetItem` lives in `lib/persistence/safeStorage.js`** (lifted 2026-05-07) and is shared with the analyzer session tier (next section).
+
+### Analyzer session persistence (tiered store)
+
+Same hot/cold pattern as briefings, introduced 2026-05-07 to fix a `QuotaExceededError` on 600+-paper runs. The localStorage key is unchanged (`arxivAnalyzerState`) for CLI compat.
+
+- **Hot tier (localStorage):** `arxivAnalyzerState` — built by `lib/session/buildHotEntry.js`. Carries `config`, `sessionId`, `results.finalRanking` (top 30 with `deepAnalysis`), reduced `filterResults` (counts only), `processingTiming`, `testState`, `notebookLM`, `password`. Estimated ≤ 600 KB.
+- **Cold tier (filesystem):** `reports/sessions/<sessionId>.json` via `POST /api/sessions`, `GET/DELETE /api/sessions/[id]`. Carries the full `allPapers`, `scoredPapers`, and full `filterResults.{yes,maybe,no}` arrays. Lazy-loaded by `useAnalyzerPersistence` on mount when the hot blob has a `sessionId` but no `allPapers`.
+- **No legacy migration.** Old single-key blobs are read as-is (config + finalRanking are still in the same place); next save converts to the tiered shape.
+- **CLI compat.** `cli/run-analysis.js:425, 603` and `cli/setup.js:111` continue reading `localStorage.getItem('arxivAnalyzerState')` and accessing `.config` and `.results.finalRanking`. Both fields are preserved in the hot tier.
+
+### LLM rate-limit handling
+
+All LLM-backed routes (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`, `analyze-pdf-quick`, `synthesize`, `check-briefing`, `suggest-profile`) now propagate HTTP status + `Retry-After` end-to-end:
+
+- **`lib/llm/callModel.js`** throws a typed `ProviderError` (`status`, `providerErrorBody`, `retryAfterMs`) on non-2xx responses. `lib/llm/retryAfter.js` parses `Retry-After` headers (Anthropic, OpenAI) and Google's body-form `RetryInfo.retryDelay`.
+- **Each route's catch** uses `sendProviderErrorResponse(res, err)` from `lib/llm/ProviderError.js` to forward the same status + structured details (`{error, retryAfterMs, details, provider}`) to the client.
+- **`lib/analyzer/pipeline.js` clients** call `parseRouteError(response, provider)` which throws a `RateLimitError` (status + `retryAfterMs`) for 429/503 and a plain `Error(details)` for everything else — surfacing the actual provider message instead of bare "Failed to filter papers".
+- **`makeRobustAPICall`** uses exponential + jittered backoff (cap 30 s) by default, but honors `Retry-After` (cap 60 s) when a `RateLimitError` is thrown.
+- **`LLMRateLimitBarrier`** in `lib/analyzer/rateLimit.js` is shared per-provider via `getLLMBarrier(provider)`. When any worker catches a 429, it calls `barrier.rateLimited({retryAfterMs})` and every concurrent worker for that provider pauses on `barrier.acquire()` before its next call. Wired in via `AnalysisWorkerPool`'s new `barrierFor` option.
+- Default `config.maxRetries` is **4** (5 attempts total) — raised from 1 alongside the new backoff ladder.
+- Pre-flight warning fires at filter/score/rescore/pdf stage entry when free-tier Gemini Flash-Lite + concurrency × est. RPM > 60.
+
 ### ArXiv PDF Download Handling
 
 `pages/api/analyze-pdf.js` tries direct fetch first; if the response lacks `%PDF-` magic bytes, it falls back to Playwright with a persistent profile at `temp/playwright-profile/` that caches arXiv cookies + reCAPTCHA bypass state. Fallback adds ~5–10s/paper.
@@ -275,23 +298,25 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 
 **Trigger → impacted docs:**
 
-| Code area                                                         | Impacted docs                                                                                                                                     |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `utils/models.js`                                                 | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                                                      |
-| `lib/analyzer/pipeline.js`                                        | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                                                   |
-| `lib/arxiv/*`                                                     | `concepts/pipeline.md`, `concepts/arxiv-ingestion.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md`, `reference/environment.md` |
-| `prompts/synthesis.md`                                            | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                                                            |
-| Any `prompts/*.md`                                                | `reference/prompts.md`                                                                                                                            |
-| `lib/synthesis/validator.js`                                      | `concepts/briefing-anatomy.md`                                                                                                                    |
-| `pages/api/*` env usage, any new `process.env.*`                  | `reference/environment.md`                                                                                                                        |
-| `components/briefing/*`                                           | `using/reading-a-briefing.md`                                                                                                                     |
-| `components/feedback/*`                                           | `using/giving-feedback.md`                                                                                                                        |
-| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile` | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                                                       |
-| `components/run/*` + review-gate UIs                              | `using/review-gates.md`                                                                                                                           |
-| Settings panel                                                    | `using/tuning-the-pipeline.md`                                                                                                                    |
-| `lib/notebooklm/*`                                                | `add-ons/podcast.md`                                                                                                                              |
-| `pages/api/analyze-pdf.js` Playwright changes                     | `getting-started/install.md`, `reference/troubleshooting.md`                                                                                      |
-| `pages/api/fetch-arxiv.js` query-shape or retry changes           | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                                               |
-| `hooks/useBriefing.js`, `pages/api/briefings/*`                   | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures)                                |
+| Code area                                                                                                     | Impacted docs                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `utils/models.js`                                                                                             | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                                                      |
+| `lib/analyzer/pipeline.js`                                                                                    | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                                                   |
+| `lib/arxiv/*`                                                                                                 | `concepts/pipeline.md`, `concepts/arxiv-ingestion.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md`, `reference/environment.md` |
+| `prompts/synthesis.md`                                                                                        | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                                                            |
+| Any `prompts/*.md`                                                                                            | `reference/prompts.md`                                                                                                                            |
+| `lib/synthesis/validator.js`                                                                                  | `concepts/briefing-anatomy.md`                                                                                                                    |
+| `pages/api/*` env usage, any new `process.env.*`                                                              | `reference/environment.md`                                                                                                                        |
+| `components/briefing/*`                                                                                       | `using/reading-a-briefing.md`                                                                                                                     |
+| `components/feedback/*`                                                                                       | `using/giving-feedback.md`                                                                                                                        |
+| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile`                                             | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                                                       |
+| `components/run/*` + review-gate UIs                                                                          | `using/review-gates.md`                                                                                                                           |
+| Settings panel                                                                                                | `using/tuning-the-pipeline.md`                                                                                                                    |
+| `lib/notebooklm/*`                                                                                            | `add-ons/podcast.md`                                                                                                                              |
+| `pages/api/analyze-pdf.js` Playwright changes                                                                 | `getting-started/install.md`, `reference/troubleshooting.md`                                                                                      |
+| `pages/api/fetch-arxiv.js` query-shape or retry changes                                                       | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                                               |
+| `hooks/useBriefing.js`, `pages/api/briefings/*`                                                               | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures)                                |
+| `hooks/useAnalyzerPersistence.js`, `pages/api/sessions/*`                                                     | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (session disk-write failures, browser localStorage quota)     |
+| `lib/llm/callModel.js`, `lib/llm/ProviderError.js`, `lib/llm/retryAfter.js`, `lib/analyzer/RateLimitError.js` | `reference/troubleshooting.md` (provider rate limits), `using/tuning-the-pipeline.md` (`maxRetries`, rate-limit barrier)                          |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).

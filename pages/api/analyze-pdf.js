@@ -3,6 +3,8 @@ import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
+import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryAfter.js';
+import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -17,18 +19,6 @@ import fs from 'fs';
 // so module state is shared across all requests. If this ever moves to a
 // serverless/edge deployment, replace with a shared-store implementation.
 const downloadThrottle = new ArxivDownloadThrottle();
-
-// Parse a Retry-After header (either delta-seconds or HTTP-date format) into ms.
-function parseRetryAfterMs(header) {
-  if (!header) return null;
-  const asSeconds = parseInt(header, 10);
-  if (Number.isFinite(asSeconds) && asSeconds >= 0) return asSeconds * 1000;
-  const asDate = new Date(header);
-  if (!Number.isNaN(asDate.getTime())) {
-    return Math.max(0, asDate.getTime() - Date.now());
-  }
-  return null;
-}
 
 // Playwright is an optional dependency. It's only needed when arXiv serves a
 // reCAPTCHA page instead of the PDF bytes. If it's not installed, we return a
@@ -467,6 +457,7 @@ export default async function handler(req, res) {
       });
     }
     console.error('Error analyzing PDF:', error);
+    if (sendProviderErrorResponse(res, error)) return;
     res.status(500).json({
       error: 'Failed to analyze PDF',
       details: error.message,

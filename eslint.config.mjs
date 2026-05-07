@@ -58,6 +58,8 @@ export default [
         DOMParser: 'readonly',
         XPathResult: 'readonly',
         AbortController: 'readonly',
+        DOMException: 'readonly',
+        Storage: 'readonly',
         // Node.js globals
         process: 'readonly',
         __dirname: 'readonly',

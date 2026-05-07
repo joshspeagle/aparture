@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
+import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 export default async function handler(req, res) {
@@ -92,6 +93,7 @@ export default async function handler(req, res) {
       tokensOut: response.tokensOut,
     });
   } catch (err) {
+    if (sendProviderErrorResponse(res, err)) return;
     res.status(500).json({ error: 'quick summary failed', details: String(err?.message ?? err) });
   }
 }
