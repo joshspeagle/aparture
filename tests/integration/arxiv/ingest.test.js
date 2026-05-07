@@ -362,6 +362,100 @@ describe('ingest.harvest — windowSemantics', () => {
     expect(result.papers.map((p) => p.id)).toEqual(['NEW']);
   });
 
+  it('drops v2-of-old papers from fill-up records when submitted-only', async () => {
+    // Broad fetch: 1 paper (below the 5-paper threshold) — triggers fill-up.
+    // Fill-up step 1 returns a mix: a newly-submitted paper inside the
+    // step's window AND a v2-of-old update whose original submission predates
+    // every fill-up step. Under submitted-only the v2-of-old must be dropped.
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          ...examplePaper('NEW-BROAD', ''),
+          categories: ['cs.GT'],
+          published: '2026-04-28',
+          updated: '2026-04-28',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          ...examplePaper('NEW-FILLUP', ''),
+          categories: ['cs.GT'],
+          published: '2026-04-26',
+          updated: '2026-04-26',
+        },
+        {
+          ...examplePaper('OLD-V2-IN-FILLUP', ''),
+          categories: ['cs.GT'],
+          published: '2024-01-01',
+          updated: '2026-04-26',
+        },
+      ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        from: '2026-04-28',
+        until: '2026-04-29',
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3],
+        minPapersPerSubcategory: 5,
+        windowSemantics: 'submitted-only',
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['NEW-BROAD', 'NEW-FILLUP']);
+  });
+
+  it('keeps v2-of-old papers from fill-ups when submitted-or-updated', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          ...examplePaper('NEW-BROAD', ''),
+          categories: ['cs.GT'],
+          published: '2026-04-28',
+          updated: '2026-04-28',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          ...examplePaper('OLD-V2-IN-FILLUP', ''),
+          categories: ['cs.GT'],
+          published: '2024-01-01',
+          updated: '2026-04-26',
+        },
+      ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        from: '2026-04-28',
+        until: '2026-04-29',
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3],
+        minPapersPerSubcategory: 5,
+        windowSemantics: 'submitted-or-updated',
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['NEW-BROAD', 'OLD-V2-IN-FILLUP']);
+  });
+
   it('keeps updated-not-created papers when submitted-or-updated', async () => {
     const harvestOaiImpl = vi.fn().mockResolvedValueOnce([
       {
