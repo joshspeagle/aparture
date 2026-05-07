@@ -28,6 +28,7 @@ The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed ti
 - Within a theme, prefer the top 2-3 papers by score. Don't force every theme paper into "must-cite".
 - Papers that don't fit the selected themes but are high-scoring (≥8/10) can go in a short "Notable mentions" section at the end.
 - If multiple themes overlap heavily, merge them into one act rather than spending time on both.
+- Always preserve papers the briefing places at the top of a theme, even if their score is below the cutoff. The briefing has already weighed engagement signals (stars, comments) — its editorial choices are the signal, not the raw score.
 
 ## Inputs
 

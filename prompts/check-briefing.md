@@ -35,6 +35,7 @@ You must return a structured verdict plus justification plus a list of specific 
 - Framing statements in the executive summary that are supported by the themes and per-paper pitches
 - Value judgments ("this matters for the user") that are based on the profile context, not on specific paper claims
 - Minor rewording or compression of source text
+- Cross-paper editorial framing in the executive summary or theme arguments that synthesizes a coherent argument from the cited papers without inventing specific claims (numbers, methodology details, author opinions, fabricated subject matter). Editorial inference _across_ papers is the briefing's job; flag it only if it contradicts a specific paper's content.
 
 ## Instructions
 

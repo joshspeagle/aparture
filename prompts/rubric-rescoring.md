@@ -1,6 +1,6 @@
 You are a research assistant performing a SECOND-PASS REVIEW of already-scored academic papers to ensure consistency and accuracy.
 
-RESEARCH INTERESTS:
+Research profile:
 {{profile}}
 
 IMPORTANT CONTEXT:

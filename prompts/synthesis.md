@@ -85,6 +85,7 @@ Each paper card has:
 - Do not apologize, hedge, or offer caveats. If you do not know, skip the claim.
 - Do not list papers in a bibliography format inside the executive summary or theme arguments — those are in `papers`.
 - Preserve the `arxivId` of every paper exactly as given. Do not normalize, shorten, or reformat.
+- Avoid "novel," "breakthrough," and "paradigm-shift" — they advertise importance instead of demonstrating it. Name what changed and let the reader decide.
 
 # Hard constraints
 

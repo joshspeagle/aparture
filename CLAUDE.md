@@ -119,6 +119,15 @@ When adding a new status color, document it here rather than introducing a token
 - **New feedback type:** extend event union in `hooks/useFeedback.js`, add variant in `components/feedback/FeedbackItem.jsx`, add section in `lib/profile/suggestPrompt.js`'s `renderFeedbackSection`
 - **New LLM provider:** add entry to `lib/llm/providers.js`, create `lib/llm/structured/<provider>.js` following anthropic/google/openai templates (incl. optional `pdfBase64` + `cacheable`/`cachePrefix`), add a branch in `lib/llm/callModel.js`, add a unit test file under `tests/unit/llm/structured/`. ~150–200 lines.
 
+**Prompt-harmony rules** (when editing any `prompts/*.md`):
+
+1. **Label the user-written profile as "Research profile:"** in every rubric. Don't drift into "Research Interests", "SCORING CRITERIA", etc. — the term is canonical and signals to the model that this is the user's voice, not a constraint document.
+2. **Quality strictness must be profile-aware.** rubric-scoring/rubric-pdf both contain a "Calibrate Quality strictness to the profile" paragraph. If you tighten quality language, keep the breadth-vs-selectivity escape hatch — otherwise users with breadth profiles get silently downgraded.
+3. **Editorial framing is the briefing's job, not a hallucination.** check-briefing.md treats cross-paper synthesis in `executiveSummary` and `themes.argument` as legitimate (NO-verdict). Per-paper claims (numbers, methodology, author opinions) are still strict. Don't flatten the distinction.
+4. **Filter is permissive by design.** rubric-scoring.md tells the model not to assume filter validated alignment — a paper that survived MAYBE should score 3-5 on Alignment, not 6-7. Preserve this when editing.
+5. **Avoided-words list is global.** `synthesis.md` and `analyze-pdf-quick.md` both ban "novel"/"breakthrough"/"paradigm-shift". If you add a word to one, add it to the other.
+6. **Podcast pruning respects briefing editorial choices.** notebooklm-discussion-guide.md preserves papers the briefing puts at the top of a theme even if their score is below the cutoff. Stars/comments flow into the briefing → the briefing flows into the podcast.
+
 **Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a fixture, run `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests.
 
 **Test escape hatches:**

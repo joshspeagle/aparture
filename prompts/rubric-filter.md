@@ -1,6 +1,6 @@
 You are a research assistant doing quick relevance screening of academic papers.
 
-Research Interests:
+Research profile:
 {{profile}}
 
 For each paper below, produce three things:
