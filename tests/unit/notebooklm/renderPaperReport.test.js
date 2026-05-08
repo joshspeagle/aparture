@@ -34,6 +34,22 @@ describe('renderPaperReport', () => {
     expect(slug.length).toBeLessThanOrEqual(60);
   });
 
+  it('falls back to paper.id when arxivId is absent (pipeline finalRanking shape)', () => {
+    // Pipeline papers in `results.finalRanking` come straight from the arxiv
+    // module's Paper type, which uses `id` not `arxivId`. The renderer must
+    // accept either, otherwise the notebookLM bundle ships `arXiv: undefined`.
+    const pipelinePaper = {
+      id: '2604.25786',
+      title: 'Some paper',
+      finalScore: 9.5,
+      scoreJustification: 'Test.',
+    };
+    const { filename, content } = renderPaperReport(pipelinePaper, 1);
+    expect(content).toContain('**arXiv:** 2604.25786');
+    expect(filename).toContain('2604.25786');
+    expect(content).not.toContain('undefined');
+  });
+
   it('falls back to relevanceScore if finalScore is missing', () => {
     const noDeep = {
       arxivId: '2504.09999',
