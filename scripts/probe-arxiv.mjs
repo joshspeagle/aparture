@@ -29,7 +29,7 @@ async function probe(url, label) {
 console.log(`Probing arXiv from ${yesterday} to ${today}`);
 console.log('-----');
 
-const oaiUrl = `https://oaipmh.arxiv.org/oai?verb=ListRecords&set=cs&from=${yesterday}&until=${today}&metadataPrefix=arXiv`;
+const oaiUrl = `https://oaipmh.arxiv.org/oai?verb=ListRecords&set=cs&from=${yesterday}&until=${today}&metadataPrefix=arXivRaw`;
 const atomUrl = `https://export.arxiv.org/api/query?search_query=%28cat%3Acs.AI%29+AND+submittedDate%3A%5B${yesterday.replaceAll('-', '')}+TO+${today.replaceAll('-', '')}%5D&max_results=10`;
 
 await probe(oaiUrl, 'OAI-PMH');

@@ -44,7 +44,7 @@ describe('harvest-arxiv API route', () => {
       set: 'cs',
       from: '2026-04-28',
       until: '2026-04-29',
-      metadataPrefix: 'arXiv',
+      metadataPrefix: 'arXivRaw',
     });
     await handler(req, res);
     const { statusCode, jsonBody } = getResponse();
@@ -60,7 +60,7 @@ describe('harvest-arxiv API route', () => {
       set: 'cs',
       from: '2026-04-28',
       until: '2026-04-29',
-      metadataPrefix: 'arXiv',
+      metadataPrefix: 'arXivRaw',
     });
     await handler(req, res);
     expect(getResponse().statusCode).toBe(401);
@@ -84,7 +84,7 @@ describe('harvest-arxiv API route', () => {
       set: 'cs',
       from: '2026-04-28',
       until: '2026-04-29',
-      metadataPrefix: 'arXiv',
+      metadataPrefix: 'arXivRaw',
     });
     await handler(req, res);
 
@@ -107,7 +107,7 @@ describe('harvest-arxiv API route', () => {
       set: 'cs',
       from: '2026-04-28',
       until: '2026-04-29',
-      metadataPrefix: 'arXiv',
+      metadataPrefix: 'arXivRaw',
     });
     await handler(req, res);
     const { statusCode, jsonBody } = getResponse();
@@ -134,7 +134,7 @@ describe('harvest-arxiv API route', () => {
       set: 'cs',
       from: '2026-04-28',
       until: '2026-04-29',
-      metadataPrefix: 'arXiv',
+      metadataPrefix: 'arXivRaw',
     });
     await handler(req, res);
     expect(getResponse().jsonBody.resumptionToken).toBe('tokABC');

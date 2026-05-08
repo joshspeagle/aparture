@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <responseDate>2026-05-08T19:09:33Z</responseDate>
+    <request verb="ListRecords" metadataPrefix="arXivRaw" set="cs">http://oaipmh.arxiv.org/oai</request>
+    <ListRecords>
+        <record>
+            <header>
+                <identifier>oai:arXiv.org:2309.09550</identifier>
+                <datestamp>2026-05-06</datestamp>
+                <setSpec>cs:cs:NE</setSpec>
+                <setSpec>cs:cs:AI</setSpec>
+            </header>
+            <metadata>
+                <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+                    <id>2309.09550</id>
+                    <submitter>Bing Han</submitter>
+                    <version version="v1">
+                        <date>Mon, 18 Sep 2023 07:56:40 GMT</date>
+                        <size>1370kb</size>
+                    </version>
+                    <version version="v2">
+                        <date>Sun, 08 Oct 2023 07:36:41 GMT</date>
+                        <size>1377kb</size>
+                    </version>
+                    <version version="v3">
+                        <date>Mon, 28 Oct 2024 13:10:41 GMT</date>
+                        <size>16453kb</size>
+                    </version>
+                    <version version="v4">
+                        <date>Tue, 05 May 2026 03:04:16 GMT</date>
+                        <size>1130kb</size>
+                    </version>
+                    <title>Adaptive Reorganization of Neural Pathways for Continual Learning with Spiking Neural Networks</title>
+                    <authors>Bing Han, Feifei Zhao, Wenxuan Pan</authors>
+                    <categories>cs.NE cs.AI</categories>
+                    <abstract>Brain-inspired continual learning with spiking neural networks.</abstract>
+                </arXivRaw>
+            </metadata>
+        </record>
+        <record>
+            <header>
+                <identifier>oai:arXiv.org:1810.06450</identifier>
+                <datestamp>2026-04-27</datestamp>
+                <setSpec>eess:eess:SP</setSpec>
+                <setSpec>cs:cs:SY</setSpec>
+            </header>
+            <metadata>
+                <arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+                    <id>1810.06450</id>
+                    <submitter>Shashank Singh</submitter>
+                    <version version="v1">
+                        <date>Fri, 12 Oct 2018 11:24:58 GMT</date>
+                        <size>1225kb</size>
+                    </version>
+                    <version version="v2">
+                        <date>Sat, 03 Nov 2018 09:30:58 GMT</date>
+                        <size>1225kb</size>
+                    </version>
+                    <version version="v3">
+                        <date>Sun, 26 May 2019 15:44:19 GMT</date>
+                        <size>1225kb</size>
+                    </version>
+                    <title>Smart Load Node for Nonsmart Load Under Smart Grid Paradigm</title>
+                    <authors>Shashank Singh, Amit Roy, Selvan M.P</authors>
+                    <categories>eess.SP cs.SY eess.SY</categories>
+                    <abstract>A novel approach for non-smart appliance operation under smart grid.</abstract>
+                </arXivRaw>
+            </metadata>
+        </record>
+    </ListRecords>
+</OAI-PMH>

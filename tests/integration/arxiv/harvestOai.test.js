@@ -5,7 +5,7 @@ import { harvestOai } from '../../../lib/arxiv/harvestOai.js';
 import { ArxivThrottledError, ArxivParseError } from '../../../lib/arxiv/errors.js';
 
 const TRIMMED_XML = fs.readFileSync(
-  path.resolve('tests/fixtures/arxiv/oai-cs-2026-04-29-trimmed.xml'),
+  path.resolve('tests/fixtures/arxiv/oai-raw-listrecords-trimmed.xml'),
   'utf8'
 );
 
@@ -19,11 +19,11 @@ const buildPageXml = (records, resumptionToken = '') => `<?xml version="1.0" enc
 
 const sampleRecord = (id) => `<record>
   <header><identifier>oai:arXiv.org:${id}</identifier><datestamp>2026-04-28</datestamp><setSpec>cs:cs:AI</setSpec></header>
-  <metadata><arXiv xmlns="http://arxiv.org/OAI/arXiv/">
-    <id>${id}</id><created>2026-04-28</created><updated>2026-04-28</updated>
-    <authors><author><keyname>Author</keyname><forenames>A</forenames></author></authors>
-    <title>Title ${id}</title><abstract>Abs ${id}</abstract><categories>cs.AI</categories>
-  </arXiv></metadata>
+  <metadata><arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>${id}</id><submitter>A</submitter>
+    <version version="v1"><date>Tue, 28 Apr 2026 12:00:00 GMT</date><size>100kb</size></version>
+    <title>Title ${id}</title><authors>Alice Author</authors><abstract>Abs ${id}</abstract><categories>cs.AI</categories>
+  </arXivRaw></metadata>
 </record>`;
 
 const baseArgs = {
