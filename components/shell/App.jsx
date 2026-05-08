@@ -610,9 +610,12 @@ export default function App() {
   // Wrap saveBriefing so pipeline-generated briefings auto-switch view.
   // Stable ref avoids reactContext churn on every render (setActiveView
   // identity is stable from useState, saveBriefing from useBriefing).
+  // saveBriefing is async (it awaits the cold-tier POST), so we must await
+  // it here — passing the unresolved Promise into the template literal
+  // produces `briefing:[object Promise]` and breaks the subsequent loadBriefing.
   const saveBriefingAndSwitchRef = useRef(null);
-  saveBriefingAndSwitchRef.current = (date, briefing, metadata, options) => {
-    const newId = saveBriefing(date, briefing, metadata, options);
+  saveBriefingAndSwitchRef.current = async (date, briefing, metadata, options) => {
+    const newId = await saveBriefing(date, briefing, metadata, options);
     setActiveView(`briefing:${newId}`);
     return newId;
   };

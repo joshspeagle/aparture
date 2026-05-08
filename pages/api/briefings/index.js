@@ -1,6 +1,18 @@
 import path from 'path';
 import fs from 'fs/promises';
 
+// Briefing payloads carry heavy optional fields (`pipelineArchive`,
+// `fullReportsById`, `quickSummariesById`) that easily blow past Next.js's
+// default 4 MB request body limit on a typical 30-paper run. Without this,
+// the cold-tier POST 413s and we lose the on-disk copy entirely — which,
+// combined with the hot-tier strip-on-quota behavior, means heavy fields
+// are gone from both tiers. Mirrors the matching limit on /api/sessions.
+export const config = {
+  api: {
+    bodyParser: { sizeLimit: '20mb' },
+  },
+};
+
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 function getBriefingsDir() {
