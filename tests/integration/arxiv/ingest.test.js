@@ -490,3 +490,187 @@ describe('ingest.harvest — windowSemantics', () => {
     expect(result.papers.map((p) => p.id).sort()).toEqual(['NEW', 'OLD-V2']);
   });
 });
+
+describe('ingest.harvest — targetDaysBack anchor logic', () => {
+  // Builds a paper with explicit v1 date (published).
+  const paperOn = (id, isoDate, fetchedCategory = 'cs.AI') => ({
+    ...examplePaper(id, fetchedCategory),
+    categories: [fetchedCategory],
+    published: isoDate,
+    updated: isoDate,
+  });
+
+  it('anchors v1 target on latest day with content and slices to targetDaysBack', async () => {
+    // Wide OAI fetch [2026-04-20, 2026-05-07] returns papers across many days.
+    // With targetDaysBack=1 and submitted-only: anchor = 2026-05-06 (the latest
+    // v1 day with any selected-category paper); v1 target = [2026-05-06, 2026-05-06].
+    // Older papers (2026-05-04 and 2026-04-30) must be dropped.
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([
+        paperOn('TODAY-A', '2026-05-06'),
+        paperOn('TODAY-B', '2026-05-06'),
+        paperOn('YESTERDAY', '2026-05-04'),
+        paperOn('LAST-WEEK', '2026-04-30'),
+      ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-20',
+        until: '2026-05-07',
+        targetDaysBack: 1,
+        windowSemantics: 'submitted-only',
+        selectedSubcategories: ['cs.AI'],
+        fillupSchedule: [],
+        minPapersPerSubcategory: 0,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['TODAY-A', 'TODAY-B']);
+  });
+
+  it('targetDaysBack=3 slices three days back from anchor', async () => {
+    const harvestOaiImpl = vi.fn().mockResolvedValueOnce([
+      paperOn('D0', '2026-05-06'),
+      paperOn('D1', '2026-05-05'),
+      paperOn('D2', '2026-05-04'),
+      paperOn('D3', '2026-05-03'), // outside [anchor-2, anchor]
+    ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-29',
+        until: '2026-05-07',
+        targetDaysBack: 3,
+        windowSemantics: 'submitted-only',
+        selectedSubcategories: ['cs.AI'],
+        fillupSchedule: [],
+        minPapersPerSubcategory: 0,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['D0', 'D1', 'D2']);
+  });
+
+  it('falls back to window.until as anchor when no papers match selected subcategories', async () => {
+    // No papers at all — anchor falls back to window.until, target window
+    // [until - 0, until] = [2026-05-07, 2026-05-07]. Result is empty regardless;
+    // the assertion is that the call doesn't throw and returns gracefully.
+    const harvestOaiImpl = vi.fn().mockResolvedValueOnce([]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-29',
+        until: '2026-05-07',
+        targetDaysBack: 1,
+        windowSemantics: 'submitted-only',
+        selectedSubcategories: ['cs.AI'],
+        fillupSchedule: [],
+        minPapersPerSubcategory: 0,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers).toEqual([]);
+  });
+
+  it('does NOT apply anchor logic when windowSemantics is submitted-or-updated', async () => {
+    // Same fetch as the slice test, but submitted-or-updated → all papers in
+    // the OAI window pass through untouched.
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([paperOn('TODAY', '2026-05-06'), paperOn('OLD-V2', '2024-01-01')]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-29',
+        until: '2026-05-07',
+        targetDaysBack: 1,
+        windowSemantics: 'submitted-or-updated',
+        selectedSubcategories: ['cs.AI'],
+        fillupSchedule: [],
+        minPapersPerSubcategory: 0,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['OLD-V2', 'TODAY']);
+  });
+
+  it('fill-up under submitted-only post-filters wide OAI return to v1 step window', async () => {
+    // Broad fetch yields 0 cs.GT for the anchor day → fill-up triggers.
+    // The fill-up's OAI fetch (widened by lag buffer) returns a mix of papers;
+    // only those with v1 in the step's target window should survive.
+    const harvestOaiImpl = vi
+      .fn()
+      // Broad: one anchor-day paper, plus one re-announced old paper.
+      .mockResolvedValueOnce([
+        paperOn('ANCHOR', '2026-05-06', 'cs.GT'),
+        paperOn('OLD-V2', '2023-01-01', 'cs.GT'),
+      ])
+      // Fill-up step 1 (3 days back from anchor): widened OAI returns
+      // papers with v1 inside AND outside the target window. The post-filter
+      // should drop the outside ones.
+      .mockResolvedValueOnce([
+        paperOn('STEP-IN', '2026-05-04', 'cs.GT'),
+        paperOn('STEP-OUT-FUTURE', '2026-05-07', 'cs.GT'),
+        paperOn('STEP-OUT-PAST', '2026-04-30', 'cs.GT'),
+      ]);
+
+    const result = await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-29',
+        until: '2026-05-07',
+        targetDaysBack: 1,
+        windowSemantics: 'submitted-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3],
+        minPapersPerSubcategory: 5,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    // Anchor = 2026-05-06 (only ANCHOR contributes, OLD-V2 is dropped pre-anchor).
+    // Target v1 window = [2026-05-06, 2026-05-06]. Step 1 v1 window =
+    // [2026-05-03, 2026-05-05]. STEP-IN is v1=2026-05-04 → kept.
+    // STEP-OUT-FUTURE (2026-05-07) and STEP-OUT-PAST (2026-04-30) → dropped.
+    expect(result.papers.map((p) => p.id).sort()).toEqual(['ANCHOR', 'STEP-IN']);
+  });
+});
