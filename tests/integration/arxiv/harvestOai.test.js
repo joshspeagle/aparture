@@ -115,6 +115,40 @@ describe('harvestOai', () => {
     ).rejects.toBeInstanceOf(ArxivThrottledError);
   });
 
+  it('throws ArxivNetworkError on OAI <error code="badArgument"> envelope', async () => {
+    // OAI embeds protocol errors inside HTTP-200 responses. Silently swallowing
+    // them masks bugs (e.g. asking for a future `until` date returns 0 records
+    // with a hidden `badArgument` and the caller can't tell it from "no data").
+    const errorXml = `<?xml version="1.0"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <error code="badArgument">until date too late</error>
+</OAI-PMH>`;
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ xml: errorXml, resumptionToken: '' }),
+    });
+
+    await expect(harvestOai({ ...baseArgs, fetchImpl })).rejects.toThrow(/badArgument/);
+  });
+
+  it('treats <error code="noRecordsMatch"> as legitimate empty result', async () => {
+    const noMatchXml = `<?xml version="1.0"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <ListRecords>
+    <error code="noRecordsMatch">no records</error>
+  </ListRecords>
+</OAI-PMH>`;
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ xml: noMatchXml, resumptionToken: '' }),
+    });
+
+    const records = await harvestOai({ ...baseArgs, fetchImpl });
+    expect(records).toEqual([]);
+  });
+
   it('throws ArxivParseError on malformed XML', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

@@ -627,6 +627,66 @@ describe('ingest.harvest — targetDaysBack anchor logic', () => {
     expect(result.papers.map((p) => p.id).sort()).toEqual(['OLD-V2', 'TODAY']);
   });
 
+  it('clamps fill-up OAI until to window.until so it never asks for future dates', async () => {
+    // Anchor = 2026-05-06 → step 1 v1 target = [2026-05-03, 2026-05-05].
+    // Naively widening until by lag (+7) would give 2026-05-12 — in the
+    // future when window.until is yesterday (2026-05-07). OAI rejects future
+    // dates with `badArgument: until date too late` and our parser silently
+    // returned zero, killing steps 1 and 2 and forcing fall-through to step 3
+    // (which reaches 14 days back). The fix clamps to window.until.
+    let capturedFillupUntil = null;
+    const harvestOaiImpl = vi.fn().mockImplementation(async ({ set, until }) => {
+      // Broad fetch: anchor day has 1 paper for cs.GT (below threshold).
+      if (set === 'cs') {
+        return [
+          {
+            ...examplePaper('ANCHOR', ''),
+            categories: ['cs.GT'],
+            published: '2026-05-06',
+            updated: '2026-05-06',
+          },
+        ];
+      }
+      // Fill-up step 1 (cs:cs:GT). Capture the until that was sent.
+      if (set === 'cs:cs:GT') {
+        capturedFillupUntil = until;
+        return [
+          {
+            ...examplePaper('STEP1-IN', ''),
+            categories: ['cs.GT'],
+            published: '2026-05-04',
+            updated: '2026-05-04',
+          },
+        ];
+      }
+      return [];
+    });
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        from: '2026-04-30',
+        until: '2026-05-07', // yesterday — production sets this in pipeline.fetchPapers
+        targetDaysBack: 1,
+        windowSemantics: 'submitted-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3],
+        minPapersPerSubcategory: 5,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+      }
+    );
+
+    // Without clamp, this would be '2026-05-12'. With clamp, it must be
+    // '2026-05-07' (= window.until).
+    expect(capturedFillupUntil).toBe('2026-05-07');
+  });
+
   it('fill-up under submitted-only post-filters wide OAI return to v1 step window', async () => {
     // Broad fetch yields 0 cs.GT for the anchor day → fill-up triggers.
     // The fill-up's OAI fetch (widened by lag buffer) returns a mix of papers;
