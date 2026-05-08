@@ -138,56 +138,22 @@ When adding a new status color, document it here rather than introducing a token
 
 ### LLM Dispatcher + Prompt Caching
 
-All LLM-calling routes go through `lib/llm/callModel.js` — never call a provider API directly.
+All LLM-calling routes go through `lib/llm/callModel.js` — never call a provider API directly. Per-provider shaping is in `lib/llm/structured/{anthropic,google,openai}.js`; read those files when adding a route or provider.
 
-**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template + profile) and variable `prompt` (per-batch content). When `cacheable: true`, the adapter emits multi-block `content` with `cache_control: {type: 'ephemeral'}` on the prefix. **Invariant:** `cachePrefix + prompt === fullRenderedPrompt` byte-for-byte — test each route's split logic against a known-good rendering. OpenAI auto-caches on repeated prefixes; Google caching is not enabled.
+**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template + profile) and variable `prompt` (per-batch content); when `cacheable: true`, the adapter emits multi-block `content` with `cache_control: {type: 'ephemeral'}` on the prefix. **Invariant:** `cachePrefix + prompt === fullRenderedPrompt` byte-for-byte. OpenAI auto-caches on repeated prefixes; Google caching is not enabled. Hit metrics surface as `cacheReadTok`/`cacheCreateTok`; dispatcher logs `[anthropic cache] read=N create=N`.
 
-**PDF content blocks.** All 3 adapters accept `pdfBase64`. When present: Anthropic emits a `document` block; Google emits `inlineData` in `parts`; OpenAI switches to `/v1/responses` via `buildOpenAIResponsesRequest` (different shape from Chat Completions — parses `response.output[].content[].text`, not `output_text`). OpenAI Responses structured output uses `text.format.json_schema`, not `response_format`.
+**PDF content blocks.** All 3 adapters accept `pdfBase64`. Anthropic emits a `document` block; Google emits `inlineData` in `parts`; OpenAI switches to `/v1/responses` (`buildOpenAIResponsesRequest`) — different shape from Chat Completions, response parsed at `output[].content[].text`, structured output via `text.format.json_schema` not `response_format`.
 
-**Structured-output schema constraints.** The three providers disagree on which JSON Schema fields are supported. Keep schemas in the **portable subset** and enforce value constraints (count, range, length) in the server-side validator, not the schema. All Aparture routes use the same provider-portable shape:
+**Structured-output portability rules.** The three providers disagree on JSON Schema field support; keep schemas in the portable subset and enforce count/range/length in the server-side validator. Concrete rules for new routes:
 
-| Keyword                                                          | Anthropic strict tool_use | Google `responseSchema` (v1beta)                               | OpenAI strict json_schema                                                     |
-| ---------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `type`, `properties`, `required`, `items`, `enum`, `description` | ✅                        | ✅                                                             | ✅                                                                            |
-| `additionalProperties: false`                                    | ✅ **required**           | ❌ 400 (stripped by `sanitizeSchemaForGoogle`)                 | ✅ **required on every object**                                               |
-| `minimum`, `maximum`, `multipleOf`, `pattern`                    | ❌ stripped/400           | ✅ (`minimum`/`maximum` only)                                  | ❌ 400                                                                        |
-| `minLength`, `maxLength`                                         | ❌ stripped/400           | ❌ silently ignored                                            | ❌ 400                                                                        |
-| `minItems`, `maxItems`                                           | ❌ stripped/400           | ✅                                                             | ❌ 400                                                                        |
-| `oneOf`/`allOf`/`anyOf` at root                                  | ❌ 400                    | ❌ unsupported                                                 | n/a                                                                           |
-| Top-level `type: 'array'`                                        | ❌ object-rooted          | ❌ object-rooted                                               | ❌ **wrap in `{items: [...]}`**                                               |
-| Optional properties (not in `required`)                          | ✅                        | ✅                                                             | ❌ **all properties must be in `required`** — use `["T","null"]` for optional |
-| `["T","null"]` nullable type union                               | ✅                        | ❌ 400 (converted to `{type: T, nullable: true}` by sanitizer) | ✅ canonical OpenAI optional-field pattern                                    |
-
-**About the Google column:** Nov 2025 added native `additionalProperties` support to Gemini's newer `response_json_schema` field, but NOT to the `responseSchema` field used by our v1beta adapter — verified via live 400 error. If we ever migrate to `response_json_schema` the sanitizer should drop the `additionalProperties` strip.
-
-**Concrete portability rules for new routes:**
-
-1. Every object MUST include `additionalProperties: false`. Anthropic strict requires it, OpenAI strict 400s without it, and Google's sanitizer strips it cleanly.
-2. Every property MUST appear in `required`. For semantically optional fields, use `["string","null"]` so OpenAI strict accepts them. The zod schema should then be `z.union([z.string(), z.null()]).transform(v => v ?? '')` or similar. The Google sanitizer auto-converts `["T","null"]` → `{type: T, nullable: true}` for Google's OpenAPI subset.
+1. Every object MUST include `additionalProperties: false` (Anthropic+OpenAI strict require it; `sanitizeSchemaForGoogle` strips it cleanly).
+2. Every property MUST appear in `required`. For optional fields use `["T","null"]` so OpenAI strict accepts them; the Google sanitizer auto-converts to `{type: T, nullable: true}`.
 3. Top-level schema MUST be `type: 'object'`. Wrap arrays as `{items: [...]}`.
-4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce these in the server-side validator instead.
+4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce in the validator.
 
-**Adapter behavior:**
+Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking on model family (Opus/Sonnet on, Haiku off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
 
-- **Anthropic** (`lib/llm/structured/anthropic.js`): tool definition emits `strict: true` for grammar-constrained sampling. Adaptive thinking is gated on model family: enabled for Opus and Sonnet (`claude-opus-*`, `claude-sonnet-*`), disabled for Haiku (live 400: "adaptive thinking is not supported on this model"). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}` for guaranteed structured output.
-- **Google** (`lib/llm/structured/google.js`): `sanitizeSchemaForGoogle` strips `additionalProperties`, `$schema`, `$id`, `$ref`, and converts `["T","null"]` type unions to OpenAPI-3.0 `nullable: true`.
-- **OpenAI Chat Completions** (`buildOpenAIRequest`): structured output via `response_format: {type: 'json_schema', json_schema: {name, strict: true, schema}}`.
-- **OpenAI Responses API** (`buildOpenAIResponsesRequest`): used when `pdfBase64` is present. Structured output via `text.format: {type: 'json_schema', name, strict: true, schema}` (NOT `response_format`). Response parsed at `output[].content[].text` where `output[].type === 'message'`.
-
-**Cache-hit measurement.** `callModel` surfaces `cacheReadTok` / `cacheCreateTok`; dispatcher logs `[anthropic cache] read=N create=N`.
-
-**Route pattern.** Two patterns coexist depending on whether the route uses the rubric template loader (`loadRubricPrompt`) or assembles its own prompt:
-
-- **Batch routes** (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`): always pass `cachePrefix` and `cacheable` as explicit object keys (with `''` and `false` when caching is disabled). Fixture hashes therefore include these keys as empty values, but cleanly within fixture mode.
-- **Briefing routes** (`synthesize`, `check-briefing`, `suggest-profile`, `analyze-pdf-quick`): use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})` so cache fields are absent from the input when caching is off.
-
-Both patterns are consistent within their own fixture sets — the two cannot share fixtures across modes. Route requirements:
-
-- Accept `apiKey` (BYOK) OR `password` (env lookup per provider). Briefing routes use the shared `resolveApiKey()` helper; batch routes inline the same logic.
-- Resolve `provider` (lowercased) from `MODEL_REGISTRY[model]?.provider` before auth.
-- Skip the `!apiKey` 401 when `callModelMode?.mode === 'fixture'` so fixture-based tests don't need a fake key.
-- Compute `const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` — all three conditions required.
-- Accept `callModelMode` from body and pass as 2nd arg to `callModel`.
+**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` and skip the `!apiKey` 401 when `callModelMode?.mode === 'fixture'`.
 
 ### Analyzer module split
 
@@ -204,77 +170,32 @@ Both patterns are consistent within their own fixture sets — the two cannot sh
 
 ### ArXiv Ingestion
 
-Aparture has two ingestion paths for arXiv metadata:
+User-facing model + tuning live in `docs/concepts/arxiv-ingestion.md` and `docs/using/tuning-the-pipeline.md`. Implementation lives entirely under `lib/arxiv/`; `pipeline.fetchPapers` is a thin wrapper around `ingest.harvest`. Live-network probe: `scripts/probe-arxiv.mjs` (manual; never CI). Non-obvious bits:
 
-- **Primary: OAI-PMH** (`https://oaipmh.arxiv.org/oai`) via `pages/api/harvest-arxiv.js` and `lib/arxiv/harvestOai.js`. arXiv's officially-recommended bulk-harvest path. Lives in a separate rate-limit bucket from `/api/query` (verified live during the 2026-04-29 throttle incident). One request per top-level set covers all subcategories of that group, so users picking 8 cs.\* subcategories make 1 request instead of 8.
-- **Fallback: Atom** (`https://export.arxiv.org/api/query`) via `pages/api/fetch-arxiv.js` and `lib/arxiv/fetchAtom.js`. The legacy path; one request per subcategory. Lives in the throttled "expensive query" bucket. Used only as fallback when OAI fails (auto mode) or when explicitly selected.
+- **Two paths, one orchestrator.** OAI-PMH (`pages/api/harvest-arxiv.js`) is primary; the legacy Atom (`pages/api/fetch-arxiv.js`) is fallback. They're in **separate rate-limit buckets** at arXiv (verified live 2026-04-29). `config.arxivIngestion: 'auto'|'oai-only'|'atom-only'` (default `'auto'`); auto trips a per-run circuit breaker on the first hard OAI failure and switches the rest of the run to Atom. `result.modeUsed` is surfaced in the run-summary status line.
+- **OAI metadata format = `arXivRaw`.** We do NOT use the `arXiv` format: its `<created>` field is the latest-announcement date, not v1 submission, so re-announced old papers leak into `submitted-only` windows undetectably. `arXivRaw` exposes per-version `<version version="vN"><date>` and `parseOaiRecord` anchors `published` on v1.
+- **`config.arxivWindowSemantics: 'submitted-only'|'submitted-or-updated'`** (default `'submitted-only'`). Two-pass filter in `ingest.harvest`: once on the broad fetch with `[from, until]`, once on the merged broad+fill-up set with the expanded union `[from - max(fillupSchedule), until]`. Both compare against `published` (= v1 date), so re-announced papers are correctly dropped end-to-end.
+- **`config.daysBack: N`** = N full prior calendar days, ending **yesterday** (today excluded — incomplete + would be 2 days under inclusive `[from, until]`). Computed in `pipeline.fetchPapers` before building the `HarvestWindow`.
+- **Fill-ups** (`config.minPapersPerSubcategory`, default 5; `config.lookbackExtensions`, default `[3, 7, 14]`) fire narrow per-subcategory requests when a sub is under-served, going through whichever driver the broad fetch is using. Each step fetches only the new outer slice.
+- **Cache** (`config.arxivCacheTtlMinutes`, default 60) is localStorage-backed under `aparture-arxiv-cache`, keyed by `(set, from, until, mode)`. Evicts oldest 50% on `QuotaExceededError`. `0` disables.
+- **Set hierarchy** is hand-mapped in `lib/arxiv/sets.js` (almost `<group>:<archive>:<CATEGORY>` but physics is 3-level). Drives off the same catalog as `utils/arxivCategories.js`.
+- **Atom hygiene rules** (don't regress): no `sortBy`/`sortOrder` in the URL (sort client-side after merge); inter-request spacing is **jittered** 3000–5000 ms via `arxivSpacingMs()` (deterministic 3 s trips arXiv's sliding-window heuristics more often); the proxy rewrites upstream 5xx to a 429 shape so the client retry ladder handles both identically.
+- **Optional `ARXIV_CONTACT_EMAIL`**: when set, sent as HTTP `From` header on proxied requests. Goodwill signal only.
+- **Bulk backfill (out of scope here):** use arXiv's Kaggle dump (`Cornell-University/arxiv`). OAI-PMH is for incremental harvesting only.
 
-**Mode selection:** `config.arxivIngestion: 'auto' | 'oai-only' | 'atom-only'`. Default `'auto'`. Auto: try OAI per prefix; per-run circuit breaker trips on first hard OAI failure (throttled / network / parse), all subsequent prefixes use Atom for the rest of the run. The result records `result.modeUsed` as `auto-oai | auto-mixed | auto-atom | oai-only | atom-only`. The run-summary status line surfaces this plus paper count + fill-up + cache-hit counts.
+### Persistence (tiered: hot localStorage + cold filesystem)
 
-**Window semantics:** `config.arxivWindowSemantics: 'submitted-only' | 'submitted-or-updated'`. Default `'submitted-only'` (preserves pre-OAI behavior — drops v2-of-old papers; matches what `/api/query`'s `submittedDate` filter would have returned). Set to `'submitted-or-updated'` to include updated-but-not-newly-submitted papers. The filter applies in two passes: (1) on the broad fetch using the inner `[from, until]`, (2) on the merged broad + fill-up set using the expanded union `[from - max(fillupSchedule), until]`. Both passes respect the chosen semantics — fill-ups no longer leak v2-of-old updates when `submitted-only` is set.
+Both briefings and analyzer sessions use the same hot/cold pattern (introduced 2026-04-21 / 2026-05-07 to escape browser localStorage quota). `safeSetItem` in `lib/persistence/safeStorage.js` is shared between them.
 
-**Date window semantics:** `config.daysBack: N` means **N full prior calendar days, ending yesterday** — today is excluded because (a) submissions trickle in throughout the day so the window would be incomplete, and (b) OAI-PMH and the `passesSemantics` filter both treat `[from, until]` as inclusive on both ends, which would otherwise inflate `daysBack: 1` into a 2-calendar-day window. Computed in `lib/analyzer/pipeline.js` immediately before constructing the `HarvestWindow`.
-
-**Fill-ups:** when a selected subcategory returns fewer than `config.minPapersPerSubcategory` (default 5) papers from the broad fetch, the orchestrator fires narrow fill-up requests using `config.lookbackExtensions` (default `[3, 7, 14]`, cumulative extra days) until the threshold is met or all steps are exhausted. Fill-ups go through the same driver as the broad fetch (auto with breaker tripped → Atom; otherwise OAI). Each step fetches only the new outer date slice — no re-download of the inner data.
-
-**Cache:** `config.arxivCacheTtlMinutes` (default 60). localStorage-backed under key `aparture-arxiv-cache`, schema-versioned. Key is `(set, from, until, mode)`. Fill-ups cache separately under their narrow-set (or per-subcategory atom) key. On `QuotaExceededError`, evicts oldest 50% and retries. Set to `0` to disable.
-
-**Set hierarchy:** hand-mapped in `lib/arxiv/sets.js`. arXiv's set hierarchy is _almost_ `<group>:<archive>:<CATEGORY>` but physics is multi-level (`physics:astro-ph:HE`). The map drives off the same catalog as `utils/arxivCategories.js`.
-
-**Module layout:** all ingestion logic lives under `lib/arxiv/` (`harvestOai.js`, `parseOaiRecord.js`, `fetchAtom.js`, `parseAtomEntry.js`, `ingest.js`, `fillups.js`, `cache.js`, `sets.js`, `errors.js`, `types.js`). `pipeline.fetchPapers` is a thin orchestrator that builds a `HarvestWindow` from config and calls `ingest.harvest`. Tests in `tests/unit/arxiv/` and `tests/integration/arxiv/`. Live-network probe: `scripts/probe-arxiv.mjs` (manual; never CI).
-
-**For full-archive bulk backfill (out of scope for this implementation):** arXiv recommends the Kaggle dump (`Cornell-University/arxiv`), refreshed weekly. OAI-PMH is for incremental harvesting; Kaggle is for "import 5 years of cs.AI papers."
-
-### ArXiv Metadata Queries (Atom fallback)
-
-**This section covers only the legacy Atom fallback.** The primary ingestion path is OAI-PMH; see "ArXiv Ingestion" above.
-
-`pages/api/fetch-arxiv.js` proxies the public `export.arxiv.org/api/query` endpoint. Three hygiene rules that aren't obvious from the code alone:
-
-- **No `sortBy`/`sortOrder` in the URL.** arXiv's user manual flags sorted queries as more expensive and more throttled. `lib/analyzer/pipeline.js` sorts client-side after the merge. Don't add the params back.
-- **Inter-request spacing is jittered 3000–5000ms** via `arxivSpacingMs()` in `pipeline.js`. 3s is arXiv's stated floor — deterministic 3000ms back-to-back trips their sliding-window heuristics more often than jittered spacing.
-- **5xx maps onto the 429 retry path.** The proxy rewrites upstream 5xx to a 429-shaped response with `upstreamStatus` passed through; the client retry ladder in `executeArxivQuery` handles both identically (5 / 15 / 45-second exponential backoff, honoring `Retry-After`). Keep them unified — arXiv's 503s behave like their 429s in practice.
-
-**Optional `ARXIV_CONTACT_EMAIL` env var.** When set, sent as the HTTP `From` header on every proxied request. Not authenticated — purely a goodwill signal for arXiv's abuse team. Documented in `docs/reference/environment.md` and `docs/getting-started/install.md` §4.
-
-### Briefing persistence (tiered store)
-
-Briefings are persisted in two tiers, introduced 2026-04-21 to replace the single-key localStorage approach that hit browser quota after ~10–20 runs.
-
-- **Hot tier (localStorage):**
-  - `aparture-briefing-current` — full current entry, instant boot render.
-  - `aparture-briefing-index` — newest-first array of search-capable index entries (`{id, date, timestamp, archived, briefing: {executiveSummary, papers[{arxivId, title, score}]}}`). Keeps `filterBriefings` synchronous.
-- **Cold tier (filesystem):** `reports/briefings/<id>.json` via `POST /api/briefings`, `GET/PATCH/DELETE /api/briefings/[id]`. Read lazily by `useBriefing.loadBriefing(id)` when an archived briefing is opened. Base path overridable via `APARTURE_REPORTS_DIR`.
-- **Migration:** `hooks/useBriefing.js` checks for the legacy `aparture-briefing-history` key on mount and moves entries to files once (silent, no retry on per-entry failure).
-
-**Seam for Phase 2:** one constant (`BRIEFINGS_DIR` computed via `getBriefingsDir()` in the two API-route files) changes to `~/aparture/briefings/`.
-
-**Extending the PATCH whitelist:** `pages/api/briefings/[id].js` has a `MUTABLE_FIELDS` set for `PATCH` — currently `['archived']`. Add new mutable fields there rather than expanding into arbitrary merges.
-
-**Adding a heavy field:** extend the `HEAVY_FIELDS` array in `hooks/useBriefing.js` if the new field should be strippable under quota pressure. If the field should also NOT appear in the search-capable index, extend `buildIndexEntry` in `lib/briefing/buildIndexEntry.js` to drop it.
-
-**`safeSetItem` lives in `lib/persistence/safeStorage.js`** (lifted 2026-05-07) and is shared with the analyzer session tier (next section).
-
-### Analyzer session persistence (tiered store)
-
-Same hot/cold pattern as briefings, introduced 2026-05-07 to fix a `QuotaExceededError` on 600+-paper runs. The localStorage key is unchanged (`arxivAnalyzerState`) for CLI compat.
-
-- **Hot tier (localStorage):** `arxivAnalyzerState` — built by `lib/session/buildHotEntry.js`. Carries `config`, `sessionId`, `results.finalRanking` (top 30 with `deepAnalysis`), reduced `filterResults` (counts only), `processingTiming`, `testState`, `notebookLM`, `password`. Estimated ≤ 600 KB.
-- **Cold tier (filesystem):** `reports/sessions/<sessionId>.json` via `POST /api/sessions`, `GET/DELETE /api/sessions/[id]`. Carries the full `allPapers`, `scoredPapers`, and full `filterResults.{yes,maybe,no}` arrays. Lazy-loaded by `useAnalyzerPersistence` on mount when the hot blob has a `sessionId` but no `allPapers`.
-- **No legacy migration.** Old single-key blobs are read as-is (config + finalRanking are still in the same place); next save converts to the tiered shape.
-- **CLI compat.** `cli/run-analysis.js:425, 603` and `cli/setup.js:111` continue reading `localStorage.getItem('arxivAnalyzerState')` and accessing `.config` and `.results.finalRanking`. Both fields are preserved in the hot tier.
+- **Briefings.** Hot: `aparture-briefing-current` (full current entry) + `aparture-briefing-index` (newest-first search-capable index — keeps `filterBriefings` synchronous). Cold: `reports/briefings/<id>.json` via `POST/GET/PATCH/DELETE /api/briefings[/:id]`, lazy-loaded by `useBriefing.loadBriefing(id)`. Migration from legacy `aparture-briefing-history` happens once on mount.
+- **Sessions.** Hot: `arxivAnalyzerState` (key unchanged for CLI compat) — `config`, `sessionId`, `results.finalRanking` (top 30 + `deepAnalysis`), reduced `filterResults`, `processingTiming`, `testState`, `notebookLM`, `password`; ≤ 600 KB. Cold: `reports/sessions/<sessionId>.json` via `POST/GET/DELETE /api/sessions[/:id]` carries full `allPapers`, `scoredPapers`, `filterResults.{yes,maybe,no}`. Old single-key blobs read as-is on next save.
+- **Phase 2 seam:** `BRIEFINGS_DIR` / `SESSIONS_DIR` resolve via `getBriefingsDir()` / equivalent — flip the constants to `~/aparture/{briefings,sessions}/` for the desktop build.
+- **Extending mutable fields:** `pages/api/briefings/[id].js` whitelists in `MUTABLE_FIELDS` (currently `['archived']`); add there rather than merging arbitrary bodies. To make a field strippable under quota pressure, add it to `HEAVY_FIELDS` in `hooks/useBriefing.js`; to also drop it from the search index, extend `buildIndexEntry` in `lib/briefing/buildIndexEntry.js`.
+- **CLI compat:** `cli/run-analysis.js` and `cli/setup.js` still read `localStorage.getItem('arxivAnalyzerState')` and access `.config` and `.results.finalRanking` — both are preserved in the hot tier.
 
 ### LLM rate-limit handling
 
-All LLM-backed routes (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`, `analyze-pdf-quick`, `synthesize`, `check-briefing`, `suggest-profile`) now propagate HTTP status + `Retry-After` end-to-end:
-
-- **`lib/llm/callModel.js`** throws a typed `ProviderError` (`status`, `providerErrorBody`, `retryAfterMs`) on non-2xx responses. `lib/llm/retryAfter.js` parses `Retry-After` headers (Anthropic, OpenAI) and Google's body-form `RetryInfo.retryDelay`.
-- **Each route's catch** uses `sendProviderErrorResponse(res, err)` from `lib/llm/ProviderError.js` to forward the same status + structured details (`{error, retryAfterMs, details, provider}`) to the client.
-- **`lib/analyzer/pipeline.js` clients** call `parseRouteError(response, provider)` which throws a `RateLimitError` (status + `retryAfterMs`) for 429/503 and a plain `Error(details)` for everything else — surfacing the actual provider message instead of bare "Failed to filter papers".
-- **`makeRobustAPICall`** uses exponential + jittered backoff (cap 30 s) by default, but honors `Retry-After` (cap 60 s) when a `RateLimitError` is thrown.
-- **`LLMRateLimitBarrier`** in `lib/analyzer/rateLimit.js` is shared per-provider via `getLLMBarrier(provider)`. When any worker catches a 429, it calls `barrier.rateLimited({retryAfterMs})` and every concurrent worker for that provider pauses on `barrier.acquire()` before its next call. Wired in via `AnalysisWorkerPool`'s new `barrierFor` option.
-- Default `config.maxRetries` is **4** (5 attempts total) — raised from 1 alongside the new backoff ladder.
-- Pre-flight warning fires at filter/score/rescore/pdf stage entry when free-tier Gemini Flash-Lite + concurrency × est. RPM > 60.
+All LLM-backed routes propagate HTTP status + `Retry-After` end-to-end. `callModel.js` throws a typed `ProviderError` on non-2xx; `lib/llm/retryAfter.js` parses headers (Anthropic, OpenAI) and Google body-form `RetryInfo.retryDelay`. Routes forward via `sendProviderErrorResponse(res, err)`; `lib/analyzer/pipeline.js`'s `parseRouteError` translates 429/503 into `RateLimitError` so `makeRobustAPICall` honors `Retry-After` (cap 60 s) instead of the default exponential ladder (cap 30 s). The per-provider `LLMRateLimitBarrier` in `lib/analyzer/rateLimit.js` (`getLLMBarrier(provider)`) is wired into `AnalysisWorkerPool` via `barrierFor`: when any worker hits 429, every concurrent worker for that provider pauses on `barrier.acquire()` before its next call. Default `config.maxRetries: 4` (5 attempts). Pre-flight warning fires when free-tier Gemini Flash-Lite × concurrency × est. RPM > 60.
 
 ### ArXiv PDF Download Handling
 
