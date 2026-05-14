@@ -723,6 +723,7 @@ export default function App() {
 
   // --- Pipeline control handlers ---
   const handleStart = () => {
+    if (processing?.isRunning) return;
     startProcessing(false, false);
   };
 
@@ -1073,6 +1074,7 @@ export default function App() {
         activeView={activeView}
         onSelectView={setActiveView}
         onNewBriefing={handleStart}
+        newBriefingDisabled={processing?.isRunning ?? false}
         feedbackCount={feedback.events.length}
         onDeleteBriefing={deleteBriefing}
         onToggleArchive={toggleArchive}

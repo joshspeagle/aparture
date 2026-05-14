@@ -113,6 +113,7 @@ export default function Sidebar({
   activeView,
   onSelectView,
   onNewBriefing,
+  newBriefingDisabled = false,
   feedbackCount,
   onDeleteBriefing,
   onToggleArchive,
@@ -157,7 +158,12 @@ export default function Sidebar({
           marginBottom: 'var(--aparture-space-4)',
         }}
       >
-        <Button variant="primary" onClick={onNewBriefing} style={{ width: '100%' }}>
+        <Button
+          variant="primary"
+          onClick={onNewBriefing}
+          disabled={newBriefingDisabled}
+          style={{ width: '100%' }}
+        >
           + New Briefing
         </Button>
       </div>
