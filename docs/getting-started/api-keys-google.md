@@ -4,7 +4,7 @@ This page walks you through creating a Google AI Studio API key and wiring it in
 
 Two things worth knowing about Google before you start:
 
-- **Free tier covers the Flash family.** Gemini Flash, Flash-Lite, and their 3.x preview counterparts are free on fresh accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing. Keeping all model slots on Flash (or switching the Pro slots down to Flash in Settings) costs $0.
+- **Free tier covers the Flash family.** Gemini Flash, Flash-Lite (including the GA `gemini-3.1-flash-lite`), and the Gemini 3 Flash preview are free on fresh accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing. Keeping all model slots on Flash (or switching the Pro slots down to Flash in Settings) costs $0.
 - **Prompt caching isn't wired in yet for Google.** Runs always pay list price on the Google side, unlike Anthropic (explicit caching) and OpenAI (automatic caching).
 
 ## 1. Sign up
@@ -66,14 +66,14 @@ All Gemini models bill per million tokens (MTok), separately for input and outpu
 
 List pricing (paid tier) for every Gemini model in Aparture's registry:
 
-| Model                                                             | Context | Input ($/MTok) | Output ($/MTok) |
-| ----------------------------------------------------------------- | ------- | -------------: | --------------: |
-| `gemini-3.1-pro` (preview; recommended PDF + briefing)            | 1M      |          $2.00 |          $12.00 |
-| `gemini-3-flash` (preview; recommended scoring)                   | 1M      |          $0.50 |           $3.00 |
-| `gemini-3.1-flash-lite` (preview; recommended filter + q-summary) | 1M      |          $0.25 |           $1.50 |
-| `gemini-2.5-pro` (stable)                                         | 2M      |          $1.25 |          $10.00 |
-| `gemini-2.5-flash` (stable)                                       | 1M      |          $0.30 |           $2.50 |
-| `gemini-2.5-flash-lite` (stable)                                  | 1M      |          $0.10 |           $0.40 |
+| Model                                                        | Context | Input ($/MTok) | Output ($/MTok) |
+| ------------------------------------------------------------ | ------- | -------------: | --------------: |
+| `gemini-3.1-pro` (preview; recommended PDF + briefing)       | 1M      |          $2.00 |          $12.00 |
+| `gemini-3-flash` (preview; recommended scoring)              | 1M      |          $0.50 |           $3.00 |
+| `gemini-3.1-flash-lite` (GA; recommended filter + q-summary) | 1M      |          $0.25 |           $1.50 |
+| `gemini-2.5-pro` (stable)                                    | 2M      |          $1.25 |          $10.00 |
+| `gemini-2.5-flash` (stable)                                  | 1M      |          $0.30 |           $2.50 |
+| `gemini-2.5-flash-lite` (stable)                             | 1M      |          $0.10 |           $0.40 |
 
 **Free-tier eligibility** (at reduced RPM/RPD caps):
 

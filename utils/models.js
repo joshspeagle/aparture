@@ -55,7 +55,7 @@ const MODEL_REGISTRY = {
     provider: 'OpenAI',
   },
 
-  // Google — Gemini 3.x previews
+  // Google — Gemini 3.x (mixed preview / GA)
   'gemini-3.1-pro': {
     apiId: 'gemini-3.1-pro-preview',
     provider: 'Google',
@@ -64,8 +64,11 @@ const MODEL_REGISTRY = {
     apiId: 'gemini-3-flash-preview',
     provider: 'Google',
   },
+  // Gemini 3.1 Flash-Lite reached GA (`gemini-3.1-flash-lite`, version
+  // `3.1-flash-lite-05-2026`) on 2026-05; the `-preview` apiId still
+  // exists upstream as a separate alias.
   'gemini-3.1-flash-lite': {
-    apiId: 'gemini-3.1-flash-lite-preview',
+    apiId: 'gemini-3.1-flash-lite',
     provider: 'Google',
   },
 
@@ -192,7 +195,7 @@ const AVAILABLE_MODELS = [
     apiKeyEnv: 'OPENAI_API_KEY',
   },
 
-  // --- Google: Gemini 3.x previews ---
+  // --- Google: Gemini 3.x ---
   {
     id: 'gemini-3.1-pro',
     name: 'Gemini 3.1 Pro (Preview)',
@@ -213,11 +216,11 @@ const AVAILABLE_MODELS = [
   },
   {
     id: 'gemini-3.1-flash-lite',
-    name: 'Gemini 3.1 Flash-Lite (Preview)',
+    name: 'Gemini 3.1 Flash-Lite',
     provider: 'Google',
     supportsPDF: true,
     supportsQuickFilter: true,
-    description: 'Fast and budget-friendly 3.x preview',
+    description: 'Fast and budget-friendly 3.x model; GA',
     apiKeyEnv: 'GOOGLE_AI_API_KEY',
   },
 

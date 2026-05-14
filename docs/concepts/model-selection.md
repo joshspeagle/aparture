@@ -59,13 +59,13 @@ OpenAI caches automatically when prompt prefixes repeat, so the cached-input col
 
 ### Google (Gemini)
 
-Preview tier (Gemini 3.x). These are the defaults Aparture ships with — the user-facing IDs will stay stable when Google graduates them to general availability, even though the underlying API IDs will change.
+Gemini 3.x tier. These are the defaults Aparture ships with. Pro and Flash are still preview-only upstream; Flash-Lite reached GA in May 2026. The user-facing IDs stay stable when Google graduates the remaining previews — only the API IDs change.
 
-| User-facing ID          | API ID                          | Input / Output (≤200k) |
-| ----------------------- | ------------------------------- | ---------------------- |
-| `gemini-3.1-pro`        | `gemini-3.1-pro-preview`        | $2 / $12               |
-| `gemini-3-flash`        | `gemini-3-flash-preview`        | $0.50 / $3             |
-| `gemini-3.1-flash-lite` | `gemini-3.1-flash-lite-preview` | $0.25 / $1.50          |
+| User-facing ID          | API ID                   | Input / Output (≤200k) |
+| ----------------------- | ------------------------ | ---------------------- |
+| `gemini-3.1-pro`        | `gemini-3.1-pro-preview` | $2 / $12               |
+| `gemini-3-flash`        | `gemini-3-flash-preview` | $0.50 / $3             |
+| `gemini-3.1-flash-lite` | `gemini-3.1-flash-lite`  | $0.25 / $1.50          |
 
 Stable tier (Gemini 2.5):
 
@@ -160,7 +160,7 @@ Aparture enables Anthropic's prompt caching automatically on every Anthropic cal
 
 ## When the previews change
 
-Gemini 3.x models are marked `-preview` in their API IDs. The user-facing IDs (`gemini-3.1-pro`, `gemini-3-flash`, `gemini-3.1-flash-lite`) will stay stable when Google graduates them to general availability; the API IDs will change. `utils/models.js` handles the mapping, so upgrades are a one-file change.
+Gemini 3.x Pro and Flash are still marked `-preview` in their API IDs; Flash-Lite reached GA in May 2026 and its API ID is now `gemini-3.1-flash-lite` (no suffix). The user-facing IDs (`gemini-3.1-pro`, `gemini-3-flash`, `gemini-3.1-flash-lite`) stay stable across these transitions — only the API IDs change. `utils/models.js` handles the mapping, so upgrades are a one-file change.
 
 ---
 
