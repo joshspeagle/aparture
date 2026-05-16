@@ -1,9 +1,21 @@
-// Hook owning the "papers we've seen in past runs" index. Mirrors the
-// pattern in hooks/useBriefing.js: read on mount, in-memory state, persist
-// via safeSetItem, prune to a 90-day rolling window on every write.
+// Hook owning the cross-run paper-dedupe index. Mirrors hooks/useBriefing.js:
+// read on mount, in-memory state, persist via safeSetItem, prune to a 90-day
+// rolling window on every write.
 //
 // Index shape: { [arxivId]: 'YYYY-MM-DD', _migratedAt: <ms-ts> }
-// Keys starting with '_' are reserved metadata.
+//   - Keys starting with '_' are reserved metadata (skipped by prune + dedupe lookups).
+//   - Values are ISO `YYYY-MM-DD` strings (UTC) so lexicographic compare = date compare.
+//
+// First-mount migration:
+//   When _migratedAt is absent, scan reports/sessions/*.json via the existing
+//   /api/sessions endpoints (concurrency cap 4) to seed the index. Non-blocking;
+//   callers see `ready: false` and an empty index until done. Partial failures
+//   (a single 500ing session) are logged and skipped — we still set _migratedAt
+//   on completion so we don't re-scan on every mount.
+//
+// Phase 2 seam: when state migrates to ~/aparture/, only the STORAGE_KEY +
+// migration source need updating; consumer contract (index/ready/recordRun)
+// stays stable.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
@@ -110,6 +122,22 @@ async function migrateFromSessions({ password }) {
   return merged;
 }
 
+/**
+ * Cross-run paper-dedupe index hook.
+ *
+ * @param {{ password?: string }} [opts]
+ *   `password` is forwarded to the migration's /api/sessions calls.
+ * @returns {{
+ *   index: Record<string, string>,
+ *   ready: boolean,
+ *   recordRun: (papers: Array<{id?: string}>, runTimestamp: number) => void,
+ * }}
+ *   `index` is the live `{arxivId → ISO date}` map plus a `_migratedAt`
+ *   metadata key. `ready` flips true once the one-time migration completes.
+ *   `recordRun` merges fresh IDs from a just-saved session into the index
+ *   (latest-date-wins) and prunes >90-day entries; usually called from
+ *   the `onColdSessionSaved` callback of useAnalyzerPersistence.
+ */
 export function useSeenPapers({ password = '' } = {}) {
   const initial = readStored();
   const [index, setIndex] = useState(initial ?? {});
@@ -145,6 +173,11 @@ export function useSeenPapers({ password = '' } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // recordRun: merge fresh paper IDs from a just-completed run into the
+  // index. Latest-date-wins (so re-running today after a run last week
+  // updates 'firstSeenDate' to today). Prunes >90-day entries on every
+  // call. Persists via safeSetItem; quota failures log but preserve
+  // in-memory state for the session.
   const recordRun = useCallback((papers, runTimestamp) => {
     const ts = Number.isFinite(runTimestamp) ? runTimestamp : Date.now();
     const stampIso = isoDateUTC(ts);
