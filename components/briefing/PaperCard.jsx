@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 
 export default function PaperCard({
   paper,
@@ -15,6 +17,15 @@ export default function PaperCard({
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const scoreHigh = paper.score >= 9;
+
+  // Briefing papers come from LLM synthesis output, not from the
+  // analyzer-side decorated paper objects, so paper.isDuplicate is never
+  // set here. Read the live seen-papers index from the store instead and
+  // derive the flag from arxivId presence. The lookup is per-render but
+  // O(1) and the index is a stable reference between writes.
+  const seenPapersIndex = useAnalyzerStore((s) => s.reactContext?.seenPapersIndex ?? {});
+  const firstSeenDate = seenPapersIndex[paper.arxivId];
+  const isDuplicate = Boolean(firstSeenDate);
 
   const buildMeta = () => ({
     arxivId: paper.arxivId,
@@ -44,7 +55,14 @@ export default function PaperCard({
       <span className={`score-badge${scoreHigh ? ' score-high' : ''}`}>
         {(paper.score ?? 0).toFixed(1)}
       </span>
-      <h3 className="paper-title">{paper.title}</h3>
+      <h3 className="paper-title">
+        {paper.title}
+        {isDuplicate && (
+          <span style={{ marginLeft: '8px', verticalAlign: 'middle' }}>
+            <DuplicateBadge isDuplicate={isDuplicate} firstSeenDate={firstSeenDate} />
+          </span>
+        )}
+      </h3>
       <div className="paper-meta">
         <a href={`https://arxiv.org/abs/${paper.arxivId}`} target="_blank" rel="noreferrer">
           {paper.arxivId}
