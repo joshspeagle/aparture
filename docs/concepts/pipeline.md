@@ -61,6 +61,8 @@ Wall-clock duration varies widely with provider latency, paper volume, and which
 
 See [arXiv ingestion](./arxiv-ingestion.md) for the two-path architecture (OAI-PMH primary, Atom fallback) and the configurable knobs (mode, window semantics, fill-ups, cache).
 
+After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs against a 90-day rolling index of arxivIds seen in past runs. In Remove mode (default) duplicates are dropped before the LLM filter; in Flag mode they're kept but tagged for the UI. The index is maintained client-side from saved session files — no extra server roundtrip in the hot path. See [Tuning the pipeline](../using/tuning-the-pipeline.md#duplicate-detection) for the user-facing toggle.
+
 ## Stage 2: quick filter
 
 **What it does.** Batches papers and asks a fast, cheap model to give each one a <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict against your research profile, along with a one-sentence summary and a short justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. The stage can be disabled entirely via `useQuickFilter: false` in config.

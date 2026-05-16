@@ -155,6 +155,14 @@ The retry checkboxes trade tokens for quality. A retry is a full second synthesi
 
 Five Advanced-settings controls govern how Aparture talks to arXiv: ingestion mode, window semantics, min papers per subcategory, fill-up lookback days, cache TTL. See [arXiv ingestion](../concepts/arxiv-ingestion.md) for what each does and when to change defaults.
 
+### Duplicate detection
+
+Aparture remembers every arxivId fetched in the last 90 days across all your past runs (the **seen-papers index**, stored in your browser's localStorage). By default, the **Remove duplicate papers** toggle in Settings drops these from new runs before any LLM call — saving tokens and avoiding re-reading work you've already seen. Turn it off if you'd rather keep duplicates visible; they'll be marked with a small "seen ‹date›" badge on filter, scoring, and briefing cards.
+
+The first time you run Aparture after upgrading, the index is seeded from your existing session files on disk. While that one-time migration is in flight, the status line will show `seen-papers index still loading` and the run is treated as having zero duplicates; the next run is fully deduped.
+
+Memory rolls off automatically after 90 days. Re-running with the same `daysBack` after a long pause will surface old papers again. If you ever want to clear the index manually, delete the `aparture-seen-papers-index` key from your browser's DevTools → Application → Local Storage; the next mount will rebuild it from sessions on disk.
+
 ## A few common configurations
 
 The defaults ship tuned sensibly — all-Google models, both pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
