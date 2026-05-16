@@ -289,3 +289,109 @@ describe('useAnalyzerPersistence — load effect', () => {
     });
   });
 });
+
+describe('useAnalyzerPersistence — onColdSessionSaved callback', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.useFakeTimers();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'sess-1', bytesWritten: 0 }),
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('invokes onColdSessionSaved with allPapers and timestamp after a successful cold-tier POST', async () => {
+    const onColdSessionSaved = vi.fn();
+    const allPapers = [{ id: '2605.14205' }, { id: '2605.14210' }];
+
+    const { rerender } = renderHook(
+      (props) =>
+        useAnalyzerPersistence({
+          config: { version: 6 },
+          results: { allPapers, scoredPapers: [], finalRanking: [] },
+          filterResults: { total: 0, yes: [], maybe: [], no: [] },
+          processingTiming: {},
+          testState: {},
+          podcastDuration: 20,
+          notebookLMModel: '',
+          notebookLMContent: null,
+          password: 'pw',
+          isAuthenticated: true,
+          setResults: () => {},
+          setFilterResults: () => {},
+          setProcessingTiming: () => {},
+          setTestState: () => {},
+          setPodcastDuration: () => {},
+          setNotebookLMModel: () => {},
+          setNotebookLMContent: () => {},
+          setPassword: () => {},
+          setIsAuthenticated: () => {},
+          onColdSessionSaved,
+          ...props,
+        }),
+      { initialProps: {} }
+    );
+
+    // Advance past the 400ms debounce.
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      // let the fetch promise resolve
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onColdSessionSaved).toHaveBeenCalled();
+    const [papersArg, tsArg] = onColdSessionSaved.mock.calls[0];
+    expect(papersArg.map((p) => p.id)).toEqual(['2605.14205', '2605.14210']);
+    expect(typeof tsArg).toBe('number');
+    rerender({});
+  });
+
+  it('does not invoke onColdSessionSaved when cold-tier POST fails', async () => {
+    const onColdSessionSaved = vi.fn();
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'boom' }),
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    renderHook(() =>
+      useAnalyzerPersistence({
+        config: { version: 6 },
+        results: { allPapers: [{ id: '2605.14205' }], scoredPapers: [], finalRanking: [] },
+        filterResults: { total: 0, yes: [], maybe: [], no: [] },
+        processingTiming: {},
+        testState: {},
+        podcastDuration: 20,
+        notebookLMModel: '',
+        notebookLMContent: null,
+        password: 'pw',
+        isAuthenticated: true,
+        setResults: () => {},
+        setFilterResults: () => {},
+        setProcessingTiming: () => {},
+        setTestState: () => {},
+        setPodcastDuration: () => {},
+        setNotebookLMModel: () => {},
+        setNotebookLMContent: () => {},
+        setPassword: () => {},
+        setIsAuthenticated: () => {},
+        onColdSessionSaved,
+      })
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onColdSessionSaved).not.toHaveBeenCalled();
+  });
+});

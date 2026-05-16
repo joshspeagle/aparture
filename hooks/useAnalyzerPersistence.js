@@ -249,6 +249,13 @@ export function useAnalyzerPersistence({
   setNotebookLMContent,
   setPassword,
   setIsAuthenticated,
+  // Optional callback fired after a successful cold-tier session POST.
+  // Receives (allPapers, saveTimestamp) where saveTimestamp is Date.now() at
+  // write time, captured before the fetch (so retries-with-the-same-payload
+  // don't drift the recorded date). Used by useSeenPapers to grow its
+  // dedupe index incrementally; not invoked when the POST fails or when
+  // the cold tier is skipped (no results yet / not authenticated).
+  onColdSessionSaved,
 }) {
   // Persistent session id. Read from the hot blob on first load if present;
   // otherwise lazily generated on the first save. Survives renders via ref.
@@ -359,6 +366,11 @@ export function useAnalyzerPersistence({
   //      because allPapers/scoredPapers/full verdicts are excluded.
   //   2) Cold (filesystem): buildColdEntry → fire-and-forget POST. Best
   //      effort; failures log but don't disrupt the live run.
+  const onColdSessionSavedRef = useRef(onColdSessionSaved);
+  useEffect(() => {
+    onColdSessionSavedRef.current = onColdSessionSaved;
+  }, [onColdSessionSaved]);
+
   const saveTimeoutRef = useRef(null);
   useEffect(() => {
     const hasResults =
@@ -408,13 +420,25 @@ export function useAnalyzerPersistence({
           filterResults,
           processingTiming,
         });
+        const saveTimestamp = Date.now();
         fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password, entry: coldEntry }),
-        }).catch((err) => {
-          console.warn('[useAnalyzerPersistence] failed to persist session to disk:', err);
-        });
+        })
+          .then((res) => {
+            if (!res.ok) {
+              console.warn(
+                '[useAnalyzerPersistence] cold session POST returned HTTP ' + res.status
+              );
+              return;
+            }
+            const cb = onColdSessionSavedRef.current;
+            if (cb) cb(results?.allPapers ?? [], saveTimestamp);
+          })
+          .catch((err) => {
+            console.warn('[useAnalyzerPersistence] failed to persist session to disk:', err);
+          });
       }
     }, SAVE_DEBOUNCE_MS);
 
