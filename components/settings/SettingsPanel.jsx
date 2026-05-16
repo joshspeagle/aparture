@@ -1207,6 +1207,52 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     </p>
                   </div>
                 </div>
+                <div style={{ marginTop: 'var(--aparture-space-3)' }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-sm)',
+                      color: processing.isRunning ? 'var(--aparture-mute)' : 'var(--aparture-ink)',
+                      cursor: processing.isRunning ? 'not-allowed' : 'pointer',
+                      opacity: processing.isRunning ? 0.5 : 1,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={config.removeDuplicates ?? true}
+                      onChange={(e) =>
+                        setConfig((prev) => ({ ...prev, removeDuplicates: e.target.checked }))
+                      }
+                      disabled={processing.isRunning}
+                      style={{
+                        accentColor: 'var(--aparture-accent)',
+                        width: '16px',
+                        height: '16px',
+                        margin: 0,
+                        marginTop: '2px',
+                        cursor: processing.isRunning ? 'not-allowed' : 'pointer',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>
+                      <span style={{ fontWeight: 500 }}>Remove duplicate papers</span>
+                      <span
+                        style={{
+                          display: 'block',
+                          marginTop: '2px',
+                          color: 'var(--aparture-mute)',
+                          fontSize: 'var(--aparture-text-xs)',
+                        }}
+                      >
+                        Skip papers that appeared in any run in the last 90 days. When off,
+                        duplicates are kept but visibly marked.
+                      </span>
+                    </span>
+                  </label>
+                </div>
               </div>
 
               <div
