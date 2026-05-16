@@ -1,5 +1,6 @@
 import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
+import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 
 const VERDICT_COLORS = {
   YES: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
@@ -73,9 +74,14 @@ function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onS
               fontSize: 'var(--aparture-text-sm)',
               fontWeight: 500,
               color: 'var(--aparture-ink)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
             }}
           >
-            {paper.title}
+            <span>{paper.title}</span>
+            <DuplicateBadge isDuplicate={paper.isDuplicate} firstSeenDate={paper.firstSeenDate} />
           </h4>
           <p
             style={{
