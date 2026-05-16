@@ -92,7 +92,7 @@ const onlyProviders = args.providers ? new Set(args.providers.split(',')) : null
 // via --batch-model-<provider> / --briefing-model-<provider>.
 function resolveModel(provider, role, defaultModel) {
   const roleKey = `${role}-model-${provider}`; // e.g. 'batch-model-anthropic'
-  const bothKey = `model-${provider}`;         // e.g. 'model-anthropic'
+  const bothKey = `model-${provider}`; // e.g. 'model-anthropic'
   return args[roleKey] ?? args[bothKey] ?? defaultModel;
 }
 
@@ -209,121 +209,169 @@ for (const p of PROVIDERS) {
   }
   const callModelMode = { mode: 'live' };
 
-  await runCase('quick-filter', p.name, quickFilter, {
-    password,
-    papers: TWO_PAPERS,
-    scoringCriteria: PROFILE_TEXT,
-    model: p.batchModel,
-    callModelMode,
-  }, (b) => `verdicts=${b.verdicts?.length}`);
-
-  await runCase('score-abstracts', p.name, scoreAbs, {
-    password,
-    papers: TWO_PAPERS,
-    scoringCriteria: PROFILE_TEXT,
-    model: p.batchModel,
-    callModelMode,
-  }, (b) => `scores=${b.scores?.length}`);
-
-  await runCase('rescore-abstracts', p.name, rescoreAbs, {
-    password,
-    papers: TWO_PAPERS.map((p, i) => ({
-      ...p,
-      initialScore: [7.0, 5.5][i],
-      initialJustification: 'Initial score based on abstract alignment.',
-    })),
-    scoringCriteria: PROFILE_TEXT,
-    model: p.batchModel,
-    callModelMode,
-  }, (b) => `rescores=${b.rescores?.length}`);
-
-  await runCase('analyze-pdf', p.name, analyzePdf, {
-    password,
-    pdfUrl: 'https://arxiv.org/pdf/2504.00001',
-    scoringCriteria: PROFILE_TEXT,
-    originalScore: 7.5,
-    model: p.batchModel,
-    _testPdfBase64: MINIMAL_PDF_B64,
-    callModelMode,
-  }, (b) => `score=${b.analysis?.updatedScore}`);
-
-  await runCase('analyze-pdf-quick', p.name, analyzePdfQuick, {
-    password,
-    paper: {
-      arxivId: '2504.01234',
-      title: 'A minimal example paper',
-      authors: ['Smith', 'Jones'],
-      abstract: 'Short abstract.',
-      scoringJustification: 'Aligned with interpretability.',
+  await runCase(
+    'quick-filter',
+    p.name,
+    quickFilter,
+    {
+      password,
+      papers: TWO_PAPERS,
+      scoringCriteria: PROFILE_TEXT,
+      model: p.batchModel,
+      callModelMode,
     },
-    fullReport: 'A brief full report summarizing the paper in a few lines.',
-    provider: p.briefingProvider,
-    model: p.briefingModel,
-    callModelMode,
-  }, (b) => `len=${b.quickSummary?.length}`);
+    (b) => `verdicts=${b.verdicts?.length}`
+  );
 
-  await runCase('synthesize', p.name, synthesize, {
-    password,
-    profile: PROFILE_TEXT,
-    papers: TWO_PAPERS.map((tp) => ({
-      arxivId: tp.arxivId,
-      title: tp.title,
-      score: 7.0,
-      abstract: tp.abstract,
-      fullReport: 'Brief full report.',
-    })),
-    provider: p.briefingProvider,
-    model: p.briefingModel,
-    callModelMode,
-  }, (b) => `themes=${b.briefing?.themes?.length}`);
+  await runCase(
+    'score-abstracts',
+    p.name,
+    scoreAbs,
+    {
+      password,
+      papers: TWO_PAPERS,
+      scoringCriteria: PROFILE_TEXT,
+      model: p.batchModel,
+      callModelMode,
+    },
+    (b) => `scores=${b.scores?.length}`
+  );
 
-  await runCase('check-briefing', p.name, checkBriefing, {
-    password,
-    briefing: {
-      executiveSummary: 'Two related interpretability papers.',
-      themes: [
-        {
-          title: 'Interpretability',
-          argument: 'Both papers analyze transformer internals.',
-          paperIds: ['2504.01234', '2504.02345'],
-        },
-      ],
+  await runCase(
+    'rescore-abstracts',
+    p.name,
+    rescoreAbs,
+    {
+      password,
+      papers: TWO_PAPERS.map((p, i) => ({
+        ...p,
+        initialScore: [7.0, 5.5][i],
+        initialJustification: 'Initial score based on abstract alignment.',
+      })),
+      scoringCriteria: PROFILE_TEXT,
+      model: p.batchModel,
+      callModelMode,
+    },
+    (b) => `rescores=${b.rescores?.length}`
+  );
+
+  await runCase(
+    'analyze-pdf',
+    p.name,
+    analyzePdf,
+    {
+      password,
+      pdfUrl: 'https://arxiv.org/pdf/2504.00001',
+      scoringCriteria: PROFILE_TEXT,
+      originalScore: 7.5,
+      model: p.batchModel,
+      _testPdfBase64: MINIMAL_PDF_B64,
+      callModelMode,
+    },
+    (b) => `score=${b.analysis?.updatedScore}`
+  );
+
+  await runCase(
+    'analyze-pdf-quick',
+    p.name,
+    analyzePdfQuick,
+    {
+      password,
+      paper: {
+        arxivId: '2504.01234',
+        title: 'A minimal example paper',
+        authors: ['Smith', 'Jones'],
+        abstract: 'Short abstract.',
+        scoringJustification: 'Aligned with interpretability.',
+      },
+      fullReport: 'A brief full report summarizing the paper in a few lines.',
+      provider: p.briefingProvider,
+      model: p.briefingModel,
+      callModelMode,
+    },
+    (b) => `len=${b.quickSummary?.length}`
+  );
+
+  await runCase(
+    'synthesize',
+    p.name,
+    synthesize,
+    {
+      password,
+      profile: PROFILE_TEXT,
       papers: TWO_PAPERS.map((tp) => ({
         arxivId: tp.arxivId,
         title: tp.title,
         score: 7.0,
-        onelinePitch: 'Short pitch.',
-        whyMatters: 'Relevant to your interests.',
+        abstract: tp.abstract,
+        fullReport: 'Brief full report.',
       })),
+      provider: p.briefingProvider,
+      model: p.briefingModel,
+      callModelMode,
     },
-    papers: TWO_PAPERS.map((tp) => ({
-      arxivId: tp.arxivId,
-      title: tp.title,
-      abstract: tp.abstract,
-      quickSummary: 'Quick summary.',
-    })),
-    provider: p.briefingProvider,
-    model: p.briefingModel,
-    callModelMode,
-  }, (b) => `verdict=${b.verdict}`);
+    (b) => `themes=${b.briefing?.themes?.length}`
+  );
 
-  await runCase('suggest-profile', p.name, suggestProfile, {
-    password,
-    currentProfile: PROFILE_TEXT,
-    feedback: [
-      {
-        id: 'evt-1',
-        type: 'general-comment',
-        timestamp: new Date().toISOString(),
-        content: 'I would also like papers on attention-head circuits specifically.',
+  await runCase(
+    'check-briefing',
+    p.name,
+    checkBriefing,
+    {
+      password,
+      briefing: {
+        executiveSummary: 'Two related interpretability papers.',
+        themes: [
+          {
+            title: 'Interpretability',
+            argument: 'Both papers analyze transformer internals.',
+            paperIds: ['2504.01234', '2504.02345'],
+          },
+        ],
+        papers: TWO_PAPERS.map((tp) => ({
+          arxivId: tp.arxivId,
+          title: tp.title,
+          score: 7.0,
+          onelinePitch: 'Short pitch.',
+          whyMatters: 'Relevant to your interests.',
+        })),
       },
-    ],
-    briefings: {},
-    guidance: '',
-    briefingModel: p.briefingModel,
-    provider: p.briefingProvider,
-    callModelMode,
-  }, (b) => `changes=${b.changes?.length ?? 0}${b.noChangeReason ? ' noChange' : ''}`);
+      papers: TWO_PAPERS.map((tp) => ({
+        arxivId: tp.arxivId,
+        title: tp.title,
+        abstract: tp.abstract,
+        quickSummary: 'Quick summary.',
+      })),
+      provider: p.briefingProvider,
+      model: p.briefingModel,
+      callModelMode,
+    },
+    (b) => `verdict=${b.verdict}`
+  );
+
+  await runCase(
+    'suggest-profile',
+    p.name,
+    suggestProfile,
+    {
+      password,
+      currentProfile: PROFILE_TEXT,
+      feedback: [
+        {
+          id: 'evt-1',
+          type: 'general-comment',
+          timestamp: new Date().toISOString(),
+          content: 'I would also like papers on attention-head circuits specifically.',
+        },
+      ],
+      briefings: {},
+      guidance: '',
+      briefingModel: p.briefingModel,
+      provider: p.briefingProvider,
+      callModelMode,
+    },
+    (b) => `changes=${b.changes?.length ?? 0}${b.noChangeReason ? ' noChange' : ''}`
+  );
 }
 
 // ---- Summary ----
@@ -331,10 +379,16 @@ console.log('\n=== Summary ===');
 const byRoute = {};
 for (const r of results) {
   byRoute[r.routeName] ??= {};
-  byRoute[r.routeName][r.providerName] = r.ok ? 'PASS' : `FAIL(${r.status ?? r.error?.slice(0, 40)})`;
+  byRoute[r.routeName][r.providerName] = r.ok
+    ? 'PASS'
+    : `FAIL(${r.status ?? r.error?.slice(0, 40)})`;
 }
 for (const [route, byProv] of Object.entries(byRoute)) {
-  console.log(`${route.padEnd(20)} ${Object.entries(byProv).map(([p, s]) => `${p}:${s}`).join('  ')}`);
+  console.log(
+    `${route.padEnd(20)} ${Object.entries(byProv)
+      .map(([p, s]) => `${p}:${s}`)
+      .join('  ')}`
+  );
 }
 const fails = results.filter((r) => !r.ok);
 console.log(`\n${results.length - fails.length}/${results.length} passed, ${fails.length} failed`);

@@ -76,7 +76,7 @@
  * precedence over the media query above. Both light and dark are needed
  * because a user whose OS is in dark mode clicking "light" needs the
  * light tokens to override the media query's dark tokens. */
-[data-theme=light] {
+[data-theme='light'] {
   --aparture-bg: #fafaf7;
   --aparture-surface: #f4f1ea;
   --aparture-ink: #1a1a1a;
@@ -92,7 +92,7 @@
   --aparture-focus-ring: #b31b1b;
 }
 
-[data-theme=dark] {
+[data-theme='dark'] {
   --aparture-bg: #141211;
   --aparture-surface: #1f1c1a;
   --aparture-ink: #e8e4dc;

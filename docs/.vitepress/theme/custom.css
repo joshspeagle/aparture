@@ -183,19 +183,11 @@ a.landing-card:hover {
   margin: 0 0 3rem;
   padding: 1.5rem 1.75rem;
   border: 1px solid var(--arxiv-red);
-  background: linear-gradient(
-    to right,
-    rgba(179, 27, 27, 0.03),
-    rgba(179, 27, 27, 0.01)
-  );
+  background: linear-gradient(to right, rgba(179, 27, 27, 0.03), rgba(179, 27, 27, 0.01));
 }
 
 .step-card.step-card-cta:hover {
-  background: linear-gradient(
-    to right,
-    rgba(179, 27, 27, 0.06),
-    rgba(179, 27, 27, 0.02)
-  );
+  background: linear-gradient(to right, rgba(179, 27, 27, 0.06), rgba(179, 27, 27, 0.02));
   border-color: var(--arxiv-red);
 }
 
@@ -220,8 +212,7 @@ a.landing-card:hover {
 }
 
 .step-card .step-number {
-  font-family:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem;
   color: var(--arxiv-red);
   font-weight: 700;
@@ -287,8 +278,7 @@ a.landing-card:hover {
    hallucination audit, and anywhere verdict language appears. */
 .verdict {
   display: inline-block;
-  font-family:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.82em;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -338,8 +328,7 @@ a.landing-card:hover {
    like a star button, a dismiss button, or a "Continue to scoring →" link. */
 .ui-action {
   display: inline-block;
-  font-family:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.88em;
   padding: 1px 7px;
   border-radius: 6px;

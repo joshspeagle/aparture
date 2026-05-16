@@ -12,17 +12,17 @@ Aparture fetches by subcategory. The selection lives in `config.selectedCategori
 
 The [full arXiv taxonomy](https://arxiv.org/category_taxonomy) lists 150+ subcategories. The major divisions you're most likely to care about:
 
-| Prefix      | Domain                       |
-| ----------- | ---------------------------- |
-| `cs.*`      | Computer Science             |
-| `math.*`    | Mathematics                  |
-| `stat.*`    | Statistics                   |
-| `astro-ph.*`| Astrophysics                 |
-| `physics.*` | Physics (general)            |
-| `hep-*`     | High-Energy Physics          |
-| `q-bio.*`   | Quantitative Biology         |
-| `econ.*`    | Economics                    |
-| `eess.*`    | Electrical Engineering       |
+| Prefix       | Domain                 |
+| ------------ | ---------------------- |
+| `cs.*`       | Computer Science       |
+| `math.*`     | Mathematics            |
+| `stat.*`     | Statistics             |
+| `astro-ph.*` | Astrophysics           |
+| `physics.*`  | Physics (general)      |
+| `hep-*`      | High-Energy Physics    |
+| `q-bio.*`    | Quantitative Biology   |
+| `econ.*`     | Economics              |
+| `eess.*`     | Electrical Engineering |
 
 Less common divisions (`cond-mat`, `gr-qc`, `nlin`, `nucl-ex`, `nucl-th`, `quant-ph`, `q-fin`) use the same `prefix.subcategory` pattern.
 
@@ -139,7 +139,7 @@ Three broad approaches, each with a different volume-and-signal profile.
 
 Two or three highly-relevant categories. Suits clear research interests and limited daily reading time.
 
-*Example — deep learning for galaxy evolution:*
+_Example — deep learning for galaxy evolution:_
 
 ```
 cs.LG
@@ -153,7 +153,7 @@ Typical volume: 5–15 papers/day. The filter rarely needs to work hard; signal-
 
 Four to seven categories spanning methodological and domain interests. Suits interdisciplinary work or when you're actively scouting for adjacent ideas.
 
-*Example — Bayesian methods across fields:*
+_Example — Bayesian methods across fields:_
 
 ```
 stat.ME
@@ -169,7 +169,7 @@ Typical volume: 20–50 papers/day. Costs more per run and puts more load on the
 
 Every subcategory in one domain, plus one or two methodological crosses. Suits deep expertise in one field where missing anything is a larger cost than a heavier daily triage.
 
-*Example — full astrophysics coverage:*
+_Example — full astrophysics coverage:_
 
 ```
 astro-ph.CO
@@ -250,11 +250,11 @@ arXiv's query API asks for a three-second delay between requests, and Aparture h
 
 Fetch time scales roughly with category count:
 
-| Categories   | Fetch time (approx.) |
-| ------------ | -------------------- |
-| 1–3          | ~1 minute            |
-| 5–10         | ~2–3 minutes         |
-| 20+          | ~5–10 minutes        |
+| Categories | Fetch time (approx.) |
+| ---------- | -------------------- |
+| 1–3        | ~1 minute            |
+| 5–10       | ~2–3 minutes         |
+| 20+        | ~5–10 minutes        |
 
 Fetching is typically the shortest stage of the pipeline — the time-dominant stages are PDF analysis and briefing synthesis, so adding categories rarely matters for overall runtime.
 

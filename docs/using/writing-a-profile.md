@@ -14,14 +14,14 @@ The pipeline's LLMs read it the way that collaborator would: to understand who y
 
 It's worth knowing where your profile actually lands in the pipeline. Every stage reads it:
 
-| Stage                                     | How the profile gets used                                                                                                                                       |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Stage 2 — quick filter**                | Triages each paper as <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> from the abstract. The prompt is short, so the profile competes with the paper text for attention; clarity matters most here. |
-| **Stage 3 — abstract scoring**            | Assigns a 0–10 relevance score with a short justification. The profile is the grounds for that judgement. See [how scoring works](/concepts/pipeline#stage-3-score-abstracts) for the rubric. |
-| **Stage 3.5 — post-processing (optional)**| Re-scores top papers in batches for consistency. The profile feeds in indirectly through the Stage 3 justifications.                                            |
-| **Stage 4 — PDF analysis**                | Deep-reads the top N papers. The profile frames the summary and adjusts the score after the model has seen the full content.                                   |
-| **Stage 5 — briefing synthesis**          | Produces the executive summary, themes, and "why it matters" paragraphs, weighing your profile against your starred, dismissed, and commented papers.           |
-| **The refinement flow**                   | When you ask the tool to propose profile edits, your current profile is the baseline it diffs against.                                                          |
+| Stage                                      | How the profile gets used                                                                                                                                                                                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Stage 2 — quick filter**                 | Triages each paper as <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> from the abstract. The prompt is short, so the profile competes with the paper text for attention; clarity matters most here. |
+| **Stage 3 — abstract scoring**             | Assigns a 0–10 relevance score with a short justification. The profile is the grounds for that judgement. See [how scoring works](/concepts/pipeline#stage-3-score-abstracts) for the rubric.                                                                                     |
+| **Stage 3.5 — post-processing (optional)** | Re-scores top papers in batches for consistency. The profile feeds in indirectly through the Stage 3 justifications.                                                                                                                                                              |
+| **Stage 4 — PDF analysis**                 | Deep-reads the top N papers. The profile frames the summary and adjusts the score after the model has seen the full content.                                                                                                                                                      |
+| **Stage 5 — briefing synthesis**           | Produces the executive summary, themes, and "why it matters" paragraphs, weighing your profile against your starred, dismissed, and commented papers.                                                                                                                             |
+| **The refinement flow**                    | When you ask the tool to propose profile edits, your current profile is the baseline it diffs against.                                                                                                                                                                            |
 
 Because every stage reads it, a single refinement to the profile shows up in every downstream decision the pipeline makes. A good profile does a lot of work per run.
 
@@ -31,25 +31,25 @@ Four things are usually worth covering.
 
 ### Methods you care about
 
-Name the methodological families central to your work. *"Hierarchical Bayesian models."* *"Transformer architectures."* *"Stochastic differential equations."* *"Variational autoencoders."*
+Name the methodological families central to your work. _"Hierarchical Bayesian models."_ _"Transformer architectures."_ _"Stochastic differential equations."_ _"Variational autoencoders."_
 
-Be specific enough that the pipeline can tell the difference between methods you use and methods that are just in your broad field. A Bayesian astronomer writing *"Bayesian inference for cosmology"* gives the filter more to reason about than *"statistics"* or *"astronomy."*
+Be specific enough that the pipeline can tell the difference between methods you use and methods that are just in your broad field. A Bayesian astronomer writing _"Bayesian inference for cosmology"_ gives the filter more to reason about than _"statistics"_ or _"astronomy."_
 
 ### Applications and domains
 
-Where do you apply those methods? *"Galaxy population inference."* *"NLP for clinical notes."* *"Protein structure prediction."* *"High-frequency trading."*
+Where do you apply those methods? _"Galaxy population inference."_ _"NLP for clinical notes."_ _"Protein structure prediction."_ _"High-frequency trading."_
 
 Methods plus applications together define the intersection where your interests live. A paper on transformers in genomics is a different paper from one on transformers in NLP, and both are different from a paper on transformer theory.
 
 ### Breadth and depth preferences
 
-The pipeline can't infer whether you're after methodological contributions, empirical benchmarks, theory papers, or review articles — it'll try to give you a mix unless you say otherwise. A sentence or two in the profile saves a lot of downstream confusion: *"I prefer methodological contributions over pure benchmarking."* *"I want a mix of applied and theoretical."* *"I don't care about review papers."* Both the filter and scoring stages lean on this kind of signal.
+The pipeline can't infer whether you're after methodological contributions, empirical benchmarks, theory papers, or review articles — it'll try to give you a mix unless you say otherwise. A sentence or two in the profile saves a lot of downstream confusion: _"I prefer methodological contributions over pure benchmarking."_ _"I want a mix of applied and theoretical."_ _"I don't care about review papers."_ Both the filter and scoring stages lean on this kind of signal.
 
 ### Anti-interests
 
-A profile that only describes what you want tends to produce briefings that over-select on adjacent work. Spelling out what you *don't* want — as directly as the rest of the profile — usually shifts the output more than the positive descriptions do:
+A profile that only describes what you want tends to produce briefings that over-select on adjacent work. Spelling out what you _don't_ want — as directly as the rest of the profile — usually shifts the output more than the positive descriptions do:
 
-*"Not interested in vision-only papers without methodological contribution."* *"Not interested in purely empirical leaderboard papers."* *"Skip papers on reinforcement learning unless they present a new theoretical result."*
+_"Not interested in vision-only papers without methodological contribution."_ _"Not interested in purely empirical leaderboard papers."_ _"Skip papers on reinforcement learning unless they present a new theoretical result."_
 
 Anti-interests matter most when your field overlaps with a much larger field producing a lot of volume you don't care about (e.g. statistics overlapping with ML).
 
@@ -57,11 +57,11 @@ Anti-interests matter most when your field overlaps with a much larger field pro
 
 A few things sound like they'd help but usually make profiles worse.
 
-- **Rigid rules.** *"Always include papers from authors X, Y, Z."* *"Never include papers with more than 10 authors."* These are brittle; the LLM either takes them too literally or ignores them entirely.
-- **Keyword lists.** *"Keywords: neural networks, deep learning, transformers, attention, optimization."* These nudge the filter toward token matching and miss the argument-level understanding that makes abstract scoring useful. A paper *about* transformers-for-optimization is a different paper from one about optimization *of* transformers.
-- **Instructions to the LLM.** *"Be strict about relevance."* *"Prefer papers with code."* The models are already doing that kind of inference from your described interests; re-stating it as instruction just makes the profile noisier.
-- **References to other researchers or teams.** *"Similar to Alice's research."* These don't travel — the LLM has no idea who Alice is.
-- **Hedging language.** *"I guess I'd be okay with…"* The model takes ambiguity seriously, so prefer affirmative statements.
+- **Rigid rules.** _"Always include papers from authors X, Y, Z."_ _"Never include papers with more than 10 authors."_ These are brittle; the LLM either takes them too literally or ignores them entirely.
+- **Keyword lists.** _"Keywords: neural networks, deep learning, transformers, attention, optimization."_ These nudge the filter toward token matching and miss the argument-level understanding that makes abstract scoring useful. A paper _about_ transformers-for-optimization is a different paper from one about optimization _of_ transformers.
+- **Instructions to the LLM.** _"Be strict about relevance."_ _"Prefer papers with code."_ The models are already doing that kind of inference from your described interests; re-stating it as instruction just makes the profile noisier.
+- **References to other researchers or teams.** _"Similar to Alice's research."_ These don't travel — the LLM has no idea who Alice is.
+- **Hedging language.** _"I guess I'd be okay with…"_ The model takes ambiguity seriously, so prefer affirmative statements.
 
 ## Two worked examples
 
@@ -127,7 +127,7 @@ This works because it names the intersection (Bayesian + galaxy populations + co
 > - Quantum-computing ML papers unless they show real empirical gains
 > - Reviews and position papers
 
-This works because it covers three subfields without pretending they're unified; it uses a consistent *"when it introduces X, not when it just does Y"* pattern to discriminate within each subfield; and its anti-interests carve out the three largest neighbours — CV, NLP, quantum — that would otherwise dominate the output.
+This works because it covers three subfields without pretending they're unified; it uses a consistent _"when it introduces X, not when it just does Y"_ pattern to discriminate within each subfield; and its anti-interests carve out the three largest neighbours — CV, NLP, quantum — that would otherwise dominate the output.
 
 ## Anti-patterns
 
@@ -140,9 +140,9 @@ A few failure modes worth spotting in your own drafts.
 > sentiment analysis, fine-tuning, pretraining, in-context learning,
 > instruction tuning, RLHF, DPO, LoRA, PEFT.
 
-This is a list of search terms. The filter matches on tokens but doesn't understand the hierarchy or the argument. You'll get papers that mention these words in passing and miss papers that are deeply about these topics but use different terminology (e.g. *"mixture-of-experts routing"* when you meant transformers).
+This is a list of search terms. The filter matches on tokens but doesn't understand the hierarchy or the argument. You'll get papers that mention these words in passing and miss papers that are deeply about these topics but use different terminology (e.g. _"mixture-of-experts routing"_ when you meant transformers).
 
-**Better:** write sentences that explain your actual interests. *"I work on efficient fine-tuning methods for large language models, especially parameter-efficient approaches like LoRA and QLoRA. I also follow instruction-tuning and preference-learning methods (RLHF, DPO)."*
+**Better:** write sentences that explain your actual interests. _"I work on efficient fine-tuning methods for large language models, especially parameter-efficient approaches like LoRA and QLoRA. I also follow instruction-tuning and preference-learning methods (RLHF, DPO)."_
 
 ### Contradictory signals
 
@@ -151,7 +151,7 @@ This is a list of search terms. The filter matches on tokens but doesn't underst
 > learning. I'm interested in applications in biology, but I don't really
 > care about pure biology papers.
 
-Each sentence is fine; together they're incoherent. The LLM tends to either pick one signal and ignore the others, or average them into vague noise. When you notice contradiction in your own profile, pick one direction — or state the tension explicitly: *"I work at the intersection of deep learning and classical statistics. Papers that bridge both are most interesting; pure-statistics or pure-ML papers only register if they offer methods that generalise."*
+Each sentence is fine; together they're incoherent. The LLM tends to either pick one signal and ignore the others, or average them into vague noise. When you notice contradiction in your own profile, pick one direction — or state the tension explicitly: _"I work at the intersection of deep learning and classical statistics. Papers that bridge both are most interesting; pure-statistics or pure-ML papers only register if they offer methods that generalise."_
 
 ### Over-specification
 
@@ -160,7 +160,7 @@ Each sentence is fine; together they're incoherent. The LLM tends to either pick
 > Always include papers from arXiv categories cs.LG and stat.ML on
 > Mondays and Thursdays.
 
-Profiles aren't configuration. Thresholds and categories live in Settings; the profile carries *what* you care about, not *how* the pipeline should work. Over-specified profiles often contradict the actual settings and confuse the model about what role the profile is playing.
+Profiles aren't configuration. Thresholds and categories live in Settings; the profile carries _what_ you care about, not _how_ the pipeline should work. Over-specified profiles often contradict the actual settings and confuse the model about what role the profile is playing.
 
 ## Versioned history and rollback
 

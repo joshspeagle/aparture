@@ -64,9 +64,9 @@ await fs.writeFile(
       response: { text: '', structured: briefing, tokensIn: 100, tokensOut: 200 },
     },
     null,
-    2,
+    2
   ),
-  'utf8',
+  'utf8'
 );
 console.log('wrote fixture:', fixturePath);
 console.log('hash:', hash);

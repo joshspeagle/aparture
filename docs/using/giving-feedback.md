@@ -36,7 +36,7 @@ This page walks through the five feedback types, where each one appears in the i
 
 A short note about one specific paper.
 
-- **Before a briefing writes** — gets quoted or paraphrased in that paper's *why it matters* paragraph.
+- **Before a briefing writes** — gets quoted or paraphrased in that paper's _why it matters_ paragraph.
 - **After the briefing's rendered** — feeds the refinement flow, where paper-grounded reactions are among the strongest signals it sees.
 
 </div>
@@ -47,7 +47,7 @@ A short note about one specific paper.
 
 A profile-level note tied to the briefing you were reading. Lives in the Feedback panel beneath the briefing.
 
-- Works as direct intent: *"I'm shifting focus to Bayesian methods"*, *"stop recommending vision-only papers"*.
+- Works as direct intent: _"I'm shifting focus to Bayesian methods"_, _"stop recommending vision-only papers"_.
 - Also works as a reaction to a briefing: the refinement flow sees the comment alongside what was in the briefing at the time.
 
 </div>
@@ -77,7 +77,7 @@ Any paper card in Aparture has three controls: <span class="ui-action">☆ star<
 - **Paper cards inside a briefing.** Same three controls in the rendered briefing. The briefing itself was written from whatever signals existed when synthesis ran, so marking papers here doesn't change what you're reading — the feedback feeds the refinement flow instead.
 - **Filter results** at Gate 1. Once scoring has run on a given paper, its card also carries the star and dismiss buttons (comment too, once you're past the filter-review pause).
 
-Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way. The comment button opens a small text box labelled *"Your thoughts on this paper…"* with Save and Cancel; saving attaches the note to that paper.
+Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way. The comment button opens a small text box labelled _"Your thoughts on this paper…"_ with Save and Cancel; saving attaches the note to that paper.
 
 ### The filter-review gate carries override buttons
 
@@ -89,15 +89,15 @@ Overrides only work at this stage. Once you continue to scoring, the buttons dea
 
 ### The Feedback panel carries the general-comment input
 
-Every briefing view has a section at the bottom of the main area labelled **Feedback**. Scroll past the briefing itself and the NotebookLM card to find it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — *"General comment on this week's briefing or your research interests…"* — for notes that aren't tied to any one paper.
+Every briefing view has a section at the bottom of the main area labelled **Feedback**. Scroll past the briefing itself and the NotebookLM card to find it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — _"General comment on this week's briefing or your research interests…"_ — for notes that aren't tied to any one paper.
 
-General comments are distinctive: they go to the refinement flow as profile-level guidance rather than paper-level signal. The flow sees the comment text alongside the briefing it was written against, so a comment like *"this week leaned too heavily on interpretability"* has context to be interpreted correctly.
+General comments are distinctive: they go to the refinement flow as profile-level guidance rather than paper-level signal. The flow sees the comment text alongside the briefing it was written against, so a comment like _"this week leaned too heavily on interpretability"_ has context to be interpreted correctly.
 
 ## How the different types behave
 
 Stars, dismisses, and filter overrides are togglable: only the most recent state matters. If you star a paper, unstar it, then star it again, the refinement flow sees that it's currently starred. Intermediate states are kept in history but don't count as signal on their own.
 
-Comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave *"interesting method"* on Monday and *"but the evaluation is thin"* on Tuesday, the flow sees both, in order.
+Comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave _"interesting method"_ on Monday and _"but the evaluation is thin"_ on Tuesday, the flow sees both, in order.
 
 ::: tip Practical consequence
 Toggle stars and dismisses freely; only the current state counts, so there's no cost to changing your mind. Leave comments a little more deliberately — they accumulate, so their effect on the profile over time is longer-lasting.
@@ -109,7 +109,7 @@ The Feedback panel sits at the bottom of every briefing view, and it's the centr
 
 ### Counts and the Suggest button
 
-The top of the panel shows two counts: *new* events since the last time you ran the refinement flow, and *total* events ever recorded. *New* grows as you feed back and resets when you run the flow. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
+The top of the panel shows two counts: _new_ events since the last time you ran the refinement flow, and _total_ events ever recorded. _New_ grows as you feed back and resets when you run the flow. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
 
 The same button appears on the Profile page in its own card, right next to your profile text. Either trigger opens the same flow.
 
@@ -129,17 +129,17 @@ Three controls for narrowing the timeline below:
 
 A chronological list of every feedback event, most recent first. Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
 
-The timeline is useful for two things: reminding yourself what you've been marking, and spotting patterns you hadn't noticed. *"I keep dismissing interpretability papers"* is often a hint the profile is a little off in that area.
+The timeline is useful for two things: reminding yourself what you've been marking, and spotting patterns you hadn't noticed. _"I keep dismissing interpretability papers"_ is often a hint the profile is a little off in that area.
 
 ## How much feedback is enough?
 
 The refinement flow works from the aggregate of everything you've given it — all five types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
 
-| Aggregate volume                    | What to expect from the refinement flow                                                                          |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Fewer than ~10 events total         | Thin. Proposals tend to be vague, or the flow comes back with a "no clear change" reason.                        |
-| ~10–30 events across a mix of types | Usually enough for concrete, defensible edits — especially if a few comments are in the mix.                     |
-| 30+ events including comments       | Rich enough that proposals can cite specific reactions and recommend targeted additions or exclusions.           |
+| Aggregate volume                    | What to expect from the refinement flow                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Fewer than ~10 events total         | Thin. Proposals tend to be vague, or the flow comes back with a "no clear change" reason.              |
+| ~10–30 events across a mix of types | Usually enough for concrete, defensible edits — especially if a few comments are in the mix.           |
+| 30+ events including comments       | Rich enough that proposals can cite specific reactions and recommend targeted additions or exclusions. |
 
 This isn't a time thing. A heavy first-day session — say a dozen filter overrides, half a dozen stars, and a couple of general comments — gives the flow plenty to work with, so running it that day is fine. Two quiet weeks of barely-engaged briefings might still be too thin.
 

@@ -9,16 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // app needs to compile or serve. Without these excludes Turbopack/webpack's
 // file watcher holds metadata for ~1 GB of irrelevant files (notebooklm-profile
 // alone is 240+ MB) which blows dev memory past 3 GB.
-const EXCLUDED_DIRS = [
-  'reports',
-  'temp',
-  'docs',
-  'cli',
-  'tests',
-  '.next',
-  '.vercel',
-  '.husky',
-];
+const EXCLUDED_DIRS = ['reports', 'temp', 'docs', 'cli', 'tests', '.next', '.vercel', '.husky'];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

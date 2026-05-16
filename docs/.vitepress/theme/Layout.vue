@@ -6,9 +6,7 @@ const { Layout } = DefaultTheme;
 <template>
   <Layout>
     <template #nav-bar-title-before>
-      <span class="aparture-navbar-title">
-        Ap<span class="ar-highlight">ar</span>ture
-      </span>
+      <span class="aparture-navbar-title"> Ap<span class="ar-highlight">ar</span>ture </span>
     </template>
   </Layout>
 </template>

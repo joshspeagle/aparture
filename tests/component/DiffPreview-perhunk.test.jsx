@@ -82,9 +82,7 @@ describe('DiffPreview (per-hunk)', () => {
         edit: { type: 'insert', anchor: 'astrophysics', content: ' and cosmology' },
       },
     ];
-    render(
-      <DiffPreview currentProfile={baseProfile} changes={insertChanges} onApply={() => {}} />
-    );
+    render(<DiffPreview currentProfile={baseProfile} changes={insertChanges} onApply={() => {}} />);
     expect(screen.getByTestId('cumulative-preview')).toHaveTextContent(
       'Bayesian methods for astrophysics and cosmology.'
     );
@@ -98,9 +96,7 @@ describe('DiffPreview (per-hunk)', () => {
         edit: { type: 'delete', anchor: 'Bayesian methods for ', content: '' },
       },
     ];
-    render(
-      <DiffPreview currentProfile={baseProfile} changes={deleteChanges} onApply={() => {}} />
-    );
+    render(<DiffPreview currentProfile={baseProfile} changes={deleteChanges} onApply={() => {}} />);
     expect(screen.getByTestId('cumulative-preview')).toHaveTextContent('astrophysics.');
   });
 });

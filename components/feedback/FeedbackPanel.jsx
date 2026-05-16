@@ -45,9 +45,7 @@ export default function FeedbackPanel({
       />
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
-        <GeneralCommentInput
-          onSave={(text) => onAddGeneralComment?.(text, briefingId)}
-        />
+        <GeneralCommentInput onSave={(text) => onAddGeneralComment?.(text, briefingId)} />
       </div>
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>

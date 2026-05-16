@@ -105,9 +105,25 @@ async function harvestPrefix(set) {
 }
 
 const SELECTED = new Set([
-  'cs.AI', 'cs.CL', 'cs.CV', 'cs.IR', 'cs.LG', 'cs.MA', 'cs.NE',
-  'stat.AP', 'stat.CO', 'stat.ME', 'stat.ML', 'stat.OT', 'stat.TH',
-  'astro-ph.CO', 'astro-ph.EP', 'astro-ph.GA', 'astro-ph.HE', 'astro-ph.IM', 'astro-ph.SR',
+  'cs.AI',
+  'cs.CL',
+  'cs.CV',
+  'cs.IR',
+  'cs.LG',
+  'cs.MA',
+  'cs.NE',
+  'stat.AP',
+  'stat.CO',
+  'stat.ME',
+  'stat.ML',
+  'stat.OT',
+  'stat.TH',
+  'astro-ph.CO',
+  'astro-ph.EP',
+  'astro-ph.GA',
+  'astro-ph.HE',
+  'astro-ph.IM',
+  'astro-ph.SR',
 ]);
 
 const allPapers = [];

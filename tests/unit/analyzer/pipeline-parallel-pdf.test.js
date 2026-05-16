@@ -92,44 +92,40 @@ describe('pipeline — parallel PDF analysis', () => {
     global.fetch = originalFetch;
   });
 
-  test(
-    'Google (no warmup): multiple PDF calls overlap in flight',
-    { timeout: 30000 },
-    async () => {
-      setupStore({ pdfAnalysisConcurrency: 3 });
-      pipeline = createAnalysisPipeline({
-        abortControllerRef: { current: new AbortController() },
-        pauseRef: { current: false },
-        mockAPITesterRef: { current: null },
-      });
+  test('Google (no warmup): multiple PDF calls overlap in flight', { timeout: 30000 }, async () => {
+    setupStore({ pdfAnalysisConcurrency: 3 });
+    pipeline = createAnalysisPipeline({
+      abortControllerRef: { current: new AbortController() },
+      pauseRef: { current: false },
+      mockAPITesterRef: { current: null },
+    });
 
-      let inFlight = 0;
-      let maxInFlight = 0;
+    let inFlight = 0;
+    let maxInFlight = 0;
 
-      global.fetch = vi.fn(async (url, options) => {
-        const body = options?.body ? JSON.parse(options.body) : {};
-        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
-          const papers = body.papers ?? [];
-          return buildScoredBatchResponse(papers.length);
-        }
-        if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
-          inFlight += 1;
-          maxInFlight = Math.max(maxInFlight, inFlight);
-          await new Promise((r) => setTimeout(r, 30));
-          inFlight -= 1;
-          return buildPDFResponse(8.0, body.title ?? 'paper');
-        }
-        throw new Error(`Unexpected fetch URL: ${url}`);
-      });
+    global.fetch = vi.fn(async (url, options) => {
+      const body = options?.body ? JSON.parse(options.body) : {};
+      if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+        const papers = body.papers ?? [];
+        return buildScoredBatchResponse(papers.length);
+      }
+      if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((r) => setTimeout(r, 30));
+        inFlight -= 1;
+        return buildPDFResponse(8.0, body.title ?? 'paper');
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
 
-      await pipeline.startProcessing(false, true);
+    await pipeline.startProcessing(false, true);
 
-      // With 5 papers and concurrency=3, we expect at least 2 to overlap.
-      // (Google path has no warmup barrier, so all 3 workers start immediately.)
-      expect(maxInFlight).toBeGreaterThanOrEqual(2);
-      expect(maxInFlight).toBeLessThanOrEqual(3);
-    }
-  );
+    // With 5 papers and concurrency=3, we expect at least 2 to overlap.
+    // (Google path has no warmup barrier, so all 3 workers start immediately.)
+    expect(maxInFlight).toBeGreaterThanOrEqual(2);
+    expect(maxInFlight).toBeLessThanOrEqual(3);
+  });
 
   test(
     'Anthropic: warmup barrier serializes the first call, then parallelism kicks in',
@@ -175,52 +171,56 @@ describe('pipeline — parallel PDF analysis', () => {
     }
   );
 
-  test('dry-run forces serial execution (concurrency=1 regardless of config)', { timeout: 15000 }, async () => {
-    setupStore({ pdfAnalysisConcurrency: 10 });
-    pipeline = createAnalysisPipeline({
-      abortControllerRef: { current: new AbortController() },
-      pauseRef: { current: false },
-      mockAPITesterRef: { current: null },
-    });
+  test(
+    'dry-run forces serial execution (concurrency=1 regardless of config)',
+    { timeout: 15000 },
+    async () => {
+      setupStore({ pdfAnalysisConcurrency: 10 });
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
 
-    // Dry-run uses the MockAPITester internally (passed as a ref). We don't
-    // need to mock fetch — dry-run doesn't hit the network. Instead we
-    // instrument mockAPITesterRef to measure in-flight count.
-    let inFlight = 0;
-    let maxInFlight = 0;
-    pipeline = createAnalysisPipeline({
-      abortControllerRef: { current: new AbortController() },
-      pauseRef: { current: false },
-      mockAPITesterRef: {
-        current: {
-          mockAnalyzePDF: async (paper) => {
-            inFlight += 1;
-            maxInFlight = Math.max(maxInFlight, inFlight);
-            await new Promise((r) => setTimeout(r, 20));
-            inFlight -= 1;
-            return JSON.stringify({
-              summary: `Mock ${paper.title}`,
-              updatedScore: 7.5,
-            });
+      // Dry-run uses the MockAPITester internally (passed as a ref). We don't
+      // need to mock fetch — dry-run doesn't hit the network. Instead we
+      // instrument mockAPITesterRef to measure in-flight count.
+      let inFlight = 0;
+      let maxInFlight = 0;
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: {
+          current: {
+            mockAnalyzePDF: async (paper) => {
+              inFlight += 1;
+              maxInFlight = Math.max(maxInFlight, inFlight);
+              await new Promise((r) => setTimeout(r, 20));
+              inFlight -= 1;
+              return JSON.stringify({
+                summary: `Mock ${paper.title}`,
+                updatedScore: 7.5,
+              });
+            },
+            mockFetchPapers: async () => [],
+            mockQuickFilter: async () => ({ verdicts: [] }),
+            mockScoreAbstracts: async (papers) =>
+              JSON.stringify(
+                papers.map((_, i) => ({
+                  paperIndex: i + 1,
+                  score: 7.5,
+                  justification: 'mock',
+                }))
+              ),
+            mockRescoreAbstracts: async () => JSON.stringify([]),
           },
-          mockFetchPapers: async () => [],
-          mockQuickFilter: async () => ({ verdicts: [] }),
-          mockScoreAbstracts: async (papers) =>
-            JSON.stringify(
-              papers.map((_, i) => ({
-                paperIndex: i + 1,
-                score: 7.5,
-                justification: 'mock',
-              }))
-            ),
-          mockRescoreAbstracts: async () => JSON.stringify([]),
         },
-      },
-    });
+      });
 
-    await pipeline.startProcessing(true, true);
+      await pipeline.startProcessing(true, true);
 
-    // Dry-run must serialize to avoid racing progress UI updates.
-    expect(maxInFlight).toBe(1);
-  });
+      // Dry-run must serialize to avoid racing progress UI updates.
+      expect(maxInFlight).toBe(1);
+    }
+  );
 });
