@@ -29,7 +29,7 @@ function generateSessionId() {
 }
 
 export const DEFAULT_CONFIG = {
-  version: 6,
+  version: 7,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -114,6 +114,11 @@ export const DEFAULT_CONFIG = {
   lookbackExtensions: [3, 7, 14],
   arxivCacheTtlMinutes: 60,
   arxivWindowSemantics: 'submitted-only',
+  // Duplicate detection: when true (default), papers seen in any session
+  // run within the last 90 days are dropped from the fetch result before
+  // any LLM call. When false, duplicates are kept but tagged with
+  // isDuplicate/firstSeenDate and rendered with a "seen before" badge.
+  removeDuplicates: true,
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
@@ -159,6 +164,12 @@ function migrateLegacyConfig(config) {
   if (config.version === 5) {
     config.arxivWindowSemantics = 'submitted-only';
     config.version = 6;
+  }
+
+  // v6 → v7: introduces removeDuplicates. Default `true` matches new installs.
+  if (config.version === 6) {
+    config.removeDuplicates = true;
+    config.version = 7;
   }
 
   // Two-model → three-model setup
