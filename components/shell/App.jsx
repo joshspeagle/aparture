@@ -15,6 +15,7 @@ import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import { useProfile } from '../../hooks/useProfile.js';
 import { useBriefing } from '../../hooks/useBriefing.js';
 import { useFeedback } from '../../hooks/useFeedback.js';
+import { useSeenPapers } from '../../hooks/useSeenPapers.js';
 import Sidebar from './Sidebar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
@@ -514,6 +515,7 @@ export default function App() {
     loadBriefing,
   } = useBriefing({ password });
   const feedback = useFeedback();
+  const seenPapers = useSeenPapers({ password });
 
   // Resolve the active briefing entry. Current briefing returns synchronously
   // via loadBriefing's fast path; archived briefings trigger an async fetch
@@ -635,6 +637,8 @@ export default function App() {
       config,
       saveBriefing: stableSaveBriefingAndSwitch,
       briefingHistory,
+      seenPapersIndex: seenPapers.index,
+      seenPapersReady: seenPapers.ready,
     });
   }, [
     profile,
@@ -643,6 +647,8 @@ export default function App() {
     config,
     stableSaveBriefingAndSwitch,
     briefingHistory,
+    seenPapers.index,
+    seenPapers.ready,
     setReactContext,
   ]);
 
@@ -666,6 +672,7 @@ export default function App() {
     setNotebookLMContent,
     setPassword,
     setIsAuthenticated,
+    onColdSessionSaved: seenPapers.recordRun,
   });
 
   // Default activeView: if a current briefing exists, show it; else welcome.

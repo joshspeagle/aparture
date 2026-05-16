@@ -89,6 +89,13 @@ export function initialState() {
       config: null,
       saveBriefing: null,
       briefingHistory: null,
+      // Paper-dedupe inputs republished by App.jsx (owned by useSeenPapers).
+      // seenPapersIndex is a plain {arxivId → ISO date} object, pruned to a
+      // 90-day rolling window. seenPapersReady is false during the one-time
+      // migration on first mount; pipeline.fetchPapers treats !ready as
+      // "no-op + status hint" rather than "no duplicates exist".
+      seenPapersIndex: {},
+      seenPapersReady: false,
     },
     // --- skippedDueToRecaptcha slice ---
     // Per-run aggregation of papers whose PDF download hit reCAPTCHA when
