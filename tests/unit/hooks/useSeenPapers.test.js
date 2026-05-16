@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSeenPapers } from '../../../hooks/useSeenPapers.js';
 
 beforeEach(() => {
@@ -158,5 +158,89 @@ describe('useSeenPapers — quota fallback', () => {
     expect(warn).toHaveBeenCalled();
     // In-memory state is still updated even when persist fails.
     expect(result.current.index['2605.14205']).toBe('2026-05-14');
+  });
+});
+
+describe('useSeenPapers — migration from existing sessions', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('hydrates the index from /api/sessions when no _migratedAt is present', async () => {
+    const sessions = {
+      'sess-1': {
+        results: { allPapers: [{ id: '2605.14205' }, { id: '2605.14210' }] },
+        timestamp: Date.parse('2026-05-10T00:00:00Z'),
+      },
+      'sess-2': {
+        results: { allPapers: [{ id: '2605.14210' }, { id: '2605.14211' }] },
+        timestamp: Date.parse('2026-05-12T00:00:00Z'),
+      },
+    };
+
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/sessions?') || u.endsWith('/api/sessions')) {
+        return { ok: true, status: 200, json: async () => ({ ids: Object.keys(sessions) }) };
+      }
+      const m = u.match(/\/api\/sessions\/([^?]+)/);
+      if (m && sessions[m[1]]) {
+        return { ok: true, status: 200, json: async () => sessions[m[1]] };
+      }
+      return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
+    });
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    expect(result.current.index['2605.14205']).toBe('2026-05-10');
+    // 14210 appears in both — most recent wins
+    expect(result.current.index['2605.14210']).toBe('2026-05-12');
+    expect(result.current.index['2605.14211']).toBe('2026-05-12');
+    expect(result.current.index._migratedAt).toBeDefined();
+  });
+
+  it('continues and marks _migratedAt even if one session GET fails', async () => {
+    const sessions = {
+      'sess-ok': {
+        results: { allPapers: [{ id: '2605.14205' }] },
+        timestamp: Date.parse('2026-05-10T00:00:00Z'),
+      },
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/sessions?') || u.endsWith('/api/sessions')) {
+        return { ok: true, status: 200, json: async () => ({ ids: ['sess-ok', 'sess-bad'] }) };
+      }
+      if (u.includes('sess-ok')) {
+        return { ok: true, status: 200, json: async () => sessions['sess-ok'] };
+      }
+      if (u.includes('sess-bad')) {
+        return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
+      }
+      return { ok: false, status: 404, json: async () => ({ error: 'nope' }) };
+    });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    expect(result.current.index['2605.14205']).toBe('2026-05-10');
+    expect(result.current.index._migratedAt).toBeDefined();
+  });
+
+  it('skips migration when an _migratedAt sentinel is already present', async () => {
+    window.localStorage.setItem(
+      'aparture-seen-papers-index',
+      JSON.stringify({ _migratedAt: Date.now(), 'seeded.000': '2026-04-01' })
+    );
+    const fetchSpy = vi.spyOn(global, 'fetch');
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    // ready should be true synchronously since _migratedAt was present.
+    expect(result.current.ready).toBe(true);
+    expect(result.current.index['seeded.000']).toBe('2026-04-01');
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

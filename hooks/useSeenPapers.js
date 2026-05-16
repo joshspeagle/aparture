@@ -51,16 +51,99 @@ function persistIndex(index) {
   }
 }
 
+// One-time migration: scan existing reports/sessions/*.json via the API
+// and seed the index. Concurrency-capped to avoid hammering the dev server.
+// Partial failure is acceptable — we always set _migratedAt at the end so
+// we don't re-scan on every mount.
+const MIGRATION_CONCURRENCY = 4;
+
+async function migrateFromSessions({ password }) {
+  if (typeof window === 'undefined') return null;
+  let listRes;
+  try {
+    listRes = await fetch(`/api/sessions?password=${encodeURIComponent(password ?? '')}`);
+  } catch (err) {
+    console.warn('[useSeenPapers migration] /api/sessions list fetch threw:', err);
+    return {};
+  }
+  if (!listRes.ok) {
+    console.warn(`[useSeenPapers migration] /api/sessions list returned HTTP ${listRes.status}`);
+    return {};
+  }
+  const { ids = [] } = await listRes.json();
+
+  const merged = {};
+
+  // Concurrency-capped worker pool over ids.
+  const queue = ids.slice();
+  async function worker() {
+    while (queue.length > 0) {
+      const id = queue.shift();
+      if (!id) break;
+      try {
+        const res = await fetch(
+          `/api/sessions/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`
+        );
+        if (!res.ok) {
+          console.warn(`[useSeenPapers migration] session ${id} returned HTTP ${res.status}`);
+          continue;
+        }
+        const entry = await res.json();
+        const ts = entry?.timestamp ?? Date.now();
+        const iso = new Date(ts).toISOString().slice(0, 10);
+        const papers = entry?.results?.allPapers ?? [];
+        for (const paper of papers) {
+          const arxivId = paper?.id;
+          if (!arxivId || arxivId.startsWith('_')) continue;
+          const existing = merged[arxivId];
+          if (!existing || iso > existing) merged[arxivId] = iso;
+        }
+      } catch (err) {
+        console.warn(`[useSeenPapers migration] session ${id} fetch threw:`, err);
+      }
+    }
+  }
+  const workers = Array.from({ length: Math.min(MIGRATION_CONCURRENCY, ids.length || 1) }, () =>
+    worker()
+  );
+  await Promise.all(workers);
+  return merged;
+}
+
 export function useSeenPapers({ password = '' } = {}) {
   const initial = readStored();
   const [index, setIndex] = useState(initial ?? {});
   const [ready, setReady] = useState(Boolean(initial?._migratedAt));
 
-  // Keep password fresh in a ref for future async work (Task 3 migration).
   const passwordRef = useRef(password);
   useEffect(() => {
     passwordRef.current = password;
   }, [password]);
+
+  // One-time migration from sessions on disk. Runs only when no _migratedAt
+  // sentinel is present. Non-blocking — the hook returns ready=false until
+  // migration completes; callers must tolerate an empty index in the
+  // meantime (the pipeline does, in applyDedupe).
+  useEffect(() => {
+    if (initial?._migratedAt) return;
+    let cancelled = false;
+    (async () => {
+      const migrated = (await migrateFromSessions({ password: passwordRef.current })) ?? {};
+      if (cancelled) return;
+      migrated._migratedAt = Date.now();
+      const pruned = pruneOldEntries(migrated, Date.now());
+      // _migratedAt may have been pruned out (it's a millis number, the prune
+      // only checks ISO strings) — defensive re-set.
+      if (!pruned._migratedAt) pruned._migratedAt = Date.now();
+      setIndex(pruned);
+      setReady(true);
+      persistIndex(pruned);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const recordRun = useCallback((papers, runTimestamp) => {
     const ts = Number.isFinite(runTimestamp) ? runTimestamp : Date.now();
@@ -70,17 +153,15 @@ export function useSeenPapers({ password = '' } = {}) {
       for (const paper of papers ?? []) {
         const id = paper?.id;
         if (!id || id.startsWith('_')) continue;
-        // Latest-wins: keep the more recent date.
         const existing = next[id];
         if (!existing || stampIso > existing) next[id] = stampIso;
       }
       const pruned = pruneOldEntries(next, Date.now());
-      // Always carry a _migratedAt — set it now if it was missing.
       if (!pruned._migratedAt) pruned._migratedAt = Date.now();
       persistIndex(pruned);
       return pruned;
     });
   }, []);
 
-  return { index, ready, recordRun, setReady, setIndex };
+  return { index, ready, recordRun };
 }
