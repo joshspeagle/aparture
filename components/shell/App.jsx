@@ -19,6 +19,7 @@ import { useSeenPapers } from '../../hooks/useSeenPapers.js';
 import Sidebar from './Sidebar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
+import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 
 // Phase 1.5.1 D5 fix: PaperCard hoisted to module scope so React can reconcile
 // cards across re-renders rather than unmount/remount them (which would destroy
@@ -240,9 +241,14 @@ function PaperCard({
               fontWeight: 600,
               color: 'var(--aparture-ink)',
               marginBottom: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
             }}
           >
-            {paper.title}
+            <span>{paper.title}</span>
+            <DuplicateBadge isDuplicate={paper.isDuplicate} firstSeenDate={paper.firstSeenDate} />
           </h3>
           <p
             style={{
