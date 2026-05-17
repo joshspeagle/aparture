@@ -5,6 +5,9 @@ import FeedbackFilters from './FeedbackFilters.jsx';
 import FeedbackTimeline from './FeedbackTimeline.jsx';
 import FeedbackEmptyState from './FeedbackEmptyState.jsx';
 
+const BRIEFING_GENERAL_PLACEHOLDER =
+  'e.g., "Theme 2 grouping is wrong — different topics." Or: "Exec summary missed the methodology angle." Or: "Lead with the diffusion-models cluster next time." Or: "Briefing nailed it."';
+
 export default function FeedbackPanel({
   events,
   cutoff,
@@ -45,7 +48,10 @@ export default function FeedbackPanel({
       />
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
-        <GeneralCommentInput onSave={(text) => onAddGeneralComment?.(text, briefingId)} />
+        <GeneralCommentInput
+          onSave={(text) => onAddGeneralComment?.(text, briefingId)}
+          placeholder={BRIEFING_GENERAL_PLACEHOLDER}
+        />
       </div>
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>

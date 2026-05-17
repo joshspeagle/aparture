@@ -1,6 +1,9 @@
 // components/shell/MainArea.jsx
 // Routes activeView to the correct content panel.
 
+const PRE_BRIEFING_PLACEHOLDER =
+  "e.g., \"Anything to flag about this lineup before we synthesize? — 'Lead with the diffusion-models cluster.' Or: 'These all look strong but I want more methodology depth in the writeup.'\"";
+
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
@@ -13,6 +16,7 @@ import ReCaptchaSummaryCard from '../run/ReCaptchaSummaryCard.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
+import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
 import FilterResultsList from '../filter/FilterResultsList.jsx';
 import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
@@ -233,6 +237,16 @@ export default function MainArea({
             abstractOnlyPapers={abstractOnlyPapers}
             renderPaperCard={renderPaperCard}
           />
+
+          {/* Pre-briefing general comment — shown when pipeline is paused at pre-briefing-review */}
+          {processing.stage === 'pre-briefing-review' && (
+            <div style={{ marginTop: 'var(--aparture-space-4, 16px)' }}>
+              <GeneralCommentInput
+                onSave={(text) => onAddGeneralComment?.(text, undefined)}
+                placeholder={PRE_BRIEFING_PLACEHOLDER}
+              />
+            </div>
+          )}
 
           {/* Report download + briefing generation */}
           <DownloadReportCard
