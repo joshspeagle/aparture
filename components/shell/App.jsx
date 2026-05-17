@@ -920,6 +920,14 @@ export default function App() {
     setProcessing((prev) => ({ ...prev, isPaused: false }));
   }, [setProcessing]);
 
+  // Note: id resolution priority differs by purpose:
+  // - lookup uses (p.id ?? p.arxivId) === id to match the row's data-testid key
+  // - event payload uses arxivId: paper.arxivId ?? paper.id (arxivId is the
+  //   canonical identifier in downstream feedback events)
+  // Both paths reduce to the same value in practice because arXiv papers
+  // always have arxivId; the asymmetry exists only to handle pre-feature
+  // edge cases where a paper might carry only `id`.
+
   // Star a paper at the score-review gate: updates the MS store AND fires a
   // useFeedback event so the selection flows into the suggest-profile prompt.
   const handleMSStar = useCallback(
