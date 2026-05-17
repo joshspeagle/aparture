@@ -301,6 +301,12 @@ describe('analyzerStore — MS slices', () => {
     expect(useAnalyzerStore.getState().msStarredIds.has('2511.0003')).toBe(false);
   });
 
+  it('msAddDismiss called twice on same id toggles off', () => {
+    useAnalyzerStore.getState().msAddDismiss('2511.0004');
+    useAnalyzerStore.getState().msAddDismiss('2511.0004');
+    expect(useAnalyzerStore.getState().msDismissedIds.has('2511.0004')).toBe(false);
+  });
+
   it('msClear empties both sets', () => {
     useAnalyzerStore.getState().msAddStar('a');
     useAnalyzerStore.getState().msAddDismiss('b');
