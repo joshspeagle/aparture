@@ -6,7 +6,7 @@ import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 // when reactContext.seenPapersIndex is undefined (pre-migration). Otherwise
 // the inline `?? {}` would create a new object literal on every selector
 // call and trigger spurious re-renders.
-const EMPTY_SEEN_INDEX = {};
+const EMPTY_SEEN_INDEX = Object.freeze({});
 
 export default function PaperCard({
   paper,
