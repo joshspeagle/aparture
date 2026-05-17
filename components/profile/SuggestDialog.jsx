@@ -49,17 +49,17 @@ function collectBriefingsForGeneralComments(events, briefingHistory) {
   return out;
 }
 
+function scopeKindLabel(scope) {
+  if (scope?.kind === 'bucket') return `${scope.bucket} bucket`;
+  if (scope?.kind === 'score-review') return 'Score-review note';
+  return 'Run note';
+}
+
 function makeLabel(event) {
   if (event.type === 'general-comment') return event.text;
   if (event.type === 'scoped-feedback') {
-    const scopePart =
-      event.scope?.kind === 'bucket'
-        ? `${event.scope.bucket} bucket`
-        : event.scope?.kind === 'score-review'
-          ? 'Score-review note'
-          : 'Run note';
     const excerpt = event.text.length > 60 ? event.text.slice(0, 60) + '\u2026' : event.text;
-    return `${scopePart} \u2014 ${excerpt}`;
+    return `${scopeKindLabel(event.scope)} \u2014 ${excerpt}`;
   }
   return `${event.arxivId ?? ''}${event.paperTitle ? ` \u00b7 ${event.paperTitle}` : ''}`;
 }

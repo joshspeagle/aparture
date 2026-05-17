@@ -5,19 +5,19 @@ function formatDate(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
+function scopeKindLabel(scope) {
+  if (scope?.kind === 'bucket') return `${scope.bucket} bucket`;
+  if (scope?.kind === 'score-review') return 'Score-review note';
+  return 'Run note';
+}
+
 function labelFor(event) {
   const icon = iconFor(event.type);
   if (event.type === 'general-comment') {
     return `${icon} general comment`;
   }
   if (event.type === 'scoped-feedback') {
-    const scopeLabel =
-      event.scope.kind === 'bucket'
-        ? `${event.scope.bucket} bucket`
-        : event.scope.kind === 'score-review'
-          ? 'score-review note'
-          : 'run note';
-    return `${icon} ${scopeLabel}`;
+    return `${icon} ${scopeKindLabel(event.scope).toLowerCase()}`;
   }
   if (event.type === 'filter-override') {
     return `${icon} filter override on ${event.paperTitle ?? event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
@@ -67,11 +67,7 @@ export default function FeedbackItem({ event }) {
             <span style={{ marginRight: '4px' }} aria-hidden>
               {icon}
             </span>
-            {event.scope.kind === 'bucket'
-              ? `${event.scope.bucket} bucket`
-              : event.scope.kind === 'score-review'
-                ? 'Score-review note'
-                : 'Run note'}
+            {scopeKindLabel(event.scope)}
           </p>
           {event.text && (
             <p
