@@ -81,6 +81,7 @@ export default function MainArea({
   onSkipRemainingGates,
   onContinueAfterFilter,
   onContinueAfterScoreReview,
+  onAddMSPaperComment,
   onContinueAfterReview,
   msStarredIds,
   msDismissedIds,
@@ -223,6 +224,7 @@ export default function MainArea({
                 onDismiss={onMSDismiss}
                 onContinue={onContinueAfterScoreReview}
                 onSkipRemaining={onSkipRemainingGates}
+                onAddPaperComment={onAddMSPaperComment}
                 scopedCommentInput={
                   <ScopedCommentInput
                     scope={{ kind: 'score-review' }}

@@ -1,12 +1,84 @@
 import { useState } from 'react';
 import { Star, X } from 'lucide-react';
 
+function RowComment({ arxivId, onAddPaperComment }) {
+  const [expanded, setExpanded] = useState(false);
+  const [text, setText] = useState('');
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--aparture-mute, #6b7280)',
+          fontSize: 'var(--aparture-text-xs, 12px)',
+          cursor: 'pointer',
+          padding: '2px 0',
+        }}
+      >
+        💬 add comment
+      </button>
+    );
+  }
+
+  const save = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setExpanded(false);
+      return;
+    }
+    onAddPaperComment({ arxivId, text: trimmed });
+    setExpanded(false);
+    setText('');
+  };
+
+  return (
+    <div style={{ marginTop: '6px' }}>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder="Comment on this paper (optional)"
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          border: '1px solid var(--aparture-border, #d1d5db)',
+          borderRadius: '4px',
+          fontSize: 'var(--aparture-text-xs, 12px)',
+          fontFamily: 'var(--aparture-font-sans, inherit)',
+        }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
+        <button
+          onClick={() => setExpanded(false)}
+          style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}
+        >
+          cancel
+        </button>
+        <button onClick={save} style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}>
+          save
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ScoreRow uses (paper.id ?? paper.arxivId) for the data-testid key, but
 // downstream feedback events use arxivId as canonical. Both paths resolve
 // to the same string for arXiv papers (which always carry arxivId); the
 // id-fallback exists only for legacy paper shapes that predate the arxivId
 // field. Consistent with the pattern in handleMSStar/Dismiss in App.jsx.
-function ScoreRow({ paper, isStarred, isDismissed, isInTopN, onStar, onDismiss }) {
+function ScoreRow({
+  paper,
+  isStarred,
+  isDismissed,
+  isInTopN,
+  onStar,
+  onDismiss,
+  onAddPaperComment,
+}) {
   const id = paper.id ?? paper.arxivId;
   return (
     <div
@@ -76,6 +148,11 @@ function ScoreRow({ paper, isStarred, isDismissed, isInTopN, onStar, onDismiss }
             {paper.scoreJustification.length > 300 ? '…' : ''}
           </div>
         )}
+        {onAddPaperComment && (
+          <div style={{ marginTop: '6px' }}>
+            <RowComment arxivId={paper.arxivId ?? paper.id} onAddPaperComment={onAddPaperComment} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -90,6 +167,7 @@ function ScoreGroup({
   dismissedIds,
   onStar,
   onDismiss,
+  onAddPaperComment,
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   if (papers.length === 0) return null;
@@ -122,6 +200,7 @@ function ScoreGroup({
             isInTopN={isInTopN}
             onStar={onStar}
             onDismiss={onDismiss}
+            onAddPaperComment={onAddPaperComment}
           />
         ))}
     </div>
@@ -137,6 +216,7 @@ export default function ScoreReviewSurface({
   onDismiss,
   onContinue,
   onSkipRemaining,
+  onAddPaperComment, // optional: fires {arxivId, text} for a per-row paper comment
   scopedCommentInput, // optional: a pre-mounted ScopedCommentInput element for score-review scope
 }) {
   const borderlineSize = Math.min(maxDeepAnalysis, 50);
@@ -144,7 +224,7 @@ export default function ScoreReviewSurface({
   const borderline = availablePapers.slice(maxDeepAnalysis, maxDeepAnalysis + borderlineSize);
   const lowScore = availablePapers.slice(maxDeepAnalysis + borderlineSize);
 
-  const groupProps = { starredIds, dismissedIds, onStar, onDismiss };
+  const groupProps = { starredIds, dismissedIds, onStar, onDismiss, onAddPaperComment };
 
   return (
     <section

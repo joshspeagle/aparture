@@ -149,4 +149,42 @@ describe('ScoreReviewSurface', () => {
     fireEvent.click(borderlineToggle);
     expect(screen.getByText('Paper b')).toBeInTheDocument();
   });
+
+  it('💬 add comment button appears on each top-N row when onAddPaperComment provided', () => {
+    render(
+      <ScoreReviewSurface
+        availablePapers={[mkPaper('a', 8)]}
+        maxDeepAnalysis={1}
+        starredIds={new Set()}
+        dismissedIds={new Set()}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onContinue={() => {}}
+        onAddPaperComment={() => {}}
+      />
+    );
+    expect(screen.getByText(/add comment/i)).toBeInTheDocument();
+  });
+
+  it('saving a row comment fires onAddPaperComment with arxivId + text', () => {
+    const onAddPaperComment = vi.fn();
+    render(
+      <ScoreReviewSurface
+        availablePapers={[mkPaper('a', 8)]}
+        maxDeepAnalysis={1}
+        starredIds={new Set()}
+        dismissedIds={new Set()}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onContinue={() => {}}
+        onAddPaperComment={onAddPaperComment}
+      />
+    );
+    fireEvent.click(screen.getByText(/add comment/i));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'borderline pick' } });
+    fireEvent.click(screen.getByText(/^save$/i));
+    expect(onAddPaperComment).toHaveBeenCalledWith(
+      expect.objectContaining({ arxivId: 'a', text: 'borderline pick' })
+    );
+  });
 });

@@ -913,6 +913,23 @@ export default function App() {
     [feedback]
   );
 
+  // --- MS gate per-row paper comment ---
+  const handleMSRowComment = useCallback(
+    ({ arxivId, text }) => {
+      feedback.addPaperComment(
+        {
+          arxivId,
+          paperTitle: '',
+          quickSummary: '',
+          score: null,
+          briefingDate: todayStr(),
+        },
+        text
+      );
+    },
+    [feedback]
+  );
+
   // --- Score-review gate handlers ---
   // Resume the pipeline after the user clicks Continue in ScoreReviewSurface.
   const handleResumeFromScoreReview = useCallback(() => {
@@ -1356,6 +1373,7 @@ export default function App() {
             setProcessing((prev) => ({ ...prev, isPaused: false }));
           }}
           onContinueAfterScoreReview={handleResumeFromScoreReview}
+          onAddMSPaperComment={handleMSRowComment}
           onContinueAfterReview={() => {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));
