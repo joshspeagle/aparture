@@ -93,14 +93,15 @@ Four layers, each with a distinct job:
 
 These recur with consistent meaning across components and have no `--aparture-*` token because they are status indicators, not palette:
 
-| Value                 | Meaning                               |
-| --------------------- | ------------------------------------- |
-| `#22c55e`             | done / success / added / YES          |
-| `#f59e0b` / `#eab308` | running / MAYBE / warning / test mode |
-| `#ef4444`             | error / stop / NO / removed           |
-| `#f97316`             | filter-override feedback event        |
-| `#3b82f6`             | informational / suggested source      |
-| `rgba(0,0,0,0.5)`     | modal overlay scrim                   |
+| Value                 | Meaning                                             |
+| --------------------- | --------------------------------------------------- |
+| `#22c55e`             | done / success / added / YES                        |
+| `#f59e0b` / `#eab308` | running / MAYBE / warning / test mode               |
+| `#ef4444`             | error / stop / NO / removed                         |
+| `#f97316`             | filter-override feedback event                      |
+| `#6366f1`             | scoped-feedback event (bucket / score-review / run) |
+| `#3b82f6`             | informational / suggested source                    |
+| `rgba(0,0,0,0.5)`     | modal overlay scrim                                 |
 
 When adding a new status color, document it here rather than introducing a token.
 
