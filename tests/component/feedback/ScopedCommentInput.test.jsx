@@ -92,4 +92,27 @@ describe('ScopedCommentInput', () => {
     expect(screen.getByText(/feedback saved/i)).toBeInTheDocument();
     expect(screen.getByText(/previously saved note/)).toBeInTheDocument();
   });
+
+  it('syncs internal text to updated savedText prop when collapsed', () => {
+    const { rerender } = render(
+      <ScopedCommentInput
+        scope={{ kind: 'run' }}
+        triggerLabel="+ t"
+        placeholder="ex"
+        savedText="first"
+        onSave={() => {}}
+      />
+    );
+    expect(screen.getByText(/first/)).toBeInTheDocument();
+    rerender(
+      <ScopedCommentInput
+        scope={{ kind: 'run' }}
+        triggerLabel="+ t"
+        placeholder="ex"
+        savedText="updated"
+        onSave={() => {}}
+      />
+    );
+    expect(screen.getByText(/updated/)).toBeInTheDocument();
+  });
 });

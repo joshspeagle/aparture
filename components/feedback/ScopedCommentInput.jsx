@@ -9,13 +9,26 @@ export default function ScopedCommentInput({
   onSave,
 }) {
   const [expanded, setExpanded] = useState(false);
+  // text tracks in-flight edit state while expanded. When collapsed the
+  // component reads savedText directly from props, so text only needs to be
+  // current when we transition to expanded. We seed it from savedText on
+  // each expand() call (see below) rather than via useEffect to avoid
+  // cascading renders.
   const [text, setText] = useState(savedText);
+
+  // Open the editor, seeding the textarea from the current savedText prop so
+  // a parent that updated savedText while collapsed (e.g. on a new feedback
+  // event) never shows stale text.
+  const expand = () => {
+    setText(savedText);
+    setExpanded(true);
+  };
 
   if (!expanded && savedText) {
     return (
       <div>
         <button
-          onClick={() => setExpanded(true)}
+          onClick={expand}
           style={{
             padding: '5px 12px',
             borderRadius: '12px',
@@ -46,7 +59,7 @@ export default function ScopedCommentInput({
   if (!expanded) {
     return (
       <button
-        onClick={() => setExpanded(true)}
+        onClick={expand}
         style={{
           padding: '5px 12px',
           borderRadius: '12px',
