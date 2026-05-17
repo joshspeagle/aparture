@@ -29,6 +29,9 @@ Every run passes through the same waterfall. Each stage reads the output of the 
 │ 3.5. postProcess │  comparative re-score of top N (default 50)
 └────────┬─────────┘  ~fractions of a cent per paper · optional
          │ re-ranked papers
+         │
+         │   ⏸  pauseBeforeDeepAnalysis (default: on) — star / exclude papers before PDF run
+         │
          ▼
 ┌──────────────────┐
 │ 4. analyzePDFs   │  deep PDF model · full-text analysis + final score
@@ -43,7 +46,7 @@ Every run passes through the same waterfall. Each stage reads the output of the 
 └──────────────────┘  ~a few cents per briefing
 ```
 
-Two optional pause gates let you steer the run before expensive work happens. Both are on by default and can be toggled in Settings → Review & confirmation.
+Three optional pause gates let you steer the run before expensive work happens. All three are on by default and can be toggled in Settings → Review & confirmation.
 
 Wall-clock duration varies widely with provider latency, paper volume, and which models are in which slots, so this page doesn't quote seconds. Briefings usually land within a few minutes on a hundred-paper day at the default concurrency; the longest stretch tends to be Stage 4 because it reads full PDFs.
 
@@ -149,7 +152,7 @@ Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Apa
 
 **Cost.** A few cents per paper. This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens substantially, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
 
-**Pause gate.** None within the stage, but `pauseBeforeBriefing` fires after it completes.
+**Pause gates.** `pauseBeforeDeepAnalysis` (default: on) fires _before_ Stage 4 starts, immediately after Stage 3.5 completes. It shows the scored list in three groups — the automatic top-N selection, a borderline band, and low-score papers — and lets you star papers into the PDF set or exclude them from it. See [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review) for the full affordances. `pauseBeforeBriefing` (default: on) fires after Stage 4 completes.
 
 ## Stage 5: briefing synthesis
 
@@ -240,7 +243,7 @@ Neither depends on the other existing. In day-to-day use, the briefing is what y
 ## Reading this alongside the UI
 
 - The **Progress Timeline** (left side of the main area during a run) shows each of the stages with a status icon and a live progress counter.
-- The **review-gate UIs** appear when `pauseAfterFilter` or `pauseBeforeBriefing` fire — they occupy the main area until you click the Continue button.
+- The **review-gate UIs** appear when `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, or `pauseBeforeBriefing` fire — they occupy the main area until you click the Continue button.
 - The **Download Report** card appears after Stage 4, regardless of whether Stage 5 has run. See the section above for what's in it and how it differs from the briefing.
 
 ## Where to tune what
