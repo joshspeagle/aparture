@@ -250,5 +250,11 @@ export const useAnalyzerStore = create((set) => ({
   // Tests should call this in beforeEach rather than setState(initialState())
   // directly, so test isolation isn't load-bearing on the structural
   // coincidence that initialState() happens to cover every top-level key.
+  //
+  // resetStore does NOT clear msStarredIds / msDismissedIds because they're
+  // not in initialState() — they're transient run-scoped UI state. The
+  // explicit `msClear()` action is the reset path, invoked at startProcessing
+  // entry in lib/analyzer/pipeline.js. If a future caller needs full state
+  // reset including MS selections, call resetStore() followed by msClear().
   resetStore: () => set(initialState()),
 }));
