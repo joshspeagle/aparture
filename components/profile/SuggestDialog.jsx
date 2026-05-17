@@ -49,13 +49,25 @@ function collectBriefingsForGeneralComments(events, briefingHistory) {
   return out;
 }
 
+function makeLabel(event) {
+  if (event.type === 'general-comment') return event.text;
+  if (event.type === 'scoped-feedback') {
+    const scopePart =
+      event.scope?.kind === 'bucket'
+        ? `${event.scope.bucket} bucket`
+        : event.scope?.kind === 'score-review'
+          ? 'Score-review note'
+          : 'Run note';
+    const excerpt = event.text.length > 60 ? event.text.slice(0, 60) + '\u2026' : event.text;
+    return `${scopePart} \u2014 ${excerpt}`;
+  }
+  return `${event.arxivId ?? ''}${event.paperTitle ? ` \u00b7 ${event.paperTitle}` : ''}`;
+}
+
 function FeedbackRow({ event, checked, onToggle }) {
   const icon = iconFor(event.type);
   const dateStr = new Date(event.timestamp).toLocaleDateString();
-  const label =
-    event.type === 'general-comment'
-      ? event.text
-      : `${event.arxivId}${event.paperTitle ? ` \u00b7 ${event.paperTitle}` : ''}`;
+  const label = makeLabel(event);
   return (
     <label
       style={{
@@ -544,9 +556,17 @@ export default function SuggestDialog({
                       color: 'var(--aparture-mute)',
                     }}
                   >
-                    Reviewed {resultStats.starCount} stars, {resultStats.dismissCount} dismisses,{' '}
-                    {resultStats.paperCommentTotal + resultStats.generalCommentTotal} comments — no
-                    profile gaps identified.
+                    Based on {resultStats.starCount} stars, {resultStats.dismissCount} dismisses,{' '}
+                    {resultStats.paperCommentKept} of {resultStats.paperCommentTotal} paper
+                    comments, {resultStats.generalCommentKept} of {resultStats.generalCommentTotal}{' '}
+                    general comments
+                    {resultStats.scopedFeedback > 0
+                      ? `, ${resultStats.scopedFeedback} scoped-feedback notes`
+                      : ''}
+                    {resultStats.filterOverride > 0
+                      ? `, ${resultStats.filterOverride} filter overrides`
+                      : ''}{' '}
+                    — no profile gaps identified.
                   </div>
                 )}
               </div>
