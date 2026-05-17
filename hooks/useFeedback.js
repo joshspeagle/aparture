@@ -126,6 +126,36 @@ export function useFeedback() {
     });
   }, []);
 
+  const addScopedFeedback = useCallback(({ scope, text, briefingDate }) => {
+    if (!text || !text.trim()) return;
+    setEvents((prev) => {
+      const dedupeKey =
+        scope.kind === 'bucket'
+          ? `bucket:${scope.bucket}:${briefingDate}`
+          : `${scope.kind}:${briefingDate}`;
+      const matches = (e) => {
+        if (e.type !== 'scoped-feedback') return false;
+        const k =
+          e.scope.kind === 'bucket'
+            ? `bucket:${e.scope.bucket}:${e.briefingDate}`
+            : `${e.scope.kind}:${e.briefingDate}`;
+        return k === dedupeKey;
+      };
+      const filtered = prev.filter((e) => !matches(e));
+      const event = {
+        id: makeId(),
+        type: 'scoped-feedback',
+        scope,
+        text: text.trim(),
+        timestamp: Date.now(),
+        briefingDate,
+      };
+      const next = [...filtered, event];
+      persist(next);
+      return next;
+    });
+  }, []);
+
   const getNewSince = useCallback((cutoff) => events.filter((e) => e.timestamp > cutoff), [events]);
 
   return {
@@ -135,6 +165,7 @@ export function useFeedback() {
     addPaperComment,
     addGeneralComment,
     addFilterOverride,
+    addScopedFeedback,
     getNewSince,
   };
 }

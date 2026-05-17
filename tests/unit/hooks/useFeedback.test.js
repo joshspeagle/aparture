@@ -107,3 +107,144 @@ describe('useFeedback', () => {
     expect(result2.current.events).toHaveLength(1);
   });
 });
+
+describe('addScopedFeedback — bucket scope', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('appends a scoped-feedback event with bucket scope', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'Too many marginal hits',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(1);
+    const ev = result.current.events[0];
+    expect(ev.type).toBe('scoped-feedback');
+    expect(ev.scope).toEqual({ kind: 'bucket', bucket: 'YES' });
+    expect(ev.text).toBe('Too many marginal hits');
+    expect(ev.briefingDate).toBe('2026-05-17');
+  });
+
+  it('latest-wins per (bucket, briefingDate): overwrites same bucket same day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'first',
+        briefingDate: '2026-05-17',
+      });
+    });
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'second',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].text).toBe('second');
+  });
+
+  it('keeps different buckets independent on the same day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'yes-comment',
+        briefingDate: '2026-05-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'NO' },
+        text: 'no-comment',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(2);
+  });
+
+  it('empty text is a no-op (after trim)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: '   \n  ',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(0);
+  });
+});
+
+describe('addScopedFeedback — score-review scope', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('latest-wins per briefingDate (one per run)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'first',
+        briefingDate: '2026-05-17',
+      });
+    });
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'second',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].text).toBe('second');
+  });
+});
+
+describe('addScopedFeedback — run scope', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('latest-wins per briefingDate', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'run' },
+        text: 'first',
+        briefingDate: '2026-05-17',
+      });
+    });
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'run' },
+        text: 'updated',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].text).toBe('updated');
+  });
+
+  it('different briefingDates coexist independently', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'run' },
+        text: 'mon',
+        briefingDate: '2026-05-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'run' },
+        text: 'tue',
+        briefingDate: '2026-05-18',
+      });
+    });
+    expect(result.current.events).toHaveLength(2);
+  });
+});
