@@ -96,4 +96,11 @@ describe('FeedbackPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(onAddGeneralComment).toHaveBeenCalledWith('general thought', undefined);
   });
+
+  describe('run feedback affordance', () => {
+    it('renders the + feedback on this run trigger', () => {
+      render(<FeedbackPanel {...defaultProps} runFeedbackSavedText="" onRunFeedback={() => {}} />);
+      expect(screen.getByText('+ feedback on this run')).toBeInTheDocument();
+    });
+  });
 });

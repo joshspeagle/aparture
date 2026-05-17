@@ -699,7 +699,17 @@ export default function App() {
     }
   }, [currentBriefing]);
 
-  const { startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM } = pipeline;
+  const {
+    startProcessing,
+    runDryRunTest,
+    runMinimalTest,
+    generateNotebookLM,
+    skipRemainingGates: pipelineSkipRemainingGates,
+  } = pipeline;
+
+  const skipRemainingGates = useCallback(() => {
+    pipelineSkipRemainingGates();
+  }, [pipelineSkipRemainingGates]);
 
   // --- Auth handlers ---
   const handleAuth = async () => {
@@ -847,6 +857,25 @@ export default function App() {
     ({ bucket, text }) =>
       feedback.addScopedFeedback({
         scope: { kind: 'bucket', bucket },
+        text,
+        briefingDate: new Date().toISOString().slice(0, 10),
+      }),
+    [feedback]
+  );
+
+  // --- Run-scope feedback ---
+  const runFeedbackSavedText = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const event = feedback.events.find(
+      (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'run' && e.briefingDate === today
+    );
+    return event?.text ?? '';
+  }, [feedback.events]);
+
+  const handleRunFeedback = useCallback(
+    (text) =>
+      feedback.addScopedFeedback({
+        scope: { kind: 'run' },
         text,
         briefingDate: new Date().toISOString().slice(0, 10),
       }),
@@ -1313,6 +1342,7 @@ export default function App() {
           scoreReviewFeedbackSavedText={scoreReviewFeedbackSavedText}
           onScoreReviewFeedback={handleScoreReviewFeedback}
           onAddPaperComment={handleFilterRowComment}
+          onSkipRemainingGates={skipRemainingGates}
           onContinueAfterFilter={() => {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));
@@ -1334,6 +1364,9 @@ export default function App() {
           onGenerateBriefing={handleGenerateBriefing}
           // Feedback panel
           feedbackCutoff={profile?.lastFeedbackCutoff ?? 0}
+          lastFeedbackCutoff={profile?.lastFeedbackCutoff ?? null}
+          runFeedbackSavedText={runFeedbackSavedText}
+          onRunFeedback={handleRunFeedback}
           onAddGeneralComment={(text, briefingId) => {
             const today = new Date().toISOString().slice(0, 10);
             feedback.addGeneralComment(text, today, briefingId);

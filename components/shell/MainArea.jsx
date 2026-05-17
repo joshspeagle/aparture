@@ -77,6 +77,7 @@ export default function MainArea({
   scoreReviewFeedbackSavedText,
   onScoreReviewFeedback,
   onAddPaperComment,
+  onSkipRemainingGates,
   onContinueAfterFilter,
   onContinueAfterScoreReview,
   onContinueAfterReview,
@@ -92,6 +93,9 @@ export default function MainArea({
   onGenerateBriefing,
   // Feedback panel
   feedbackCutoff,
+  lastFeedbackCutoff,
+  runFeedbackSavedText,
+  onRunFeedback,
   onAddGeneralComment,
   onPromotePaper,
   // NotebookLM
@@ -177,6 +181,7 @@ export default function MainArea({
           pauseBeforeBriefing={config?.pauseBeforeBriefing ?? true}
           onContinueAfterFilter={onContinueAfterFilter}
           onContinueAfterReview={onContinueAfterReview}
+          onSkipRemainingGates={onSkipRemainingGates}
         >
           {/* Controls */}
           <div style={{ marginTop: 'var(--aparture-space-6)' }}>
@@ -216,6 +221,7 @@ export default function MainArea({
                 onStar={onMSStar}
                 onDismiss={onMSDismiss}
                 onContinue={onContinueAfterScoreReview}
+                onSkipRemaining={onSkipRemainingGates}
                 scopedCommentInput={
                   <ScopedCommentInput
                     scope={{ kind: 'score-review' }}
@@ -225,7 +231,6 @@ export default function MainArea({
                     onSave={onScoreReviewFeedback}
                   />
                 }
-                // TODO Phase 7 (Task 7.1): pass onSkipRemaining={skipRemainingGates}
               />
             </div>
           )}
@@ -425,6 +430,9 @@ export default function MainArea({
             briefingId={entry.id}
             onAddGeneralComment={onAddGeneralComment}
             onSuggestClick={onSuggestClick}
+            lastFeedbackCutoff={lastFeedbackCutoff}
+            runFeedbackSavedText={runFeedbackSavedText}
+            onRunFeedback={onRunFeedback}
           />
         </div>
 
