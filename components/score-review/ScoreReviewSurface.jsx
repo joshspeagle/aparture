@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Star, X } from 'lucide-react';
 
+// ScoreRow uses (paper.id ?? paper.arxivId) for the data-testid key, but
+// downstream feedback events use arxivId as canonical. Both paths resolve
+// to the same string for arXiv papers (which always carry arxivId); the
+// id-fallback exists only for legacy paper shapes that predate the arxivId
+// field. Consistent with the pattern in handleMSStar/Dismiss in App.jsx.
 function ScoreRow({ paper, isStarred, isDismissed, isInTopN, onStar, onDismiss }) {
   const id = paper.id ?? paper.arxivId;
   return (
