@@ -115,4 +115,28 @@ describe('ScopedCommentInput', () => {
     );
     expect(screen.getByText(/updated/)).toBeInTheDocument();
   });
+
+  it('shows updated savedText in textarea when expanded after prop change', () => {
+    const { rerender } = render(
+      <ScopedCommentInput
+        scope={{ kind: 'run' }}
+        triggerLabel="+ t"
+        placeholder="ex"
+        savedText="first"
+        onSave={() => {}}
+      />
+    );
+    rerender(
+      <ScopedCommentInput
+        scope={{ kind: 'run' }}
+        triggerLabel="+ t"
+        placeholder="ex"
+        savedText="updated"
+        onSave={() => {}}
+      />
+    );
+    // Click the "— feedback saved" button to expand — must show "updated" not "first"
+    fireEvent.click(screen.getByText(/feedback saved/i));
+    expect(screen.getByRole('textbox').value).toBe('updated');
+  });
 });
