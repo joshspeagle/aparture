@@ -15,14 +15,17 @@ This page covers what each gate shows, what to do there, and when it's worth tur
       │
   3. Score abstracts    (0–10 + justification)
   3.5. Post-process     (optional consistency pass)
+      │
+      ⏸   Gate 2 — review scores, star papers for deep analysis
+      │
   4. Analyze PDFs       (full-text read of the top N)
       │
-      ⏸   Gate 2 — star / dismiss / comment before synthesis
+      ⏸   Gate 3 — star / dismiss / comment before synthesis
       │
   5. Briefing           (editorial synthesis + hallucination audit)
 ```
 
-Both gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early.
+All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early.
 
 ## Gate 1 — after the quick filter
 
@@ -56,7 +59,51 @@ A few patterns come up repeatedly:
 
 You don't have to review every paper. Overrides usually happen in the <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> buckets; the <span class="verdict is-no">NO</span> bucket can often be left alone unless something specific catches your eye.
 
-## Gate 2 — before briefing synthesis
+## Gate 2 — before PDF analysis (score review)
+
+### What it does
+
+After Stage 3.5 (post-processing), the pipeline has a ranked list of scores but hasn't spent any tokens on deep PDF reads yet. That's the cheapest moment to adjust which papers get the full treatment.
+
+When `pauseBeforeDeepAnalysis` is on (default: **on**), the pipeline halts here. The timeline shows _"Scoring complete — review scores and adjust PDF selections"_, and the main area shows the full scored list split into three collapsible groups.
+
+### What you see
+
+Three groups, each collapsible:
+
+- **Will PDF (top-N)** — expanded by default. These are the papers that would go to Stage 4 as things stand: the top N by score, where N is your **Papers to Analyze** setting (default 30).
+- **Borderline** — collapsed by default. The next chunk of papers after the top-N cutoff, up to `min(maxDeepAnalysis, 50)` papers. These are the candidates most worth inspecting if you think the default cutoff is landing in the wrong place.
+- **Low score** — collapsed. Everything below the borderline band.
+
+Each row in the list shows the paper's title and authors, its score (pre-analysis), the scoring model's justification, and a `⊘` duplicate badge when applicable. On the right of each row sit three controls:
+
+- **★ (star)** — guarantees this paper gets PDF-analysed, regardless of where its score sits.
+- **⊘ (exclude)** — removes this paper from PDF analysis for this run.
+- **💬 (comment)** — opens a small text box to attach a note to the paper. Does not change whether the paper goes to PDF.
+
+### The selection logic
+
+The final set of papers sent to Stage 4 is additive:
+
+```
+PDF set = (top-N by score) ∪ {papers you starred} − {papers you excluded}
+```
+
+Stars can reach into the Borderline or Low score groups and pull papers up. Excludes can remove papers from the top-N. If you star several borderline papers, the final PDF set may exceed `maxDeepAnalysis` — that's intentional, not a bug: your explicit choices override the automatic cutoff.
+
+Starred papers carry a guarantee all the way through: even if a PDF-analysed paper's `finalScore` ends up lower than the `finalOutputCount` cutoff, starred papers always appear in `finalRanking` and therefore in the briefing.
+
+### Round-level note
+
+Below the paper list sits a free-text field labelled **"+ feedback on this scoring round"**. This is for observations about the scoring run as a whole — _"scores feel compressed, everything is bunched between 5 and 7"_, _"filter let through a lot of tangential ML papers this time"_. It isn't attached to any single paper; instead it flows into the next profile-refinement call as a run-level observation. Leave it blank if nothing's worth noting.
+
+### Skip remaining gates this run
+
+A small <span class="ui-action">Skip remaining gates this run</span> link appears near the bottom of this gate, and on Gate 1 and Gate 3. Clicking it bypasses all subsequent default-on gates for the rest of this run — useful when you want a single unattended run without changing your persistent settings. It does not modify any setting; the next run will still pause normally.
+
+Click <span class="ui-action">Continue to PDF analysis →</span> when you're done. Stage 4 starts immediately with the adjusted paper set.
+
+## Gate 3 — before briefing synthesis
 
 ### What it does
 
@@ -68,25 +115,30 @@ When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before sy
 
 Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest _"why it matters"_ treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
 
-The difference between Gate 2 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
+Stars given here have a different meaning than stars given at Gate 2. A star at Gate 2 says _"analyse this paper's PDF"_; a star at Gate 3 (or on a rendered briefing) says _"I liked this paper"_. Both are stored as `star` events — the meaning is contextual based on when you gave it.
+
+The difference between Gate 3 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
 
 Click <span class="ui-action">Continue to briefing →</span> when you're done. Synthesis runs, then the hallucination audit runs, then the briefing renders on its own page. The results list stays interactive while synthesis is in flight.
 
 ## Progression: from on by default to off
 
-Both gates start on because they catch bad runs early — especially useful in the first week or two, when you're still developing a sense of what your profile should say and what the pipeline does with it.
+All three gates start on because they catch bad runs early — especially useful in the first week or two, when you're still developing a sense of what your profile should say and what the pipeline does with it.
 
 After five or ten successful briefings, the gates can start feeling like more friction than signal. At that point it's worth considering which ones still earn their keep:
 
 - **Turn off `pauseAfterFilter` first.** The filter is usually right enough that override-saving is marginal after a while, and scoring is cheap to over-run.
+- **Keep `pauseBeforeDeepAnalysis` on while you're still calibrating.** This is the best place to rescue papers the scorer ranked low but that you know from the abstract are worth reading in full — and to exclude obvious duds before they consume expensive PDF tokens.
 - **Keep `pauseBeforeBriefing` on longer.** This is where your stars, dismisses, and comments actively steer the synthesis. If you're not giving feedback at this gate, the briefing tends to drift toward generic.
-- **Both off once you trust the setup.** Runs become fully unattended: click <span class="ui-action">Start Analysis</span>, come back later, read the briefing.
+- **All three off once you trust the setup.** Runs become fully unattended: click <span class="ui-action">Start Analysis</span>, come back later, read the briefing.
 
-There's no harm in leaving both on permanently if the workflow suits you. The gates are UI-only — they don't cost tokens, and skipping them doesn't save money.
+There's no harm in leaving all three on permanently if the workflow suits you. The gates are UI-only — they don't cost tokens, and skipping them doesn't save money.
+
+The **Skip remaining gates this run** link on each gate offers a middle path: you can engage with one gate and bypass the rest without touching any settings. Useful for days when you just want a quick check of the filter output before letting the rest of the run go unattended.
 
 ## When to re-enable a gate you'd disabled
 
-Three situations in which flipping a gate back on tends to pay off:
+Three situations in which flipping a gate back on tends to pay off (applies to all three gates):
 
 - **You made a big profile change.** A freshly rewritten profile may be poorly calibrated, so the filter may be over- or under-selecting. Turning `pauseAfterFilter` back on for a few runs catches this early.
 - **You added new arXiv categories.** You haven't built a mental model of what comes through the filter in those categories yet.
@@ -96,17 +148,18 @@ Broadly, the gates are worth having on while you're still calibrating the pipeli
 
 ## Where to toggle them
 
-Both gates live in <span class="ui-action">Settings</span> under **Review & confirmation**, as two checkboxes:
+All three gates live in <span class="ui-action">Settings</span> under **Review & confirmation**, as checkboxes:
 
 - **Pause after filter to review overrides** — controls Gate 1 (`pauseAfterFilter`).
-- **Pause before briefing to review scores and add feedback** — controls Gate 2 (`pauseBeforeBriefing`).
+- **Pause before deep analysis** — controls Gate 2 (`pauseBeforeDeepAnalysis`).
+- **Pause before briefing to review scores and add feedback** — controls Gate 3 (`pauseBeforeBriefing`).
 
 Two sibling checkboxes nearby — **Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>** (on by default) and **…<span class="verdict is-maybe">MAYBE</span>** (off by default) — govern the briefing retry loop, not the pause gates.
 
 Toggles are disabled while a pipeline run is in progress (you can't change gate behaviour mid-run), and changes take effect on the next run.
 
-::: info No per-run toggle
-The setting is global, not per-run. For a one-off unattended run, toggle both off, start the run, toggle back on afterwards.
+::: info No per-run toggle — but there's a shortcut
+Settings are global, not per-run. For a one-off unattended run without changing settings, use the **Skip remaining gates this run** link on any gate — it bypasses all subsequent default-on gates for that run only.
 :::
 
 ## Next
