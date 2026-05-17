@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Star, X } from 'lucide-react';
+import TextArea from '../ui/TextArea.jsx';
 
 function RowComment({ arxivId, onAddPaperComment }) {
   const [expanded, setExpanded] = useState(false);
@@ -36,19 +37,12 @@ function RowComment({ arxivId, onAddPaperComment }) {
 
   return (
     <div style={{ marginTop: '6px' }}>
-      <textarea
+      <TextArea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={2}
         placeholder="Comment on this paper (optional)"
-        style={{
-          width: '100%',
-          padding: '6px 10px',
-          border: '1px solid var(--aparture-border, #d1d5db)',
-          borderRadius: '4px',
-          fontSize: 'var(--aparture-text-xs, 12px)',
-          fontFamily: 'var(--aparture-font-sans, inherit)',
-        }}
+        style={{ minHeight: 'unset' }}
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
         <button
