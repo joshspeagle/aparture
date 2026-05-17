@@ -834,17 +834,25 @@ export default function App() {
     [setFilterResults]
   );
 
-  // --- Bucket feedback ---
-  const bucketFeedbackByBucket = useMemo(() => {
+  // Shared filter pass: all scoped-feedback events for today. Three derived
+  // memos (bucketFeedbackByBucket, runFeedbackSavedText, scoreReviewFeedbackSavedText)
+  // source from this single array so feedback.events is only iterated once.
+  const todayScopedEvents = useMemo(() => {
     const today = todayStr();
-    const events = feedback.events.filter(
-      (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'bucket' && e.briefingDate === today
-    );
-    return events.reduce((acc, e) => {
-      acc[e.scope.bucket] = e.text;
-      return acc;
-    }, {});
+    return feedback.events.filter((e) => e.type === 'scoped-feedback' && e.briefingDate === today);
   }, [feedback.events]);
+
+  // --- Bucket feedback ---
+  const bucketFeedbackByBucket = useMemo(
+    () =>
+      todayScopedEvents
+        .filter((e) => e.scope?.kind === 'bucket')
+        .reduce((acc, e) => {
+          acc[e.scope.bucket] = e.text;
+          return acc;
+        }, {}),
+    [todayScopedEvents]
+  );
 
   const handleBucketFeedback = useCallback(
     ({ bucket, text }) =>
@@ -857,13 +865,10 @@ export default function App() {
   );
 
   // --- Run-scope feedback ---
-  const runFeedbackSavedText = useMemo(() => {
-    const today = todayStr();
-    const event = feedback.events.find(
-      (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'run' && e.briefingDate === today
-    );
-    return event?.text ?? '';
-  }, [feedback.events]);
+  const runFeedbackSavedText = useMemo(
+    () => todayScopedEvents.find((e) => e.scope?.kind === 'run')?.text ?? '',
+    [todayScopedEvents]
+  );
 
   const handleRunFeedback = useCallback(
     (text) =>
@@ -876,14 +881,10 @@ export default function App() {
   );
 
   // --- Score-review feedback ---
-  const scoreReviewFeedbackSavedText = useMemo(() => {
-    const today = todayStr();
-    const event = feedback.events.find(
-      (e) =>
-        e.type === 'scoped-feedback' && e.scope?.kind === 'score-review' && e.briefingDate === today
-    );
-    return event?.text ?? '';
-  }, [feedback.events]);
+  const scoreReviewFeedbackSavedText = useMemo(
+    () => todayScopedEvents.find((e) => e.scope?.kind === 'score-review')?.text ?? '',
+    [todayScopedEvents]
+  );
 
   const handleScoreReviewFeedback = useCallback(
     (text) =>
