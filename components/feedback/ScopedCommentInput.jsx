@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import TextArea from '../ui/TextArea.jsx';
 
 export default function ScopedCommentInput({
   scope: _scope,
@@ -78,20 +79,12 @@ export default function ScopedCommentInput({
 
   return (
     <div>
-      <textarea
+      <TextArea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        style={{
-          width: '100%',
-          padding: '10px 12px',
-          border: '1px solid var(--aparture-border, #d1d5db)',
-          borderRadius: '6px',
-          fontSize: 'var(--aparture-text-sm, 14px)',
-          fontFamily: 'var(--aparture-font-sans, inherit)',
-          resize: 'vertical',
-        }}
+        style={{ minHeight: 'unset' }}
       />
       <div
         style={{
