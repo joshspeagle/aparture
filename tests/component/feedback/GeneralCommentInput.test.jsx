@@ -53,6 +53,18 @@ describe('GeneralCommentInput', () => {
     expect(screen.getByRole('textbox')).toHaveValue('');
   });
 
+  it('uses custom placeholder when provided', () => {
+    render(<GeneralCommentInput onSave={() => {}} placeholder="custom hint" />);
+    fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));
+    expect(screen.getByPlaceholderText('custom hint')).toBeInTheDocument();
+  });
+
+  it('falls back to default when not provided', () => {
+    render(<GeneralCommentInput onSave={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));
+    expect(screen.getByPlaceholderText(/General comment/)).toBeInTheDocument();
+  });
+
   it('disables Save when the textarea is empty or whitespace only', () => {
     render(<GeneralCommentInput onSave={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));

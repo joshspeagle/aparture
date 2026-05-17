@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
 
-export default function GeneralCommentInput({ onSave }) {
+export default function GeneralCommentInput({ onSave, placeholder }) {
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
 
@@ -48,7 +48,9 @@ export default function GeneralCommentInput({ onSave }) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={6}
-        placeholder="General comment on this week's briefing or your research interests..."
+        placeholder={
+          placeholder ?? "General comment on this week's briefing or your research interests..."
+        }
         style={{ minHeight: '8rem', marginBottom: 'var(--aparture-space-2)' }}
         autoFocus
       />
