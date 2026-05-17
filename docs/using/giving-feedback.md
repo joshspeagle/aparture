@@ -1,10 +1,10 @@
 # Giving feedback
 
-Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts, general comments on a briefing — build up quietly as you use the tool. Later, you can hand them to a flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile.
+Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts, general comments on a briefing, observations about a scoring round — build up quietly as you use the tool. Later, you can hand them to a flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile.
 
-This page walks through the five feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. The related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
+This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. The related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
 
-## The five feedback types
+## The six feedback types
 
 <div class="landing-cards">
 
@@ -12,10 +12,12 @@ This page walks through the five feedback types, where each one appears in the i
 
 ### ★ Star
 
-"This one matters to me."
+"This one matters to me." — but the meaning shifts depending on when you give it.
 
-- **Before a briefing writes** — the paper gets more attention in the editorial treatment.
-- **After the briefing's rendered** — doesn't retroactively change what you're reading; feeds the refinement flow as a "more of this" signal.
+- **At Gate 2 (score-review, before PDF analysis)** — guarantees this paper gets PDF-analysed, regardless of where its score sits. Pull borderline papers up, or rescue a paper the scorer underestimated.
+- **At Gate 3 (pre-briefing) or on a rendered briefing** — tells synthesis you liked this paper; it gets more attention in the editorial treatment and anchors themes.
+
+Both are stored as `star` events. The timing determines whether the star is a _"read this"_ instruction or a _"this is good"_ signal — the refinement flow uses whichever meaning is appropriate based on context.
 
 </div>
 
@@ -25,7 +27,7 @@ This page walks through the five feedback types, where each one appears in the i
 
 "This one isn't for me."
 
-- **Before a briefing writes** — the paper gets deprioritised in the treatment.
+- **Before a briefing writes** — the paper gets deprioritised in the treatment. At Gate 2 it also removes the paper from the PDF set entirely.
 - **After the briefing's rendered** — accumulates as a "profile might be too broad here" signal for the refinement flow.
 
 </div>
@@ -38,6 +40,7 @@ A short note about one specific paper.
 
 - **Before a briefing writes** — gets quoted or paraphrased in that paper's _why it matters_ paragraph.
 - **After the briefing's rendered** — feeds the refinement flow, where paper-grounded reactions are among the strongest signals it sees.
+- **At Gate 1 (filter review)** — you can leave a comment on a filter row without changing its verdict. Click the 💬 button to open the text box; the paper stays in whatever bucket the filter assigned it.
 
 </div>
 
@@ -63,9 +66,25 @@ A correction on the filter's verdict for a specific paper. Only available at Gat
 
 </div>
 
+<div class="landing-card">
+
+### 📋 Scoped feedback
+
+An observation attached to a bucket, a scoring round, or an entire run — not to any individual paper.
+
+Three scopes:
+
+- **bucket** — a comment on a filter-review bucket (e.g. "the MAYBE bucket is full of tangential CV papers"). Attached to the YES / MAYBE / NO group you're looking at.
+- **score-review** — the free-text "feedback on this scoring round" field at Gate 2. For observations about the scoring spread or batch composition as a whole.
+- **run** — a general note about the entire run, separate from the per-briefing general-comment.
+
+Each scope has a distinct dedupe key (scope + briefing date). If you leave two score-review notes for the same run, the second one replaces the first — latest-wins per scope. These show up in the refinement prompt as labelled sections grouped by date, giving the model the context it needs to act on run-level patterns.
+
 </div>
 
-All five feed the same local feedback store. When you run the refinement flow, it reads everything in the store when deciding what to propose.
+</div>
+
+All six feed the same local feedback store. When you run the refinement flow, it reads everything in the store when deciding what to propose.
 
 ## Where each one appears
 
@@ -97,7 +116,9 @@ General comments are distinctive: they go to the refinement flow as profile-leve
 
 Stars, dismisses, and filter overrides are togglable: only the most recent state matters. If you star a paper, unstar it, then star it again, the refinement flow sees that it's currently starred. Intermediate states are kept in history but don't count as signal on their own.
 
-Comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave _"interesting method"_ on Monday and _"but the evaluation is thin"_ on Tuesday, the flow sees both, in order.
+Paper comments and general comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave _"interesting method"_ on Monday and _"but the evaluation is thin"_ on Tuesday, the flow sees both, in order.
+
+Scoped feedback (bucket / score-review / run) uses latest-wins per scope-dedupe key. If you leave two "score-review" notes for the same run, the second one replaces the first. This is intentional — scoped notes are meant to represent your current assessment of that scope, not accumulate indefinitely.
 
 ::: tip Practical consequence
 Toggle stars and dismisses freely; only the current state counts, so there's no cost to changing your mind. Leave comments a little more deliberately — they accumulate, so their effect on the profile over time is longer-lasting.
@@ -111,7 +132,9 @@ The Feedback panel sits at the bottom of every briefing view, and it's the centr
 
 The top of the panel shows two counts: _new_ events since the last time you ran the refinement flow, and _total_ events ever recorded. _New_ grows as you feed back and resets when you run the flow. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
 
-The same button appears on the Profile page in its own card, right next to your profile text. Either trigger opens the same flow.
+When you have new events that haven't been incorporated into a profile revision yet, the button label gains a suffix: **Suggest improvements → (N new)**. This is a staleness reminder — the number tells you how much signal is sitting unprocessed. The suffix is hidden on first-time users who haven't run the refinement flow yet, because there's no prior profile revision to be "behind."
+
+The same button (with the same suffix logic) appears on the Profile page in its own card, right next to your profile text. Either trigger opens the same flow.
 
 ### The general comment input
 
@@ -133,7 +156,7 @@ The timeline is useful for two things: reminding yourself what you've been marki
 
 ## How much feedback is enough?
 
-The refinement flow works from the aggregate of everything you've given it — all five types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
+The refinement flow works from the aggregate of everything you've given it — all six types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
 
 | Aggregate volume                    | What to expect from the refinement flow                                                                |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
