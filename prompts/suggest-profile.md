@@ -18,6 +18,13 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
 
 2. **Weight signals by importance.** Stars and dismisses are explicit up/down votes on whole papers. Per-paper comments add nuance. General comments inform overall framing; when a general comment is shown, the briefing it was written against may be included beneath it as context — read the comment against that briefing, not in isolation. Filter overrides (when present) mean the user disagreed with the Stage 1 triage — if they are frequent or all in one direction (e.g., the user keeps flipping NO → YES on a specific topic), it suggests the profile may be too narrow for the filter stage and should be broadened in that area.
 
+   Weight signals by section:
+   - **Per-paper signals** (stars / dismisses / paper-comments / overrides) reflect concrete preferences. Strong direct signal. When an override appears with comments inline, treat the comments as rationale for that specific verdict change.
+   - **Bucket-level observations** reflect aggregate filter behavior, scoped to a particular bucket (YES / MAYBE / NO). Use to adjust criteria breadth or specificity in that direction.
+   - **Score-review notes** reflect calibration concerns about scoring. Use to adjust strictness or scoring criteria.
+   - **Run-level observations** reflect pipeline behavior at scale (filter aggressiveness, subcategory mix, scoring distribution). Use as background context for proposed changes.
+   - **General comments** are editorial reactions to specific briefings. Use to adjust framing and synthesis preferences.
+
    **If a USER GUIDANCE block appears at the top of this prompt, it is the highest-priority signal.** Let it shape the direction and emphasis of your proposed edits; use the feedback events below to ground concrete, cited changes that implement the guidance.
 
 3. **Make small, specific changes.** An addition should be a sentence or phrase, not a paragraph. Prefer "added bullet about mechanistic interpretability" over "rewrote the Methods section."
