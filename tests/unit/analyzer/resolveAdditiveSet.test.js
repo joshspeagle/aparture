@@ -83,4 +83,16 @@ describe('resolveAdditiveSet', () => {
     });
     expect(out).toEqual([]);
   });
+  it('starred and dismissed sets overlapping → dismissal wins (paper excluded)', () => {
+    const papers = [mkPaper('a', 10), mkPaper('b', 9), mkPaper('c', 8)];
+    // Paper 'c' is both starred (promotion candidate) and dismissed
+    const out = resolveAdditiveSet({
+      availablePapers: papers,
+      maxDeepAnalysis: 2,
+      starredIds: new Set(['c']),
+      dismissedIds: new Set(['c']),
+    });
+    // c gets promoted then immediately stripped — final set is top-N only
+    expect(out.map((p) => p.id)).toEqual(['a', 'b']);
+  });
 });
