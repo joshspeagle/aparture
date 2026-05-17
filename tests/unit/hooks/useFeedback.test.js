@@ -247,4 +247,41 @@ describe('addScopedFeedback — run scope', () => {
     });
     expect(result.current.events).toHaveLength(2);
   });
+
+  it('cross-scope isolation: bucket, score-review, and run are independent on same briefingDate', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'bucket comment',
+        briefingDate: '2026-05-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'score review comment',
+        briefingDate: '2026-05-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'run' },
+        text: 'run comment',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(3);
+
+    act(() => {
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'updated',
+        briefingDate: '2026-05-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(3);
+    const scoreReviewEvent = result.current.events.find((e) => e.scope?.kind === 'score-review');
+    expect(scoreReviewEvent.text).toBe('updated');
+    const bucketEvent = result.current.events.find((e) => e.scope?.kind === 'bucket');
+    expect(bucketEvent.text).toBe('bucket comment');
+    const runEvent = result.current.events.find((e) => e.scope?.kind === 'run');
+    expect(runEvent.text).toBe('run comment');
+  });
 });
