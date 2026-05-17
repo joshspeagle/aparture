@@ -15,6 +15,7 @@ import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
 import FilterResultsList from '../filter/FilterResultsList.jsx';
 import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
+import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
 import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
@@ -69,6 +70,8 @@ export default function MainArea({
   onSetVerdict,
   bucketFeedbackByBucket,
   onBucketFeedback,
+  scoreReviewFeedbackSavedText,
+  onScoreReviewFeedback,
   onAddPaperComment,
   onContinueAfterFilter,
   onContinueAfterScoreReview,
@@ -208,7 +211,15 @@ export default function MainArea({
                 onStar={onMSStar}
                 onDismiss={onMSDismiss}
                 onContinue={onContinueAfterScoreReview}
-                // TODO Phase 3 (Task 3.1+): pass scopedCommentInput={<ScopedCommentInput scope={{kind:'score-review'}} placeholder={SCORE_REVIEW_PLACEHOLDER} onSave={handleScoreReviewFeedback} />}
+                scopedCommentInput={
+                  <ScopedCommentInput
+                    scope={{ kind: 'score-review' }}
+                    triggerLabel="+ feedback on this scoring round"
+                    placeholder='e.g., "Lots of pure theory today — I would promote the applied papers over the strict-relevance ranking." Or: "Top-N looks right but I think paper N+3 is a sleeper — starring it." Or: "Scoring spread is too compressed; many borderline ones look genuinely interesting."'
+                    savedText={scoreReviewFeedbackSavedText}
+                    onSave={onScoreReviewFeedback}
+                  />
+                }
                 // TODO Phase 7 (Task 7.1): pass onSkipRemaining={skipRemainingGates}
               />
             </div>

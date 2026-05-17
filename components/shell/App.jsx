@@ -853,6 +853,26 @@ export default function App() {
     [feedback]
   );
 
+  // --- Score-review feedback ---
+  const scoreReviewFeedbackSavedText = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const event = feedback.events.find(
+      (e) =>
+        e.type === 'scoped-feedback' && e.scope?.kind === 'score-review' && e.briefingDate === today
+    );
+    return event?.text ?? '';
+  }, [feedback.events]);
+
+  const handleScoreReviewFeedback = useCallback(
+    (text) =>
+      feedback.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text,
+        briefingDate: new Date().toISOString().slice(0, 10),
+      }),
+    [feedback]
+  );
+
   // --- Filter row paper comment ---
   const handleFilterRowComment = useCallback(
     ({ arxivId, text }) => {
@@ -1262,6 +1282,8 @@ export default function App() {
           onSetVerdict={setFilterVerdict}
           bucketFeedbackByBucket={bucketFeedbackByBucket}
           onBucketFeedback={handleBucketFeedback}
+          scoreReviewFeedbackSavedText={scoreReviewFeedbackSavedText}
+          onScoreReviewFeedback={handleScoreReviewFeedback}
           onAddPaperComment={handleFilterRowComment}
           onContinueAfterFilter={() => {
             pauseRef.current = false;
