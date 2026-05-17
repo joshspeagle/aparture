@@ -130,6 +130,7 @@ export default function ProgressTimeline({
   pauseBeforeBriefing,
   onContinueAfterFilter,
   onContinueAfterReview,
+  onSkipRemainingGates,
   children,
 }) {
   const processing = useAnalyzerStore((s) => s.processing);
@@ -267,11 +268,36 @@ export default function ProgressTimeline({
                       >
                         Use the filter results panel below to override verdicts, then continue.
                       </div>
-                      {onContinueAfterFilter && (
-                        <Button variant="primary" onClick={onContinueAfterFilter}>
-                          Continue to scoring →
-                        </Button>
-                      )}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'var(--aparture-space-4)',
+                        }}
+                      >
+                        {onContinueAfterFilter && (
+                          <Button variant="primary" onClick={onContinueAfterFilter}>
+                            Continue to scoring →
+                          </Button>
+                        )}
+                        {onSkipRemainingGates && (
+                          <button
+                            type="button"
+                            onClick={onSkipRemainingGates}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--aparture-mute)',
+                              fontSize: 'var(--aparture-text-xs)',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              padding: 0,
+                            }}
+                          >
+                            Skip remaining gates this run
+                          </button>
+                        )}
+                      </div>
                     </Card>
                   </div>
                 )}
@@ -320,11 +346,36 @@ export default function ProgressTimeline({
                         Analysis complete — review results and add stars/dismissals before
                         generating your briefing.
                       </div>
-                      {onContinueAfterReview && (
-                        <Button variant="primary" onClick={onContinueAfterReview}>
-                          Continue to briefing →
-                        </Button>
-                      )}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 'var(--aparture-space-4)',
+                        }}
+                      >
+                        {onContinueAfterReview && (
+                          <Button variant="primary" onClick={onContinueAfterReview}>
+                            Continue to briefing →
+                          </Button>
+                        )}
+                        {onSkipRemainingGates && (
+                          <button
+                            type="button"
+                            onClick={onSkipRemainingGates}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--aparture-mute)',
+                              fontSize: 'var(--aparture-text-xs)',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              padding: 0,
+                            }}
+                          >
+                            Skip remaining gates this run
+                          </button>
+                        )}
+                      </div>
                     </Card>
                   </div>
                 )}
