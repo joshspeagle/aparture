@@ -18,9 +18,10 @@ When you click <span class="ui-action">Generate suggestion</span>, the model rec
 
 - Your current profile text.
 - Every paper you've **starred** or **dismissed** — the current state per paper, so if you starred then un-starred a paper, the model only sees that it's un-starred.
-- Every paper with a **filter override** — the current verdict plus what the override signals (too narrow or too broad).
+- Every paper with a **filter override** — the current verdict plus what the override signals (too narrow or too broad). When a paper also has a **paper comment** from the same run, the two are presented as a single combined block: _"overrode NO → YES, with comment: [your rationale]"_. This pairing gives the model cleaner context than either signal alone.
 - Your most recent **paper comments** — capped at the most recent 30. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
 - Your most recent **general comments** — same 30-item cap. Each one is paired with the briefing it was written against (executive summary, theme titles and arguments, and per-paper pitches), so the model can interpret reactions like _"this one leaned too heavily on interpretability"_ with the right context.
+- **Scoped feedback** (bucket-level, score-review, and run-level observations), grouped by `briefingDate`. These appear as three labelled sections in the prompt — `BUCKET-LEVEL OBSERVATIONS`, `SCORE-REVIEW NOTES`, and `RUN-LEVEL OBSERVATIONS` — so the model knows which scope each note belongs to and can weight run-level patterns accordingly. Filter-override events and scoped-feedback events are passed through uncapped (both are latest-wins or have no natural numeric accumulation).
 - Any **per-call guidance** you type in (see below).
 
 The model's job is to read these signals and propose surgical edits that align your profile with what the feedback suggests you actually want.
