@@ -63,3 +63,61 @@ describe('applyCap', () => {
     expect(stats.trimmed).toBe(false);
   });
 });
+
+describe('applyCap — scoped-feedback passthrough', () => {
+  it('passes scoped-feedback events through uncapped', () => {
+    const events = [
+      { id: '1', type: 'star', arxivId: 'a', timestamp: 1 },
+      {
+        id: '2',
+        type: 'scoped-feedback',
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'yes-note',
+        briefingDate: '2026-05-17',
+        timestamp: 2,
+      },
+      {
+        id: '3',
+        type: 'scoped-feedback',
+        scope: { kind: 'score-review' },
+        text: 'score-note',
+        briefingDate: '2026-05-17',
+        timestamp: 3,
+      },
+      {
+        id: '4',
+        type: 'scoped-feedback',
+        scope: { kind: 'run' },
+        text: 'run-note',
+        briefingDate: '2026-05-17',
+        timestamp: 4,
+      },
+    ];
+    const { kept } = applyCap(events);
+    const keptIds = kept.map((e) => e.id).sort();
+    expect(keptIds).toEqual(['1', '2', '3', '4']);
+  });
+
+  it('exposes a scopedFeedback count in stats', () => {
+    const events = [
+      {
+        id: '1',
+        type: 'scoped-feedback',
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 't',
+        briefingDate: '2026-05-17',
+        timestamp: 1,
+      },
+      {
+        id: '2',
+        type: 'scoped-feedback',
+        scope: { kind: 'run' },
+        text: 't',
+        briefingDate: '2026-05-17',
+        timestamp: 2,
+      },
+    ];
+    const { stats } = applyCap(events);
+    expect(stats.scopedFeedback).toBe(2);
+  });
+});
