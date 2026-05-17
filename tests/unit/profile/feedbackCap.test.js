@@ -121,3 +121,47 @@ describe('applyCap — scoped-feedback passthrough', () => {
     expect(stats.scopedFeedback).toBe(2);
   });
 });
+
+describe('applyCap — filter-override passthrough', () => {
+  it('passes filter-override events through uncapped', () => {
+    const events = [
+      { id: '1', type: 'star', arxivId: 'a', timestamp: 1 },
+      {
+        id: '2',
+        type: 'filter-override',
+        arxivId: 'b',
+        originalVerdict: 'NO',
+        newVerdict: 'YES',
+        briefingDate: '2026-05-17',
+        timestamp: 2,
+      },
+    ];
+    const { kept } = applyCap(events);
+    expect(kept.map((e) => e.id).sort()).toEqual(['1', '2']);
+  });
+
+  it('exposes a filterOverride count in stats', () => {
+    const events = [
+      {
+        id: '1',
+        type: 'filter-override',
+        arxivId: 'a',
+        originalVerdict: 'NO',
+        newVerdict: 'YES',
+        briefingDate: '2026-05-17',
+        timestamp: 1,
+      },
+      {
+        id: '2',
+        type: 'filter-override',
+        arxivId: 'b',
+        originalVerdict: 'YES',
+        newVerdict: 'NO',
+        briefingDate: '2026-05-17',
+        timestamp: 2,
+      },
+    ];
+    const { stats } = applyCap(events);
+    expect(stats.filterOverride).toBe(2);
+  });
+});
