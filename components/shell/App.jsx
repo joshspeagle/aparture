@@ -564,6 +564,12 @@ export default function App() {
   const testState = useAnalyzerStore((s) => s.testState);
   const isAuthenticated = useAnalyzerStore((s) => s.isAuthenticated);
 
+  // MS (score-review gate) state.
+  const msStarredIds = useAnalyzerStore((s) => s.msStarredIds);
+  const msDismissedIds = useAnalyzerStore((s) => s.msDismissedIds);
+  const msAddStar = useAnalyzerStore((s) => s.msAddStar);
+  const msAddDismiss = useAnalyzerStore((s) => s.msAddDismiss);
+
   const {
     podcastDuration,
     notebookLMModel,
@@ -823,6 +829,53 @@ export default function App() {
       });
     },
     [setFilterResults]
+  );
+
+  // --- Score-review gate handlers ---
+  // Resume the pipeline after the user clicks Continue in ScoreReviewSurface.
+  const handleResumeFromScoreReview = useCallback(() => {
+    pauseRef.current = false;
+    setProcessing((prev) => ({ ...prev, isPaused: false }));
+  }, [setProcessing]);
+
+  // Star a paper at the score-review gate: updates the MS store AND fires a
+  // useFeedback event so the selection flows into the suggest-profile prompt.
+  const handleMSStar = useCallback(
+    (id) => {
+      msAddStar(id);
+      const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
+      if (paper) {
+        const today = new Date().toISOString().slice(0, 10);
+        feedback.addStar({
+          arxivId: paper.arxivId ?? paper.id,
+          paperTitle: paper.title,
+          quickSummary: paper.filterSummary ?? '',
+          score: paper.relevanceScore,
+          briefingDate: today,
+        });
+      }
+    },
+    [msAddStar, results, feedback]
+  );
+
+  // Dismiss a paper at the score-review gate: updates the MS store AND fires a
+  // useFeedback event.
+  const handleMSDismiss = useCallback(
+    (id) => {
+      msAddDismiss(id);
+      const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
+      if (paper) {
+        const today = new Date().toISOString().slice(0, 10);
+        feedback.addDismiss({
+          arxivId: paper.arxivId ?? paper.id,
+          paperTitle: paper.title,
+          quickSummary: paper.filterSummary ?? '',
+          score: paper.relevanceScore,
+          briefingDate: today,
+        });
+      }
+    },
+    [msAddDismiss, results, feedback]
   );
 
   // --- Briefing generation ---
@@ -1171,10 +1224,15 @@ export default function App() {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));
           }}
+          onContinueAfterScoreReview={handleResumeFromScoreReview}
           onContinueAfterReview={() => {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));
           }}
+          msStarredIds={msStarredIds}
+          msDismissedIds={msDismissedIds}
+          onMSStar={handleMSStar}
+          onMSDismiss={handleMSDismiss}
           // Briefing card (generate button)
           synthesizing={synthesizing}
           synthesisError={synthesisError}

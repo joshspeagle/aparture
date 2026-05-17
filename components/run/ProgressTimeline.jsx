@@ -21,6 +21,7 @@ function resolveStageIndex(pipelineStage) {
     'initial-scoring': 2,
     'Post-Processing': 3, // between scoring and deep analysis
     selecting: 3,
+    'score-review': 3, // paused between scoring and deep analysis
     'deep-analysis': 4,
     'pre-briefing-review': 5, // paused between analysis and briefing
     synthesizing: 5,

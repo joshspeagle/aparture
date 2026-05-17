@@ -14,6 +14,7 @@ import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
 import FilterResultsList from '../filter/FilterResultsList.jsx';
+import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
 import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
@@ -67,7 +68,12 @@ export default function MainArea({
   getProgressPercentage: _getProgressPercentage,
   onSetVerdict,
   onContinueAfterFilter,
+  onContinueAfterScoreReview,
   onContinueAfterReview,
+  msStarredIds,
+  msDismissedIds,
+  onMSStar,
+  onMSDismiss,
   // Briefing card (generate button)
   synthesizing,
   synthesisError,
@@ -184,6 +190,23 @@ export default function MainArea({
             processing={processing}
             onSetVerdict={onSetVerdict}
           />
+
+          {/* Score-review gate surface — shown when pipeline is paused at 'score-review' */}
+          {processing.stage === 'score-review' && results.availablePapers && (
+            <div style={{ marginTop: 'var(--aparture-space-4)' }}>
+              <ScoreReviewSurface
+                availablePapers={results.availablePapers}
+                maxDeepAnalysis={config?.maxDeepAnalysis ?? 10}
+                starredIds={msStarredIds}
+                dismissedIds={msDismissedIds}
+                onStar={onMSStar}
+                onDismiss={onMSDismiss}
+                onContinue={onContinueAfterScoreReview}
+                // TODO Phase 3 (Task 3.1+): pass scopedCommentInput={<ScopedCommentInput scope={{kind:'score-review'}} placeholder={SCORE_REVIEW_PLACEHOLDER} onSave={handleScoreReviewFeedback} />}
+                // TODO Phase 7 (Task 7.1): pass onSkipRemaining={skipRemainingGates}
+              />
+            </div>
+          )}
 
           {/* Scored / analyzed papers */}
           <AnalysisResultsList
