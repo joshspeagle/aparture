@@ -1,6 +1,15 @@
 import Button from '../ui/Button.jsx';
 
-export default function FeedbackHeader({ newCount, totalCount, onSuggestClick }) {
+export default function FeedbackHeader({
+  newCount,
+  totalCount,
+  onSuggestClick,
+  lastFeedbackCutoff,
+}) {
+  const showSuffix = lastFeedbackCutoff != null && newCount > 0;
+  const buttonLabel = showSuffix
+    ? `Suggest improvements (${newCount} new) →`
+    : 'Suggest improvements →';
   return (
     <header
       style={{
@@ -33,7 +42,7 @@ export default function FeedbackHeader({ newCount, totalCount, onSuggestClick })
         </p>
       </div>
       <Button variant="primary" onClick={onSuggestClick}>
-        Suggest improvements
+        {buttonLabel}
       </Button>
     </header>
   );
