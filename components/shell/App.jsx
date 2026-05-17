@@ -831,6 +831,46 @@ export default function App() {
     [setFilterResults]
   );
 
+  // --- Bucket feedback ---
+  const bucketFeedbackByBucket = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const events = feedback.events.filter(
+      (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'bucket' && e.briefingDate === today
+    );
+    return events.reduce((acc, e) => {
+      acc[e.scope.bucket] = e.text;
+      return acc;
+    }, {});
+  }, [feedback.events]);
+
+  const handleBucketFeedback = useCallback(
+    ({ bucket, text }) =>
+      feedback.addScopedFeedback({
+        scope: { kind: 'bucket', bucket },
+        text,
+        briefingDate: new Date().toISOString().slice(0, 10),
+      }),
+    [feedback]
+  );
+
+  // --- Filter row paper comment ---
+  const handleFilterRowComment = useCallback(
+    ({ arxivId, text }) => {
+      const today = new Date().toISOString().slice(0, 10);
+      feedback.addPaperComment(
+        {
+          arxivId,
+          paperTitle: '',
+          quickSummary: '',
+          score: null,
+          briefingDate: today,
+        },
+        text
+      );
+    },
+    [feedback]
+  );
+
   // --- Score-review gate handlers ---
   // Resume the pipeline after the user clicks Continue in ScoreReviewSurface.
   const handleResumeFromScoreReview = useCallback(() => {
@@ -1220,6 +1260,9 @@ export default function App() {
           getStageDisplay={getStageDisplay}
           getProgressPercentage={getProgressPercentage}
           onSetVerdict={setFilterVerdict}
+          bucketFeedbackByBucket={bucketFeedbackByBucket}
+          onBucketFeedback={handleBucketFeedback}
+          onAddPaperComment={handleFilterRowComment}
           onContinueAfterFilter={() => {
             pauseRef.current = false;
             setProcessing((prev) => ({ ...prev, isPaused: false }));

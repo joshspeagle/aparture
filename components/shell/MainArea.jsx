@@ -67,6 +67,9 @@ export default function MainArea({
   getStageDisplay: _getStageDisplay,
   getProgressPercentage: _getProgressPercentage,
   onSetVerdict,
+  bucketFeedbackByBucket,
+  onBucketFeedback,
+  onAddPaperComment,
   onContinueAfterFilter,
   onContinueAfterScoreReview,
   onContinueAfterReview,
@@ -189,6 +192,9 @@ export default function MainArea({
             testState={testState}
             processing={processing}
             onSetVerdict={onSetVerdict}
+            bucketFeedbackByBucket={bucketFeedbackByBucket}
+            onBucketFeedback={onBucketFeedback}
+            onAddPaperComment={onAddPaperComment}
           />
 
           {/* Score-review gate surface — shown when pipeline is paused at 'score-review' */}

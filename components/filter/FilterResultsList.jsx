@@ -1,6 +1,15 @@
+import { useState } from 'react';
 import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
+import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
+
+const BUCKET_PLACEHOLDERS = {
+  YES: 'e.g., "Lots of pure theory today — I\'m more interested in applied work this quarter." Or: "Missing the diffusion-model angle I\'ve been tracking — expected 1-2 papers there." Or: "Too many marginal hits — please be stricter about novelty."',
+  MAYBE:
+    'e.g., "Most of these look like they should have been NO — raise the floor." Or: "I keep wanting to move these to YES — the filter is too cautious here." Or: "MAYBE feels right today — these are genuinely uncertain."',
+  NO: 'e.g., "Too aggressive — I\'d expect more of these to reach scoring." Or: "Good rejection bar — these are clearly off-topic." Or: "Lots of borderline ones got filtered — methodology criteria are too strict."',
+};
 
 const VERDICT_COLORS = {
   YES: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
@@ -47,7 +56,78 @@ function VerdictButton({ option, isActive, disabled, originalVerdict, onClick })
   );
 }
 
-function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onSetVerdict }) {
+function RowComment({ arxivId, onAddPaperComment }) {
+  const [expanded, setExpanded] = useState(false);
+  const [text, setText] = useState('');
+
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--aparture-mute, #6b7280)',
+          fontSize: 'var(--aparture-text-xs, 12px)',
+          cursor: 'pointer',
+          padding: '2px 0',
+        }}
+      >
+        💬 add comment
+      </button>
+    );
+  }
+
+  const save = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setExpanded(false);
+      return;
+    }
+    onAddPaperComment({ arxivId, text: trimmed });
+    setExpanded(false);
+    setText('');
+  };
+
+  return (
+    <div style={{ marginTop: '6px' }}>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={2}
+        placeholder="Comment on this paper (optional, no verdict change required)"
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          border: '1px solid var(--aparture-border, #d1d5db)',
+          borderRadius: '4px',
+          fontSize: 'var(--aparture-text-xs, 12px)',
+          fontFamily: 'var(--aparture-font-sans, inherit)',
+        }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
+        <button
+          onClick={() => setExpanded(false)}
+          style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}
+        >
+          cancel
+        </button>
+        <button onClick={save} style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}>
+          save
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FilterResultRow({
+  paper,
+  verdict,
+  borderColor,
+  processingIsRunning,
+  onSetVerdict,
+  onAddPaperComment,
+}) {
   const overridden = paper.originalVerdict && paper.originalVerdict !== verdict;
 
   return (
@@ -121,6 +201,14 @@ function FilterResultRow({ paper, verdict, borderColor, processingIsRunning, onS
               {paper.filterJustification}
             </p>
           )}
+          {onAddPaperComment && (
+            <div style={{ marginTop: '6px' }}>
+              <RowComment
+                arxivId={paper.arxivId ?? paper.id}
+                onAddPaperComment={onAddPaperComment}
+              />
+            </div>
+          )}
         </div>
         <div
           style={{
@@ -157,20 +245,28 @@ export default function FilterResultsList({
   testState,
   processing,
   onSetVerdict,
+  bucketFeedbackByBucket,
+  onBucketFeedback,
+  onAddPaperComment,
 }) {
   const hasAny =
     filterResults.yes.length > 0 || filterResults.maybe.length > 0 || filterResults.no.length > 0;
-  if (!hasAny) return null;
+  const hasFeedbackProps = onBucketFeedback != null;
+  if (!hasAny && !hasFeedbackProps) return null;
 
   // Allow verdict overrides during the filter-review pause (the whole
   // point of that gate) even though processing.isRunning is still true.
-  const disableOverrides = processing.isRunning && processing.stage !== 'filter-review';
+  const disableOverrides =
+    (processing?.isRunning ?? false) && processing?.stage !== 'filter-review';
 
   // Show ALL papers in each bucket, not just unscored ones. The old
   // layout hid already-scored papers to avoid duplication, but in the
   // sidebar layout filter results and scoring results live on separate
   // views so hiding them just makes the filter output look incomplete.
-  const { scoredYesCount, scoredMaybeCount } = filterSortedPapers;
+  const { scoredYesCount, scoredMaybeCount } = filterSortedPapers ?? {
+    scoredYesCount: 0,
+    scoredMaybeCount: 0,
+  };
 
   const testBadgeStyle = {
     marginLeft: '12px',
@@ -189,9 +285,24 @@ export default function FilterResultsList({
     fontFamily: 'var(--aparture-font-sans)',
     fontSize: 'var(--aparture-text-sm)',
     fontWeight: 500,
-    marginBottom: '8px',
+    marginBottom: '4px',
     color,
   });
+
+  const renderBucketFeedback = (bucket) => {
+    if (!onBucketFeedback) return null;
+    return (
+      <div style={{ marginBottom: '8px' }}>
+        <ScopedCommentInput
+          scope={{ kind: 'bucket', bucket }}
+          triggerLabel="+ feedback on this bucket"
+          placeholder={BUCKET_PLACEHOLDERS[bucket]}
+          savedText={bucketFeedbackByBucket?.[bucket] ?? ''}
+          onSave={(text) => onBucketFeedback({ bucket, text })}
+        />
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -222,7 +333,7 @@ export default function FilterResultsList({
             </span>
           )}
         </h2>
-        {testState.dryRunInProgress && (
+        {testState?.dryRunInProgress && (
           <span style={testBadgeStyle}>
             <TestTube className="w-3 h-3" />
             TEST DATA
@@ -231,22 +342,23 @@ export default function FilterResultsList({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
-        {filterResults.yes.length > 0 && (
-          <div>
-            <h3 style={sectionTitleStyle('#22c55e')}>
-              {'\u2713'} YES ({filterResults.yes.length})
-              {scoredYesCount > 0 && (
-                <span
-                  style={{
-                    fontSize: 'var(--aparture-text-xs)',
-                    color: 'var(--aparture-mute)',
-                    marginLeft: '8px',
-                  }}
-                >
-                  ({scoredYesCount} scored)
-                </span>
-              )}
-            </h3>
+        <div>
+          <h3 style={sectionTitleStyle('#22c55e')}>
+            {'\u2713'} YES ({filterResults.yes.length})
+            {scoredYesCount > 0 && (
+              <span
+                style={{
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  marginLeft: '8px',
+                }}
+              >
+                ({scoredYesCount} scored)
+              </span>
+            )}
+          </h3>
+          {renderBucketFeedback('YES')}
+          {filterResults.yes.length > 0 && (
             <div
               style={{
                 display: 'flex',
@@ -265,28 +377,30 @@ export default function FilterResultsList({
                   borderColor="rgba(34,197,94,0.2)"
                   processingIsRunning={disableOverrides}
                   onSetVerdict={onSetVerdict}
+                  onAddPaperComment={onAddPaperComment}
                 />
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {filterResults.maybe.length > 0 && (
-          <div>
-            <h3 style={sectionTitleStyle('#f59e0b')}>
-              ? MAYBE ({filterResults.maybe.length})
-              {scoredMaybeCount > 0 && (
-                <span
-                  style={{
-                    fontSize: 'var(--aparture-text-xs)',
-                    color: 'var(--aparture-mute)',
-                    marginLeft: '8px',
-                  }}
-                >
-                  ({scoredMaybeCount} scored)
-                </span>
-              )}
-            </h3>
+        <div>
+          <h3 style={sectionTitleStyle('#f59e0b')}>
+            ? MAYBE ({filterResults.maybe.length})
+            {scoredMaybeCount > 0 && (
+              <span
+                style={{
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  marginLeft: '8px',
+                }}
+              >
+                ({scoredMaybeCount} scored)
+              </span>
+            )}
+          </h3>
+          {renderBucketFeedback('MAYBE')}
+          {filterResults.maybe.length > 0 && (
             <div
               style={{
                 display: 'flex',
@@ -305,17 +419,19 @@ export default function FilterResultsList({
                   borderColor="rgba(245,158,11,0.2)"
                   processingIsRunning={disableOverrides}
                   onSetVerdict={onSetVerdict}
+                  onAddPaperComment={onAddPaperComment}
                 />
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {filterResults.no.length > 0 && (
-          <div>
-            <h3 style={sectionTitleStyle('#ef4444')}>
-              {'\u2717'} NO ({filterResults.no.length} filtered out)
-            </h3>
+        <div>
+          <h3 style={sectionTitleStyle('#ef4444')}>
+            {'\u2717'} NO ({filterResults.no.length} filtered out)
+          </h3>
+          {renderBucketFeedback('NO')}
+          {filterResults.no.length > 0 && (
             <div
               style={{
                 display: 'flex',
@@ -334,11 +450,12 @@ export default function FilterResultsList({
                   borderColor="rgba(239,68,68,0.2)"
                   processingIsRunning={disableOverrides}
                   onSetVerdict={onSetVerdict}
+                  onAddPaperComment={onAddPaperComment}
                 />
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {(filterResults.yes.length > 0 ||
           filterResults.maybe.length > 0 ||
