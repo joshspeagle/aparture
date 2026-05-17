@@ -44,7 +44,7 @@ describe('ScopedCommentInput', () => {
     fireEvent.click(screen.getByText('+ trigger'));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '  hello  ' } });
     fireEvent.click(screen.getByText('save'));
-    expect(onSave).toHaveBeenCalledWith('hello');
+    expect(onSave).toHaveBeenCalledWith({ scope: { kind: 'run' }, text: 'hello' });
   });
 
   it('empty save is a no-op', () => {

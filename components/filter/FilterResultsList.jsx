@@ -298,7 +298,7 @@ export default function FilterResultsList({
           triggerLabel="+ feedback on this bucket"
           placeholder={BUCKET_PLACEHOLDERS[bucket]}
           savedText={bucketFeedbackByBucket?.[bucket] ?? ''}
-          onSave={(text) => onBucketFeedback({ bucket, text })}
+          onSave={({ scope, text }) => onBucketFeedback({ bucket: scope.bucket, text })}
         />
       </div>
     );

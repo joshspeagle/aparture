@@ -61,7 +61,7 @@ export default function FeedbackPanel({
           triggerLabel="+ feedback on this run"
           placeholder={RUN_FEEDBACK_PLACEHOLDER}
           savedText={runFeedbackSavedText}
-          onSave={onRunFeedback}
+          onSave={({ text }) => onRunFeedback(text)}
         />
       </div>
 

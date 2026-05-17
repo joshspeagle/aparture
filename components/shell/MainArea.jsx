@@ -229,7 +229,7 @@ export default function MainArea({
                     triggerLabel="+ feedback on this scoring round"
                     placeholder='e.g., "Lots of pure theory today — I would promote the applied papers over the strict-relevance ranking." Or: "Top-N looks right but I think paper N+3 is a sleeper — starring it." Or: "Scoring spread is too compressed; many borderline ones look genuinely interesting."'
                     savedText={scoreReviewFeedbackSavedText}
-                    onSave={onScoreReviewFeedback}
+                    onSave={({ text }) => onScoreReviewFeedback(text)}
                   />
                 }
               />

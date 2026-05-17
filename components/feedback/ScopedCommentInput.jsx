@@ -2,7 +2,7 @@ import { useState } from 'react';
 import TextArea from '../ui/TextArea.jsx';
 
 export default function ScopedCommentInput({
-  scope: _scope,
+  scope,
   triggerLabel,
   placeholder,
   savedText = '',
@@ -81,7 +81,7 @@ export default function ScopedCommentInput({
       setExpanded(false);
       return;
     }
-    onSave(trimmed);
+    onSave({ scope, text: trimmed });
     setExpanded(false);
   };
 
