@@ -928,6 +928,13 @@ export default function App() {
   // always have arxivId; the asymmetry exists only to handle pre-feature
   // edge cases where a paper might carry only `id`.
 
+  // useCallback deps include `feedback` (the whole hook return object) rather
+  // than specific methods like feedback.addStar. The hook return is referentially
+  // stable per render (useFeedback returns a stable object), so this is
+  // equivalent to listing individual methods but matches the existing pattern
+  // in the codebase. Don't refactor to method-level deps without confirming
+  // stability of the hook return.
+
   // Star a paper at the score-review gate: updates the MS store AND fires a
   // useFeedback event so the selection flows into the suggest-profile prompt.
   const handleMSStar = useCallback(
