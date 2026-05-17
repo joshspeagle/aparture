@@ -10,6 +10,15 @@ function labelFor(event) {
   if (event.type === 'general-comment') {
     return `${icon} general comment`;
   }
+  if (event.type === 'scoped-feedback') {
+    const scopeLabel =
+      event.scope.kind === 'bucket'
+        ? `${event.scope.bucket} bucket`
+        : event.scope.kind === 'score-review'
+          ? 'score-review note'
+          : 'run note';
+    return `${icon} ${scopeLabel}`;
+  }
   if (event.type === 'filter-override') {
     return `${icon} filter override on ${event.paperTitle ?? event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
   }
@@ -38,6 +47,7 @@ export default function FeedbackItem({ event }) {
   const isGeneral = event.type === 'general-comment';
   const isPaperComment = event.type === 'paper-comment';
   const isFilterOverride = event.type === 'filter-override';
+  const isScopedFeedback = event.type === 'scoped-feedback';
 
   return (
     <article
@@ -51,7 +61,33 @@ export default function FeedbackItem({ event }) {
         borderRadius: '0 4px 4px 0',
       }}
     >
-      {isGeneral ? (
+      {isScopedFeedback ? (
+        <div>
+          <p style={{ fontSize: 'var(--aparture-text-sm)', color: 'var(--aparture-ink)' }}>
+            <span style={{ marginRight: '4px' }} aria-hidden>
+              {icon}
+            </span>
+            {event.scope.kind === 'bucket'
+              ? `${event.scope.bucket} bucket`
+              : event.scope.kind === 'score-review'
+                ? 'Score-review note'
+                : 'Run note'}
+          </p>
+          {event.text && (
+            <p
+              style={{
+                marginTop: '4px',
+                fontSize: 'var(--aparture-text-xs)',
+                fontStyle: 'italic',
+                color: 'var(--aparture-mute)',
+              }}
+            >
+              &ldquo;{event.text}&rdquo;
+            </p>
+          )}
+          <MetaLine event={event} date={date} />
+        </div>
+      ) : isGeneral ? (
         <div>
           <p style={{ fontSize: 'var(--aparture-text-sm)', color: 'var(--aparture-ink)' }}>
             <span style={{ marginRight: '4px' }} aria-hidden>

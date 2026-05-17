@@ -69,4 +69,48 @@ describe('FeedbackItem', () => {
     render(<FeedbackItem event={baseStar} />);
     expect(screen.getByText(/2026-04-10/)).toBeInTheDocument();
   });
+
+  describe('scoped-feedback variant', () => {
+    it('renders bucket-scope label with the bucket name', () => {
+      const event = {
+        id: '1',
+        type: 'scoped-feedback',
+        scope: { kind: 'bucket', bucket: 'YES' },
+        text: 'Too narrow today',
+        briefingDate: '2026-05-17',
+        timestamp: Date.now(),
+      };
+      render(<FeedbackItem event={event} />);
+      expect(screen.getByText(/YES bucket/i)).toBeInTheDocument();
+      expect(screen.getByText(/Too narrow today/)).toBeInTheDocument();
+    });
+
+    it('renders score-review-scope label', () => {
+      const event = {
+        id: '2',
+        type: 'scoped-feedback',
+        scope: { kind: 'score-review' },
+        text: 'Compressed scoring',
+        briefingDate: '2026-05-17',
+        timestamp: Date.now(),
+      };
+      render(<FeedbackItem event={event} />);
+      expect(screen.getByText(/Score-review note/i)).toBeInTheDocument();
+      expect(screen.getByText(/Compressed scoring/)).toBeInTheDocument();
+    });
+
+    it('renders run-scope label', () => {
+      const event = {
+        id: '3',
+        type: 'scoped-feedback',
+        scope: { kind: 'run' },
+        text: 'Filter felt too aggressive',
+        briefingDate: '2026-05-17',
+        timestamp: Date.now(),
+      };
+      render(<FeedbackItem event={event} />);
+      expect(screen.getByText(/Run note/i)).toBeInTheDocument();
+      expect(screen.getByText(/Filter felt too aggressive/)).toBeInTheDocument();
+    });
+  });
 });

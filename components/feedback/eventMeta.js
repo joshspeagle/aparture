@@ -7,6 +7,7 @@ const TYPE_META = {
   'paper-comment': { icon: '💬', borderColor: '#a855f7', label: 'comment' },
   'general-comment': { icon: '💭', borderColor: '#3b82f6', label: 'general' },
   'filter-override': { icon: '⇄', borderColor: '#f97316', label: 'filter override' },
+  'scoped-feedback': { icon: '📋', borderColor: '#6366f1', label: 'scoped feedback' },
 };
 
 const FALLBACK = { icon: '·', borderColor: 'var(--aparture-hairline)', label: 'event' };
