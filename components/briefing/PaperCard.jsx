@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 
+// Stable empty fallback so the Zustand selector returns the same reference
+// when reactContext.seenPapersIndex is undefined (pre-migration). Otherwise
+// the inline `?? {}` would create a new object literal on every selector
+// call and trigger spurious re-renders.
+const EMPTY_SEEN_INDEX = {};
+
 export default function PaperCard({
   paper,
   starred = false,
@@ -23,7 +29,7 @@ export default function PaperCard({
   // set here. Read the live seen-papers index from the store instead and
   // derive the flag from arxivId presence. The lookup is per-render but
   // O(1) and the index is a stable reference between writes.
-  const seenPapersIndex = useAnalyzerStore((s) => s.reactContext?.seenPapersIndex ?? {});
+  const seenPapersIndex = useAnalyzerStore((s) => s.reactContext?.seenPapersIndex ?? EMPTY_SEEN_INDEX);
   const firstSeenDate = seenPapersIndex[paper.arxivId];
   const isDuplicate = Boolean(firstSeenDate);
 

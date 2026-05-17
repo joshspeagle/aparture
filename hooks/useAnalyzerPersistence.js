@@ -431,7 +431,11 @@ export function useAnalyzerPersistence({
           filterResults,
           processingTiming,
         });
+        // Capture both the timestamp AND the allPapers snapshot before the
+        // fetch so they stay paired even if `results` mutates while the
+        // request is in flight.
         const saveTimestamp = Date.now();
+        const papersSnapshot = results?.allPapers ?? [];
         fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -445,7 +449,7 @@ export function useAnalyzerPersistence({
               return;
             }
             const cb = onColdSessionSavedRef.current;
-            if (cb) cb(results?.allPapers ?? [], saveTimestamp);
+            if (cb) cb(papersSnapshot, saveTimestamp);
           })
           .catch((err) => {
             console.warn('[useAnalyzerPersistence] failed to persist session to disk:', err);
