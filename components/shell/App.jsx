@@ -21,6 +21,8 @@ import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
 // Phase 1.5.1 D5 fix: PaperCard hoisted to module scope so React can reconcile
 // cards across re-renders rather than unmount/remount them (which would destroy
 // the inline comment textarea state during active scoring / progress ticks).
@@ -699,17 +701,8 @@ export default function App() {
     }
   }, [currentBriefing]);
 
-  const {
-    startProcessing,
-    runDryRunTest,
-    runMinimalTest,
-    generateNotebookLM,
-    skipRemainingGates: pipelineSkipRemainingGates,
-  } = pipeline;
-
-  const skipRemainingGates = useCallback(() => {
-    pipelineSkipRemainingGates();
-  }, [pipelineSkipRemainingGates]);
+  const { startProcessing, runDryRunTest, runMinimalTest, generateNotebookLM, skipRemainingGates } =
+    pipeline;
 
   // --- Auth handlers ---
   const handleAuth = async () => {
@@ -843,7 +836,7 @@ export default function App() {
 
   // --- Bucket feedback ---
   const bucketFeedbackByBucket = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const events = feedback.events.filter(
       (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'bucket' && e.briefingDate === today
     );
@@ -858,14 +851,14 @@ export default function App() {
       feedback.addScopedFeedback({
         scope: { kind: 'bucket', bucket },
         text,
-        briefingDate: new Date().toISOString().slice(0, 10),
+        briefingDate: todayStr(),
       }),
     [feedback]
   );
 
   // --- Run-scope feedback ---
   const runFeedbackSavedText = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const event = feedback.events.find(
       (e) => e.type === 'scoped-feedback' && e.scope?.kind === 'run' && e.briefingDate === today
     );
@@ -877,14 +870,14 @@ export default function App() {
       feedback.addScopedFeedback({
         scope: { kind: 'run' },
         text,
-        briefingDate: new Date().toISOString().slice(0, 10),
+        briefingDate: todayStr(),
       }),
     [feedback]
   );
 
   // --- Score-review feedback ---
   const scoreReviewFeedbackSavedText = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const event = feedback.events.find(
       (e) =>
         e.type === 'scoped-feedback' && e.scope?.kind === 'score-review' && e.briefingDate === today
@@ -897,7 +890,7 @@ export default function App() {
       feedback.addScopedFeedback({
         scope: { kind: 'score-review' },
         text,
-        briefingDate: new Date().toISOString().slice(0, 10),
+        briefingDate: todayStr(),
       }),
     [feedback]
   );
@@ -905,7 +898,7 @@ export default function App() {
   // --- Filter row paper comment ---
   const handleFilterRowComment = useCallback(
     ({ arxivId, text }) => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayStr();
       feedback.addPaperComment(
         {
           arxivId,
@@ -934,7 +927,7 @@ export default function App() {
       msAddStar(id);
       const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
       if (paper) {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayStr();
         feedback.addStar({
           arxivId: paper.arxivId ?? paper.id,
           paperTitle: paper.title,
@@ -954,7 +947,7 @@ export default function App() {
       msAddDismiss(id);
       const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
       if (paper) {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = todayStr();
         feedback.addDismiss({
           arxivId: paper.arxivId ?? paper.id,
           paperTitle: paper.title,
@@ -989,7 +982,7 @@ export default function App() {
         paperTitle: paper.title,
         quickSummary: paper.deepAnalysis?.summary ?? paper.scoreJustification ?? '',
         score: paper.finalScore ?? paper.relevanceScore ?? 0,
-        briefingDate: new Date().toISOString().slice(0, 10),
+        briefingDate: todayStr(),
       });
     },
     [setResults, feedback]
@@ -1105,7 +1098,7 @@ export default function App() {
     return idx;
   }, [feedback.events]);
 
-  const paperCardBriefingDate = currentBriefing?.date ?? new Date().toISOString().slice(0, 10);
+  const paperCardBriefingDate = currentBriefing?.date ?? todayStr();
   const renderPaperCard = (paper, idx, showDeepAnalysis) => {
     const entry = feedbackIndex.get(paper.id);
     return (
@@ -1298,7 +1291,7 @@ export default function App() {
                 paperTitle: paper.title,
                 quickSummary: paper.quickSummary ?? '',
                 score: paper.score,
-                briefingDate: entry.date ?? new Date().toISOString().slice(0, 10),
+                briefingDate: entry.date ?? todayStr(),
               },
               text
             );
@@ -1368,7 +1361,7 @@ export default function App() {
           runFeedbackSavedText={runFeedbackSavedText}
           onRunFeedback={handleRunFeedback}
           onAddGeneralComment={(text, briefingId) => {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = todayStr();
             feedback.addGeneralComment(text, today, briefingId);
           }}
           onPromotePaper={handlePromotePaper}
