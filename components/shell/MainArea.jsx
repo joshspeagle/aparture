@@ -21,6 +21,7 @@ import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
+import AnalyzedExpander from './AnalyzedExpander.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 
 const PRE_BRIEFING_PLACEHOLDER =
@@ -248,63 +249,12 @@ export default function MainArea({
           {processing.stage === 'pre-briefing-review' &&
             results.allAnalyzedPapers &&
             results.allAnalyzedPapers.length > (results.finalRanking?.length ?? 0) && (
-              <details
-                style={{
-                  marginTop: 'var(--aparture-space-4, 16px)',
-                  padding: 'var(--aparture-space-3, 12px)',
-                  background: 'var(--aparture-surface-2, var(--aparture-surface))',
-                  border: '1px solid var(--aparture-border, var(--aparture-hairline))',
-                  borderRadius: '6px',
-                }}
-              >
-                <summary
-                  style={{
-                    cursor: 'pointer',
-                    fontSize: 'var(--aparture-text-sm, 14px)',
-                    color: 'var(--aparture-mute)',
-                    fontWeight: 500,
-                    fontFamily: 'var(--aparture-font-sans)',
-                  }}
-                >
-                  + Show {results.allAnalyzedPapers.length - (results.finalRanking?.length ?? 0)}{' '}
-                  more PDF-analyzed papers
-                </summary>
-                {results.allAnalyzedPapers
-                  .filter(
-                    (p) =>
-                      !(results.finalRanking ?? []).some(
-                        (top) => (top.id ?? top.arxivId) === (p.id ?? p.arxivId)
-                      )
-                  )
-                  .map((paper, idx) => (
-                    <div
-                      key={paper.id ?? paper.arxivId}
-                      style={{ opacity: 0.7, marginTop: 'var(--aparture-space-2, 8px)' }}
-                    >
-                      {renderPaperCard(paper, (results.finalRanking?.length ?? 0) + idx, true)}
-                      {onPromotePaper && (
-                        <div style={{ marginTop: '4px' }}>
-                          <button
-                            type="button"
-                            onClick={() => onPromotePaper(paper)}
-                            style={{
-                              fontFamily: 'var(--aparture-font-sans)',
-                              fontSize: 'var(--aparture-text-xs)',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              border: '1px solid var(--aparture-hairline)',
-                              background: 'transparent',
-                              color: 'var(--aparture-mute)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ★ promote to briefing
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </details>
+              <AnalyzedExpander
+                allAnalyzedPapers={results.allAnalyzedPapers}
+                finalRanking={results.finalRanking ?? []}
+                renderPaperCard={renderPaperCard}
+                onPromotePaper={onPromotePaper}
+              />
             )}
 
           {/* Pre-briefing general comment — shown when pipeline is paused at pre-briefing-review */}
