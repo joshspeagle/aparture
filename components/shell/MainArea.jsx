@@ -1,9 +1,6 @@
 // components/shell/MainArea.jsx
 // Routes activeView to the correct content panel.
 
-const PRE_BRIEFING_PLACEHOLDER =
-  "e.g., \"Anything to flag about this lineup before we synthesize? — 'Lead with the diffusion-models cluster.' Or: 'These all look strong but I want more methodology depth in the writeup.'\"";
-
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
@@ -25,6 +22,9 @@ import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+
+const PRE_BRIEFING_PLACEHOLDER =
+  "e.g., \"Anything to flag about this lineup before we synthesize? — 'Lead with the diffusion-models cluster.' Or: 'These all look strong but I want more methodology depth in the writeup.'\"";
 
 export default function MainArea({
   activeView,
