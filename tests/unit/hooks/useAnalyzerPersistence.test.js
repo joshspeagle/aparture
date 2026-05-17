@@ -4,6 +4,7 @@ import {
   useAnalyzerPersistence,
   readInitialConfig,
   DEFAULT_CONFIG,
+  migrateLegacyConfig,
 } from '../../../hooks/useAnalyzerPersistence.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
@@ -393,5 +394,30 @@ describe('useAnalyzerPersistence — onColdSessionSaved callback', () => {
     });
 
     expect(onColdSessionSaved).not.toHaveBeenCalled();
+  });
+});
+
+describe('migrateLegacyConfig — v7 → v8', () => {
+  it('adds pauseBeforeDeepAnalysis: true for v7 configs', () => {
+    const v7Config = {
+      version: 7,
+      pauseAfterFilter: true,
+      pauseBeforeBriefing: true,
+      removeDuplicates: true,
+    };
+    const result = migrateLegacyConfig(v7Config);
+    expect(result.pauseBeforeDeepAnalysis).toBe(true);
+    expect(result.version).toBe(8);
+  });
+  it('preserves existing pauseBeforeDeepAnalysis if already set', () => {
+    const config = { version: 7, pauseBeforeDeepAnalysis: false };
+    const result = migrateLegacyConfig(config);
+    expect(result.pauseBeforeDeepAnalysis).toBe(false);
+  });
+});
+
+describe('DEFAULT_CONFIG', () => {
+  it('includes pauseBeforeDeepAnalysis: true', () => {
+    expect(DEFAULT_CONFIG.pauseBeforeDeepAnalysis).toBe(true);
   });
 });

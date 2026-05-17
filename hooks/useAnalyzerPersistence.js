@@ -29,7 +29,7 @@ function generateSessionId() {
 }
 
 export const DEFAULT_CONFIG = {
-  version: 7,
+  version: 8,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -119,11 +119,15 @@ export const DEFAULT_CONFIG = {
   // any LLM call. When false, duplicates are kept but tagged with
   // isDuplicate/firstSeenDate and rendered with a "seen before" badge.
   removeDuplicates: true,
+  // MS gate: when true (default), the pipeline pauses before launching
+  // Stage 4 PDF analysis so the user can review the top-N list and
+  // star/dismiss papers before committing to (potentially expensive) PDF runs.
+  pauseBeforeDeepAnalysis: true,
 };
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
 // (or null if the config should be discarded in favor of fresh defaults).
-function migrateLegacyConfig(config) {
+export function migrateLegacyConfig(config) {
   // Old `categories` string → selectedCategories array
   if (config.categories && !config.selectedCategories) {
     config.selectedCategories = config.categories
@@ -170,6 +174,13 @@ function migrateLegacyConfig(config) {
   if (config.version === 6) {
     config.removeDuplicates = true;
     config.version = 7;
+  }
+
+  // v7 → v8: introduces pauseBeforeDeepAnalysis. Default `true` matches new
+  // installs; use ?? so an explicit `false` in a v7 config is preserved.
+  if (config.version === 7) {
+    config.pauseBeforeDeepAnalysis = config.pauseBeforeDeepAnalysis ?? true;
+    config.version = 8;
   }
 
   // Two-model → three-model setup
