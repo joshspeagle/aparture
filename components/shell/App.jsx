@@ -938,6 +938,34 @@ export default function App() {
     [msAddDismiss, results, feedback]
   );
 
+  // --- Pre-briefing paper promotion ---
+  // ★-ing a cut paper in the expander promotes it into finalRanking so the
+  // briefing synthesizer picks it up when the gate is released.
+  const handlePromotePaper = useCallback(
+    (paper) => {
+      setResults((prev) => {
+        const alreadyIn = (prev.finalRanking ?? []).some(
+          (top) => (top.id ?? top.arxivId) === (paper.id ?? paper.arxivId)
+        );
+        if (alreadyIn) return prev;
+        const merged = [...(prev.finalRanking ?? []), paper].sort(
+          (a, b) =>
+            (b.finalScore ?? b.relevanceScore ?? 0) - (a.finalScore ?? a.relevanceScore ?? 0)
+        );
+        return { ...prev, finalRanking: merged };
+      });
+      // Also record a feedback star so the promotion is visible in the timeline
+      feedback.addStar({
+        arxivId: paper.arxivId ?? paper.id,
+        paperTitle: paper.title,
+        quickSummary: paper.deepAnalysis?.summary ?? paper.scoreJustification ?? '',
+        score: paper.finalScore ?? paper.relevanceScore ?? 0,
+        briefingDate: new Date().toISOString().slice(0, 10),
+      });
+    },
+    [setResults, feedback]
+  );
+
   // --- Briefing generation ---
   const handleGenerateBriefing = () => {
     const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
@@ -1310,6 +1338,7 @@ export default function App() {
             const today = new Date().toISOString().slice(0, 10);
             feedback.addGeneralComment(text, today, briefingId);
           }}
+          onPromotePaper={handlePromotePaper}
           // NotebookLM
           podcastDuration={podcastDuration}
           setPodcastDuration={setPodcastDuration}
