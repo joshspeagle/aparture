@@ -1,7 +1,15 @@
-export default function Checkbox({ checked, onChange, label, disabled, className, ...rest }) {
+export default function Checkbox({
+  checked,
+  onChange,
+  label,
+  description,
+  disabled,
+  className,
+  ...rest
+}) {
   const labelStyle = {
     display: 'inline-flex',
-    alignItems: 'center',
+    alignItems: description ? 'flex-start' : 'center',
     gap: '8px',
     fontFamily: 'var(--aparture-font-sans)',
     fontSize: 'var(--aparture-text-sm)',
@@ -15,6 +23,8 @@ export default function Checkbox({ checked, onChange, label, disabled, className
     width: '16px',
     height: '16px',
     margin: 0,
+    marginTop: description ? '2px' : 0,
+    flexShrink: description ? 0 : undefined,
     cursor: disabled ? 'not-allowed' : 'pointer',
   };
 
@@ -27,7 +37,24 @@ export default function Checkbox({ checked, onChange, label, disabled, className
         disabled={disabled}
         style={inputStyle}
       />
-      {label && <span>{label}</span>}
+      {label &&
+        (description ? (
+          <span>
+            <span>{label}</span>
+            <span
+              style={{
+                display: 'block',
+                marginTop: '2px',
+                color: 'var(--aparture-mute)',
+                fontSize: 'var(--aparture-text-xs)',
+              }}
+            >
+              {description}
+            </span>
+          </span>
+        ) : (
+          <span>{label}</span>
+        ))}
     </label>
   );
 }

@@ -51,7 +51,7 @@ describe('useSeenPapers — recordRun', () => {
     expect(result.current.index['2605.14210']).toBe('2026-05-14');
   });
 
-  it('keeps the most recent date when an arxivId appears twice', () => {
+  it('keeps the EARLIEST date when an arxivId appears twice (first-wins)', () => {
     const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
     act(() => {
       result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-03-01T00:00:00Z'));
@@ -59,7 +59,9 @@ describe('useSeenPapers — recordRun', () => {
     act(() => {
       result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-05-14T00:00:00Z'));
     });
-    expect(result.current.index['2605.14205']).toBe('2026-05-14');
+    // First-wins: the initial date is preserved even when the same ID is
+    // recorded again at a later timestamp.
+    expect(result.current.index['2605.14205']).toBe('2026-03-01');
   });
 
   it('persists the merged index to localStorage', () => {
@@ -195,8 +197,8 @@ describe('useSeenPapers — migration from existing sessions', () => {
     await waitFor(() => expect(result.current.ready).toBe(true));
 
     expect(result.current.index['2605.14205']).toBe('2026-05-10');
-    // 14210 appears in both — most recent wins
-    expect(result.current.index['2605.14210']).toBe('2026-05-12');
+    // 14210 appears in both — earliest date wins (sess-1: 2026-05-10, sess-2: 2026-05-12)
+    expect(result.current.index['2605.14210']).toBe('2026-05-10');
     expect(result.current.index['2605.14211']).toBe('2026-05-12');
     expect(result.current.index._migratedAt).toBeDefined();
   });

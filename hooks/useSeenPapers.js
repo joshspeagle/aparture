@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { AnalysisWorkerPool } from '../lib/analyzer/rateLimit.js';
 
 const STORAGE_KEY = 'aparture-seen-papers-index';
 const HORIZON_DAYS = 90;
@@ -69,11 +70,13 @@ function persistIndex(index) {
 // we don't re-scan on every mount.
 const MIGRATION_CONCURRENCY = 4;
 
-async function migrateFromSessions({ password }) {
+async function migrateFromSessions({ password, signal }) {
   if (typeof window === 'undefined') return null;
   let listRes;
   try {
-    listRes = await fetch(`/api/sessions?password=${encodeURIComponent(password ?? '')}`);
+    listRes = await fetch(`/api/sessions?password=${encodeURIComponent(password ?? '')}`, {
+      signal,
+    });
   } catch (err) {
     console.warn('[useSeenPapers migration] /api/sessions list fetch threw:', err);
     return {};
@@ -86,39 +89,37 @@ async function migrateFromSessions({ password }) {
 
   const merged = {};
 
-  // Concurrency-capped worker pool over ids.
-  const queue = ids.slice();
-  async function worker() {
-    while (queue.length > 0) {
-      const id = queue.shift();
-      if (!id) break;
-      try {
-        const res = await fetch(
-          `/api/sessions/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`
-        );
-        if (!res.ok) {
-          console.warn(`[useSeenPapers migration] session ${id} returned HTTP ${res.status}`);
-          continue;
-        }
-        const entry = await res.json();
-        const ts = entry?.timestamp ?? Date.now();
-        const iso = new Date(ts).toISOString().slice(0, 10);
-        const papers = entry?.results?.allPapers ?? [];
-        for (const paper of papers) {
-          const arxivId = paper?.id;
-          if (!arxivId || arxivId.startsWith('_')) continue;
-          const existing = merged[arxivId];
-          if (!existing || iso > existing) merged[arxivId] = iso;
-        }
-      } catch (err) {
-        console.warn(`[useSeenPapers migration] session ${id} fetch threw:`, err);
+  const pool = new AnalysisWorkerPool({
+    concurrency: MIGRATION_CONCURRENCY,
+    abortSignal: signal,
+  });
+
+  await pool.run(ids, async (id) => {
+    try {
+      const res = await fetch(
+        `/api/sessions/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`,
+        { signal }
+      );
+      if (!res.ok) {
+        console.warn(`[useSeenPapers migration] session ${id} returned HTTP ${res.status}`);
+        return;
       }
+      const entry = await res.json();
+      const ts = entry?.timestamp ?? Date.now();
+      const iso = new Date(ts).toISOString().slice(0, 10);
+      const papers = entry?.results?.allPapers ?? [];
+      for (const paper of papers) {
+        const arxivId = paper?.id;
+        if (!arxivId || arxivId.startsWith('_')) continue;
+        const existing = merged[arxivId];
+        // Earliest-date-wins: keep the oldest known sighting across sessions.
+        if (!existing || iso < existing) merged[arxivId] = iso;
+      }
+    } catch (err) {
+      console.warn(`[useSeenPapers migration] session ${id} fetch threw:`, err);
     }
-  }
-  const workers = Array.from({ length: Math.min(MIGRATION_CONCURRENCY, ids.length || 1) }, () =>
-    worker()
-  );
-  await Promise.all(workers);
+  });
+
   return merged;
 }
 
@@ -135,7 +136,7 @@ async function migrateFromSessions({ password }) {
  *   `index` is the live `{arxivId → ISO date}` map plus a `_migratedAt`
  *   metadata key. `ready` flips true once the one-time migration completes.
  *   `recordRun` merges fresh IDs from a just-saved session into the index
- *   (latest-date-wins) and prunes >90-day entries; usually called from
+ *   (first-date-wins) and prunes >90-day entries; usually called from
  *   the `onColdSessionSaved` callback of useAnalyzerPersistence.
  */
 export function useSeenPapers({ password = '' } = {}) {
@@ -154,9 +155,14 @@ export function useSeenPapers({ password = '' } = {}) {
   // meantime (the pipeline does, in applyDedupe).
   useEffect(() => {
     if (initial?._migratedAt) return;
+    const controller = new AbortController();
     let cancelled = false;
     (async () => {
-      const migrated = (await migrateFromSessions({ password: passwordRef.current })) ?? {};
+      const migrated =
+        (await migrateFromSessions({
+          password: passwordRef.current,
+          signal: controller.signal,
+        })) ?? {};
       if (cancelled) return;
       migrated._migratedAt = Date.now();
       const pruned = pruneOldEntries(migrated, Date.now());
@@ -168,27 +174,38 @@ export function useSeenPapers({ password = '' } = {}) {
       persistIndex(pruned);
     })();
     return () => {
+      controller.abort();
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // recordRun: merge fresh paper IDs from a just-completed run into the
-  // index. Latest-date-wins (so re-running today after a run last week
-  // updates 'firstSeenDate' to today). Prunes >90-day entries on every
-  // call. Persists via safeSetItem; quota failures log but preserve
-  // in-memory state for the session.
+  // index. First-date-wins — once an arxivId has a recorded date, it is
+  // never overwritten. This preserves the "first seen on YYYY-MM-DD" signal
+  // shown in the badge tooltip. Prunes >90-day entries on every call.
+  // Short-circuits (returns same state reference) when no new IDs are found,
+  // so React skips re-renders and persist round-trips on overlapping runs.
+  // Persists via safeSetItem; quota failures log but preserve in-memory
+  // state for the session.
   const recordRun = useCallback((papers, runTimestamp) => {
     const ts = Number.isFinite(runTimestamp) ? runTimestamp : Date.now();
     const stampIso = isoDateUTC(ts);
     setIndex((prev) => {
       const next = { ...prev };
+      let anyChange = false;
       for (const paper of papers ?? []) {
         const id = paper?.id;
         if (!id || id.startsWith('_')) continue;
-        const existing = next[id];
-        if (!existing || stampIso > existing) next[id] = stampIso;
+        // First-wins: only record if this arxivId hasn't been seen before.
+        if (!next[id]) {
+          next[id] = stampIso;
+          anyChange = true;
+        }
       }
+      // If no new IDs were added, return the same reference so React skips
+      // re-renders and we avoid an unnecessary persist round-trip.
+      if (!anyChange) return prev;
       const pruned = pruneOldEntries(next, Date.now());
       if (!pruned._migratedAt) pruned._migratedAt = Date.now();
       persistIndex(pruned);
