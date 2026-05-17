@@ -204,6 +204,45 @@ export const useAnalyzerStore = create((set) => ({
     })),
   clearSkippedDueToRecaptcha: () => set({ skippedDueToRecaptcha: [] }),
 
+  // --- MS (manuscript-review / score-review gate) slices ---
+  // msStarredIds: papers the user explicitly wants included in Stage 4 PDF
+  //   analysis even if they fall outside the top-N window.
+  // msDismissedIds: papers the user wants excluded from Stage 4 even if
+  //   they are inside the top-N window.
+  // Both are Sets of arxivId strings. msAddStar/msAddDismiss toggle (calling
+  // twice on the same id removes it) and automatically clear the opposing set
+  // entry so a paper can't be both starred and dismissed simultaneously.
+  msStarredIds: new Set(),
+  msDismissedIds: new Set(),
+
+  msAddStar: (id) =>
+    set((state) => {
+      const next = new Set(state.msStarredIds);
+      const nextDismissed = new Set(state.msDismissedIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        nextDismissed.delete(id);
+      }
+      return { msStarredIds: next, msDismissedIds: nextDismissed };
+    }),
+
+  msAddDismiss: (id) =>
+    set((state) => {
+      const next = new Set(state.msDismissedIds);
+      const nextStarred = new Set(state.msStarredIds);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        nextStarred.delete(id);
+      }
+      return { msStarredIds: nextStarred, msDismissedIds: next };
+    }),
+
+  msClear: () => set({ msStarredIds: new Set(), msDismissedIds: new Set() }),
+
   // --- reset (primarily for tests) ---
   // Explicit reset action. Calling set() with an object shallow-merges
   // the data keys, preserving action identities — so the store is

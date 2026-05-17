@@ -262,3 +262,50 @@ describe('analyzerStore — resetStore', () => {
     expect(useAnalyzerStore.getState().processing.stage).toBe('fetching');
   });
 });
+
+describe('analyzerStore — MS slices', () => {
+  beforeEach(() => {
+    useAnalyzerStore.getState().msClear?.();
+  });
+
+  it('msStarredIds and msDismissedIds start empty', () => {
+    const s = useAnalyzerStore.getState();
+    expect(s.msStarredIds.size).toBe(0);
+    expect(s.msDismissedIds.size).toBe(0);
+  });
+
+  it('msAddStar adds an id', () => {
+    useAnalyzerStore.getState().msAddStar('2511.0001');
+    expect(useAnalyzerStore.getState().msStarredIds.has('2511.0001')).toBe(true);
+  });
+
+  it('msAddStar clears matching dismiss', () => {
+    const s = useAnalyzerStore.getState();
+    s.msAddDismiss('2511.0001');
+    expect(useAnalyzerStore.getState().msDismissedIds.has('2511.0001')).toBe(true);
+    useAnalyzerStore.getState().msAddStar('2511.0001');
+    expect(useAnalyzerStore.getState().msStarredIds.has('2511.0001')).toBe(true);
+    expect(useAnalyzerStore.getState().msDismissedIds.has('2511.0001')).toBe(false);
+  });
+
+  it('msAddDismiss adds and clears matching star', () => {
+    useAnalyzerStore.getState().msAddStar('2511.0002');
+    useAnalyzerStore.getState().msAddDismiss('2511.0002');
+    expect(useAnalyzerStore.getState().msDismissedIds.has('2511.0002')).toBe(true);
+    expect(useAnalyzerStore.getState().msStarredIds.has('2511.0002')).toBe(false);
+  });
+
+  it('msAddStar called twice on same id toggles off', () => {
+    useAnalyzerStore.getState().msAddStar('2511.0003');
+    useAnalyzerStore.getState().msAddStar('2511.0003');
+    expect(useAnalyzerStore.getState().msStarredIds.has('2511.0003')).toBe(false);
+  });
+
+  it('msClear empties both sets', () => {
+    useAnalyzerStore.getState().msAddStar('a');
+    useAnalyzerStore.getState().msAddDismiss('b');
+    useAnalyzerStore.getState().msClear();
+    expect(useAnalyzerStore.getState().msStarredIds.size).toBe(0);
+    expect(useAnalyzerStore.getState().msDismissedIds.size).toBe(0);
+  });
+});
