@@ -138,16 +138,31 @@ Whether Stage 2 runs at all is governed by the `useQuickFilter` config flag (def
 
 ## Review & confirmation
 
-Four checkboxes under **Review & confirmation** govern when the pipeline pauses and when it retries.
+Five checkboxes under **Review & confirmation** govern when the pipeline pauses and when it retries.
 
 | Checkbox                                                                                       | Default | What it does                                                                                                                                                                         |
 | ---------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Pause after filter to review overrides                                                         | on      | Stops at Gate 1 so you can move papers between <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> buckets |
-| Pause before briefing to review scores and add feedback                                        | on      | Stops at Gate 2 so you can star, dismiss, or comment before synthesis runs                                                                                                           |
+| Pause before deep analysis                                                                     | on      | Stops at Gate 2 (after scoring, before PDF reads) so you can star borderline papers into the PDF set or exclude obvious duds from it                                                 |
+| Pause before briefing to review scores and add feedback                                        | on      | Stops at Gate 3 so you can star, dismiss, or comment before synthesis runs                                                                                                           |
 | Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>      | on      | Reruns synthesis once with a retry hint when the audit flags claims                                                                                                                  |
 | Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span> | off     | Same, but for the more ambiguous verdict                                                                                                                                             |
 
-The two pause gates are the training wheels. Leaving them on is the right starting point; turning them off is something you'll usually do deliberately once you've seen enough runs to know the filter and the scores are landing well for your profile. [Review gates](/using/review-gates) goes deeper on what each gate shows and when to skip which.
+### pauseBeforeDeepAnalysis
+
+`pauseBeforeDeepAnalysis` (default: **on**) fires after Stage 3.5 (post-processing) and before Stage 4 (PDF analysis). It's the most cost-sensitive gate: PDF analysis is roughly 10× more expensive per paper than everything upstream, so catching the wrong papers here has a real budget impact.
+
+The gate shows the full scored list in three groups — **Will PDF (top-N)**, **Borderline**, and **Low score** — with star and exclude controls per row. Stars pull papers into the PDF set from any group; excludes remove them from it. The final PDF set is `(top-N) ∪ {starred papers} − {excluded papers}`, so you can exceed `maxDeepAnalysis` deliberately if you want more papers analysed on a particular day.
+
+A free-text **"+ feedback on this scoring round"** field at the bottom of the gate lets you leave a run-level note — observations about the scoring spread, an unusual batch composition, or a pattern you want the refinement flow to see. This is distinct from per-paper comments; it flows into the suggest-profile prompt as a round-level observation.
+
+See [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review) for the full walkthrough.
+
+### Skip remaining gates this run
+
+A **Skip remaining gates this run** link appears near the bottom of all three gates. Clicking it bypasses any subsequent default-on gates for this run only — settings are not modified. Useful for an unattended run when you don't want to toggle settings off and back on: engage with whichever gate you want to review, then skip the rest.
+
+The three pause gates are the training wheels. Leaving them on is the right starting point; turning them off is something you'll usually do deliberately once you've seen enough runs to know the filter and the scores are landing well for your profile. [Review gates](/using/review-gates) goes deeper on what each gate shows and when to skip which.
 
 The retry checkboxes trade tokens for quality. A retry is a full second synthesis pass plus a second audit — cheap compared to Stage 4, but not free. Retry-on-<span class="verdict is-no">YES</span> is usually worth keeping on (a confident "hallucinations detected" verdict is rare but worth fixing). Retry-on-<span class="verdict is-maybe">MAYBE</span> is more defensible to turn off — the <span class="verdict is-maybe">MAYBE</span> verdict often catches paraphrases the auditor is unusually strict about rather than genuine hallucinations. The retry path fires at most once per briefing either way.
 
@@ -171,7 +186,7 @@ The defaults ship tuned sensibly — all-Google models, both pause gates on, ret
 
 **Highest quality.** Put a top-tier model on `pdfModel` and `briefingModel` (Claude Opus 4.7, Gemini 3.1 Pro, or GPT-5.4). Keep `scoringModel` on a mid-tier model like Claude Sonnet 4.6 or Gemini 3 Flash. Keep post-processing on. Raise Papers to Analyze to 50+. Turn both retry checkboxes on.
 
-**Unattended.** Turn off both pause gates (nobody's there to click through them). Consider turning off both retry checkboxes — an unattended run can't weigh the trade-off when the audit flags something, and a retry ties up an extra few minutes. Tighten Papers to Analyze to something predictable so cost doesn't swing with daily paper volume.
+**Unattended.** Turn off all three pause gates (nobody's there to click through them), or use the **Skip remaining gates this run** link on the first gate you encounter to bypass the rest without changing settings. Consider turning off both retry checkboxes — an unattended run can't weigh the trade-off when the audit flags something, and a retry ties up an extra few minutes. Tighten Papers to Analyze to something predictable so cost doesn't swing with daily paper volume.
 
 ## Where to see what a past briefing used
 
