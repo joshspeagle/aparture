@@ -39,7 +39,7 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 - `lib/llm/structured/` — per-provider request/response shaping (anthropic/google/openai). Each accepts optional `pdfBase64` and `cacheable`/`cachePrefix`.
 - `lib/synthesis/` — briefing schema, validator, repair, renderPrompt
 - `lib/profile/` — profile utilities (migrations, diff, feedbackCap, suggestPrompt)
-- `hooks/` — React hooks, all localStorage-backed. `useProfile.content` is read by every pipeline stage. `useBriefing` has a 90-day rolling window, ID-keyed entries. `useFeedback` has 5 event types (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`); star/dismiss are latest-wins, comments append-only.
+- `hooks/` — React hooks, all localStorage-backed. `useProfile.content` is read by every pipeline stage. `useBriefing` has a 90-day rolling window, ID-keyed entries. `useFeedback` has 6 event types (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`, `scoped-feedback`); star/dismiss are latest-wins, comments append-only, `scoped-feedback` is latest-wins per scope-dedupe key (scope + briefingDate) with three scopes: `bucket`, `score-review`, `run`.
 - `prompts/` — editable LLM prompt templates (changes live without rebuild). The four `rubric-*.md` files contain a `{{CACHE_BOUNDARY}}` marker that `lib/llm/loadRubricPrompt.js` uses to split each into a cache-stable prefix (rubric + profile) and a variable tail (per-batch papers) for Anthropic caching.
 - `utils/models.js` — **single source of truth for model IDs/names/capabilities** (`MODEL_REGISTRY` + `AVAILABLE_MODELS` — always update together)
 - `styles/` — `tokens.css`, `shell.css`, `briefing.css` (see "Styling conventions")
@@ -71,6 +71,7 @@ Pipeline stages follow `docs/concepts/pipeline.md` (Stage 1 fetch → Stage 5 br
 
 - **Filter-override pill (Stage 2).** UI click-cycles YES/MAYBE/NO; each override becomes a `filter-override` feedback event that flows into the suggest-profile prompt as a "too narrow/broad" signal.
 - **Batch parallelism.** Stages 2/3/3.5/4 each have a concurrency knob (`filterConcurrency`, `scoringConcurrency`, `postProcessingConcurrency`, `pdfAnalysisConcurrency`, default 3, clamped 1–20), all routed through `AnalysisWorkerPool` in `lib/analyzer/rateLimit.js`. Anthropic model slots get a single-flight cache-warmup barrier (worker 0 primes the ephemeral cache entry before siblings start). Dry-run forces concurrency=1. Stage 4 also serializes arXiv downloads server-side at ~5s spacing.
+- **Score-review gate (Gate 2).** `pauseBeforeDeepAnalysis: true` (default) fires after Stage 3.5 and before Stage 4. Shows scored papers in three groups (top-N, borderline, low score); ★ guarantees PDF analysis regardless of rank, ⊘ excludes from PDF set. Final PDF set = `(top-N) ∪ {starred} − {excluded}`. Free-text "feedback on this scoring round" field flows into suggest-profile as a `scoped-feedback` run-level note. A "Skip remaining gates this run" link appears on all three gates; it bypasses subsequent default-on gates for this run only without modifying settings.
 - **Feedback opens after Stage 4**, not gated on briefing.
 - **Briefing auto-runs at end** via `lib/analyzer/briefingClient.js`. If `pauseBeforeBriefing` is on (default), pipeline stops at `'pre-briefing-review'` first. Flow: quick summaries (parallel, `quickSummaryConcurrency` default 5) → `/api/synthesize` → `/api/check-briefing` → optional one-shot retry → save via `useBriefing` → render `<BriefingView>`.
 - **Main-area layout order after a run:** Results → Download Report → Briefing → NotebookLM.
@@ -107,7 +108,7 @@ When adding a new status color, document it here rather than introducing a token
 
 "Your Profile" is the single source of research intent. Every pipeline stage reads `profile.content` from `useProfile`. The profile is refined manually or via the LLM-assisted `SuggestDialog` flow.
 
-**Suggest-improvements flow.** `/api/suggest-profile` accepts current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if feedback doesn't point to a gap. All stars/dismisses/overrides are always included in the prompt; comments are capped at most-recent N per type (default 30) with a transparent trimming notice.
+**Suggest-improvements flow.** `/api/suggest-profile` accepts current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if feedback doesn't point to a gap. All stars/dismisses/overrides are always included in the prompt uncapped; comments are capped at most-recent N per type (default 30) with a transparent trimming notice. `scoped-feedback` and `filter-override` events are also passed through uncapped — both are latest-wins or have no natural numeric accumulation, so capping would silently discard the current state.
 
 **Backend synthesis.** `/api/synthesize` loads `prompts/synthesis.md`, renders placeholders via `lib/synthesis/renderPrompt.js`, dispatches via `lib/llm/callModel.js`, runs zod + citation validation via `lib/synthesis/validator.js`, and falls back to two-pass LLM repair via `lib/synthesis/repair.js`. Every `arxivId` in the output must be in the input list.
 
@@ -229,7 +230,7 @@ If Playwright is unavailable (e.g. Vercel), route returns HTTP 422 `PLAYWRIGHT_U
 
 ### Refactor Context
 
-Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — check for existence before referencing). Phase 2 scope is in the v2 spec §11 (Electron, filesystem-first state, OS keychain, first-run wizard, memory loop, daily scheduler, full NotebookLM ZIP, HTML export, installers).
+Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — check for existence before referencing). Phase 2 scope is in the v2 spec §11 (Electron, filesystem-first state, OS keychain, first-run wizard, memory loop, daily scheduler, full NotebookLM ZIP, HTML export, installers). The feedback-mechanisms expansion (score-review gate, scoped-feedback event type, filter-row comments, staleness suffix, pairing logic in suggest-profile) is specified in `docs/superpowers/specs/2026-05-17-feedback-mechanisms-design.md`.
 
 ## Model Information
 
