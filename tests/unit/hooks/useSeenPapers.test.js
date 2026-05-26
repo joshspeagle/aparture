@@ -33,11 +33,11 @@ describe('useSeenPapers — basic shape', () => {
 
 describe('useSeenPapers — recordRun', () => {
   beforeEach(() => {
-    // Seed an already-migrated empty index so we don't kick off the
+    // Seed an already-migrated empty v2 index so we don't kick off the
     // migration flow in these tests.
     window.localStorage.setItem(
       'aparture-seen-papers-index',
-      JSON.stringify({ _migratedAt: Date.now() })
+      JSON.stringify({ _migratedAt: Date.now(), _dedupeVersion: 2 })
     );
   });
 
@@ -99,6 +99,7 @@ describe('useSeenPapers — 90-day prune', () => {
       'aparture-seen-papers-index',
       JSON.stringify({
         _migratedAt: now,
+        _dedupeVersion: 2,
         'stale.000': oldDate,
         'fresh.000': freshDate,
       })
@@ -163,31 +164,41 @@ describe('useSeenPapers — quota fallback', () => {
   });
 });
 
-describe('useSeenPapers — migration from existing sessions', () => {
+describe('useSeenPapers — migration from existing briefings', () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it('hydrates the index from /api/sessions when no _migratedAt is present', async () => {
-    const sessions = {
-      'sess-1': {
-        results: { allPapers: [{ id: '2605.14205' }, { id: '2605.14210' }] },
+  it('hydrates the index from /api/briefings using briefed + filterResults union', async () => {
+    const briefings = {
+      'brief-1': {
         timestamp: Date.parse('2026-05-10T00:00:00Z'),
+        briefing: { papers: [{ arxivId: '2605.14205' }] },
+        pipelineArchive: {
+          filterResults: {
+            yes: [{ id: '2605.14205' }],
+            maybe: [{ id: '2605.14210' }],
+            no: [{ id: '2605.14299' }],
+          },
+        },
       },
-      'sess-2': {
-        results: { allPapers: [{ id: '2605.14210' }, { id: '2605.14211' }] },
+      'brief-2': {
         timestamp: Date.parse('2026-05-12T00:00:00Z'),
+        briefing: { papers: [{ arxivId: '2605.14211' }] },
+        pipelineArchive: {
+          filterResults: { yes: [], maybe: [{ id: '2605.14210' }], no: [] },
+        },
       },
     };
 
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url);
-      if (u.includes('/api/sessions?') || u.endsWith('/api/sessions')) {
-        return { ok: true, status: 200, json: async () => ({ ids: Object.keys(sessions) }) };
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        return { ok: true, status: 200, json: async () => ({ ids: Object.keys(briefings) }) };
       }
-      const m = u.match(/\/api\/sessions\/([^?]+)/);
-      if (m && sessions[m[1]]) {
-        return { ok: true, status: 200, json: async () => sessions[m[1]] };
+      const m = u.match(/\/api\/briefings\/([^?]+)/);
+      if (m && briefings[m[1]]) {
+        return { ok: true, status: 200, json: async () => briefings[m[1]] };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
     });
@@ -196,29 +207,34 @@ describe('useSeenPapers — migration from existing sessions', () => {
 
     await waitFor(() => expect(result.current.ready).toBe(true));
 
+    // Briefed paper from brief-1
     expect(result.current.index['2605.14205']).toBe('2026-05-10');
-    // 14210 appears in both — earliest date wins (sess-1: 2026-05-10, sess-2: 2026-05-12)
+    // 14210 (maybe-bucket) appears in both — earliest-date-wins (brief-1: 2026-05-10)
     expect(result.current.index['2605.14210']).toBe('2026-05-10');
+    // 14299 (no-bucket) from brief-1 — filterResults union covers all buckets
+    expect(result.current.index['2605.14299']).toBe('2026-05-10');
+    // Briefed paper from brief-2
     expect(result.current.index['2605.14211']).toBe('2026-05-12');
     expect(result.current.index._migratedAt).toBeDefined();
+    expect(result.current.index._dedupeVersion).toBe(2);
   });
 
-  it('continues and marks _migratedAt even if one session GET fails', async () => {
-    const sessions = {
-      'sess-ok': {
-        results: { allPapers: [{ id: '2605.14205' }] },
+  it('continues and marks sentinels even if one briefing GET fails', async () => {
+    const briefings = {
+      'brief-ok': {
         timestamp: Date.parse('2026-05-10T00:00:00Z'),
+        briefing: { papers: [{ arxivId: '2605.14205' }] },
       },
     };
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url);
-      if (u.includes('/api/sessions?') || u.endsWith('/api/sessions')) {
-        return { ok: true, status: 200, json: async () => ({ ids: ['sess-ok', 'sess-bad'] }) };
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        return { ok: true, status: 200, json: async () => ({ ids: ['brief-ok', 'brief-bad'] }) };
       }
-      if (u.includes('sess-ok')) {
-        return { ok: true, status: 200, json: async () => sessions['sess-ok'] };
+      if (u.includes('brief-ok')) {
+        return { ok: true, status: 200, json: async () => briefings['brief-ok'] };
       }
-      if (u.includes('sess-bad')) {
+      if (u.includes('brief-bad')) {
         return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'nope' }) };
@@ -230,19 +246,67 @@ describe('useSeenPapers — migration from existing sessions', () => {
 
     expect(result.current.index['2605.14205']).toBe('2026-05-10');
     expect(result.current.index._migratedAt).toBeDefined();
+    expect(result.current.index._dedupeVersion).toBe(2);
   });
 
-  it('skips migration when an _migratedAt sentinel is already present', async () => {
+  it('skips migration when a v2 _dedupeVersion sentinel is already present', async () => {
     window.localStorage.setItem(
       'aparture-seen-papers-index',
-      JSON.stringify({ _migratedAt: Date.now(), 'seeded.000': '2026-04-01' })
+      JSON.stringify({
+        _migratedAt: Date.now(),
+        _dedupeVersion: 2,
+        'seeded.000': '2026-04-01',
+      })
     );
     const fetchSpy = vi.spyOn(global, 'fetch');
 
     const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
-    // ready should be true synchronously since _migratedAt was present.
     expect(result.current.ready).toBe(true);
     expect(result.current.index['seeded.000']).toBe('2026-04-01');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('re-migrates from briefings when stored index is v1 (no _dedupeVersion)', async () => {
+    // v1 index: _migratedAt present but no _dedupeVersion — built from
+    // sessions, possibly poisoned by aborted runs. Should be rebuilt from
+    // briefings and the polluted entries dropped immediately.
+    window.localStorage.setItem(
+      'aparture-seen-papers-index',
+      JSON.stringify({
+        _migratedAt: Date.parse('2026-05-01T00:00:00Z'),
+        'aborted-run.001': '2026-05-01',
+        'aborted-run.002': '2026-05-01',
+      })
+    );
+    const briefings = {
+      'brief-1': {
+        timestamp: Date.parse('2026-05-10T00:00:00Z'),
+        briefing: { papers: [{ arxivId: 'real.001' }] },
+      },
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        return { ok: true, status: 200, json: async () => ({ ids: ['brief-1'] }) };
+      }
+      const m = u.match(/\/api\/briefings\/([^?]+)/);
+      if (m && briefings[m[1]]) {
+        return { ok: true, status: 200, json: async () => briefings[m[1]] };
+      }
+      return { ok: false, status: 404, json: async () => ({ error: 'nope' }) };
+    });
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    // Polluted entries must be gone immediately (in-memory state starts empty
+    // on a v1→v2 upgrade) — the pipeline shouldn't dedupe against bad data
+    // during the migration window.
+    expect(result.current.index['aborted-run.001']).toBeUndefined();
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    expect(result.current.index['real.001']).toBe('2026-05-10');
+    expect(result.current.index['aborted-run.001']).toBeUndefined();
+    expect(result.current.index['aborted-run.002']).toBeUndefined();
+    expect(result.current.index._dedupeVersion).toBe(2);
   });
 });

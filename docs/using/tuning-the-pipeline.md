@@ -174,9 +174,11 @@ Five Advanced-settings controls govern how Aparture talks to arXiv: ingestion mo
 
 Aparture remembers every arxivId fetched in the last 90 days across all your past runs (the **seen-papers index**, stored in your browser's localStorage). By default, the **Remove duplicate papers** toggle in Settings drops these from new runs before any LLM call — saving tokens and avoiding re-reading work you've already seen. Turn it off if you'd rather keep duplicates visible; they'll be marked with a small "seen ‹date›" badge on filter, scoring, and briefing cards.
 
-The first time you run Aparture after upgrading, the index is seeded from your existing session files on disk. While that one-time migration is in flight, the status line will show `seen-papers index still loading` and the run is treated as having zero duplicates; the next run is fully deduped.
+The first time you run Aparture after upgrading, the index is seeded from your saved briefings on disk. While that one-time migration is in flight, the status line will show `seen-papers index still loading` and the run is treated as having zero duplicates; the next run is fully deduped.
 
-Memory rolls off automatically after 90 days. Re-running with the same `daysBack` after a long pause will surface old papers again. If you ever want to clear the index manually, delete the `aparture-seen-papers-index` key from your browser's DevTools → Application → Local Storage; the next mount will rebuild it from sessions on disk.
+Memory is anchored to **briefing-save**, not to every paper Aparture fetches. If you start a run and abort it before a briefing is saved (e.g. you stop at the score-review gate and walk away), those papers are _not_ added to the index — restart the pipeline and they'll come back. Once a briefing successfully saves, all papers that the LLM filter looked at during that run (yes/maybe/no buckets, plus the briefed shortlist) become "seen" for the next 90 days.
+
+Memory rolls off automatically after 90 days. Re-running with the same `daysBack` after a long pause will surface old papers again. If you ever want to clear the index manually, delete the `aparture-seen-papers-index` key from your browser's DevTools → Application → Local Storage; the next mount will rebuild it from your saved briefings.
 
 ## A few common configurations
 

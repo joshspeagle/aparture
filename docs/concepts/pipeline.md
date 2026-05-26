@@ -64,7 +64,7 @@ Wall-clock duration varies widely with provider latency, paper volume, and which
 
 See [arXiv ingestion](./arxiv-ingestion.md) for the two-path architecture (OAI-PMH primary, Atom fallback) and the configurable knobs (mode, window semantics, fill-ups, cache).
 
-After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs against a 90-day rolling index of arxivIds seen in past runs. In Remove mode (default) duplicates are dropped before the LLM filter; in Flag mode they're kept but tagged for the UI. The index is maintained client-side from saved session files — no extra server roundtrip in the hot path. See [Tuning the pipeline](../using/tuning-the-pipeline.md#duplicate-detection) for the user-facing toggle.
+After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs against a 90-day rolling index of arxivIds seen in past runs. In Remove mode (default) duplicates are dropped before the LLM filter; in Flag mode they're kept but tagged for the UI. The index is maintained client-side from your saved briefings — aborted runs (no briefing produced) don't add anything, so restarting a stopped run won't blank itself out. See [Tuning the pipeline](../using/tuning-the-pipeline.md#duplicate-detection) for the user-facing toggle.
 
 ## Stage 2: quick filter
 

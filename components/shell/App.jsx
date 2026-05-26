@@ -16,6 +16,7 @@ import { useProfile } from '../../hooks/useProfile.js';
 import { useBriefing } from '../../hooks/useBriefing.js';
 import { useFeedback } from '../../hooks/useFeedback.js';
 import { useSeenPapers } from '../../hooks/useSeenPapers.js';
+import { papersFromBriefing } from '../../lib/seenPapers/papersFromBriefing.js';
 import Sidebar from './Sidebar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
@@ -632,7 +633,10 @@ export default function App() {
     []
   );
 
-  // Wrap saveBriefing so pipeline-generated briefings auto-switch view.
+  // Wrap saveBriefing so pipeline-generated briefings auto-switch view AND
+  // extend the seen-papers dedupe index. Anchoring dedupe to briefing-save
+  // (rather than every cold-session POST) prevents aborted Stage 1 runs
+  // from poisoning the index — see lib/seenPapers/papersFromBriefing.js.
   // Stable ref avoids reactContext churn on every render (setActiveView
   // identity is stable from useState, saveBriefing from useBriefing).
   // saveBriefing is async (it awaits the cold-tier POST), so we must await
@@ -642,6 +646,22 @@ export default function App() {
   saveBriefingAndSwitchRef.current = async (date, briefing, metadata, options) => {
     const newId = await saveBriefing(date, briefing, metadata, options);
     setActiveView(`briefing:${newId}`);
+    // Extend dedupe index with papers reachable from this briefing
+    // (briefed + filterResults union). Best-effort — failures shouldn't
+    // block the user-visible briefing render.
+    try {
+      const entryForExtraction = {
+        briefing,
+        pipelineArchive: options?.pipelineArchive,
+      };
+      const papers = papersFromBriefing(entryForExtraction);
+      if (papers.length > 0) {
+        const briefingTs = date ? new Date(date + 'T00:00:00').getTime() : Date.now();
+        seenPapers.recordRun(papers, Number.isFinite(briefingTs) ? briefingTs : Date.now());
+      }
+    } catch (err) {
+      console.warn('[App] seenPapers.recordRun on briefing save failed:', err);
+    }
     return newId;
   };
   const stableSaveBriefingAndSwitch = useCallback(
@@ -695,7 +715,6 @@ export default function App() {
     setNotebookLMContent,
     setPassword,
     setIsAuthenticated,
-    onColdSessionSaved: seenPapers.recordRun,
   });
 
   // Default activeView: if a current briefing exists, show it; else welcome.

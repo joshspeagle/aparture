@@ -2,16 +2,19 @@
 // read on mount, in-memory state, persist via safeSetItem, prune to a 90-day
 // rolling window on every write.
 //
-// Index shape: { [arxivId]: 'YYYY-MM-DD', _migratedAt: <ms-ts> }
+// Index shape: { [arxivId]: 'YYYY-MM-DD', _migratedAt: <ms-ts>, _dedupeVersion: <int> }
 //   - Keys starting with '_' are reserved metadata (skipped by prune + dedupe lookups).
 //   - Values are ISO `YYYY-MM-DD` strings (UTC) so lexicographic compare = date compare.
 //
-// First-mount migration:
-//   When _migratedAt is absent, scan reports/sessions/*.json via the existing
-//   /api/sessions endpoints (concurrency cap 4) to seed the index. Non-blocking;
-//   callers see `ready: false` and an empty index until done. Partial failures
-//   (a single 500ing session) are logged and skipped — we still set _migratedAt
-//   on completion so we don't re-scan on every mount.
+// First-mount migration (v2 — briefing-anchored):
+//   When _dedupeVersion < CURRENT_DEDUPE_VERSION, scan reports/briefings/*.json
+//   via the existing /api/briefings endpoints (concurrency cap 4) to seed the
+//   index from briefings only — sessions are no longer a data source. This
+//   anchors "seen" to "appeared in a run that reached briefing-save" and
+//   prevents aborted runs (Stage 1 fetch → no briefing) from poisoning the
+//   index. Existing v1 indexes get rebuilt cleanly on the first mount that
+//   sees the bumped sentinel. Partial failures are logged and skipped — we
+//   always set _migratedAt + _dedupeVersion on completion so we don't re-scan.
 //
 // Phase 2 seam: when state migrates to ~/aparture/, only the STORAGE_KEY +
 // migration source need updating; consumer contract (index/ready/recordRun)
@@ -20,9 +23,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import { AnalysisWorkerPool } from '../lib/analyzer/rateLimit.js';
+import { papersFromBriefing } from '../lib/seenPapers/papersFromBriefing.js';
 
 const STORAGE_KEY = 'aparture-seen-papers-index';
 const HORIZON_DAYS = 90;
+// Bump when the migration semantics change so existing indexes get rebuilt.
+// v1: from sessions (poisoned by aborted runs).
+// v2: from briefings (only completed runs).
+const CURRENT_DEDUPE_VERSION = 2;
 
 function isoDateUTC(ms) {
   return new Date(ms).toISOString().slice(0, 10);
@@ -64,25 +72,26 @@ function persistIndex(index) {
   }
 }
 
-// One-time migration: scan existing reports/sessions/*.json via the API
-// and seed the index. Concurrency-capped to avoid hammering the dev server.
-// Partial failure is acceptable — we always set _migratedAt at the end so
-// we don't re-scan on every mount.
+// One-time migration: scan existing reports/briefings/*.json via the API and
+// seed the index from each briefing's papersFromBriefing union (briefed +
+// pipelineArchive filter buckets). Concurrency-capped to avoid hammering the
+// dev server. Partial failures are logged and skipped — we always set
+// _migratedAt + _dedupeVersion at the end so we don't re-scan on every mount.
 const MIGRATION_CONCURRENCY = 4;
 
-async function migrateFromSessions({ password, signal }) {
+async function migrateFromBriefings({ password, signal }) {
   if (typeof window === 'undefined') return null;
   let listRes;
   try {
-    listRes = await fetch(`/api/sessions?password=${encodeURIComponent(password ?? '')}`, {
+    listRes = await fetch(`/api/briefings?password=${encodeURIComponent(password ?? '')}`, {
       signal,
     });
   } catch (err) {
-    console.warn('[useSeenPapers migration] /api/sessions list fetch threw:', err);
+    console.warn('[useSeenPapers migration] /api/briefings list fetch threw:', err);
     return {};
   }
   if (!listRes.ok) {
-    console.warn(`[useSeenPapers migration] /api/sessions list returned HTTP ${listRes.status}`);
+    console.warn(`[useSeenPapers migration] /api/briefings list returned HTTP ${listRes.status}`);
     return {};
   }
   const { ids = [] } = await listRes.json();
@@ -97,26 +106,26 @@ async function migrateFromSessions({ password, signal }) {
   await pool.run(ids, async (id) => {
     try {
       const res = await fetch(
-        `/api/sessions/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`,
+        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`,
         { signal }
       );
       if (!res.ok) {
-        console.warn(`[useSeenPapers migration] session ${id} returned HTTP ${res.status}`);
+        console.warn(`[useSeenPapers migration] briefing ${id} returned HTTP ${res.status}`);
         return;
       }
       const entry = await res.json();
       const ts = entry?.timestamp ?? Date.now();
       const iso = new Date(ts).toISOString().slice(0, 10);
-      const papers = entry?.results?.allPapers ?? [];
+      const papers = papersFromBriefing(entry);
       for (const paper of papers) {
         const arxivId = paper?.id;
         if (!arxivId || arxivId.startsWith('_')) continue;
         const existing = merged[arxivId];
-        // Earliest-date-wins: keep the oldest known sighting across sessions.
+        // Earliest-date-wins: keep the oldest known sighting across briefings.
         if (!existing || iso < existing) merged[arxivId] = iso;
       }
     } catch (err) {
-      console.warn(`[useSeenPapers migration] session ${id} fetch threw:`, err);
+      console.warn(`[useSeenPapers migration] briefing ${id} fetch threw:`, err);
     }
   });
 
@@ -127,48 +136,70 @@ async function migrateFromSessions({ password, signal }) {
  * Cross-run paper-dedupe index hook.
  *
  * @param {{ password?: string }} [opts]
- *   `password` is forwarded to the migration's /api/sessions calls.
+ *   `password` is forwarded to the migration's /api/briefings calls.
  * @returns {{
  *   index: Record<string, string>,
  *   ready: boolean,
  *   recordRun: (papers: Array<{id?: string}>, runTimestamp: number) => void,
  * }}
- *   `index` is the live `{arxivId → ISO date}` map plus a `_migratedAt`
- *   metadata key. `ready` flips true once the one-time migration completes.
- *   `recordRun` merges fresh IDs from a just-saved session into the index
- *   (first-date-wins) and prunes >90-day entries; usually called from
- *   the `onColdSessionSaved` callback of useAnalyzerPersistence.
+ *   `index` is the live `{arxivId → ISO date}` map plus `_migratedAt` and
+ *   `_dedupeVersion` metadata keys. `ready` flips true once the one-time
+ *   migration completes. `recordRun` merges fresh IDs from a just-saved
+ *   briefing into the index (first-date-wins) and prunes >90-day entries;
+ *   fired after a successful briefing-save (NOT on every cold session save,
+ *   which historically poisoned the index with aborted-run papers).
  */
 export function useSeenPapers({ password = '' } = {}) {
   const initial = readStored();
-  const [index, setIndex] = useState(initial ?? {});
-  const [ready, setReady] = useState(Boolean(initial?._migratedAt));
+  const initialVersion = Number.isInteger(initial?._dedupeVersion) ? initial._dedupeVersion : 0;
+  const needsMigration = !initial?._migratedAt || initialVersion < CURRENT_DEDUPE_VERSION;
+  // When the stored index predates CURRENT_DEDUPE_VERSION it was built from
+  // sessions (v1) and is poisoned by aborted-run papers. Start the in-memory
+  // state empty so the pipeline doesn't dedupe against bad data during the
+  // rebuild window — localStorage is cleared inside the migration effect.
+  const isVersionUpgrade = needsMigration && Boolean(initial?._migratedAt);
+  const [index, setIndex] = useState(isVersionUpgrade ? {} : (initial ?? {}));
+  const [ready, setReady] = useState(!needsMigration);
 
   const passwordRef = useRef(password);
   useEffect(() => {
     passwordRef.current = password;
   }, [password]);
 
-  // One-time migration from sessions on disk. Runs only when no _migratedAt
-  // sentinel is present. Non-blocking — the hook returns ready=false until
-  // migration completes; callers must tolerate an empty index in the
-  // meantime (the pipeline does, in applyDedupe).
+  // One-time migration from briefings on disk. Runs when either (a) we've
+  // never migrated, or (b) the stored index predates CURRENT_DEDUPE_VERSION
+  // — the v1→v2 bump rebuilds existing indexes from briefings so the
+  // session-era pollution rolls off in one go rather than over 90 days.
+  // Non-blocking — `ready` stays false until done; applyDedupe tolerates
+  // an empty index in the meantime.
   useEffect(() => {
-    if (initial?._migratedAt) return;
+    if (!needsMigration) return;
     const controller = new AbortController();
     let cancelled = false;
+    // Clear the polluted v1 index from localStorage immediately so a refresh
+    // mid-migration doesn't restore the poisoned state. Safe because the
+    // in-memory `index` was already initialized to {} when isVersionUpgrade.
+    if (isVersionUpgrade && typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Best-effort.
+      }
+    }
     (async () => {
       const migrated =
-        (await migrateFromSessions({
+        (await migrateFromBriefings({
           password: passwordRef.current,
           signal: controller.signal,
         })) ?? {};
       if (cancelled) return;
       migrated._migratedAt = Date.now();
+      migrated._dedupeVersion = CURRENT_DEDUPE_VERSION;
       const pruned = pruneOldEntries(migrated, Date.now());
-      // _migratedAt may have been pruned out (it's a millis number, the prune
-      // only checks ISO strings) — defensive re-set.
+      // Sentinel keys are millis/int, not ISO; prune only checks ISO strings.
+      // Defensive re-set so the sentinels survive prune.
       if (!pruned._migratedAt) pruned._migratedAt = Date.now();
+      if (!pruned._dedupeVersion) pruned._dedupeVersion = CURRENT_DEDUPE_VERSION;
       setIndex(pruned);
       setReady(true);
       persistIndex(pruned);
