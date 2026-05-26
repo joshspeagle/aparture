@@ -33,11 +33,11 @@ describe('useSeenPapers — basic shape', () => {
 
 describe('useSeenPapers — recordRun', () => {
   beforeEach(() => {
-    // Seed an already-migrated empty v2 index so we don't kick off the
+    // Seed an already-migrated empty v3 index so we don't kick off the
     // migration flow in these tests.
     window.localStorage.setItem(
       'aparture-seen-papers-index',
-      JSON.stringify({ _migratedAt: Date.now(), _dedupeVersion: 2 })
+      JSON.stringify({ _migratedAt: Date.now(), _dedupeVersion: 3 })
     );
   });
 
@@ -99,7 +99,7 @@ describe('useSeenPapers — 90-day prune', () => {
       'aparture-seen-papers-index',
       JSON.stringify({
         _migratedAt: now,
-        _dedupeVersion: 2,
+        _dedupeVersion: 3,
         'stale.000': oldDate,
         'fresh.000': freshDate,
       })
@@ -216,7 +216,7 @@ describe('useSeenPapers — migration from existing briefings', () => {
     // Briefed paper from brief-2
     expect(result.current.index['2605.14211']).toBe('2026-05-12');
     expect(result.current.index._migratedAt).toBeDefined();
-    expect(result.current.index._dedupeVersion).toBe(2);
+    expect(result.current.index._dedupeVersion).toBe(3);
   });
 
   it('continues and marks sentinels even if one briefing GET fails', async () => {
@@ -246,15 +246,15 @@ describe('useSeenPapers — migration from existing briefings', () => {
 
     expect(result.current.index['2605.14205']).toBe('2026-05-10');
     expect(result.current.index._migratedAt).toBeDefined();
-    expect(result.current.index._dedupeVersion).toBe(2);
+    expect(result.current.index._dedupeVersion).toBe(3);
   });
 
-  it('skips migration when a v2 _dedupeVersion sentinel is already present', async () => {
+  it('skips migration when a v3 _dedupeVersion sentinel is already present', async () => {
     window.localStorage.setItem(
       'aparture-seen-papers-index',
       JSON.stringify({
         _migratedAt: Date.now(),
-        _dedupeVersion: 2,
+        _dedupeVersion: 3,
         'seeded.000': '2026-04-01',
       })
     );
@@ -307,6 +307,50 @@ describe('useSeenPapers — migration from existing briefings', () => {
     expect(result.current.index['real.001']).toBe('2026-05-10');
     expect(result.current.index['aborted-run.001']).toBeUndefined();
     expect(result.current.index['aborted-run.002']).toBeUndefined();
-    expect(result.current.index._dedupeVersion).toBe(2);
+    expect(result.current.index._dedupeVersion).toBe(3);
+  });
+
+  it('retries migration when initial list fetch 401s (password not hydrated yet)', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let listCalls = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        listCalls += 1;
+        // First call (empty password) gets 401; second (real password) succeeds.
+        if (u.endsWith('password=')) {
+          return { ok: false, status: 401, json: async () => ({ error: 'no password' }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ ids: ['b1'] }) };
+      }
+      if (u.includes('/api/briefings/b1')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            timestamp: Date.parse('2026-05-10T00:00:00Z'),
+            briefing: { papers: [{ arxivId: 'paper.1' }] },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
+    // Mount with empty password (mirrors store-not-yet-hydrated).
+    const { result, rerender } = renderHook(({ password }) => useSeenPapers({ password }), {
+      initialProps: { password: '' },
+    });
+
+    // First migration attempt 401s — sentinels must NOT be set, ready stays false.
+    await waitFor(() => expect(listCalls).toBe(1));
+    expect(result.current.ready).toBe(false);
+    expect(window.localStorage.getItem('aparture-seen-papers-index')).toBeNull();
+
+    // Password hydrates into the store — effect re-fires with the new value.
+    rerender({ password: 'real-pw' });
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.index['paper.1']).toBe('2026-05-10');
+    expect(result.current.index._dedupeVersion).toBe(3);
   });
 });

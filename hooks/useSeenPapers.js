@@ -30,7 +30,10 @@ const HORIZON_DAYS = 90;
 // Bump when the migration semantics change so existing indexes get rebuilt.
 // v1: from sessions (poisoned by aborted runs).
 // v2: from briefings (only completed runs).
-const CURRENT_DEDUPE_VERSION = 2;
+// v3: v2 migration could fire before `password` hydrated → 401 list fetch
+//     → sentinels set with empty index → permanently stuck. v3 makes the
+//     effect password-aware and skips sentinel-set on auth failure.
+const CURRENT_DEDUPE_VERSION = 3;
 
 function isoDateUTC(ms) {
   return new Date(ms).toISOString().slice(0, 10);
@@ -79,6 +82,11 @@ function persistIndex(index) {
 // _migratedAt + _dedupeVersion at the end so we don't re-scan on every mount.
 const MIGRATION_CONCURRENCY = 4;
 
+// Returns:
+//   - Object (possibly empty) → migration completed; caller may set sentinels.
+//   - null                    → couldn't reach disk / auth not ready / aborted;
+//                                caller should NOT set sentinels and should
+//                                retry on next password change or next mount.
 async function migrateFromBriefings({ password, signal }) {
   if (typeof window === 'undefined') return null;
   let listRes;
@@ -87,12 +95,17 @@ async function migrateFromBriefings({ password, signal }) {
       signal,
     });
   } catch (err) {
-    console.warn('[useSeenPapers migration] /api/briefings list fetch threw:', err);
-    return {};
+    // AbortError is the React 18 StrictMode double-mount cleanup; not worth
+    // logging (noisy and benign). Anything else is a transient network glitch
+    // — both are "retry later" signals.
+    if (err?.name !== 'AbortError') {
+      console.warn('[useSeenPapers migration] /api/briefings list fetch threw:', err);
+    }
+    return null;
   }
   if (!listRes.ok) {
     console.warn(`[useSeenPapers migration] /api/briefings list returned HTTP ${listRes.status}`);
-    return {};
+    return null;
   }
   const { ids = [] } = await listRes.json();
 
@@ -161,19 +174,18 @@ export function useSeenPapers({ password = '' } = {}) {
   const [index, setIndex] = useState(isVersionUpgrade ? {} : (initial ?? {}));
   const [ready, setReady] = useState(!needsMigration);
 
-  const passwordRef = useRef(password);
+  // Migration from briefings on disk. Runs when either (a) we've never
+  // migrated, or (b) the stored index predates CURRENT_DEDUPE_VERSION.
+  // Depends on `password` so it waits for the store-hydrated value rather
+  // than firing once on mount with an empty string — the latter would 401
+  // against /api/briefings and historically marked the migration "complete"
+  // with an empty index, leaving the user permanently stuck. The success
+  // ref blocks re-runs once a real migration completes; failed attempts
+  // (auth not ready, fetch threw, signal aborted) leave the ref unset so
+  // the next effect run gets another shot.
+  const migrationSuccessRef = useRef(false);
   useEffect(() => {
-    passwordRef.current = password;
-  }, [password]);
-
-  // One-time migration from briefings on disk. Runs when either (a) we've
-  // never migrated, or (b) the stored index predates CURRENT_DEDUPE_VERSION
-  // — the v1→v2 bump rebuilds existing indexes from briefings so the
-  // session-era pollution rolls off in one go rather than over 90 days.
-  // Non-blocking — `ready` stays false until done; applyDedupe tolerates
-  // an empty index in the meantime.
-  useEffect(() => {
-    if (!needsMigration) return;
+    if (!needsMigration || migrationSuccessRef.current) return;
     const controller = new AbortController();
     let cancelled = false;
     // Clear the polluted v1 index from localStorage immediately so a refresh
@@ -187,12 +199,17 @@ export function useSeenPapers({ password = '' } = {}) {
       }
     }
     (async () => {
-      const migrated =
-        (await migrateFromBriefings({
-          password: passwordRef.current,
-          signal: controller.signal,
-        })) ?? {};
+      const migrated = await migrateFromBriefings({
+        password,
+        signal: controller.signal,
+      });
       if (cancelled) return;
+      if (migrated === null) {
+        // Auth not ready / fetch threw / aborted — don't mark sentinels.
+        // The effect will re-fire when `password` next changes (e.g. after
+        // hydration) or on next mount, and we'll try again.
+        return;
+      }
       migrated._migratedAt = Date.now();
       migrated._dedupeVersion = CURRENT_DEDUPE_VERSION;
       const pruned = pruneOldEntries(migrated, Date.now());
@@ -200,6 +217,7 @@ export function useSeenPapers({ password = '' } = {}) {
       // Defensive re-set so the sentinels survive prune.
       if (!pruned._migratedAt) pruned._migratedAt = Date.now();
       if (!pruned._dedupeVersion) pruned._dedupeVersion = CURRENT_DEDUPE_VERSION;
+      migrationSuccessRef.current = true;
       setIndex(pruned);
       setReady(true);
       persistIndex(pruned);
@@ -209,7 +227,7 @@ export function useSeenPapers({ password = '' } = {}) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [password]);
 
   // recordRun: merge fresh paper IDs from a just-completed run into the
   // index. First-date-wins — once an arxivId has a recorded date, it is
