@@ -10,6 +10,7 @@
 
 import path from 'path';
 import fs from 'fs/promises';
+import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
 
 // Next.js' default API body limit is 1mb; a full session payload (allPapers
 // + scoredPapers + full filterResults verdicts) for a 600+-paper run is in
@@ -71,6 +72,7 @@ export default async function handler(req, res) {
 
     try {
       await fs.mkdir(dir, { recursive: true });
+      await sweepStaleTmpOrphans(dir);
       const serialized = JSON.stringify(entry, null, 2);
       const tmpPath = `${filePath}.tmp`;
       await fs.writeFile(tmpPath, serialized, 'utf8');

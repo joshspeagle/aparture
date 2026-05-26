@@ -528,18 +528,27 @@ export default function App() {
   // Resolve the active briefing entry. Current briefing returns synchronously
   // via loadBriefing's fast path; archived briefings trigger an async fetch
   // from the filesystem tier. Sidebar list + search still render from the
-  // lightweight index in `briefingHistory`.
+  // lightweight index in `briefingHistory`. selectedStatus distinguishes the
+  // pre-fetch / in-flight 'loading' state from a 'not-found' resolution so
+  // the renderer can show a real error instead of an infinite "Loading…" —
+  // the latter is what happens when the index references a briefing whose
+  // disk file is missing (e.g. a write that failed atomic-rename).
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState('idle');
   useEffect(() => {
     if (!activeView?.startsWith('briefing:') && !activeView?.startsWith('pipeline:')) {
       setSelectedEntry(null);
+      setSelectedStatus('idle');
       return;
     }
     const id = activeView.slice(activeView.indexOf(':') + 1);
     let cancelled = false;
     setSelectedEntry(null);
+    setSelectedStatus('loading');
     loadBriefing(id).then((entry) => {
-      if (!cancelled) setSelectedEntry(entry);
+      if (cancelled) return;
+      setSelectedEntry(entry);
+      setSelectedStatus(entry ? 'loaded' : 'not-found');
     });
     return () => {
       cancelled = true;
@@ -1295,6 +1304,11 @@ export default function App() {
           onNavigate={setActiveView}
           // Briefing views
           selectedEntry={selectedEntry}
+          selectedStatus={selectedStatus}
+          onRemoveOrphanBriefing={(id) => {
+            deleteBriefing(id);
+            setActiveView('welcome');
+          }}
           currentBriefing={currentBriefing}
           quickSummariesById={quickSummariesById}
           fullReportsById={fullReportsById}

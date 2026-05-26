@@ -637,7 +637,7 @@ describe('useBriefing', () => {
       fetchSpy.mockRestore();
     });
 
-    it('POSTs each legacy entry and removes the legacy key', async () => {
+    it('POSTs each legacy entry and removes the legacy key when all succeed', async () => {
       const legacy = [
         {
           id: 'e1',
@@ -670,16 +670,18 @@ describe('useBriefing', () => {
       expect(fetchSpy).toHaveBeenCalledTimes(2);
       expect(window.localStorage.getItem('aparture-briefing-history')).toBeNull();
 
+      // Index is newest-first by timestamp — e2 (ts=2) precedes e1 (ts=1).
       const index = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
       expect(index).toHaveLength(2);
-      expect(index[0].briefing.executiveSummary).toBe('one');
-      expect(index[0].pipelineArchive).toBeUndefined();
+      expect(index.map((b) => b.id)).toEqual(['e2', 'e1']);
+      expect(index[1].briefing.executiveSummary).toBe('one');
+      expect(index[1].pipelineArchive).toBeUndefined();
 
       // In-memory state reflects migrated entries
       expect(result.current.history).toHaveLength(2);
     });
 
-    it('keeps going on failed POSTs (skip-and-log, no retry)', async () => {
+    it('retains failed legacy entries for retry while persisting successes', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       fetchSpy.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
       fetchSpy.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) });
@@ -707,9 +709,12 @@ describe('useBriefing', () => {
         await new Promise((r) => setTimeout(r, 0));
       });
 
-      expect(window.localStorage.getItem('aparture-briefing-history')).toBeNull();
+      // Failed entry stays in legacy storage for the next mount to retry —
+      // dropping it permanently is what previously orphaned briefings.
+      const retained = JSON.parse(window.localStorage.getItem('aparture-briefing-history'));
+      expect(retained.map((b) => b.id)).toEqual(['fail']);
       const index = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
-      expect(index.map((b) => b.id)).toEqual(['ok']); // failed entry not in index
+      expect(index.map((b) => b.id)).toEqual(['ok']);
       warnSpy.mockRestore();
     });
   });

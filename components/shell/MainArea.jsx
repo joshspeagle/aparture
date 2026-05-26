@@ -31,6 +31,8 @@ export default function MainArea({
   activeView,
   // For briefing views
   selectedEntry,
+  selectedStatus,
+  onRemoveOrphanBriefing,
   currentBriefing,
   quickSummariesById,
   fullReportsById,
@@ -310,6 +312,9 @@ export default function MainArea({
   // Pipeline details view — paired with a briefing via "pipeline:<id>"
   if (activeView.startsWith('pipeline:')) {
     const entryKey = activeView.slice('pipeline:'.length);
+    if (selectedStatus === 'not-found') {
+      return renderBriefingNotFound(entryKey, onRemoveOrphanBriefing);
+    }
     // selectedEntry is async-resolved by App's useSelectedBriefing effect.
     if (!selectedEntry || selectedEntry.id !== entryKey) {
       return (
@@ -331,6 +336,9 @@ export default function MainArea({
   // Briefing view — matched by "briefing:<id>" pattern
   if (activeView.startsWith('briefing:')) {
     const entryKey = activeView.slice('briefing:'.length);
+    if (selectedStatus === 'not-found') {
+      return renderBriefingNotFound(entryKey, onRemoveOrphanBriefing);
+    }
     // selectedEntry is async-resolved by App's useSelectedBriefing effect.
     // While loading (or during a view switch) selectedEntry may be null or
     // stale; show a loading shim until it matches.
@@ -409,4 +417,38 @@ export default function MainArea({
 
   // Fallback
   return null;
+}
+
+// Shared not-found UI: index entry exists but disk file is missing (404 from
+// /api/briefings/[id]). Offers to remove the orphan from the local index so
+// the briefing list stays consistent with what's actually loadable.
+function renderBriefingNotFound(entryKey, onRemoveOrphanBriefing) {
+  return (
+    <div className="briefing-surface">
+      <div
+        style={{
+          padding: 'var(--aparture-space-6)',
+          maxWidth: 600,
+          fontFamily: 'var(--aparture-font-sans)',
+          color: 'var(--aparture-text)',
+        }}
+      >
+        <p style={{ margin: 0, fontWeight: 600 }}>This briefing isn’t on disk.</p>
+        <p style={{ marginTop: 'var(--aparture-space-3)', color: 'var(--aparture-mute)' }}>
+          The sidebar shows it because it’s in your local index, but no matching file lives in{' '}
+          <code>reports/briefings/</code>. Most often this means an earlier save failed mid-write
+          (atomic rename can fail on Dropbox-on-Windows) or the file was deleted manually.
+        </p>
+        {onRemoveOrphanBriefing && (
+          <Button
+            variant="secondary"
+            onClick={() => onRemoveOrphanBriefing(entryKey)}
+            style={{ marginTop: 'var(--aparture-space-4)' }}
+          >
+            Remove from list
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }

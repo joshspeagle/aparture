@@ -1,5 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { buildIndexEntry } from '../../../lib/briefing/buildIndexEntry.js';
+import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
 
 // Briefing payloads carry heavy optional fields (`pipelineArchive`,
 // `fullReportsById`, `quickSummariesById`) that easily blow past Next.js's
@@ -33,12 +35,33 @@ export default async function handler(req, res) {
     const dir = getBriefingsDir();
     try {
       const files = await fs.readdir(dir);
-      const ids = files
-        .filter((f) => f.endsWith('.json') && !f.endsWith('.tmp'))
-        .map((f) => f.slice(0, -'.json'.length));
+      const jsonFiles = files.filter((f) => f.endsWith('.json') && !f.endsWith('.tmp'));
+      const ids = jsonFiles.map((f) => f.slice(0, -'.json'.length));
+
+      // ?index=1 returns the rebuildable index slice: lets a client whose
+      // localStorage was cleared (or a fresh machine on the same Dropbox-
+      // synced disk) repopulate `aparture-briefing-index` without reading
+      // every full payload. Corrupt or unreadable files are skipped with
+      // a warn so a single bad file doesn't poison the whole list.
+      if (req.query.index === '1') {
+        const entries = [];
+        for (const file of jsonFiles) {
+          try {
+            const raw = await fs.readFile(path.join(dir, file), 'utf8');
+            const parsed = JSON.parse(raw);
+            entries.push(buildIndexEntry(parsed));
+          } catch (err) {
+            console.warn('[briefings GET ?index=1] skipping unreadable file', file, err.message);
+          }
+        }
+        return res.status(200).json({ entries });
+      }
+
       return res.status(200).json({ ids });
     } catch (err) {
-      if (err.code === 'ENOENT') return res.status(200).json({ ids: [] });
+      if (err.code === 'ENOENT') {
+        return res.status(200).json(req.query.index === '1' ? { entries: [] } : { ids: [] });
+      }
       console.error('[briefings GET list] readdir failed:', err);
       return res.status(500).json({ error: err.message });
     }
@@ -64,6 +87,7 @@ export default async function handler(req, res) {
 
     try {
       await fs.mkdir(dir, { recursive: true });
+      await sweepStaleTmpOrphans(dir);
       const serialized = JSON.stringify(entry, null, 2);
       const tmpPath = `${filePath}.tmp`;
       await fs.writeFile(tmpPath, serialized, 'utf8');

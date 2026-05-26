@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -83,6 +84,7 @@ export default async function handler(req, res) {
       const merged = { ...current, ...safePatch };
       const serialized = JSON.stringify(merged, null, 2);
       const tmpPath = `${resolved.filePath}.tmp`;
+      await sweepStaleTmpOrphans(resolved.dir);
       await fs.writeFile(tmpPath, serialized, 'utf8');
       await fs.rename(tmpPath, resolved.filePath);
       return res.status(200).json({ ok: true });

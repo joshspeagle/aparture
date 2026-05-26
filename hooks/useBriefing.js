@@ -96,10 +96,13 @@ function readStoredCurrent() {
 
 const LEGACY_HISTORY_KEY = 'aparture-briefing-history';
 
-// One-shot migration: move legacy single-key history entries to per-file
-// storage + rebuild the index. Runs on every mount; no-op when the legacy
-// key is absent. Per spec: skip-and-log on per-entry failures, then remove
-// the legacy key regardless of per-entry success so we don't retry forever.
+// Migration: move legacy single-key history entries to per-file storage +
+// rebuild the index. Runs on every mount; no-op when the legacy key is
+// absent. Failures (e.g. 401 because password wasn't hydrated yet, or a
+// transient 500) keep the affected entries in the legacy blob so a later
+// mount can retry — historically we removed the legacy key on partial
+// failure, which silently orphaned briefings as soon as the post-migration
+// disk file was missing.
 async function migrateLegacyHistoryIfNeeded({ password }) {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(LEGACY_HISTORY_KEY);
@@ -117,7 +120,8 @@ async function migrateLegacyHistoryIfNeeded({ password }) {
     return null;
   }
 
-  const newIndex = [];
+  const succeededIndexEntries = [];
+  const remainingLegacy = [];
   for (let i = 0; i < legacy.length; i++) {
     const entry = migrateEntry(legacy[i], i);
     try {
@@ -128,17 +132,38 @@ async function migrateLegacyHistoryIfNeeded({ password }) {
       });
       if (!res.ok) {
         console.warn(`[useBriefing migration] POST failed for ${entry.id}: HTTP ${res.status}`);
+        remainingLegacy.push(legacy[i]);
         continue;
       }
-      newIndex.push(buildIndexEntry(entry));
+      succeededIndexEntries.push(buildIndexEntry(entry));
     } catch (err) {
       console.warn(`[useBriefing migration] POST threw for ${entry.id}:`, err);
+      remainingLegacy.push(legacy[i]);
     }
   }
 
-  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(newIndex));
-  window.localStorage.removeItem(LEGACY_HISTORY_KEY);
-  return newIndex;
+  // Merge successes into whatever index already exists (prior successful
+  // migration runs from earlier mounts) — preferring the freshly built
+  // index entry on duplicate id so any schema bumps in migrateEntry/
+  // buildIndexEntry land.
+  const existing = readStoredHistory();
+  const mergedById = new Map();
+  for (const entry of existing) mergedById.set(entry.id, entry);
+  for (const entry of succeededIndexEntries) mergedById.set(entry.id, entry);
+  const merged = Array.from(mergedById.values()).sort(
+    (a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)
+  );
+
+  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+  if (remainingLegacy.length === 0) {
+    window.localStorage.removeItem(LEGACY_HISTORY_KEY);
+  } else {
+    window.localStorage.setItem(LEGACY_HISTORY_KEY, JSON.stringify(remainingLegacy));
+    console.warn(
+      `[useBriefing migration] ${remainingLegacy.length}/${legacy.length} legacy entries could not be migrated; will retry on next mount`
+    );
+  }
+  return merged;
 }
 
 function readStoredHistory() {
@@ -191,6 +216,48 @@ export function useBriefing({ password = '' } = {}) {
       if (migrated) setHistory(migrated);
     });
   }, []);
+
+  // Fallback: when the local hot-tier index is empty but disk has briefings
+  // (e.g. fresh machine on a Dropbox-synced repo, or localStorage was
+  // cleared), rebuild the index from disk so the UI list isn't blank. Fires
+  // at most once per session, only after password is available.
+  const reindexTriedRef = useRef(false);
+  useEffect(() => {
+    if (!password || reindexTriedRef.current) return;
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      if (cancelled) return;
+      // Give legacy migration a tick to land; if it produced entries we
+      // don't need to refetch from disk.
+      if (historyRef.current.length > 0) {
+        reindexTriedRef.current = true;
+        return;
+      }
+      try {
+        const res = await fetch(`/api/briefings?index=1&password=${encodeURIComponent(password)}`);
+        if (cancelled || !res.ok) {
+          reindexTriedRef.current = true;
+          return;
+        }
+        const { entries = [] } = await res.json();
+        if (cancelled || entries.length === 0) {
+          reindexTriedRef.current = true;
+          return;
+        }
+        const sorted = entries.slice().sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+        setHistory(sorted);
+        persistHistory(sorted);
+        reindexTriedRef.current = true;
+      } catch (err) {
+        console.warn('[useBriefing reindex] failed:', err);
+        reindexTriedRef.current = true;
+      }
+    }, 50);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [password]);
 
   // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
   // don't throw, since hot-tier state already reflects the save.
