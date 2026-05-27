@@ -113,8 +113,9 @@ export default function ScopedCommentInput({
             padding: '4px 12px',
             fontSize: 'var(--aparture-text-xs, 12px)',
             borderRadius: '6px',
-            border: '1px solid var(--aparture-border, #d1d5db)',
-            background: 'white',
+            border: '1px solid var(--aparture-hairline)',
+            background: 'var(--aparture-surface)',
+            color: 'var(--aparture-ink)',
             cursor: 'pointer',
           }}
         >

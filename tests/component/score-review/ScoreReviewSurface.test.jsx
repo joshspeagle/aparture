@@ -12,7 +12,7 @@ const mkPaper = (id, score) => ({
 });
 
 describe('ScoreReviewSurface', () => {
-  it('renders the "New:" subhead', () => {
+  it('renders the score-review subhead copy', () => {
     render(
       <ScoreReviewSurface
         availablePapers={[mkPaper('a', 8)]}
@@ -24,7 +24,7 @@ describe('ScoreReviewSurface', () => {
         onContinue={() => {}}
       />
     );
-    expect(screen.getByText(/New:/)).toBeInTheDocument();
+    expect(screen.getByText(/Review your scored papers before PDF analysis/i)).toBeInTheDocument();
   });
 
   it('renders the title with paper count', () => {

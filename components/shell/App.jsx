@@ -21,6 +21,7 @@ import Sidebar from './Sidebar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
+import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -90,14 +91,18 @@ function PaperCard({
     transition: 'all 150ms ease',
   };
 
+  const inFinalRanking = showDeepAnalysis && paper.deepAnalysis;
+  const rowTint = starred ? ROW_TINT.green : dismissed ? ROW_TINT.mute : 'var(--aparture-surface)';
   return (
     <div
       style={{
-        background: 'var(--aparture-surface)',
+        background: rowTint,
         borderRadius: '4px',
         padding: 'var(--aparture-space-4)',
         border: '1px solid var(--aparture-hairline)',
-        transition: 'border-color 150ms ease',
+        borderLeft: inFinalRanking ? '3px solid #22c55e' : '1px solid var(--aparture-hairline)',
+        opacity: dismissed ? 0.55 : 1,
+        transition: 'border-color 150ms ease, background 150ms ease, opacity 150ms ease',
       }}
     >
       <div
@@ -105,10 +110,11 @@ function PaperCard({
           display: 'flex',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
+          gap: 'var(--aparture-space-3)',
           marginBottom: '8px',
         }}
       >
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           {/* Top row: rank + final score + arXiv link */}
           <div
             style={{
@@ -296,7 +302,7 @@ function PaperCard({
             </div>
           )}
 
-          {hasFeedbackAffordance && (
+          {hasFeedbackAffordance && showCommentInput && (
             <div
               style={{
                 marginTop: 'var(--aparture-space-3)',
@@ -304,165 +310,156 @@ function PaperCard({
                 borderTop: '1px solid var(--aparture-hairline)',
               }}
             >
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={handleStar}
-                  style={{
-                    ...feedbackBtnBase,
-                    ...(starred
-                      ? {
-                          background: 'rgba(245,158,11,0.15)',
-                          color: '#f59e0b',
-                          borderColor: '#f59e0b',
-                        }
-                      : {}),
-                  }}
-                  title={starred ? 'Remove star' : 'Star this paper'}
-                >
-                  {starred ? '\u2605 starred' : '\u2606 star'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDismiss}
-                  style={{
-                    ...feedbackBtnBase,
-                    ...(dismissed
-                      ? {
-                          background: 'var(--aparture-bg)',
-                          color: 'var(--aparture-ink)',
-                          borderColor: 'var(--aparture-mute)',
-                        }
-                      : {}),
-                  }}
-                  title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
-                >
-                  {dismissed ? '\u2298 dismissed' : '\u2298 dismiss'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCommentInput((v) => !v)}
-                  style={feedbackBtnBase}
-                  title="Leave a comment on this paper"
-                >
-                  + comment
-                </button>
-              </div>
-              {showCommentInput && (
-                <div style={{ marginTop: '8px' }}>
-                  {(() => {
-                    const pastComments = feedbackEvents.filter(
-                      (e) => e.type === 'paper-comment' && e.arxivId === paper.id
-                    );
-                    if (pastComments.length === 0) return null;
-                    return (
+              <div>
+                {(() => {
+                  const pastComments = feedbackEvents.filter(
+                    (e) => e.type === 'paper-comment' && e.arxivId === paper.id
+                  );
+                  if (pastComments.length === 0) return null;
+                  return (
+                    <div
+                      style={{
+                        marginBottom: '8px',
+                        padding: '6px 8px',
+                        borderRadius: '4px',
+                        background: 'var(--aparture-bg)',
+                        border: '1px solid var(--aparture-hairline)',
+                      }}
+                    >
                       <div
                         style={{
-                          marginBottom: '8px',
-                          padding: '6px 8px',
-                          borderRadius: '4px',
-                          background: 'var(--aparture-bg)',
-                          border: '1px solid var(--aparture-hairline)',
+                          fontFamily: 'var(--aparture-font-sans)',
+                          fontSize: '10px',
+                          color: 'var(--aparture-mute)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          marginBottom: '4px',
                         }}
                       >
+                        Past comments ({pastComments.length})
+                      </div>
+                      {pastComments.map((c) => (
                         <div
+                          key={c.id}
                           style={{
+                            display: 'flex',
+                            gap: '6px',
                             fontFamily: 'var(--aparture-font-sans)',
-                            fontSize: '10px',
-                            color: 'var(--aparture-mute)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            marginBottom: '4px',
+                            fontSize: 'var(--aparture-text-xs)',
+                            lineHeight: 1.4,
+                            marginBottom: '2px',
                           }}
                         >
-                          Past comments ({pastComments.length})
+                          <span style={{ color: 'var(--aparture-mute)', flexShrink: 0 }}>
+                            {new Date(c.timestamp).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                          <span style={{ color: 'var(--aparture-ink)' }}>{c.comment}</span>
                         </div>
-                        {pastComments.map((c) => (
-                          <div
-                            key={c.id}
-                            style={{
-                              display: 'flex',
-                              gap: '6px',
-                              fontFamily: 'var(--aparture-font-sans)',
-                              fontSize: 'var(--aparture-text-xs)',
-                              lineHeight: 1.4,
-                              marginBottom: '2px',
-                            }}
-                          >
-                            <span style={{ color: 'var(--aparture-mute)', flexShrink: 0 }}>
-                              {new Date(c.timestamp).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                              })}
-                            </span>
-                            <span style={{ color: 'var(--aparture-ink)' }}>{c.comment}</span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                  <textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    rows={3}
-                    placeholder="Your thoughts on this paper…"
+                      ))}
+                    </div>
+                  );
+                })()}
+                <textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  rows={3}
+                  placeholder="Your thoughts on this paper…"
+                  style={{
+                    width: '100%',
+                    minHeight: '4rem',
+                    resize: 'vertical',
+                    borderRadius: '4px',
+                    border: '1px solid var(--aparture-hairline)',
+                    background: 'var(--aparture-bg)',
+                    padding: '4px 8px',
+                    fontFamily: 'var(--aparture-font-sans)',
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-ink)',
+                    boxSizing: 'border-box',
+                  }}
+                  autoFocus
+                />
+                <div
+                  style={{
+                    marginTop: '4px',
+                    display: 'flex',
+                    gap: '8px',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleCancelComment}
                     style={{
-                      width: '100%',
-                      minHeight: '4rem',
-                      resize: 'vertical',
-                      borderRadius: '4px',
-                      border: '1px solid var(--aparture-hairline)',
-                      background: 'var(--aparture-bg)',
-                      padding: '4px 8px',
-                      fontFamily: 'var(--aparture-font-sans)',
-                      fontSize: 'var(--aparture-text-xs)',
-                      color: 'var(--aparture-ink)',
-                      boxSizing: 'border-box',
-                    }}
-                    autoFocus
-                  />
-                  <div
-                    style={{
-                      marginTop: '4px',
-                      display: 'flex',
-                      gap: '8px',
-                      justifyContent: 'flex-end',
+                      ...feedbackBtnBase,
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={handleCancelComment}
-                      style={{
-                        ...feedbackBtnBase,
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveComment}
-                      disabled={commentText.trim().length === 0}
-                      style={{
-                        fontFamily: 'var(--aparture-font-sans)',
-                        fontSize: 'var(--aparture-text-xs)',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        border: '1px solid var(--aparture-accent)',
-                        background: 'var(--aparture-accent)',
-                        color: '#fff',
-                        fontWeight: 500,
-                        cursor: commentText.trim().length === 0 ? 'not-allowed' : 'pointer',
-                        opacity: commentText.trim().length === 0 ? 0.5 : 1,
-                      }}
-                    >
-                      Save
-                    </button>
-                  </div>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveComment}
+                    disabled={commentText.trim().length === 0}
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--aparture-accent)',
+                      background: 'var(--aparture-accent)',
+                      color: '#fff',
+                      fontWeight: 500,
+                      cursor: commentText.trim().length === 0 ? 'not-allowed' : 'pointer',
+                      opacity: commentText.trim().length === 0 ? 0.5 : 1,
+                    }}
+                  >
+                    Save
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>
+        {hasFeedbackAffordance && (
+          <div
+            style={{
+              display: 'flex',
+              flexShrink: 0,
+              gap: '4px',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              marginLeft: 'var(--aparture-space-3)',
+            }}
+          >
+            <ActionPill
+              active={starred}
+              activeColors={SEMANTIC_COLORS.green}
+              glyph={starred ? '\u2605' : '\u2606'}
+              label={starred ? 'STARRED' : 'STAR'}
+              onClick={handleStar}
+              title={starred ? 'Remove star' : 'Star this paper'}
+            />
+            <ActionPill
+              active={dismissed}
+              activeColors={SEMANTIC_COLORS.mute}
+              glyph={'\u2298'}
+              label={dismissed ? 'DISMISSED' : 'DISMISS'}
+              onClick={handleDismiss}
+              title={dismissed ? 'Remove dismiss' : 'Dismiss this paper'}
+            />
+            <ActionPill
+              active={showCommentInput}
+              activeColors={SEMANTIC_COLORS.amber}
+              label="COMMENT"
+              glyph={'+'}
+              onClick={() => setShowCommentInput((v) => !v)}
+              title="Leave a comment on this paper"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

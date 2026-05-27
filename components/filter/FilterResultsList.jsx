@@ -3,6 +3,7 @@ import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
+import { ROW_TINT as SHARED_ROW_TINT } from '../ui/ActionPill.jsx';
 
 const BUCKET_PLACEHOLDERS = {
   YES: 'e.g., "Lots of pure theory today — I\'m more interested in applied work this quarter." Or: "Missing the diffusion-model angle I\'ve been tracking — expected 1-2 papers there." Or: "Too many marginal hits — please be stricter about novelty."',
@@ -15,6 +16,15 @@ const VERDICT_COLORS = {
   YES: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
   MAYBE: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' },
   NO: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' },
+};
+
+// Maps the filter's YES/MAYBE/NO verdict to the shared row-tint palette.
+// SHARED_ROW_TINT comes from components/ui/ActionPill.jsx so the three
+// review surfaces (filter, score-review, pre-briefing) stay in sync.
+const ROW_TINT = {
+  YES: SHARED_ROW_TINT.green,
+  MAYBE: SHARED_ROW_TINT.amber,
+  NO: SHARED_ROW_TINT.mute,
 };
 
 function VerdictButton({ option, isActive, disabled, originalVerdict, onClick }) {
@@ -133,10 +143,12 @@ function FilterResultRow({
   return (
     <div
       style={{
-        background: 'var(--aparture-bg)',
+        background: ROW_TINT[verdict] ?? 'var(--aparture-bg)',
         borderRadius: '4px',
         padding: 'var(--aparture-space-3)',
         border: `1px solid ${borderColor}`,
+        opacity: verdict === 'NO' ? 0.55 : 1,
+        transition: 'background 150ms ease, opacity 150ms ease',
       }}
     >
       <div

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Star, X } from 'lucide-react';
 import TextArea from '../ui/TextArea.jsx';
+import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 
 function RowComment({ arxivId, onAddPaperComment }) {
   const [expanded, setExpanded] = useState(false);
@@ -74,56 +74,24 @@ function ScoreRow({
   onAddPaperComment,
 }) {
   const id = paper.id ?? paper.arxivId;
+  const rowBg = isDismissed ? ROW_TINT.mute : isStarred ? ROW_TINT.green : 'transparent';
   return (
     <div
       data-testid={`ms-row-${id}`}
       style={{
         display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
         gap: 'var(--aparture-space-3, 12px)',
         padding: 'var(--aparture-space-3, 12px)',
         borderTop: '1px solid var(--aparture-border-light, #f3f4f6)',
         borderLeft: isInTopN ? '3px solid #22c55e' : '3px solid transparent',
-        background: isDismissed
-          ? 'var(--aparture-surface-muted, #f9fafb)'
-          : isStarred
-            ? 'var(--aparture-accent-soft, #fffbeb)'
-            : 'transparent',
+        background: rowBg,
         opacity: isDismissed ? 0.55 : 1,
+        transition: 'background 150ms ease, opacity 150ms ease',
       }}
     >
-      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-        <button
-          data-testid={`ms-star-${id}`}
-          onClick={() => onStar(id)}
-          aria-label="Star to guarantee PDF analysis"
-          style={{
-            padding: '4px',
-            background: isStarred ? '#f59e0b' : 'transparent',
-            color: isStarred ? 'white' : 'var(--aparture-mute, #9ca3af)',
-            border: '1px solid var(--aparture-border, #e5e7eb)',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          <Star size={14} />
-        </button>
-        <button
-          data-testid={`ms-dismiss-${id}`}
-          onClick={() => onDismiss(id)}
-          aria-label="Dismiss to skip PDF analysis"
-          style={{
-            padding: '4px',
-            background: isDismissed ? '#ef4444' : 'transparent',
-            color: isDismissed ? 'white' : 'var(--aparture-mute, #9ca3af)',
-            border: '1px solid var(--aparture-border, #e5e7eb)',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-      <div style={{ flex: 1, fontSize: 'var(--aparture-text-sm, 14px)' }}>
+      <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--aparture-text-sm, 14px)' }}>
         <div style={{ fontWeight: 500, marginBottom: '2px' }}>{paper.title}</div>
         <div
           style={{
@@ -147,6 +115,29 @@ function ScoreRow({
             <RowComment arxivId={paper.arxivId ?? paper.id} onAddPaperComment={onAddPaperComment} />
           </div>
         )}
+      </div>
+      <div
+        style={{ display: 'flex', flexShrink: 0, gap: '4px', alignItems: 'center' }}
+        data-testid={`ms-actions-${id}`}
+      >
+        <ActionPill
+          active={isStarred}
+          activeColors={SEMANTIC_COLORS.green}
+          glyph={isStarred ? '★' : '☆'}
+          label={isStarred ? 'STARRED' : 'STAR'}
+          onClick={() => onStar(id)}
+          title="Star to guarantee PDF analysis"
+          dataTestId={`ms-star-${id}`}
+        />
+        <ActionPill
+          active={isDismissed}
+          activeColors={SEMANTIC_COLORS.mute}
+          glyph={'✕'}
+          label={isDismissed ? 'DISMISSED' : 'DISMISS'}
+          onClick={() => onDismiss(id)}
+          title="Dismiss to skip PDF analysis"
+          dataTestId={`ms-dismiss-${id}`}
+        />
       </div>
     </div>
   );
@@ -242,8 +233,8 @@ export default function ScoreReviewSurface({
             marginBottom: '4px',
           }}
         >
-          New: review your scored papers before PDF analysis. Star to guarantee inclusion; dismiss
-          to skip.
+          Review your scored papers before PDF analysis. Star to guarantee inclusion; dismiss to
+          skip.
         </div>
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--aparture-space-3, 12px)' }}
