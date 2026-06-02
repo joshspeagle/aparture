@@ -33,9 +33,9 @@ export default function ScopedCommentInput({
             padding: '5px 12px',
             borderRadius: '12px',
             fontSize: 'var(--aparture-text-xs, 12px)',
-            border: '1px solid var(--aparture-info-border, #93c5fd)',
-            color: 'var(--aparture-info-text, #1e3a8a)',
-            background: 'var(--aparture-info-soft, #eff6ff)',
+            border: '1px solid var(--aparture-info-border)',
+            color: 'var(--aparture-info-text)',
+            background: 'var(--aparture-info-soft)',
             cursor: 'pointer',
           }}
         >
@@ -46,7 +46,7 @@ export default function ScopedCommentInput({
             marginTop: '6px',
             fontSize: 'var(--aparture-text-xs, 12px)',
             fontStyle: 'italic',
-            color: 'var(--aparture-mute, #6b7280)',
+            color: 'var(--aparture-mute)',
             lineHeight: 1.4,
           }}
         >
@@ -64,8 +64,8 @@ export default function ScopedCommentInput({
           padding: '5px 12px',
           borderRadius: '12px',
           fontSize: 'var(--aparture-text-xs, 12px)',
-          border: '1px dashed var(--aparture-border, #cbd5e1)',
-          color: 'var(--aparture-mute, #64748b)',
+          border: '1px dashed var(--aparture-border)',
+          color: 'var(--aparture-mute)',
           background: 'transparent',
           cursor: 'pointer',
         }}

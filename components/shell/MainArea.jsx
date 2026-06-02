@@ -421,7 +421,7 @@ function renderBriefingNotFound(entryKey, onRemoveOrphanBriefing) {
           padding: 'var(--aparture-space-6)',
           maxWidth: 600,
           fontFamily: 'var(--aparture-font-sans)',
-          color: 'var(--aparture-text)',
+          color: 'var(--aparture-ink)',
         }}
       >
         <p style={{ margin: 0, fontWeight: 600 }}>This briefing isn’t on disk.</p>

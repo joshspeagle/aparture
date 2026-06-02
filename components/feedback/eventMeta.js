@@ -12,7 +12,7 @@ const TYPE_META = {
 
 const FALLBACK = { icon: '·', borderColor: 'var(--aparture-hairline)', label: 'event' };
 
-export function metaFor(type) {
+function metaFor(type) {
   return TYPE_META[type] ?? FALLBACK;
 }
 

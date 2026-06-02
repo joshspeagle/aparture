@@ -277,8 +277,8 @@ export default async function handler(req, res) {
       verdict: data.verdict,
       justification: data.justification,
       flaggedClaims: data.flaggedClaims,
-      tokensIn: response.tokensIn,
-      tokensOut: response.tokensOut,
+      tokensIn: (response.tokensIn ?? 0) + (repaired.tokensIn ?? 0),
+      tokensOut: (response.tokensOut ?? 0) + (repaired.tokensOut ?? 0),
       repaired: true,
       originalValidationErrors: firstErrors,
     });

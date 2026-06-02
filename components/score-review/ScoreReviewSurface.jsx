@@ -14,7 +14,7 @@ function RowComment({ arxivId, onAddPaperComment }) {
         style={{
           background: 'transparent',
           border: 'none',
-          color: 'var(--aparture-mute, #6b7280)',
+          color: 'var(--aparture-mute)',
           fontSize: 'var(--aparture-text-xs, 12px)',
           cursor: 'pointer',
           padding: '2px 0',

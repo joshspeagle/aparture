@@ -52,16 +52,25 @@ describe('useSeenPapers — recordRun', () => {
   });
 
   it('keeps the EARLIEST date when an arxivId appears twice (first-wins)', () => {
-    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
-    act(() => {
-      result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-03-01T00:00:00Z'));
-    });
-    act(() => {
-      result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-05-14T00:00:00Z'));
-    });
-    // First-wins: the initial date is preserved even when the same ID is
-    // recorded again at a later timestamp.
-    expect(result.current.index['2605.14205']).toBe('2026-03-01');
+    // Pin the clock so BOTH recorded dates (2026-03-01 and 2026-05-14) sit
+    // inside the 90-day prune window; otherwise today's real Date.now()
+    // prunes the earlier entry before the assertion runs.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T00:00:00Z'));
+    try {
+      const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+      act(() => {
+        result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-03-01T00:00:00Z'));
+      });
+      act(() => {
+        result.current.recordRun([{ id: '2605.14205' }], Date.parse('2026-05-14T00:00:00Z'));
+      });
+      // First-wins: the initial date is preserved even when the same ID is
+      // recorded again at a later timestamp.
+      expect(result.current.index['2605.14205']).toBe('2026-03-01');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('persists the merged index to localStorage', () => {
