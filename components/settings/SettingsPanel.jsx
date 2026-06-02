@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ARXIV_CATEGORIES, getCategoryDisplayName } from '../../utils/arxivCategories.js';
-import { AVAILABLE_MODELS } from '../../utils/models.js';
+import { AVAILABLE_MODELS, getModel, getModelsForPDF } from '../../utils/models.js';
 import Button from '../ui/Button.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
 import Input from '../ui/Input.jsx';
@@ -451,7 +451,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     margin: 0,
                   }}
                 >
-                  {AVAILABLE_MODELS.find((m) => m.id === config.filterModel)?.description}
+                  {getModel(config.filterModel)?.description}
                 </p>
               </div>
             </div>
@@ -508,7 +508,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     margin: 0,
                   }}
                 >
-                  {AVAILABLE_MODELS.find((m) => m.id === config.scoringModel)?.description}
+                  {getModel(config.scoringModel)?.description}
                 </p>
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 onChange={(e) => setConfig((prev) => ({ ...prev, pdfModel: e.target.value }))}
                 disabled={processing.isRunning}
               >
-                {AVAILABLE_MODELS.filter((m) => m.supportsPDF).map((model) => (
+                {getModelsForPDF().map((model) => (
                   <option key={model.id} value={model.id}>
                     {model.name}
                   </option>
@@ -565,7 +565,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     margin: 0,
                   }}
                 >
-                  {AVAILABLE_MODELS.find((m) => m.id === config.pdfModel)?.description}
+                  {getModel(config.pdfModel)?.description}
                 </p>
               </div>
             </div>
@@ -624,11 +624,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     margin: 0,
                   }}
                 >
-                  {
-                    AVAILABLE_MODELS.find(
-                      (m) => m.id === (config.quickSummaryModel ?? 'gemini-3.1-flash-lite')
-                    )?.description
-                  }
+                  {getModel(config.quickSummaryModel ?? 'gemini-3.1-flash-lite')?.description}
                 </p>
               </div>
             </div>
@@ -663,7 +659,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 onChange={(e) => setConfig((prev) => ({ ...prev, briefingModel: e.target.value }))}
                 disabled={processing.isRunning}
               >
-                {AVAILABLE_MODELS.filter((m) => m.supportsPDF).map((model) => (
+                {getModelsForPDF().map((model) => (
                   <option key={model.id} value={model.id}>
                     {model.name}
                   </option>
@@ -685,10 +681,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     margin: 0,
                   }}
                 >
-                  {
-                    AVAILABLE_MODELS.find((m) => m.id === (config.briefingModel ?? config.pdfModel))
-                      ?.description
-                  }
+                  {getModel(config.briefingModel ?? config.pdfModel)?.description}
                 </p>
               </div>
             </div>

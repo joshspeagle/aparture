@@ -719,6 +719,11 @@ export default function App() {
     setNotebookLMContent,
     setPassword,
     setIsAuthenticated,
+    // Surface a visible, non-blocking warning when the cold-tier session POST
+    // fails on every retry — otherwise heavy run data (allPapers / scoredPapers
+    // / full verdicts, which live ONLY on disk) is silently lost on refresh.
+    // addError renders in the prominent red banner above the run controls.
+    onColdSaveFailed: addError,
   });
 
   // Default activeView: if a current briefing exists, show it; else welcome.

@@ -15,6 +15,7 @@ const TOKENS = [
   '--aparture-info-soft',
   '--aparture-info-border',
   '--aparture-info-text',
+  '--aparture-text-3xl',
 ];
 
 describe('design tokens are defined in all four theme blocks', () => {

@@ -397,6 +397,79 @@ describe('useAnalyzerPersistence — onColdSessionSaved callback', () => {
   });
 });
 
+describe('useAnalyzerPersistence — cold-save retry + warning', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it('retries the cold POST and fires onColdSaveFailed when it persistently fails', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Hot-tier setItem must still succeed; only the cold POST fails.
+    const failingFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 413,
+      json: async () => ({ error: 'payload too large' }),
+    });
+    const onColdSaveFailed = vi.fn();
+
+    const props = makeProps({
+      results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+      onColdSaveFailed,
+    });
+    renderHook(() => useAnalyzerPersistence(props));
+
+    // Advance past the 400ms debounce, then drain the retry ladder. Each
+    // attempt awaits a backoff (500ms, 1000ms); advanceTimersByTimeAsync
+    // flushes the microtasks between fetches too.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    const postCalls = failingFetch.mock.calls.filter(
+      (call) => call[0] === '/api/sessions' && call[1]?.method === 'POST'
+    );
+    // 3 attempts (COLD_SAVE_MAX_ATTEMPTS).
+    expect(postCalls.length).toBe(3);
+    expect(onColdSaveFailed).toHaveBeenCalledTimes(1);
+    expect(onColdSaveFailed.mock.calls[0][0]).toMatch(/could not be saved|lost if you refresh/i);
+    vi.useRealTimers();
+  });
+
+  it('does NOT fire onColdSaveFailed when a retry eventually succeeds', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let attempt = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
+      if (url === '/api/sessions' && opts?.method === 'POST') {
+        attempt += 1;
+        if (attempt < 2) {
+          return { ok: false, status: 503, json: async () => ({ error: 'busy' }) };
+        }
+        return { ok: true, status: 200, json: async () => ({ id: 'sess-x' }) };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    const onColdSaveFailed = vi.fn();
+
+    const props = makeProps({
+      results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+      onColdSaveFailed,
+    });
+    renderHook(() => useAnalyzerPersistence(props));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(attempt).toBe(2);
+    expect(onColdSaveFailed).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});
+
 describe('migrateLegacyConfig — v7 → v8', () => {
   it('adds pauseBeforeDeepAnalysis: true for v7 configs', () => {
     const v7Config = {

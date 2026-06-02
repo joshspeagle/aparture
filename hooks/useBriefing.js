@@ -23,12 +23,24 @@ function stripHeavy(entry) {
 // from the tail; if that still doesn't fit, strip heavy fields. If all
 // strategies fail, log and skip — in-memory state is preserved so the live
 // session isn't disrupted; next reload will see the last successful write.
-function persistHistory(entries) {
+//
+// `onDropEntries(droppedEntries)` is invoked (once, with the array of index
+// entries removed from the tail for quota) so the caller can unlink the
+// corresponding cold files. Without this, a quota-prune would orphan
+// `reports/briefings/<id>.json` files: invisible in the UI (gone from the
+// search index) yet still on disk. The reindex effect only fires when the
+// hot index is EMPTY, so a partially-pruned index never self-heals.
+function persistHistory(entries, onDropEntries) {
   if (typeof window === 'undefined') return;
   let toPersist = entries;
+  let dropped = [];
   while (toPersist.length > 0) {
-    if (safeSetItem(HISTORY_KEY, JSON.stringify(toPersist))) return;
+    if (safeSetItem(HISTORY_KEY, JSON.stringify(toPersist))) {
+      if (dropped.length > 0 && onDropEntries) onDropEntries(dropped);
+      return;
+    }
     if (toPersist.length <= 1) break;
+    dropped = entries.slice(toPersist.length - 1);
     toPersist = toPersist.slice(0, -1);
     console.warn(
       `[useBriefing] localStorage quota exceeded; pruning oldest briefing (${toPersist.length}/${entries.length} entries will be persisted)`
@@ -36,6 +48,7 @@ function persistHistory(entries) {
   }
   const stripped = toPersist.map(stripHeavy);
   if (stripped.length > 0 && safeSetItem(HISTORY_KEY, JSON.stringify(stripped))) {
+    if (dropped.length > 0 && onDropEntries) onDropEntries(dropped);
     console.warn(
       '[useBriefing] localStorage quota exceeded; persisted briefing history without pipeline archive / full reports'
     );
@@ -214,6 +227,24 @@ export function useBriefing({ password = '' } = {}) {
     historyRef.current = history;
   }, [history]);
 
+  // Unlink cold files for index entries pruned by a quota-prune in
+  // persistHistory. Without this, the cold `reports/briefings/<id>.json`
+  // files orphan: gone from the search index (so invisible in the UI) yet
+  // still on disk. Lossy-but-consistent: we drop the same briefings from
+  // both tiers. Best-effort — DELETE failures just log. Declared above the
+  // reindex effect so that effect can reference it without a TDZ error.
+  const unlinkDroppedColdFiles = useCallback((droppedEntries) => {
+    for (const entry of droppedEntries) {
+      if (!entry?.id) continue;
+      fetch(
+        `/api/briefings/${encodeURIComponent(entry.id)}?password=${encodeURIComponent(passwordRef.current)}`,
+        { method: 'DELETE' }
+      ).catch((err) => {
+        console.warn('[useBriefing] failed to unlink quota-pruned cold briefing', entry.id, err);
+      });
+    }
+  }, []);
+
   // One-shot migration from the legacy single-key history to filesystem +
   // search-capable index. No-op when the legacy key is absent; the ref-in-
   // empty-deps pattern keeps this from firing on every render.
@@ -252,7 +283,7 @@ export function useBriefing({ password = '' } = {}) {
         }
         const sorted = entries.slice().sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
         setHistory(sorted);
-        persistHistory(sorted);
+        persistHistory(sorted, unlinkDroppedColdFiles);
         reindexTriedRef.current = true;
       } catch (err) {
         console.warn('[useBriefing reindex] failed:', err);
@@ -263,7 +294,7 @@ export function useBriefing({ password = '' } = {}) {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [password]);
+  }, [password, unlinkDroppedColdFiles]);
 
   // Fire-and-await POST to the filesystem tier. Best-effort: failures log but
   // don't throw, since hot-tier state already reflects the save.
@@ -305,13 +336,13 @@ export function useBriefing({ password = '' } = {}) {
       persistCurrent(entry);
       setHistory((prev) => {
         const next = [buildIndexEntry(entry), ...prev].slice(0, MAX_HISTORY);
-        persistHistory(next);
+        persistHistory(next, unlinkDroppedColdFiles);
         return next;
       });
       await postBriefing(entry);
       return id;
     },
-    [postBriefing]
+    [postBriefing, unlinkDroppedColdFiles]
   );
 
   const loadBriefing = useCallback(async (id) => {
@@ -337,65 +368,71 @@ export function useBriefing({ password = '' } = {}) {
     }
   }, []);
 
-  const deleteBriefing = useCallback(async (id) => {
-    setHistory((prev) => {
-      const next = prev.filter((b) => b.id !== id);
-      persistHistory(next);
-      return next;
-    });
-    setCurrent((prev) => {
-      if (prev?.id === id) {
-        if (typeof window !== 'undefined') {
-          window.localStorage.removeItem(CURRENT_KEY);
-        }
-        return null;
-      }
-      return prev;
-    });
-
-    try {
-      await fetch(
-        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`,
-        { method: 'DELETE' }
-      );
-    } catch (err) {
-      console.warn('[useBriefing] delete failed for', id, err);
-    }
-  }, []);
-
-  const toggleArchive = useCallback(async (id) => {
-    const entry = historyRef.current.find((b) => b.id === id);
-    if (!entry) return;
-    const nextArchived = !entry.archived;
-
-    setHistory((prev) => {
-      const next = prev.map((b) => (b.id === id ? { ...b, archived: nextArchived } : b));
-      persistHistory(next);
-      return next;
-    });
-
-    // Keep the current briefing in sync when the toggled entry IS current,
-    // so loadBriefing's fast path doesn't return a stale archived flag.
-    setCurrent((prev) => {
-      if (prev?.id !== id) return prev;
-      const next = { ...prev, archived: nextArchived };
-      persistCurrent(next);
-      return next;
-    });
-
-    try {
-      await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          password: passwordRef.current,
-          patch: { archived: nextArchived },
-        }),
+  const deleteBriefing = useCallback(
+    async (id) => {
+      setHistory((prev) => {
+        const next = prev.filter((b) => b.id !== id);
+        persistHistory(next, unlinkDroppedColdFiles);
+        return next;
       });
-    } catch (err) {
-      console.warn('[useBriefing] toggleArchive failed for', id, err);
-    }
-  }, []);
+      setCurrent((prev) => {
+        if (prev?.id === id) {
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(CURRENT_KEY);
+          }
+          return null;
+        }
+        return prev;
+      });
+
+      try {
+        await fetch(
+          `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`,
+          { method: 'DELETE' }
+        );
+      } catch (err) {
+        console.warn('[useBriefing] delete failed for', id, err);
+      }
+    },
+    [unlinkDroppedColdFiles]
+  );
+
+  const toggleArchive = useCallback(
+    async (id) => {
+      const entry = historyRef.current.find((b) => b.id === id);
+      if (!entry) return;
+      const nextArchived = !entry.archived;
+
+      setHistory((prev) => {
+        const next = prev.map((b) => (b.id === id ? { ...b, archived: nextArchived } : b));
+        persistHistory(next, unlinkDroppedColdFiles);
+        return next;
+      });
+
+      // Keep the current briefing in sync when the toggled entry IS current,
+      // so loadBriefing's fast path doesn't return a stale archived flag.
+      setCurrent((prev) => {
+        if (prev?.id !== id) return prev;
+        const next = { ...prev, archived: nextArchived };
+        persistCurrent(next);
+        return next;
+      });
+
+      try {
+        await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: passwordRef.current,
+            patch: { archived: nextArchived },
+          }),
+        });
+      } catch (err) {
+        console.warn('[useBriefing] toggleArchive failed for', id, err);
+      }
+    },
+    [unlinkDroppedColdFiles]
+  );
 
   return { current, history, saveBriefing, deleteBriefing, toggleArchive, loadBriefing };
 }

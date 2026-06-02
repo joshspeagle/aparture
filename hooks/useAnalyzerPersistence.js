@@ -232,6 +232,46 @@ export function readInitialConfig() {
   }
 }
 
+// Number of cold-session POST attempts before we give up and warn the user.
+// Heavy runs (e.g. 30 PDFs) can exceed the 20mb body limit → 413, but most
+// failures are transient (disk contention, dropped connection); a short retry
+// ladder recovers those without poisoning the UX.
+const COLD_SAVE_MAX_ATTEMPTS = 3;
+const COLD_SAVE_BASE_DELAY_MS = 500;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// POST the cold-tier session entry with bounded retry + linear-ish backoff.
+// Resolves true on the first HTTP-ok response, false once all attempts are
+// exhausted (final !res.ok or thrown). Best-effort: never throws, so the
+// live run is never disrupted.
+async function postColdSessionWithRetry({ password, coldEntry }) {
+  for (let attempt = 1; attempt <= COLD_SAVE_MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, entry: coldEntry }),
+      });
+      if (res.ok) return true;
+      console.warn(
+        `[useAnalyzerPersistence] cold session POST returned HTTP ${res.status} (attempt ${attempt}/${COLD_SAVE_MAX_ATTEMPTS})`
+      );
+    } catch (err) {
+      console.warn(
+        `[useAnalyzerPersistence] cold session POST threw (attempt ${attempt}/${COLD_SAVE_MAX_ATTEMPTS}):`,
+        err
+      );
+    }
+    if (attempt < COLD_SAVE_MAX_ATTEMPTS) {
+      await delay(COLD_SAVE_BASE_DELAY_MS * attempt);
+    }
+  }
+  return false;
+}
+
 // Lazy-fetch the cold-tier session payload by id. Returns null on any
 // failure (404, network, parse) so the load effect can fall through to
 // the hot-tier-only state.
@@ -278,6 +318,12 @@ export function useAnalyzerPersistence({
   // dedupe index incrementally; not invoked when the POST fails or when
   // the cold tier is skipped (no results yet / not authenticated).
   onColdSessionSaved,
+  // Optional callback fired when the cold-tier session POST fails on every
+  // retry attempt. Lets the shell surface a visible, non-blocking warning
+  // (e.g. addError) so the user knows the heavy run data (allPapers /
+  // scoredPapers / full verdicts — which live ONLY on disk) was not durably
+  // saved and will be lost on refresh. The run/UI continues regardless.
+  onColdSaveFailed,
 }) {
   // Persistent session id. Read from the hot blob on first load if present;
   // otherwise lazily generated on the first save. Survives renders via ref.
@@ -393,6 +439,11 @@ export function useAnalyzerPersistence({
     onColdSessionSavedRef.current = onColdSessionSaved;
   }, [onColdSessionSaved]);
 
+  const onColdSaveFailedRef = useRef(onColdSaveFailed);
+  useEffect(() => {
+    onColdSaveFailedRef.current = onColdSaveFailed;
+  }, [onColdSaveFailed]);
+
   const saveTimeoutRef = useRef(null);
   useEffect(() => {
     const hasResults =
@@ -447,24 +498,25 @@ export function useAnalyzerPersistence({
         // request is in flight.
         const saveTimestamp = Date.now();
         const papersSnapshot = results?.allPapers ?? [];
-        fetch('/api/sessions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password, entry: coldEntry }),
-        })
-          .then((res) => {
-            if (!res.ok) {
-              console.warn(
-                '[useAnalyzerPersistence] cold session POST returned HTTP ' + res.status
-              );
-              return;
-            }
+        postColdSessionWithRetry({ password, coldEntry }).then((saved) => {
+          if (saved) {
             const cb = onColdSessionSavedRef.current;
             if (cb) cb(papersSnapshot, saveTimestamp);
-          })
-          .catch((err) => {
-            console.warn('[useAnalyzerPersistence] failed to persist session to disk:', err);
-          });
+            return;
+          }
+          // All retries exhausted — the heavy run data lives only on disk, so
+          // a refresh now loses it. Surface a visible, non-blocking warning.
+          console.warn(
+            '[useAnalyzerPersistence] cold session POST failed after all retries; run data not durably saved'
+          );
+          const onFail = onColdSaveFailedRef.current;
+          if (onFail) {
+            onFail(
+              'Session results could not be saved to disk — they will be lost if you refresh. ' +
+                'Try again, or reduce "Papers to Analyze" if this run is unusually large.'
+            );
+          }
+        });
       }
     }, SAVE_DEBOUNCE_MS);
 

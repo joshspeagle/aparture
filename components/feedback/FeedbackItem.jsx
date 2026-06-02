@@ -114,7 +114,7 @@ export default function FeedbackItem({ event }) {
             style={{
               marginTop: '4px',
               fontSize: 'var(--aparture-text-xs)',
-              color: '#fb923c',
+              color: '#f97316',
             }}
           >
             filter said <span style={{ fontWeight: 500 }}>{event.originalVerdict}</span>, user

@@ -45,6 +45,7 @@
   --aparture-text-lg: 21px;
   --aparture-text-xl: 25px;
   --aparture-text-2xl: 33px;
+  --aparture-text-3xl: 39px;
 
   /* Spacing */
   --aparture-space-1: 4px;
@@ -80,6 +81,9 @@
     --aparture-sidebar-active: #2a2520;
     --aparture-hover: #2a2520;
     --aparture-focus-ring: #d94545;
+
+    /* Type scale (theme-invariant) */
+    --aparture-text-3xl: 39px;
   }
 }
 
@@ -108,6 +112,8 @@
   --aparture-sidebar-active: #ede6d5;
   --aparture-hover: #ede6d5;
   --aparture-focus-ring: #b31b1b;
+  /* Type scale (theme-invariant) */
+  --aparture-text-3xl: 39px;
 }
 
 [data-theme='dark'] {
@@ -130,4 +136,6 @@
   --aparture-sidebar-active: #2a2520;
   --aparture-hover: #2a2520;
   --aparture-focus-ring: #d94545;
+  /* Type scale (theme-invariant) */
+  --aparture-text-3xl: 39px;
 }

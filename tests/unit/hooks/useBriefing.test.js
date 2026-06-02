@@ -443,6 +443,52 @@ describe('useBriefing', () => {
         })
       ).rejects.toThrow(/permission denied/);
     });
+
+    it('unlinks the cold file for an entry dropped by a quota-prune', async () => {
+      // Quota mock: the index write succeeds only when it holds ≤1 entry, so
+      // saving a 2nd briefing forces a prune that drops the oldest entry.
+      setItemSpy.mockImplementation(function (key, value) {
+        if (key === 'aparture-briefing-index') {
+          let parsed;
+          try {
+            parsed = JSON.parse(value);
+          } catch {
+            parsed = null;
+          }
+          if (Array.isArray(parsed) && parsed.length > 1) {
+            const err = new Error('mock quota');
+            err.name = 'QuotaExceededError';
+            throw err;
+          }
+        }
+        return realSetItem.call(this, key, value);
+      });
+
+      const deleteCalls = [];
+      vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
+        if (opts?.method === 'DELETE') deleteCalls.push(url);
+        return { ok: true, status: 200, json: async () => ({ id: 'x' }) };
+      });
+
+      const { result } = renderHook(() => useBriefing({ password: 'pw' }));
+
+      let firstId;
+      await act(async () => {
+        firstId = await result.current.saveBriefing('2026-04-15', makeBriefing('old'));
+      });
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-16', makeBriefing('new'));
+      });
+
+      // The oldest entry was pruned from the index → its cold file must be
+      // unlinked so disk + index stay consistent.
+      expect(deleteCalls.some((url) => url.includes(encodeURIComponent(firstId)))).toBe(true);
+      // In-memory history keeps both (live session not disrupted), but the
+      // PERSISTED index holds only the newest briefing.
+      const persisted = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
+      expect(persisted).toHaveLength(1);
+      expect(persisted[0].date).toBe('2026-04-16');
+    });
   });
 
   // --- Filesystem tier (Task 9) ---
