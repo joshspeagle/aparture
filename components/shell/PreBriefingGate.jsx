@@ -38,15 +38,16 @@ export default function PreBriefingGate({
         onContinue={onContinueAfterReview}
         onSkipRemaining={onSkipRemainingGates}
       />
-      {results.allAnalyzedPapers &&
-        results.allAnalyzedPapers.length > (results.finalRanking?.length ?? 0) && (
-          <AnalyzedExpander
-            allAnalyzedPapers={results.allAnalyzedPapers}
-            finalRanking={results.finalRanking ?? []}
-            renderPaperCard={renderPaperCard}
-            onPromotePaper={onPromotePaper}
-          />
-        )}
+      {/* AnalyzedExpander owns the "are there cut papers?" decision (it
+          returns null when none), so the gate only null-checks the array. */}
+      {results.allAnalyzedPapers && (
+        <AnalyzedExpander
+          allAnalyzedPapers={results.allAnalyzedPapers}
+          finalRanking={results.finalRanking ?? []}
+          renderPaperCard={renderPaperCard}
+          onPromotePaper={onPromotePaper}
+        />
+      )}
       <GeneralCommentInput
         onSave={(text) => onAddGeneralComment?.(text, undefined)}
         placeholder={PRE_BRIEFING_PLACEHOLDER}

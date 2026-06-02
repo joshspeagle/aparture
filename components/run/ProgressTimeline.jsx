@@ -123,7 +123,7 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
   return labels[stageKey]?.[status] ?? stageKey;
 }
 
-export default function ProgressTimeline({ onSetVerdict: _onSetVerdict, children }) {
+export default function ProgressTimeline({ children }) {
   const processing = useAnalyzerStore((s) => s.processing);
   const filterResults = useAnalyzerStore((s) => s.filterResults);
   const results = useAnalyzerStore((s) => s.results);

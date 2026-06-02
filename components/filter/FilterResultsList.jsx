@@ -110,7 +110,7 @@ function RowComment({ arxivId, onAddPaperComment }) {
         style={{
           width: '100%',
           padding: '6px 10px',
-          border: '1px solid var(--aparture-border, #d1d5db)',
+          border: '1px solid var(--aparture-border)',
           borderRadius: '4px',
           fontSize: 'var(--aparture-text-xs, 12px)',
           fontFamily: 'var(--aparture-font-sans, inherit)',
@@ -321,7 +321,9 @@ export default function FilterResultsList({
   };
 
   return (
-    <Card>
+    <>
+      {/* Gate banner sits ABOVE the card (outermost), matching the other two
+          gates — not nested inside it. */}
       {processing?.stage === 'filter-review' && (
         <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
           <ReviewGateBanner
@@ -333,180 +335,184 @@ export default function FilterResultsList({
           />
         </div>
       )}
-      <div
-        style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
-      >
-        <FileText className="w-5 h-5" style={{ marginRight: '8px', color: '#f59e0b' }} />
-        <h2
-          style={{
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: 'var(--aparture-text-xl)',
-            fontWeight: 600,
-            color: 'var(--aparture-ink)',
-          }}
+      <Card>
+        <div
+          style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
         >
-          Filtered Papers
-          {filterResults.inProgress && (
-            <span
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-sm)',
-                color: 'var(--aparture-mute)',
-                marginLeft: '8px',
-              }}
-            >
-              (Processing batch {filterResults.currentBatch || 0} of{' '}
-              {filterResults.totalBatches || 0})
-            </span>
-          )}
-        </h2>
-        {testState?.dryRunInProgress && (
-          <span style={testBadgeStyle}>
-            <TestTube className="w-3 h-3" />
-            TEST DATA
-          </span>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
-        <div>
-          <h3 style={sectionTitleStyle('#22c55e')}>
-            {'\u2713'} YES ({filterResults.yes.length})
-            {scoredYesCount > 0 && (
-              <span
-                style={{
-                  fontSize: 'var(--aparture-text-xs)',
-                  color: 'var(--aparture-mute)',
-                  marginLeft: '8px',
-                }}
-              >
-                ({scoredYesCount} scored)
-              </span>
-            )}
-          </h3>
-          {renderBucketFeedback('YES')}
-          {filterResults.yes.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                maxHeight: '800px',
-                overflowY: 'auto',
-                paddingRight: '8px',
-              }}
-            >
-              {filterResults.yes.map((paper) => (
-                <FilterResultRow
-                  key={paper.id}
-                  paper={paper}
-                  verdict="YES"
-                  borderColor="rgba(34,197,94,0.2)"
-                  processingIsRunning={disableOverrides}
-                  onSetVerdict={onSetVerdict}
-                  onAddPaperComment={onAddPaperComment}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h3 style={sectionTitleStyle('#f59e0b')}>
-            ? MAYBE ({filterResults.maybe.length})
-            {scoredMaybeCount > 0 && (
-              <span
-                style={{
-                  fontSize: 'var(--aparture-text-xs)',
-                  color: 'var(--aparture-mute)',
-                  marginLeft: '8px',
-                }}
-              >
-                ({scoredMaybeCount} scored)
-              </span>
-            )}
-          </h3>
-          {renderBucketFeedback('MAYBE')}
-          {filterResults.maybe.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                maxHeight: '800px',
-                overflowY: 'auto',
-                paddingRight: '8px',
-              }}
-            >
-              {filterResults.maybe.map((paper) => (
-                <FilterResultRow
-                  key={paper.id}
-                  paper={paper}
-                  verdict="MAYBE"
-                  borderColor="rgba(245,158,11,0.2)"
-                  processingIsRunning={disableOverrides}
-                  onSetVerdict={onSetVerdict}
-                  onAddPaperComment={onAddPaperComment}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <h3 style={sectionTitleStyle('#ef4444')}>
-            {'\u2717'} NO ({filterResults.no.length} filtered out)
-          </h3>
-          {renderBucketFeedback('NO')}
-          {filterResults.no.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                maxHeight: '600px',
-                overflowY: 'auto',
-                paddingRight: '8px',
-              }}
-            >
-              {filterResults.no.map((paper) => (
-                <FilterResultRow
-                  key={paper.id}
-                  paper={paper}
-                  verdict="NO"
-                  borderColor="rgba(239,68,68,0.2)"
-                  processingIsRunning={disableOverrides}
-                  onSetVerdict={onSetVerdict}
-                  onAddPaperComment={onAddPaperComment}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {(filterResults.yes.length > 0 ||
-          filterResults.maybe.length > 0 ||
-          filterResults.no.length > 0) && (
-          <div
+          <FileText className="w-5 h-5" style={{ marginRight: '8px', color: '#f59e0b' }} />
+          <h2
             style={{
-              paddingTop: 'var(--aparture-space-3)',
-              borderTop: '1px solid var(--aparture-hairline)',
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              display: 'flex',
-              justifyContent: 'space-between',
+              fontSize: 'var(--aparture-text-xl)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
             }}
           >
-            <span>
-              Filtered:{' '}
-              {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length}{' '}
-              papers
+            Filtered Papers
+            {filterResults.inProgress && (
+              <span
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  color: 'var(--aparture-mute)',
+                  marginLeft: '8px',
+                }}
+              >
+                (Processing batch {filterResults.currentBatch || 0} of{' '}
+                {filterResults.totalBatches || 0})
+              </span>
+            )}
+          </h2>
+          {testState?.dryRunInProgress && (
+            <span style={testBadgeStyle}>
+              <TestTube className="w-3 h-3" />
+              TEST DATA
             </span>
-            <span>Remaining to score: {filterResults.yes.length + filterResults.maybe.length}</span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
+          <div>
+            <h3 style={sectionTitleStyle('#22c55e')}>
+              {'\u2713'} YES ({filterResults.yes.length})
+              {scoredYesCount > 0 && (
+                <span
+                  style={{
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                    marginLeft: '8px',
+                  }}
+                >
+                  ({scoredYesCount} scored)
+                </span>
+              )}
+            </h3>
+            {renderBucketFeedback('YES')}
+            {filterResults.yes.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '800px',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                }}
+              >
+                {filterResults.yes.map((paper) => (
+                  <FilterResultRow
+                    key={paper.id}
+                    paper={paper}
+                    verdict="YES"
+                    borderColor="rgba(34,197,94,0.2)"
+                    processingIsRunning={disableOverrides}
+                    onSetVerdict={onSetVerdict}
+                    onAddPaperComment={onAddPaperComment}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </Card>
+
+          <div>
+            <h3 style={sectionTitleStyle('#f59e0b')}>
+              ? MAYBE ({filterResults.maybe.length})
+              {scoredMaybeCount > 0 && (
+                <span
+                  style={{
+                    fontSize: 'var(--aparture-text-xs)',
+                    color: 'var(--aparture-mute)',
+                    marginLeft: '8px',
+                  }}
+                >
+                  ({scoredMaybeCount} scored)
+                </span>
+              )}
+            </h3>
+            {renderBucketFeedback('MAYBE')}
+            {filterResults.maybe.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '800px',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                }}
+              >
+                {filterResults.maybe.map((paper) => (
+                  <FilterResultRow
+                    key={paper.id}
+                    paper={paper}
+                    verdict="MAYBE"
+                    borderColor="rgba(245,158,11,0.2)"
+                    processingIsRunning={disableOverrides}
+                    onSetVerdict={onSetVerdict}
+                    onAddPaperComment={onAddPaperComment}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 style={sectionTitleStyle('#ef4444')}>
+              {'\u2717'} NO ({filterResults.no.length} filtered out)
+            </h3>
+            {renderBucketFeedback('NO')}
+            {filterResults.no.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '600px',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                }}
+              >
+                {filterResults.no.map((paper) => (
+                  <FilterResultRow
+                    key={paper.id}
+                    paper={paper}
+                    verdict="NO"
+                    borderColor="rgba(239,68,68,0.2)"
+                    processingIsRunning={disableOverrides}
+                    onSetVerdict={onSetVerdict}
+                    onAddPaperComment={onAddPaperComment}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {(filterResults.yes.length > 0 ||
+            filterResults.maybe.length > 0 ||
+            filterResults.no.length > 0) && (
+            <div
+              style={{
+                paddingTop: 'var(--aparture-space-3)',
+                borderTop: '1px solid var(--aparture-hairline)',
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>
+                Filtered:{' '}
+                {filterResults.yes.length + filterResults.maybe.length + filterResults.no.length}{' '}
+                papers
+              </span>
+              <span>
+                Remaining to score: {filterResults.yes.length + filterResults.maybe.length}
+              </span>
+            </div>
+          )}
+        </div>
+      </Card>
+    </>
   );
 }

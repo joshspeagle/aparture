@@ -23,13 +23,13 @@ function seed(stage) {
 describe('ProgressTimeline no longer hosts gate controls', () => {
   it('renders no "Continue to scoring" at filter-review', () => {
     seed('filter-review');
-    render(<ProgressTimeline onSetVerdict={() => {}} />);
+    render(<ProgressTimeline />);
     expect(screen.queryByText(/Continue to scoring/)).not.toBeInTheDocument();
   });
 
   it('renders no "Continue to briefing" at pre-briefing-review', () => {
     seed('pre-briefing-review');
-    render(<ProgressTimeline onSetVerdict={() => {}} />);
+    render(<ProgressTimeline />);
     expect(screen.queryByText(/Continue to briefing/)).not.toBeInTheDocument();
   });
 });

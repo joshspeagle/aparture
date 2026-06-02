@@ -175,7 +175,7 @@ export default function MainArea({
   if (activeView === 'pipeline') {
     return (
       <div className="config-surface">
-        <ProgressTimeline onSetVerdict={onSetVerdict}>
+        <ProgressTimeline>
           {/* Controls */}
           <div style={{ marginTop: 'var(--aparture-space-6)' }}>
             <ControlPanel
