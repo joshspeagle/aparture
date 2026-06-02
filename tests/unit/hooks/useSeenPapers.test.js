@@ -52,11 +52,11 @@ describe('useSeenPapers — recordRun', () => {
   });
 
   it('keeps the EARLIEST date when an arxivId appears twice (first-wins)', () => {
-    // Pin the clock so BOTH recorded dates (2026-03-01 and 2026-05-14) sit
-    // inside the 90-day prune window; otherwise today's real Date.now()
-    // prunes the earlier entry before the assertion runs.
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-05-15T00:00:00Z'));
+    // Pin the clock so the first (2026-03-01) recording stays inside the 90-day
+    // prune window relative to "now" — otherwise this test silently flakes as
+    // wall-clock time advances past 90 days from the hardcoded fixture date.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(Date.parse('2026-05-20T00:00:00Z')));
     try {
       const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
       act(() => {
@@ -130,7 +130,15 @@ describe('useSeenPapers — 90-day prune', () => {
 
   it('preserves the _migratedAt metadata key during prune', () => {
     const now = Date.parse('2026-05-14T00:00:00Z');
-    window.localStorage.setItem('aparture-seen-papers-index', JSON.stringify({ _migratedAt: now }));
+    // Seed a fully-migrated v3 index so the migration effect is a no-op and we
+    // isolate pruneOldEntries' carry-through of the `_`-prefixed sentinel. (A
+    // lone _migratedAt with no _dedupeVersion would trip the version-upgrade
+    // rebuild — see the migration-window regression block — so it isn't a valid
+    // standalone fixture for testing prune.)
+    window.localStorage.setItem(
+      'aparture-seen-papers-index',
+      JSON.stringify({ _migratedAt: now, _dedupeVersion: 3 })
+    );
     const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
     act(() => {
       result.current.recordRun([{ id: '2605.14205' }], now);
@@ -360,6 +368,197 @@ describe('useSeenPapers — migration from existing briefings', () => {
 
     await waitFor(() => expect(result.current.ready).toBe(true));
     expect(result.current.index['paper.1']).toBe('2026-05-10');
+    expect(result.current.index._dedupeVersion).toBe(3);
+  });
+});
+
+describe('useSeenPapers — migration-window concurrency (regression: audit-2d)', () => {
+  // Pin the clock so the 90-day prune never trims our fixture dates. All dates
+  // used below sit within HORIZON_DAYS of this instant.
+  const NOW = Date.parse('2026-05-20T00:00:00Z');
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    // Pin the clock so the 90-day prune never trims our mid-May fixture dates,
+    // but keep timers advancing with real time so testing-library's waitFor
+    // (which polls on timers) and the async migration's microtasks still
+    // progress. Without shouldAdvanceTime, faked timers + waitFor deadlock.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(NOW));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('keeps arxivIds recorded DURING the migration window (merge, not clobber)', async () => {
+    // Hold the briefing-list fetch open via a deferred promise so the
+    // migration is still in flight when recordRun fires.
+    let releaseList;
+    const listGate = new Promise((resolve) => {
+      releaseList = resolve;
+    });
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        await listGate;
+        return { ok: true, status: 200, json: async () => ({ ids: ['brief-1'] }) };
+      }
+      if (u.includes('/api/briefings/brief-1')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            timestamp: Date.parse('2026-05-10T00:00:00Z'),
+            briefing: { papers: [{ arxivId: 'migrated.001' }] },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+
+    // Migration is blocked on listGate — record a fresh paper meanwhile. This
+    // mirrors App.jsx calling seenPapers.recordRun from saveBriefingAndSwitch
+    // before seenPapers.ready flips true (recordRun is NOT gated on ready).
+    expect(result.current.ready).toBe(false);
+    act(() => {
+      result.current.recordRun(
+        [{ id: 'recorded-during-window.999' }],
+        Date.parse('2026-05-18T00:00:00Z')
+      );
+    });
+    expect(result.current.index['recorded-during-window.999']).toBe('2026-05-18');
+
+    // Let the migration finish.
+    releaseList();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // The migrated paper is present...
+    expect(result.current.index['migrated.001']).toBe('2026-05-10');
+    // ...AND the entry recorded during the window survived (would be clobbered
+    // by a wholesale setIndex(pruned) on migration completion).
+    expect(result.current.index['recorded-during-window.999']).toBe('2026-05-18');
+
+    // localStorage reflects the merged result, not just the migrated set.
+    const persisted = JSON.parse(window.localStorage.getItem('aparture-seen-papers-index'));
+    expect(persisted['recorded-during-window.999']).toBe('2026-05-18');
+    expect(persisted['migrated.001']).toBe('2026-05-10');
+    expect(persisted._dedupeVersion).toBe(3);
+  });
+
+  it('migration completion keeps the EARLIEST date when an ID appears in both window and briefings', async () => {
+    let releaseList;
+    const listGate = new Promise((resolve) => {
+      releaseList = resolve;
+    });
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        await listGate;
+        return { ok: true, status: 200, json: async () => ({ ids: ['brief-1'] }) };
+      }
+      if (u.includes('/api/briefings/brief-1')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            // Briefing timestamp is LATER than the window recordRun below.
+            timestamp: Date.parse('2026-05-15T00:00:00Z'),
+            briefing: { papers: [{ arxivId: 'shared.001' }] },
+          }),
+        };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    act(() => {
+      // Record the same ID with an EARLIER date during the window.
+      result.current.recordRun([{ id: 'shared.001' }], Date.parse('2026-05-08T00:00:00Z'));
+    });
+
+    releaseList();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    // Earliest-date-wins: the window's 2026-05-08 beats the briefing's 2026-05-15.
+    expect(result.current.index['shared.001']).toBe('2026-05-08');
+  });
+
+  it('recordRun never leaves the version=0 + _migratedAt state that forces a rebuild', () => {
+    // Start from a properly-migrated v3 index so the migration effect is a
+    // no-op and we isolate recordRun's sentinel behavior. Pre-fix, recordRun
+    // stamped _migratedAt unconditionally; combined with an index that had NO
+    // version sentinel this produced the desynced "migratedAt-only" state that
+    // trips isVersionUpgrade on the next mount.
+    window.localStorage.setItem(
+      'aparture-seen-papers-index',
+      JSON.stringify({ _migratedAt: NOW, _dedupeVersion: 3 })
+    );
+
+    const { result, unmount } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    expect(result.current.ready).toBe(true);
+    act(() => {
+      result.current.recordRun([{ id: 'first.001' }], Date.parse('2026-05-18T00:00:00Z'));
+    });
+
+    // After a recordRun, the persisted index must NEVER carry _migratedAt
+    // without a matching _dedupeVersion — that desynced pair is exactly what
+    // trips isVersionUpgrade=true on the next mount and wipes localStorage.
+    const persisted = JSON.parse(window.localStorage.getItem('aparture-seen-papers-index'));
+    expect(persisted['first.001']).toBe('2026-05-18');
+    const hasMigratedAt = persisted._migratedAt != null;
+    const hasVersion = Number.isInteger(persisted._dedupeVersion);
+    // The sentinel pair stays coupled: both present here (migration done).
+    expect(hasMigratedAt).toBe(true);
+    expect(hasVersion).toBe(true);
+
+    unmount();
+
+    // Remount: initialVersion must read CURRENT_DEDUPE_VERSION (not 0), so the
+    // localStorage-clearing version-upgrade rebuild does NOT fire and the
+    // recorded entry is present in the initial in-memory state.
+    const { result: result2 } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    expect(result2.current.index['first.001']).toBe('2026-05-18');
+    expect(result2.current.ready).toBe(true);
+  });
+
+  it('a recordRun before any migration must not stamp _migratedAt alone (pre-fix desync)', async () => {
+    // No stored key at all → recordRun fires before migration completes. The
+    // persisted index must not gain a lone _migratedAt (which would desync from
+    // the absent _dedupeVersion). Block migration so recordRun runs first.
+    let releaseList;
+    const listGate = new Promise((resolve) => {
+      releaseList = resolve;
+    });
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
+        await listGate;
+        return { ok: true, status: 200, json: async () => ({ ids: [] }) };
+      }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    expect(result.current.ready).toBe(false);
+    act(() => {
+      result.current.recordRun([{ id: 'early.001' }], Date.parse('2026-05-18T00:00:00Z'));
+    });
+
+    // Persisted by recordRun while migration is still blocked: entry present,
+    // but no sentinel stamped at all (so no lone _migratedAt).
+    const midFlight = JSON.parse(window.localStorage.getItem('aparture-seen-papers-index'));
+    expect(midFlight['early.001']).toBe('2026-05-18');
+    expect(midFlight._migratedAt).toBeUndefined();
+    expect(midFlight._dedupeVersion).toBeUndefined();
+
+    // Migration finishes — now both sentinels appear together, entry preserved.
+    releaseList();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.index['early.001']).toBe('2026-05-18');
+    expect(result.current.index._migratedAt).toBeDefined();
     expect(result.current.index._dedupeVersion).toBe(3);
   });
 });

@@ -15,6 +15,12 @@
 //   index. Existing v1 indexes get rebuilt cleanly on the first mount that
 //   sees the bumped sentinel. Partial failures are logged and skipped — we
 //   always set _migratedAt + _dedupeVersion on completion so we don't re-scan.
+//   Completion MERGES (earliest-date-wins) onto the live in-memory index
+//   rather than overwriting it, so any arxivIds recorded by recordRun during
+//   the migration window survive. The migration effect is the sole writer of
+//   the (_migratedAt, _dedupeVersion) sentinel pair — recordRun never stamps
+//   either, so the two can never desync into the version=0 + _migratedAt state
+//   that would force a spurious clearing rebuild.
 //
 // Phase 2 seam: when state migrates to ~/aparture/, only the STORAGE_KEY +
 // migration source need updating; consumer contract (index/ready/recordRun)
@@ -50,6 +56,23 @@ function readStored() {
   } catch {
     return null;
   }
+}
+
+// Earliest-date-wins merge of two index maps. Skips `_`-prefixed sentinel keys
+// (callers own sentinel handling — see migration completion + recordRun). For a
+// shared arxivId, the lexicographically-smaller ISO date (= older sighting) is
+// kept, preserving the "first seen on YYYY-MM-DD" signal. Used both when
+// migration completion lands on top of any IDs recorded during the migration
+// window and could be reused by any future second writer.
+function mergeEarliestWins(base, incoming) {
+  const out = { ...base };
+  for (const key of Object.keys(incoming)) {
+    if (key.startsWith('_')) continue;
+    const existing = out[key];
+    const candidate = incoming[key];
+    if (!existing || candidate < existing) out[key] = candidate;
+  }
+  return out;
 }
 
 function pruneOldEntries(index, nowMs) {
@@ -210,17 +233,26 @@ export function useSeenPapers({ password = '' } = {}) {
         // hydration) or on next mount, and we'll try again.
         return;
       }
-      migrated._migratedAt = Date.now();
-      migrated._dedupeVersion = CURRENT_DEDUPE_VERSION;
-      const pruned = pruneOldEntries(migrated, Date.now());
-      // Sentinel keys are millis/int, not ISO; prune only checks ISO strings.
-      // Defensive re-set so the sentinels survive prune.
-      if (!pruned._migratedAt) pruned._migratedAt = Date.now();
-      if (!pruned._dedupeVersion) pruned._dedupeVersion = CURRENT_DEDUPE_VERSION;
       migrationSuccessRef.current = true;
-      setIndex(pruned);
+      // Merge — NOT overwrite — against the live in-memory index. Any arxivIds
+      // recorded by recordRun between mount and now (recordRun is not gated on
+      // `ready`) must survive migration completion; a wholesale setIndex(pruned)
+      // would silently drop them, losing first-seen dates and forcing needless
+      // re-analysis next run. mergeEarliestWins keeps the older of the two dates
+      // for shared IDs and ignores `_`-prefixed sentinels (re-stamped below).
+      setIndex((prev) => {
+        const merged = mergeEarliestWins(prev, migrated);
+        merged._migratedAt = Date.now();
+        merged._dedupeVersion = CURRENT_DEDUPE_VERSION;
+        const pruned = pruneOldEntries(merged, Date.now());
+        // Sentinel keys are millis/int, not ISO; prune only checks ISO strings.
+        // Defensive re-set so the sentinels survive prune.
+        if (!pruned._migratedAt) pruned._migratedAt = Date.now();
+        if (!pruned._dedupeVersion) pruned._dedupeVersion = CURRENT_DEDUPE_VERSION;
+        persistIndex(pruned);
+        return pruned;
+      });
       setReady(true);
-      persistIndex(pruned);
     })();
     return () => {
       controller.abort();
@@ -256,7 +288,15 @@ export function useSeenPapers({ password = '' } = {}) {
       // re-renders and we avoid an unnecessary persist round-trip.
       if (!anyChange) return prev;
       const pruned = pruneOldEntries(next, Date.now());
-      if (!pruned._migratedAt) pruned._migratedAt = Date.now();
+      // Do NOT stamp _migratedAt here. The migration effect is the sole owner
+      // of the (_migratedAt, _dedupeVersion) sentinel pair, and it always sets
+      // both together. A recordRun firing during the migration window (before
+      // the effect resolves) used to stamp _migratedAt alone — leaving
+      // _dedupeVersion absent → initialVersion=0 + _migratedAt present on next
+      // mount → isVersionUpgrade=true → a full localStorage-clearing rebuild
+      // that erased these very entries. Omitting the stamp keeps the two
+      // sentinels from ever desyncing; pruneOldEntries already carries forward
+      // any sentinels already present in `prev`.
       persistIndex(pruned);
       return pruned;
     });
