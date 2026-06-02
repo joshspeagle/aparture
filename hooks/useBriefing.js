@@ -49,7 +49,13 @@ function persistHistory(entries) {
 function persistCurrent(entry) {
   if (typeof window === 'undefined') return;
   if (safeSetItem(CURRENT_KEY, JSON.stringify(entry))) return;
-  if (safeSetItem(CURRENT_KEY, JSON.stringify(stripHeavy(entry)))) {
+  // Quota fallback: drop heavy fields from the HOT tier, but flag the blob so
+  // a later rehydrate (readStoredCurrent → loadBriefing) knows the in-memory
+  // copy is incomplete and must be rehydrated from the COLD disk tier, where
+  // postBriefing already wrote the full entry. Without this flag, loadBriefing's
+  // fast path would return the stripped current and render placeholders for the
+  // freshest briefing — the one most likely to have tripped quota.
+  if (safeSetItem(CURRENT_KEY, JSON.stringify({ ...stripHeavy(entry), _strippedFromHot: true }))) {
     console.warn(
       '[useBriefing] localStorage quota exceeded; persisted current briefing without pipeline archive / full reports'
     );
@@ -309,9 +315,14 @@ export function useBriefing({ password = '' } = {}) {
   );
 
   const loadBriefing = useCallback(async (id) => {
-    // Fast path: the current briefing has heavy fields in memory already.
+    // Fast path: the current briefing has its heavy fields in memory already.
+    // Skip it when the in-memory copy was rehydrated from a quota-stripped hot
+    // blob (`_strippedFromHot`) — that copy is missing pipelineArchive /
+    // quickSummariesById / fullReportsById and would render placeholders. Fall
+    // through to the disk GET below, which holds the full entry (postBriefing
+    // always wrote it on save).
     const state = currentRef.current;
-    if (state?.id === id) return state;
+    if (state?.id === id && !state._strippedFromHot) return state;
 
     try {
       const res = await fetch(

@@ -565,6 +565,43 @@ describe('useBriefing', () => {
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
     });
+
+    it('skips the fast path and fetches from disk when current is _strippedFromHot', async () => {
+      // Simulate a post-refresh rehydrate of a quota-stripped current: the hot
+      // copy is flagged + missing heavy fields, but disk has the full entry.
+      window.localStorage.setItem(
+        'aparture-briefing-current',
+        JSON.stringify({
+          id: 'known',
+          date: '2026-04-21',
+          timestamp: 1700000000000,
+          archived: false,
+          briefing: { executiveSummary: 'stripped-hot-copy' },
+          _strippedFromHot: true,
+        })
+      );
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      // In-memory current is the stripped form...
+      expect(result.current.current._strippedFromHot).toBe(true);
+      // ...so loadBriefing(currentId) must NOT short-circuit on it; it hits the
+      // disk GET (mocked above to return the full 'loaded' entry).
+      const loaded = await result.current.loadBriefing('known');
+      expect(loaded.briefing.executiveSummary).toBe('loaded');
+      expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/briefings/known'));
+    });
+
+    it('still takes the fast path for a full (non-stripped) current — no disk read', async () => {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-21', makeBriefing('full-in-memory'));
+      });
+      const id = result.current.current.id;
+      fetchSpy.mockClear();
+      const loaded = await result.current.loadBriefing(id);
+      expect(loaded.briefing.executiveSummary).toBe('full-in-memory');
+      // No disk GET for the current id when the in-memory copy is complete.
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
   });
 
   // --- deleteBriefing / toggleArchive — filesystem tier (Task 11) ---

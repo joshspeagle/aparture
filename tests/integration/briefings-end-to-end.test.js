@@ -141,4 +141,66 @@ describe('briefing persistence — end-to-end', () => {
     const afterFsDelete = await second.result.current.loadBriefing(id);
     expect(afterFsDelete).toBeNull();
   });
+
+  // Regression: when the hot CURRENT_KEY write hits quota, persistCurrent
+  // stores a stripped+flagged blob (heavy fields dropped) while the full entry
+  // still goes to disk via postBriefing. After a refresh, readStoredCurrent
+  // rehydrates the stripped blob into `current`. loadBriefing(currentId) must
+  // NOT short-circuit on that stripped in-memory copy — it has to fall through
+  // to the disk GET and return the FULL entry, or the freshest briefing (the
+  // one most likely to have tripped quota) renders placeholders.
+  it('rehydrates a quota-stripped current from disk in loadBriefing', async () => {
+    const heavy = {
+      pipelineArchive: { scoredPapers: [{ x: 1 }] },
+      quickSummariesById: { '2504.01234': 'a quick summary' },
+      fullReportsById: { '2504.01234': 'a full report' },
+    };
+
+    // Force ONLY the hot CURRENT_KEY full-entry write to fail with a quota
+    // error so persistCurrent falls back to the stripped+flagged blob. The
+    // stripped retry (heavy fields gone) and the index write are allowed.
+    const realSetItem = window.Storage.prototype.setItem;
+    const setItemSpy = vi
+      .spyOn(window.Storage.prototype, 'setItem')
+      .mockImplementation(function (key, value) {
+        if (key === 'aparture-briefing-current' && value.includes('pipelineArchive')) {
+          const err = new Error('mock quota');
+          err.name = 'QuotaExceededError';
+          throw err;
+        }
+        return realSetItem.call(this, key, value);
+      });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    let id;
+    {
+      const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
+      await act(async () => {
+        id = await result.current.saveBriefing('2026-04-21', makeBriefing('freshest'), null, heavy);
+      });
+    }
+
+    // The hot blob is the stripped, flagged form; the disk file is full.
+    const storedCurrent = JSON.parse(window.localStorage.getItem('aparture-briefing-current'));
+    expect(storedCurrent._strippedFromHot).toBe(true);
+    expect(storedCurrent.pipelineArchive).toBeUndefined();
+    const filePath = path.join(tmpDir, 'briefings', `${id}.json`);
+    const onDisk = JSON.parse(await fs.readFile(filePath, 'utf8'));
+    expect(onDisk.pipelineArchive).toEqual(heavy.pipelineArchive);
+
+    setItemSpy.mockRestore();
+    warnSpy.mockRestore();
+
+    // Simulate a refresh: a fresh hook rehydrates `current` from the stripped
+    // hot blob. loadBriefing(currentId) must return the FULL entry from disk.
+    const second = renderHook(() => useBriefing({ password: 'test-pw' }));
+    expect(second.result.current.current._strippedFromHot).toBe(true);
+    expect(second.result.current.current.pipelineArchive).toBeUndefined();
+
+    const loaded = await second.result.current.loadBriefing(id);
+    expect(loaded.pipelineArchive).toEqual(heavy.pipelineArchive);
+    expect(loaded.quickSummariesById).toEqual(heavy.quickSummariesById);
+    expect(loaded.fullReportsById).toEqual(heavy.fullReportsById);
+    expect(loaded.briefing.executiveSummary).toBe('freshest');
+  });
 });
