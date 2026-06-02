@@ -85,11 +85,11 @@ describe('useProfile', () => {
     expect(result.current.migrationNotice).toBeNull();
   });
 
-  // Regression: clicking "Clear history" empties revisions[], which re-armed an
-  // old Phase 1.5 recovery heuristic. With the legacy `aparture-profile-md` key
-  // already cleaned up, that heuristic used to re-run migration and overwrite
-  // the user's edited profile with config.scoringCriteria. The profile content
-  // must survive clearHistory + reload.
+  // Regression: clicking "Clear history" empties revisions[], which used to
+  // re-arm an obsolete "Phase 1.5 recovery" heuristic that re-ran migration on
+  // an already-stored profile and overwrote the user's edited content with
+  // config.scoringCriteria. That heuristic has been removed; the profile
+  // content must survive clearHistory + reload.
   it('preserves edited profile content after clearHistory and a remount', () => {
     const config = { scoringCriteria: 'default scoring criteria' };
 
@@ -109,8 +109,7 @@ describe('useProfile', () => {
     expect(first.result.current.profile.content).toBe('My carefully edited research profile');
     first.unmount();
 
-    // Sanity: the legacy Phase 1 key is gone, which is exactly the condition
-    // that previously triggered the destructive recovery path.
+    // Sanity: the legacy Phase 1 key was cleaned up on first mount.
     expect(window.localStorage.getItem('aparture-profile-md')).toBeNull();
 
     // 3. Re-mount the hook (simulates a page reload). Content must be intact and
@@ -118,33 +117,5 @@ describe('useProfile', () => {
     const second = renderHook(() => useProfile(config));
     expect(second.result.current.profile.content).toBe('My carefully edited research profile');
     expect(second.result.current.profile.content).not.toBe('default scoring criteria');
-  });
-
-  // The genuine Phase 1.5 recovery (legacy key still present) still runs, and
-  // the pre-migration content is stashed into revisions rather than discarded.
-  it('still runs Phase 1.5 recovery when the legacy key exists, preserving prior content', () => {
-    // Corrupted state: revisions empty, content === a stale default that does
-    // not match the real config, legacy key still present.
-    window.localStorage.setItem(
-      'aparture-profile',
-      JSON.stringify({
-        content: 'stale default content',
-        updatedAt: 1,
-        lastFeedbackCutoff: 0,
-        revisions: [],
-      })
-    );
-    window.localStorage.setItem('aparture-profile-md', 'the real phase-1 profile');
-
-    const { result } = renderHook(() =>
-      useProfile({ scoringCriteria: 'current real scoring criteria' })
-    );
-
-    // Migration recovered the Phase 1 content...
-    expect(result.current.profile.content).toBe('the real phase-1 profile');
-    // ...and the pre-migration content was preserved, not discarded.
-    expect(
-      result.current.profile.revisions.some((r) => r.content === 'stale default content')
-    ).toBe(true);
   });
 });

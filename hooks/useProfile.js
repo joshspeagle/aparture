@@ -14,69 +14,23 @@ function readInitialState(config) {
     };
   }
 
-  // A revision stashed from a profile we are about to recover-migrate, so the
-  // pre-migration content is never lost. Merged into the migrated profile below.
-  let preservedRevision = null;
-
+  // Existing profile: load it as-is. (We do NOT re-run migration on an already
+  // stored profile — an earlier "Phase 1.5 recovery" heuristic did, but its
+  // trigger re-armed every time `clearHistory` emptied the revision list, so it
+  // wiped edited profiles on reload. It could also only ever fire in a state
+  // app code can't produce, so it was removed.)
   const stored = window.localStorage.getItem(PROFILE_KEY);
   if (stored) {
     try {
-      const parsed = JSON.parse(stored);
-
-      // Recovery path for an early Phase 1.5 bug where the migration ran
-      // against the hardcoded DEFAULT_CONFIG.scoringCriteria (because config
-      // state was not yet lazy-initialized from localStorage at the time
-      // useProfile first ran). Detect the signature: the user has never
-      // edited their profile (revisions empty) AND the stored content does
-      // not match the scoringCriteria the caller is currently passing AND
-      // the caller actually has a scoringCriteria value to migrate from.
-      //
-      // GUARD: recovery may ONLY run while the legacy Phase 1 key
-      // (`aparture-profile-md`) still exists. That key is cleaned up on the
-      // first mount (below), so on any later mount there is nothing to
-      // recover *from* — re-running migration would fabricate
-      // `scoringCriteria` as the content and silently overwrite a profile
-      // the user edited. The `revisions.length === 0` signature is also
-      // re-armed every time `clearHistory` empties the revision list, so
-      // without this guard clicking "Clear history" would wipe the profile
-      // on the very next reload. Gating on the legacy key closes both holes.
-      const callerCriteria = (config?.scoringCriteria || '').trim();
-      const legacyKeyExists = Boolean(window.localStorage.getItem(PHASE_1_PROFILE_KEY));
-      if (
-        legacyKeyExists &&
-        parsed?.revisions?.length === 0 &&
-        callerCriteria &&
-        parsed.content !== callerCriteria
-      ) {
-        // Defense in depth: never discard the existing content outright. Stash
-        // it as a revision that gets threaded into the migrated profile below,
-        // so it stays user-recoverable even if migration resolves to a
-        // different value.
-        if (parsed.content) {
-          preservedRevision = {
-            content: parsed.content,
-            createdAt: Date.now(),
-            source: 'recovery',
-            lastFeedbackCutoff: parsed.lastFeedbackCutoff ?? 0,
-            rationale: 'Preserved before Phase 1.5 migration recovery.',
-          };
-        }
-        // Clear the corrupted key and re-run migration against the real config.
-        window.localStorage.removeItem(PROFILE_KEY);
-      } else {
-        return { profile: parsed, notice: null };
-      }
+      return { profile: JSON.parse(stored), notice: null };
     } catch {
-      // fall through to migration on parse failure
+      // Corrupt JSON — fall through to a fresh Phase-1 migration.
     }
   }
 
-  const { profile: migrated, notice } = migrateFromPhase1(window.localStorage, config);
-  const profile = preservedRevision
-    ? { ...migrated, revisions: [preservedRevision, ...migrated.revisions].slice(0, MAX_REVISIONS) }
-    : migrated;
-
-  // Persist the migrated profile and clean up the legacy key
+  // First run (no stored profile): migrate from the legacy Phase-1 markdown key
+  // if present, otherwise seed from config.scoringCriteria.
+  const { profile, notice } = migrateFromPhase1(window.localStorage, config);
   window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
   if (window.localStorage.getItem(PHASE_1_PROFILE_KEY)) {
     window.localStorage.removeItem(PHASE_1_PROFILE_KEY);
