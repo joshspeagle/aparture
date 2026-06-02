@@ -51,6 +51,38 @@ describe('useSeenPapers — recordRun', () => {
     expect(result.current.index['2605.14210']).toBe('2026-05-14');
   });
 
+  it("records the LOGICAL briefing date when fed App.jsx's UTC-anchored timestamp (no TZ off-by-one)", () => {
+    // App.jsx (saveBriefingAndSwitch) converts a briefing's logical YYYY-MM-DD
+    // into a timestamp before calling recordRun. It MUST anchor that parse to
+    // UTC ('T00:00:00Z') because recordRun re-serializes via UTC toISOString()
+    // and the migration path derives its date from entry.timestamp the same
+    // way. Parsing as LOCAL ('T00:00:00') would, in a UTC+ timezone, push the
+    // epoch ms back into the previous UTC day, so the recorded firstSeenDate
+    // would be one day earlier than the migration would later compute on a
+    // rebuild — flipping 90-day-window membership for boundary papers.
+    const logicalDate = '2026-05-14';
+    // The fixed App.jsx parse (UTC-anchored).
+    const briefingTsUtc = new Date(logicalDate + 'T00:00:00Z').getTime();
+
+    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    act(() => {
+      result.current.recordRun([{ id: '2605.14205' }], briefingTsUtc);
+    });
+
+    // Regardless of the runner's local timezone, the recorded date equals the
+    // logical date because both the App.jsx parse and recordRun's serializer
+    // are UTC-anchored. The pre-fix LOCAL parse only diverges in UTC+ zones
+    // (verified out-of-band: TZ=Asia/Tokyo yields 2026-05-13 from the local
+    // parse vs 2026-05-14 from the UTC parse).
+    expect(result.current.index['2605.14205']).toBe(logicalDate);
+
+    // The migration path derives the date from entry.timestamp via the same
+    // UTC slice — at UTC midnight of the logical day it produces the identical
+    // YYYY-MM-DD, so a future rebuild can't change this paper's firstSeenDate.
+    const migrationDate = new Date(briefingTsUtc).toISOString().slice(0, 10);
+    expect(migrationDate).toBe(result.current.index['2605.14205']);
+  });
+
   it('keeps the EARLIEST date when an arxivId appears twice (first-wins)', () => {
     // Pin the clock so the first (2026-03-01) recording stays inside the 90-day
     // prune window relative to "now" — otherwise this test silently flakes as
@@ -236,32 +268,67 @@ describe('useSeenPapers — migration from existing briefings', () => {
     expect(result.current.index._dedupeVersion).toBe(3);
   });
 
-  it('continues and marks sentinels even if one briefing GET fails', async () => {
+  it('does NOT seal (retries) when a per-briefing GET fails, then seals once it succeeds', async () => {
+    // A partial briefing-GET failure means the merged index is incomplete: the
+    // dropped briefing's papers would be treated as never-seen for the whole
+    // 90-day window if we sealed _dedupeVersion now. So the migration must
+    // return null → no sentinels, ready stays false → retry on next mount.
     const briefings = {
       'brief-ok': {
         timestamp: Date.parse('2026-05-10T00:00:00Z'),
         briefing: { papers: [{ arxivId: '2605.14205' }] },
       },
+      'brief-flaky': {
+        timestamp: Date.parse('2026-05-11T00:00:00Z'),
+        briefing: { papers: [{ arxivId: '2605.14222' }] },
+      },
     };
+    let flakyShouldFail = true;
     vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
       const u = String(url);
       if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
-        return { ok: true, status: 200, json: async () => ({ ids: ['brief-ok', 'brief-bad'] }) };
+        return { ok: true, status: 200, json: async () => ({ ids: ['brief-ok', 'brief-flaky'] }) };
       }
       if (u.includes('brief-ok')) {
         return { ok: true, status: 200, json: async () => briefings['brief-ok'] };
       }
-      if (u.includes('brief-bad')) {
-        return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
+      if (u.includes('brief-flaky')) {
+        if (flakyShouldFail) {
+          return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
+        }
+        return { ok: true, status: 200, json: async () => briefings['brief-flaky'] };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'nope' }) };
     });
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const { result } = renderHook(() => useSeenPapers({ password: 'pw' }));
-    await waitFor(() => expect(result.current.ready).toBe(true));
+    const { result, rerender } = renderHook(({ password }) => useSeenPapers({ password }), {
+      initialProps: { password: 'pw' },
+    });
 
+    // First attempt: one briefing GET 500s → migration returns null → NOT sealed.
+    // ready stays false and no index is persisted, so the next mount retries.
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/briefings/brief-flaky'),
+        expect.anything()
+      )
+    );
+    // Give the (null-returning) migration a tick to settle, then assert no seal.
+    await Promise.resolve();
+    expect(result.current.ready).toBe(false);
+    expect(result.current.index._dedupeVersion).toBeUndefined();
+    expect(result.current.index._migratedAt).toBeUndefined();
+    expect(window.localStorage.getItem('aparture-seen-papers-index')).toBeNull();
+
+    // Transient failure clears; a password change re-fires the migration effect.
+    flakyShouldFail = false;
+    rerender({ password: 'pw-2' });
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    // Now BOTH briefings' papers are present and the migration is sealed.
     expect(result.current.index['2605.14205']).toBe('2026-05-10');
+    expect(result.current.index['2605.14222']).toBe('2026-05-11');
     expect(result.current.index._migratedAt).toBeDefined();
     expect(result.current.index._dedupeVersion).toBe(3);
   });

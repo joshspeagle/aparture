@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { harvest } from '../../../lib/arxiv/ingest.js';
 import { ArxivThrottledError } from '../../../lib/arxiv/errors.js';
 
+// No-op inter-request spacing so multi-request tests don't actually sleep the
+// jittered 3000–5000 ms between consecutive arXiv calls. Tests that assert the
+// spacing behavior inject their own spy instead.
+const noSleep = () => Promise.resolve();
+
 const examplePaper = (id, fetchedCategory) => ({
   id,
   title: `Paper ${id}`,
@@ -37,6 +42,7 @@ describe('ingest.harvest — atom-only mode', () => {
       abortSignal: { aborted: false },
       fetchAtomImpl,
       harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
     });
 
     expect(fetchAtomImpl).toHaveBeenCalledTimes(2);
@@ -57,6 +63,7 @@ describe('ingest.harvest — atom-only mode', () => {
       abortSignal: { aborted: false },
       fetchAtomImpl,
       harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
     });
 
     expect(result.papers).toHaveLength(1);
@@ -96,6 +103,7 @@ describe('ingest.harvest — atom-only mode', () => {
       harvestOaiImpl: vi.fn(),
       progressCallback,
       waitForResume,
+      sleepImpl: noSleep,
     });
 
     // Two subcategories → two progress callbacks (1/2, 2/2) and two pause checks.
@@ -129,6 +137,7 @@ describe('ingest.harvest — oai-only mode', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl,
+        sleepImpl: noSleep,
       }
     );
 
@@ -170,6 +179,82 @@ describe('ingest.harvest — oai-only mode', () => {
   });
 });
 
+describe('ingest.harvest — jittered inter-request spacing', () => {
+  it('sleeps BETWEEN consecutive OAI prefix requests but not before the first', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', ''), categories: ['cs.AI'] }])
+      .mockResolvedValueOnce([{ ...examplePaper('B', ''), categories: ['stat.ML'] }]);
+    const spacingMsImpl = vi.fn(() => 4242);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.AI', 'stat.ML'],
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+        spacingMsImpl,
+        sleepImpl,
+      }
+    );
+
+    // Two prefix requests (cs, stat) → exactly one spacing sleep between them
+    // (none before the first request).
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenCalledTimes(1);
+    expect(sleepImpl).toHaveBeenCalledWith(4242);
+  });
+
+  it('does not sleep when only a single OAI prefix request is made', async () => {
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('A', ''), categories: ['cs.AI'] }]);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvest(
+      { ...baseWindow, mode: 'oai-only', selectedSubcategories: ['cs.AI'] },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+        sleepImpl,
+      }
+    );
+
+    expect(sleepImpl).not.toHaveBeenCalled();
+  });
+
+  it('sleeps BETWEEN consecutive Atom subcategory requests in atom-only mode', async () => {
+    const fetchAtomImpl = vi
+      .fn()
+      .mockResolvedValueOnce([examplePaper('2604.0001', 'cs.AI')])
+      .mockResolvedValueOnce([examplePaper('2604.0002', 'cs.LG')]);
+    const spacingMsImpl = vi.fn(() => 3777);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvest(baseWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl,
+      harvestOaiImpl: vi.fn(),
+      spacingMsImpl,
+      sleepImpl,
+    });
+
+    // Two subcategories → one spacing sleep between them.
+    expect(fetchAtomImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenCalledTimes(1);
+    expect(sleepImpl).toHaveBeenCalledWith(3777);
+  });
+});
+
 describe('ingest.harvest — auto mode', () => {
   it('uses OAI for all prefixes when OAI succeeds', async () => {
     const harvestOaiImpl = vi
@@ -180,7 +265,13 @@ describe('ingest.harvest — auto mode', () => {
 
     const result = await harvest(
       { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
-      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl,
+        sleepImpl: noSleep,
+      }
     );
 
     expect(result.modeUsed).toBe('auto-oai');
@@ -199,7 +290,13 @@ describe('ingest.harvest — auto mode', () => {
 
     const result = await harvest(
       { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
-      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl,
+        sleepImpl: noSleep,
+      }
     );
 
     expect(result.modeUsed).toBe('auto-atom');
@@ -218,7 +315,13 @@ describe('ingest.harvest — auto mode', () => {
 
     const result = await harvest(
       { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI', 'stat.ML'] },
-      { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl,
+        sleepImpl: noSleep,
+      }
     );
 
     expect(result.modeUsed).toBe('auto-mixed');
@@ -233,7 +336,13 @@ describe('ingest.harvest — auto mode', () => {
     await expect(
       harvest(
         { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI'] },
-        { password: 'pw', abortSignal: { aborted: false }, harvestOaiImpl, fetchAtomImpl }
+        {
+          password: 'pw',
+          abortSignal: { aborted: false },
+          harvestOaiImpl,
+          fetchAtomImpl,
+          sleepImpl: noSleep,
+        }
       )
     ).rejects.toBeInstanceOf(ArxivThrottledError);
   });

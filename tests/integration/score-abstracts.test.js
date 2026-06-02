@@ -70,6 +70,29 @@ describe('score-abstracts API route (fixture mode)', () => {
     expect(getResponse().statusCode).toBe(401);
   });
 
+  it('authenticates an empty-papers request with a valid password and NO Google key', async () => {
+    // App.jsx's login probe POSTs `{ papers: [], password }` with no model, so
+    // the route defaults to a Google model. A user who only has CLAUDE/OPENAI
+    // keys (GOOGLE_AI_API_KEY unset) must still authenticate — the empty-papers
+    // shortcut never calls the model, so it needs no provider key.
+    const prevGoogle = process.env.GOOGLE_AI_API_KEY;
+    delete process.env.GOOGLE_AI_API_KEY;
+    try {
+      const { req, res, getResponse } = createMockReqRes({
+        password: 'test-pw',
+        papers: [],
+        // no model → defaults to Google
+      });
+      await handler(req, res);
+      const { statusCode, jsonBody } = getResponse();
+      expect(statusCode).toBe(200);
+      expect(jsonBody.scores).toEqual([]);
+    } finally {
+      if (prevGoogle === undefined) delete process.env.GOOGLE_AI_API_KEY;
+      else process.env.GOOGLE_AI_API_KEY = prevGoogle;
+    }
+  });
+
   it('rejects non-POST methods', async () => {
     const { req, res, getResponse } = createMockReqRes({});
     req.method = 'GET';

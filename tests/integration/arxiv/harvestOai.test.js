@@ -81,6 +81,32 @@ describe('harvestOai', () => {
     expect(secondBody.resumptionToken).toBe('token-1');
   });
 
+  it('spaces resumption pages with the injectable jittered helper (not a hardcoded 3000)', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          xml: buildPageXml(sampleRecord('A'), 'token-1'),
+          resumptionToken: 'token-1',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ xml: buildPageXml(sampleRecord('B'), ''), resumptionToken: '' }),
+      });
+    const spacingMsImpl = vi.fn(() => 4321);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvestOai({ ...baseArgs, fetchImpl, sleepImpl, spacingMsImpl });
+
+    // One spacing sleep between the two pages, using the jittered value.
+    expect(spacingMsImpl).toHaveBeenCalledTimes(1);
+    expect(sleepImpl).toHaveBeenCalledWith(4321);
+  });
+
   it('retries on 429 then succeeds', async () => {
     const fetchImpl = vi
       .fn()

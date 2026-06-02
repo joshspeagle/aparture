@@ -111,10 +111,24 @@ export default async function handler(req, res) {
   const modelApiId = modelConfig?.apiId ?? modelToUse;
 
   let apiKey = clientApiKey;
+  // Validate the password BEFORE the empty-papers shortcut so a bad password
+  // never authenticates, but resolve the provider key AFTER it. App.jsx's
+  // login probe POSTs `{ papers: [], password }` with no model, so `provider`
+  // defaults to Google; resolving the Google key here would 401 a user who
+  // only has CLAUDE_API_KEY / OPENAI_API_KEY set. The empty-papers path needs
+  // no provider key at all — it never calls the model.
+  if (!apiKey && password && !checkPassword(password)) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  // Early return if no papers to score (used by App.jsx to verify password
+  // during login). Placed before the provider-credential check so a correct
+  // password authenticates regardless of which provider key is configured.
+  if (!papers || papers.length === 0) {
+    return res.status(200).json({ scores: [], rawResponse: '[]' });
+  }
+
   if (!apiKey && password) {
-    if (!checkPassword(password)) {
-      return res.status(401).json({ error: 'Invalid password' });
-    }
     if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
     else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
@@ -127,11 +141,6 @@ export default async function handler(req, res) {
   const callMode = callModelMode ?? { mode: 'live' };
   const isFixture = callMode.mode === 'fixture';
   const cacheable = provider === 'anthropic';
-
-  // Early return if no papers to score (used by App.jsx to verify password during login)
-  if (!papers || papers.length === 0) {
-    return res.status(200).json({ scores: [], rawResponse: '[]' });
-  }
 
   const expectedCount = papers.length;
   const structuredOutput = {

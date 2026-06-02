@@ -13,8 +13,9 @@
 //   anchors "seen" to "appeared in a run that reached briefing-save" and
 //   prevents aborted runs (Stage 1 fetch → no briefing) from poisoning the
 //   index. Existing v1 indexes get rebuilt cleanly on the first mount that
-//   sees the bumped sentinel. Partial failures are logged and skipped — we
-//   always set _migratedAt + _dedupeVersion on completion so we don't re-scan.
+//   sees the bumped sentinel. Per-briefing GET failures abort the seal: the
+//   migration returns null and is retried later, so we never stamp
+//   _migratedAt + _dedupeVersion over an incomplete scan.
 //   Completion MERGES (earliest-date-wins) onto the live in-memory index
 //   rather than overwriting it, so any arxivIds recorded by recordRun during
 //   the migration window survive. The migration effect is the sole writer of
@@ -101,15 +102,19 @@ function persistIndex(index) {
 // One-time migration: scan existing reports/briefings/*.json via the API and
 // seed the index from each briefing's papersFromBriefing union (briefed +
 // pipelineArchive filter buckets). Concurrency-capped to avoid hammering the
-// dev server. Partial failures are logged and skipped — we always set
-// _migratedAt + _dedupeVersion at the end so we don't re-scan on every mount.
+// dev server. Per-briefing failures are NOT silently skipped: any failed GET
+// makes the whole migration return null so the caller does NOT seal it —
+// otherwise the dropped briefings' papers would be treated as never-seen for
+// the entire 90-day window. The next password change / mount retries.
 const MIGRATION_CONCURRENCY = 4;
 
 // Returns:
-//   - Object (possibly empty) → migration completed; caller may set sentinels.
-//   - null                    → couldn't reach disk / auth not ready / aborted;
-//                                caller should NOT set sentinels and should
-//                                retry on next password change or next mount.
+//   - Object (possibly empty) → migration completed cleanly (every listed
+//                                briefing GET succeeded); caller may set sentinels.
+//   - null                    → couldn't reach disk / auth not ready / aborted /
+//                                ANY per-briefing GET failed; caller must NOT set
+//                                sentinels and should retry on next password
+//                                change or next mount.
 async function migrateFromBriefings({ password, signal }) {
   if (typeof window === 'undefined') return null;
   let listRes;
@@ -133,6 +138,13 @@ async function migrateFromBriefings({ password, signal }) {
   const { ids = [] } = await listRes.json();
 
   const merged = {};
+  // If ANY listed briefing's GET fails (non-OK or threw), the merged set is
+  // incomplete — those briefings' papers would be treated as never-seen. We
+  // must NOT let the caller seal the migration (stamp _dedupeVersion) on a
+  // partial result, or the dropped papers stay "unseen" forever. Mirror the
+  // list-fetch-failure path: return null so the caller retries on the next
+  // password change / mount.
+  let anyFailed = false;
 
   const pool = new AnalysisWorkerPool({
     concurrency: MIGRATION_CONCURRENCY,
@@ -147,6 +159,7 @@ async function migrateFromBriefings({ password, signal }) {
       );
       if (!res.ok) {
         console.warn(`[useSeenPapers migration] briefing ${id} returned HTTP ${res.status}`);
+        anyFailed = true;
         return;
       }
       const entry = await res.json();
@@ -162,8 +175,13 @@ async function migrateFromBriefings({ password, signal }) {
       }
     } catch (err) {
       console.warn(`[useSeenPapers migration] briefing ${id} fetch threw:`, err);
+      anyFailed = true;
     }
   });
+
+  // A signal abort surfaces as a per-briefing throw above and flips anyFailed;
+  // that's the correct "don't seal, retry later" outcome too.
+  if (anyFailed) return null;
 
   return merged;
 }

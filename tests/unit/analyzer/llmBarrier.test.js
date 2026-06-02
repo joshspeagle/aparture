@@ -69,6 +69,31 @@ describe('LLMRateLimitBarrier', () => {
     expect(resolved).toBe(true);
   });
 
+  it('honors a rateLimited() extension that fires mid-sleep (re-reads pausedUntil)', async () => {
+    vi.useFakeTimers();
+    const b = new LLMRateLimitBarrier();
+    b.rateLimited({ retryAfterMs: 3000 });
+    let resolved = false;
+    const p = b.acquire().then(() => {
+      resolved = true;
+    });
+
+    // Partway through the original 3s window, another worker hits a 429 and
+    // extends the pause to 5s-from-now. The in-flight acquire() must NOT wake
+    // at the original 3s mark — it should re-read pausedUntil and keep waiting.
+    await vi.advanceTimersByTimeAsync(2000);
+    b.rateLimited({ retryAfterMs: 5000 }); // extend: now ~5s from this instant
+
+    // Advance past the ORIGINAL window (total 3.1s elapsed). Still paused.
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(resolved).toBe(false);
+
+    // Advance to clear the EXTENDED window (5s after the 2s mark = 7s total).
+    await vi.advanceTimersByTimeAsync(4000);
+    await p;
+    expect(resolved).toBe(true);
+  });
+
   it('handles null/undefined retryAfterMs gracefully', () => {
     const b = new LLMRateLimitBarrier();
     expect(() => b.rateLimited({ retryAfterMs: null })).not.toThrow();

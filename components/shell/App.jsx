@@ -653,7 +653,14 @@ export default function App() {
       };
       const papers = papersFromBriefing(entryForExtraction);
       if (papers.length > 0) {
-        const briefingTs = date ? new Date(date + 'T00:00:00').getTime() : Date.now();
+        // Interpret the briefing's logical YYYY-MM-DD as UTC midnight (trailing
+        // 'Z'), NOT local. recordRun re-serializes the timestamp via UTC
+        // toISOString(), and the migration path derives its date from
+        // entry.timestamp the same way. Parsing as LOCAL here would, in UTC+
+        // timezones, push the epoch ms back into the previous UTC day → the
+        // live path and a future migration rebuild would disagree on
+        // firstSeenDate and could flip 90-day-window membership.
+        const briefingTs = date ? new Date(date + 'T00:00:00Z').getTime() : Date.now();
         seenPapers.recordRun(papers, Number.isFinite(briefingTs) ? briefingTs : Date.now());
       }
     } catch (err) {
