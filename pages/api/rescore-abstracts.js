@@ -1,6 +1,6 @@
 import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
-import { loadRubricPrompt } from '../../lib/llm/loadRubricPrompt.js';
+import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
@@ -213,16 +213,18 @@ export default async function handler(req, res) {
           `Regenerate the complete response now. Return exactly ${expectedCount} rescores,`,
           'one per paper in the input list above, with paperIndex values 1..' + expectedCount + '.',
         ].join('\n');
-        // Retry body must include the rubric + profile when caching is off.
-        const retryBody =
-          promptOverride ?? (useCaching ? variableTail : cachePrefix + variableTail);
+        // Retry is always uncached, so the body must be self-contained: it
+        // always inlines the rubric + profile prefix (the Anthropic adapter
+        // ignores cachePrefix when cacheable is false, so cachePrefix here
+        // would be silently dropped for live Anthropic). See buildRetryPrompt.
+        const retryBody = buildRetryPrompt({ promptOverride, cachePrefix, variableTail });
         const retryPrompt = retryBody + errorHint;
         const correctedResult = await callModel(
           {
             provider,
             model: modelApiId,
             prompt: retryPrompt,
-            cachePrefix: useCaching ? cachePrefix : '',
+            cachePrefix: '',
             cacheable: false,
             apiKey,
             structuredOutput,
