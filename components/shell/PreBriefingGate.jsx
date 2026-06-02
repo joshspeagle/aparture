@@ -1,8 +1,11 @@
 // components/shell/PreBriefingGate.jsx
 // Pre-briefing review gate (Gate 3). Rendered by MainArea when the pipeline
 // pauses at stage 'pre-briefing-review'. Mirrors ScoreReviewSurface (score
-// gate) and FilterResultsList (filter gate) as a self-contained section
-// component fronted by the shared ReviewGateBanner.
+// gate) and FilterResultsList (filter gate): the shared ReviewGateBanner sits
+// at the HEAD of the reviewed content. Because that content — the analyzed-
+// papers list (AnalysisResultsList) — is shared across stages, MainArea passes
+// it in as `children` so the banner heads it rather than trailing below it.
+// The cut-papers expander trails after the list.
 
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
@@ -19,6 +22,7 @@ const PRE_BRIEFING_PLACEHOLDER =
  *   onContinueAfterReview: () => void,
  *   onSkipRemainingGates?: () => void,
  *   onAddGeneralComment?: (text: string, briefingId: string | undefined) => void,
+ *   children?: React.ReactNode,  // the reviewed content (AnalysisResultsList), headed by the banner
  * }} props
  */
 export default function PreBriefingGate({
@@ -28,6 +32,7 @@ export default function PreBriefingGate({
   onContinueAfterReview,
   onSkipRemainingGates,
   onAddGeneralComment,
+  children,
 }) {
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
@@ -37,9 +42,15 @@ export default function PreBriefingGate({
         continueLabel="Continue to briefing →"
         onContinue={onContinueAfterReview}
         onSkipRemaining={onSkipRemainingGates}
-      />
-      {/* AnalyzedExpander owns the "are there cut papers?" decision (it
-          returns null when none), so the gate only null-checks the array. */}
+      >
+        {/* Per-round free-text feedback lives inside the banner, matching the
+            score-review gate's scoped-feedback placement. */}
+        <GeneralCommentInput
+          onSave={(text) => onAddGeneralComment?.(text, undefined)}
+          placeholder={PRE_BRIEFING_PLACEHOLDER}
+        />
+      </ReviewGateBanner>
+      {children}
       {results.allAnalyzedPapers && (
         <AnalyzedExpander
           allAnalyzedPapers={results.allAnalyzedPapers}
@@ -48,10 +59,6 @@ export default function PreBriefingGate({
           onPromotePaper={onPromotePaper}
         />
       )}
-      <GeneralCommentInput
-        onSave={(text) => onAddGeneralComment?.(text, undefined)}
-        placeholder={PRE_BRIEFING_PLACEHOLDER}
-      />
     </section>
   );
 }

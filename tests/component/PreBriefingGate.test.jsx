@@ -60,4 +60,16 @@ describe('PreBriefingGate', () => {
     );
     expect(screen.getByText(/more PDF-analyzed papers/)).toBeInTheDocument();
   });
+
+  it('renders the reviewed content passed as children (the banner heads it)', () => {
+    render(
+      <PreBriefingGate {...base} results={{ allAnalyzedPapers: [], finalRanking: [] }}>
+        <div data-testid="reviewed-content">analysis list</div>
+      </PreBriefingGate>
+    );
+    // The banner's Continue control and the reviewed content both render; the
+    // banner sits above the content (banner-at-head, matching gates 1 & 2).
+    expect(screen.getByRole('button', { name: /Continue to briefing/ })).toBeInTheDocument();
+    expect(screen.getByTestId('reviewed-content')).toBeInTheDocument();
+  });
 });

@@ -173,6 +173,18 @@ export default function MainArea({
 
   // Pipeline view — ProgressTimeline + ControlPanel + results + reports.
   if (activeView === 'pipeline') {
+    // The scored/analyzed papers list. At the pre-briefing gate it becomes the
+    // reviewed content the gate banner heads (wrapped by <PreBriefingGate>); at
+    // every other stage it renders standalone.
+    const analysisResults = (
+      <AnalysisResultsList
+        results={results}
+        testState={testState}
+        processing={processing}
+        abstractOnlyPapers={abstractOnlyPapers}
+        renderPaperCard={renderPaperCard}
+      />
+    );
     return (
       <div className="config-surface">
         <ProgressTimeline>
@@ -231,17 +243,11 @@ export default function MainArea({
             </div>
           )}
 
-          {/* Scored / analyzed papers */}
-          <AnalysisResultsList
-            results={results}
-            testState={testState}
-            processing={processing}
-            abstractOnlyPapers={abstractOnlyPapers}
-            renderPaperCard={renderPaperCard}
-          />
-
-          {/* Pre-briefing review gate (Gate 3) */}
-          {processing.stage === 'pre-briefing-review' && (
+          {/* Scored / analyzed papers. At the pre-briefing gate (Gate 3) the
+              banner heads this list — PreBriefingGate wraps it so the Continue
+              control sits above the reviewed content like Gates 1 & 2.
+              Otherwise the list stands alone. */}
+          {processing.stage === 'pre-briefing-review' ? (
             <PreBriefingGate
               results={results}
               renderPaperCard={renderPaperCard}
@@ -249,7 +255,11 @@ export default function MainArea({
               onContinueAfterReview={onContinueAfterReview}
               onSkipRemainingGates={onSkipRemainingGates}
               onAddGeneralComment={onAddGeneralComment}
-            />
+            >
+              {analysisResults}
+            </PreBriefingGate>
+          ) : (
+            analysisResults
           )}
 
           {/* Report download + briefing generation */}
