@@ -25,7 +25,7 @@ This page covers what each gate shows, what to do there, and when it's worth tur
   5. Briefing           (editorial synthesis + hallucination audit)
 ```
 
-All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early.
+All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early. Each gate presents the same banner — a one-line summary, a <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link — at the head of the section it gates.
 
 ## Gate 1 — after the quick filter
 
@@ -33,7 +33,7 @@ All three gates pause a running pipeline until you click a <span class="ui-actio
 
 The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.1-flash-lite`) runs <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
 
-When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. The progress timeline shows _"Filter complete — review results before scoring"_ and the main area fills in with the filter results, grouped into three buckets.
+When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. A review banner — _"Filter complete — review verdicts before scoring"_ with a <span class="ui-action">Continue to scoring →</span> button — appears at the head of the filter results, which fill in below it grouped into three buckets.
 
 ### What you see
 
@@ -65,7 +65,7 @@ You don't have to review every paper. Overrides usually happen in the <span clas
 
 After Stage 3.5 (post-processing), the pipeline has a ranked list of scores but hasn't spent any tokens on deep PDF reads yet. That's the cheapest moment to adjust which papers get the full treatment.
 
-When `pauseBeforeDeepAnalysis` is on (default: **on**), the pipeline halts here. The timeline shows _"Scoring complete — review scores and adjust PDF selections"_, and the main area shows the full scored list split into three collapsible groups.
+When `pauseBeforeDeepAnalysis` is on (default: **on**), the pipeline halts here. A review banner with a <span class="ui-action">Continue to PDF analysis →</span> button sits at the head of the full scored list, split into three collapsible groups.
 
 ### What you see
 
@@ -109,7 +109,7 @@ Click <span class="ui-action">Continue to PDF analysis →</span> when you're do
 
 After Stage 4 (PDF analysis) completes, the pipeline has scores, deep-analysis summaries, and a ranked list of papers. The next step is synthesis: the briefing model reads your profile, the analysed papers, and your feedback, then writes the executive summary, themes, and paper cards.
 
-When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before synthesis runs. The timeline shows _"Analysis complete — review results and add stars/dismissals before generating your briefing"_, and the main area shows the Analysis Results list with every PDF-analysed paper, score, and summary.
+When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before synthesis runs. A review banner — _"Analysis complete — review before briefing"_ with a <span class="ui-action">Continue to briefing →</span> button — sits at the head of the Analysis Results list, showing every PDF-analysed paper, score, and summary.
 
 ### What to do there
 
