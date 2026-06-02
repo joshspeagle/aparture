@@ -3,6 +3,7 @@ import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
+import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 import { ROW_TINT as SHARED_ROW_TINT } from '../ui/ActionPill.jsx';
 
 const BUCKET_PLACEHOLDERS = {
@@ -260,11 +261,14 @@ export default function FilterResultsList({
   bucketFeedbackByBucket,
   onBucketFeedback,
   onAddPaperComment,
+  onContinueAfterFilter,
+  onSkipRemainingGates,
 }) {
   const hasAny =
     filterResults.yes.length > 0 || filterResults.maybe.length > 0 || filterResults.no.length > 0;
   const hasFeedbackProps = onBucketFeedback != null;
-  if (!hasAny && !hasFeedbackProps) return null;
+  // Still render (for the gate banner) when a continue handler is present, even with no papers/feedback.
+  if (!hasAny && !hasFeedbackProps && onContinueAfterFilter == null) return null;
 
   // Allow verdict overrides during the filter-review pause (the whole
   // point of that gate) even though processing.isRunning is still true.
@@ -318,6 +322,17 @@ export default function FilterResultsList({
 
   return (
     <Card>
+      {processing?.stage === 'filter-review' && (
+        <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
+          <ReviewGateBanner
+            title="Filter complete — review verdicts before scoring"
+            description={`${filterResults.yes.length} YES / ${filterResults.maybe.length} MAYBE / ${filterResults.no.length} NO — override verdicts below, then continue.`}
+            continueLabel="Continue to scoring →"
+            onContinue={onContinueAfterFilter}
+            onSkipRemaining={onSkipRemainingGates}
+          />
+        </div>
+      )}
       <div
         style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
       >
