@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import TextArea from '../ui/TextArea.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
+import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 
 function RowComment({ arxivId, onAddPaperComment }) {
   const [expanded, setExpanded] = useState(false);
@@ -84,7 +85,7 @@ function ScoreRow({
         justifyContent: 'space-between',
         gap: 'var(--aparture-space-3, 12px)',
         padding: 'var(--aparture-space-3, 12px)',
-        borderTop: '1px solid var(--aparture-border-light, #f3f4f6)',
+        borderTop: '1px solid var(--aparture-border-light)',
         borderLeft: isInTopN ? '3px solid #22c55e' : '3px solid transparent',
         background: rowBg,
         opacity: isDismissed ? 0.55 : 1,
@@ -163,9 +164,10 @@ function ScoreGroup({
         style={{
           width: '100%',
           padding: 'var(--aparture-space-2, 8px) var(--aparture-space-3, 12px)',
-          background: 'var(--aparture-surface-2, #f9fafb)',
+          background: 'var(--aparture-surface-2)',
+          color: 'var(--aparture-ink)',
           border: 'none',
-          borderTop: '1px solid var(--aparture-border-light, #f3f4f6)',
+          borderTop: '1px solid var(--aparture-border-light)',
           textAlign: 'left',
           cursor: 'pointer',
           fontFamily: 'var(--aparture-font-mono, monospace)',
@@ -214,90 +216,50 @@ export default function ScoreReviewSurface({
   return (
     <section
       style={{
-        border: '1px solid var(--aparture-border, #e5e7eb)',
-        borderRadius: 'var(--aparture-radius-md, 8px)',
-        overflow: 'hidden',
+        color: 'var(--aparture-ink)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--aparture-space-2, 8px)',
       }}
     >
-      <header
+      <ReviewGateBanner
+        title={`Score review — ${availablePapers.length} papers`}
+        description="Review your scored papers before PDF analysis. Star to guarantee inclusion; dismiss to skip."
+        continueLabel="Continue to PDF analysis →"
+        onContinue={onContinue}
+        onSkipRemaining={onSkipRemaining}
+      >
+        {scopedCommentInput}
+      </ReviewGateBanner>
+      <div
         style={{
-          padding: 'var(--aparture-space-4, 16px)',
-          background: 'var(--aparture-surface-2, #f9fafb)',
-          borderBottom: '1px solid var(--aparture-border, #e5e7eb)',
+          border: '1px solid var(--aparture-border)',
+          borderRadius: '8px',
+          overflow: 'hidden',
         }}
       >
-        <div
-          style={{
-            fontSize: 'var(--aparture-text-xs, 12px)',
-            color: 'var(--aparture-mute, #6b7280)',
-            marginBottom: '4px',
-          }}
-        >
-          Review your scored papers before PDF analysis. Star to guarantee inclusion; dismiss to
-          skip.
-        </div>
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--aparture-space-3, 12px)' }}
-        >
-          <h2 style={{ margin: 0, fontSize: 'var(--aparture-text-base, 16px)', fontWeight: 600 }}>
-            Score review — {availablePapers.length} papers
-          </h2>
-          <div style={{ flex: 1 }} />
-          {onSkipRemaining && (
-            <button
-              onClick={onSkipRemaining}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--aparture-mute, #6b7280)',
-                fontSize: 'var(--aparture-text-xs, 12px)',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-              }}
-            >
-              Skip remaining gates this run
-            </button>
-          )}
-          <button
-            onClick={onContinue}
-            style={{
-              padding: '6px 14px',
-              background: '#f59e0b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            Continue to PDF analysis →
-          </button>
-        </div>
-        {scopedCommentInput && (
-          <div style={{ marginTop: 'var(--aparture-space-3, 12px)' }}>{scopedCommentInput}</div>
-        )}
-      </header>
-      <ScoreGroup
-        label="Will PDF (top-N)"
-        papers={topN}
-        defaultExpanded={true}
-        isInTopN={true}
-        {...groupProps}
-      />
-      <ScoreGroup
-        label="Borderline"
-        papers={borderline}
-        defaultExpanded={false}
-        isInTopN={false}
-        {...groupProps}
-      />
-      <ScoreGroup
-        label="Low score"
-        papers={lowScore}
-        defaultExpanded={false}
-        isInTopN={false}
-        {...groupProps}
-      />
+        <ScoreGroup
+          label="Will PDF (top-N)"
+          papers={topN}
+          defaultExpanded={true}
+          isInTopN={true}
+          {...groupProps}
+        />
+        <ScoreGroup
+          label="Borderline"
+          papers={borderline}
+          defaultExpanded={false}
+          isInTopN={false}
+          {...groupProps}
+        />
+        <ScoreGroup
+          label="Low score"
+          papers={lowScore}
+          defaultExpanded={false}
+          isInTopN={false}
+          {...groupProps}
+        />
+      </div>
     </section>
   );
 }
