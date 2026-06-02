@@ -13,7 +13,6 @@ import ReCaptchaSummaryCard from '../run/ReCaptchaSummaryCard.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
-import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
 import FilterResultsList from '../filter/FilterResultsList.jsx';
 import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
@@ -21,11 +20,8 @@ import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
-import AnalyzedExpander from './AnalyzedExpander.jsx';
+import PreBriefingGate from './PreBriefingGate.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
-
-const PRE_BRIEFING_PLACEHOLDER =
-  "e.g., \"Anything to flag about this lineup before we synthesize? — 'Lead with the diffusion-models cluster.' Or: 'These all look strong but I want more methodology depth in the writeup.'\"";
 
 export default function MainArea({
   activeView,
@@ -179,14 +175,7 @@ export default function MainArea({
   if (activeView === 'pipeline') {
     return (
       <div className="config-surface">
-        <ProgressTimeline
-          onSetVerdict={onSetVerdict}
-          pauseAfterFilter={config?.pauseAfterFilter ?? true}
-          pauseBeforeBriefing={config?.pauseBeforeBriefing ?? true}
-          onContinueAfterFilter={onContinueAfterFilter}
-          onContinueAfterReview={onContinueAfterReview}
-          onSkipRemainingGates={onSkipRemainingGates}
-        >
+        <ProgressTimeline onSetVerdict={onSetVerdict}>
           {/* Controls */}
           <div style={{ marginTop: 'var(--aparture-space-6)' }}>
             <ControlPanel
@@ -212,6 +201,8 @@ export default function MainArea({
             bucketFeedbackByBucket={bucketFeedbackByBucket}
             onBucketFeedback={onBucketFeedback}
             onAddPaperComment={onAddPaperComment}
+            onContinueAfterFilter={onContinueAfterFilter}
+            onSkipRemainingGates={onSkipRemainingGates}
           />
 
           {/* Score-review gate surface — shown when pipeline is paused at 'score-review' */}
@@ -249,26 +240,16 @@ export default function MainArea({
             renderPaperCard={renderPaperCard}
           />
 
-          {/* Pre-briefing expander — cut papers that were analyzed but didn't make finalRanking */}
-          {processing.stage === 'pre-briefing-review' &&
-            results.allAnalyzedPapers &&
-            results.allAnalyzedPapers.length > (results.finalRanking?.length ?? 0) && (
-              <AnalyzedExpander
-                allAnalyzedPapers={results.allAnalyzedPapers}
-                finalRanking={results.finalRanking ?? []}
-                renderPaperCard={renderPaperCard}
-                onPromotePaper={onPromotePaper}
-              />
-            )}
-
-          {/* Pre-briefing general comment — shown when pipeline is paused at pre-briefing-review */}
+          {/* Pre-briefing review gate (Gate 3) */}
           {processing.stage === 'pre-briefing-review' && (
-            <div style={{ marginTop: 'var(--aparture-space-4, 16px)' }}>
-              <GeneralCommentInput
-                onSave={(text) => onAddGeneralComment?.(text, undefined)}
-                placeholder={PRE_BRIEFING_PLACEHOLDER}
-              />
-            </div>
+            <PreBriefingGate
+              results={results}
+              renderPaperCard={renderPaperCard}
+              onPromotePaper={onPromotePaper}
+              onContinueAfterReview={onContinueAfterReview}
+              onSkipRemainingGates={onSkipRemainingGates}
+              onAddGeneralComment={onAddGeneralComment}
+            />
           )}
 
           {/* Report download + briefing generation */}

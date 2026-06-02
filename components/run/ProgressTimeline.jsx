@@ -4,7 +4,6 @@
 // pipeline stages to user-facing labels with status icons.
 
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
-import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 import PlaywrightNotice from './PlaywrightNotice.jsx';
 
@@ -124,15 +123,7 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
   return labels[stageKey]?.[status] ?? stageKey;
 }
 
-export default function ProgressTimeline({
-  onSetVerdict: _onSetVerdict,
-  pauseAfterFilter,
-  pauseBeforeBriefing,
-  onContinueAfterFilter,
-  onContinueAfterReview,
-  onSkipRemainingGates,
-  children,
-}) {
+export default function ProgressTimeline({ onSetVerdict: _onSetVerdict, children }) {
   const processing = useAnalyzerStore((s) => s.processing);
   const filterResults = useAnalyzerStore((s) => s.filterResults);
   const results = useAnalyzerStore((s) => s.results);
@@ -191,16 +182,6 @@ export default function ProgressTimeline({
     marginBottom: 'var(--aparture-space-4)',
   };
 
-  // Show filter-pause UI when the pipeline has halted at the filter-review gate
-  const showFilterPause = pauseAfterFilter && processing.stage === 'filter-review';
-  // Show briefing-pause UI when the pipeline has halted at the pre-briefing-review gate
-  const showBriefingPause = pauseBeforeBriefing && processing.stage === 'pre-briefing-review';
-  const hasFilterResults =
-    (filterResults?.yes?.length ?? 0) +
-      (filterResults?.maybe?.length ?? 0) +
-      (filterResults?.no?.length ?? 0) >
-    0;
-
   return (
     <div>
       <div style={headerStyle}>Pipeline</div>
@@ -227,81 +208,6 @@ export default function ProgressTimeline({
                   <div style={labelStyle(status)}>{label}</div>
                 </div>
 
-                {/* Filter-pause interstitial */}
-                {stageKey === 'filter' && showFilterPause && hasFilterResults && (
-                  <div
-                    style={{
-                      marginLeft: '40px',
-                      marginTop: 'var(--aparture-space-2)',
-                      marginBottom: 'var(--aparture-space-2)',
-                    }}
-                  >
-                    <Card>
-                      <div
-                        style={{
-                          fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: 'var(--aparture-text-sm)',
-                          color: 'var(--aparture-ink)',
-                          marginBottom: 'var(--aparture-space-3)',
-                        }}
-                      >
-                        Filter complete — review results before scoring:
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'var(--aparture-font-mono)',
-                          fontSize: 'var(--aparture-text-xs)',
-                          color: 'var(--aparture-ink)',
-                          marginBottom: 'var(--aparture-space-3)',
-                        }}
-                      >
-                        {filterResults.yes?.length ?? 0} YES / {filterResults.maybe?.length ?? 0}{' '}
-                        MAYBE / {filterResults.no?.length ?? 0} NO
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: 'var(--aparture-text-xs)',
-                          color: 'var(--aparture-mute)',
-                          marginBottom: 'var(--aparture-space-3)',
-                        }}
-                      >
-                        Use the filter results panel below to override verdicts, then continue.
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'var(--aparture-space-4)',
-                        }}
-                      >
-                        {onContinueAfterFilter && (
-                          <Button variant="primary" onClick={onContinueAfterFilter}>
-                            Continue to scoring →
-                          </Button>
-                        )}
-                        {onSkipRemainingGates && (
-                          <button
-                            type="button"
-                            onClick={onSkipRemainingGates}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--aparture-mute)',
-                              fontSize: 'var(--aparture-text-xs)',
-                              textDecoration: 'underline',
-                              cursor: 'pointer',
-                              padding: 0,
-                            }}
-                          >
-                            Skip remaining gates this run
-                          </button>
-                        )}
-                      </div>
-                    </Card>
-                  </div>
-                )}
-
                 {/* Playwright-unavailable notices — rendered inline inside the
                     PDF-analysis stage detail area, one per skipped paper. */}
                 {stageKey === 'analyze' && skippedDueToRecaptcha.length > 0 && (
@@ -322,61 +228,6 @@ export default function ProgressTimeline({
                         title={paper.title}
                       />
                     ))}
-                  </div>
-                )}
-
-                {/* Pre-briefing-review pause interstitial */}
-                {stageKey === 'synthesize' && showBriefingPause && (
-                  <div
-                    style={{
-                      marginLeft: '40px',
-                      marginTop: 'var(--aparture-space-2)',
-                      marginBottom: 'var(--aparture-space-2)',
-                    }}
-                  >
-                    <Card>
-                      <div
-                        style={{
-                          fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: 'var(--aparture-text-sm)',
-                          color: 'var(--aparture-ink)',
-                          marginBottom: 'var(--aparture-space-3)',
-                        }}
-                      >
-                        Analysis complete — review results and add stars/dismissals before
-                        generating your briefing.
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 'var(--aparture-space-4)',
-                        }}
-                      >
-                        {onContinueAfterReview && (
-                          <Button variant="primary" onClick={onContinueAfterReview}>
-                            Continue to briefing →
-                          </Button>
-                        )}
-                        {onSkipRemainingGates && (
-                          <button
-                            type="button"
-                            onClick={onSkipRemainingGates}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--aparture-mute)',
-                              fontSize: 'var(--aparture-text-xs)',
-                              textDecoration: 'underline',
-                              cursor: 'pointer',
-                              padding: 0,
-                            }}
-                          >
-                            Skip remaining gates this run
-                          </button>
-                        )}
-                      </div>
-                    </Card>
                   </div>
                 )}
               </div>
