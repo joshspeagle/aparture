@@ -247,6 +247,142 @@ describe('SuggestDialog — loading and result states', () => {
   });
 });
 
+// Regression: the comment cap must actually trim the POST body, not just the
+// displayed "N older comments will not be included" notice. Previously the
+// notice was display-only and the dropped comments were still sent.
+describe('SuggestDialog — comment cap is applied to the POST body, not display-only', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sends only the most-recent `cap` comments while retaining all high-signal events', async () => {
+    const cap = { commentCap: 10 };
+
+    // 40 paper-comments (cap will keep the newest 10) ...
+    const paperComments = Array.from({ length: 40 }, (_, i) => ({
+      id: `pc${i}`,
+      type: 'paper-comment',
+      arxivId: `2504.${1000 + i}`,
+      paperTitle: `Paper ${i}`,
+      quickSummary: 's',
+      score: 5,
+      text: `paper comment ${i}`,
+      timestamp: 1_700_000_000_000 + i, // increasing → newest are the highest i
+      briefingDate: '2026-04-10',
+    }));
+    // ... 25 general-comments (cap will keep the newest 10) ...
+    const generalComments = Array.from({ length: 25 }, (_, i) => ({
+      id: `gc${i}`,
+      type: 'general-comment',
+      text: `general comment ${i}`,
+      timestamp: 1_700_000_100_000 + i,
+      briefingDate: '2026-04-11',
+    }));
+    // ... plus high-signal events that must NEVER be capped.
+    const stars = Array.from({ length: 15 }, (_, i) => ({
+      id: `star${i}`,
+      type: 'star',
+      arxivId: `2505.${1000 + i}`,
+      paperTitle: `Star ${i}`,
+      quickSummary: 's',
+      score: 9,
+      timestamp: 1_700_000_200_000 + i,
+      briefingDate: '2026-04-12',
+    }));
+    const dismisses = Array.from({ length: 12 }, (_, i) => ({
+      id: `dis${i}`,
+      type: 'dismiss',
+      arxivId: `2506.${1000 + i}`,
+      paperTitle: `Dismiss ${i}`,
+      quickSummary: 's',
+      score: 3,
+      timestamp: 1_700_000_300_000 + i,
+      briefingDate: '2026-04-12',
+    }));
+    const scoped = [
+      {
+        id: 'scoped0',
+        type: 'scoped-feedback',
+        scope: { kind: 'score-review' },
+        text: 'too lenient this round',
+        timestamp: 1_700_000_400_000,
+        briefingDate: '2026-04-12',
+      },
+    ];
+    const overrides = [
+      {
+        id: 'ovr0',
+        type: 'filter-override',
+        arxivId: '2507.0001',
+        originalVerdict: 'NO',
+        newVerdict: 'YES',
+        timestamp: 1_700_000_500_000,
+        briefingDate: '2026-04-12',
+      },
+    ];
+
+    const newFeedback = [
+      ...paperComments,
+      ...generalComments,
+      ...stars,
+      ...dismisses,
+      ...scoped,
+      ...overrides,
+    ];
+
+    let capturedBody = null;
+    const fetchMock = vi.fn().mockImplementation((url, opts) => {
+      capturedBody = JSON.parse(opts.body);
+      return Promise.resolve({ ok: true, json: async () => ({ changes: [] }) });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <SuggestDialog
+        isOpen
+        onClose={vi.fn()}
+        profile="current profile"
+        newFeedback={newFeedback}
+        cap={cap}
+        briefingModel="gemini-3.1-pro"
+        provider="google"
+        password="test"
+        onAccept={vi.fn()}
+      />
+    );
+
+    // The notice should advertise exactly the count we expect to be dropped:
+    // (40 - 10) paper + (25 - 10) general = 45 comments not included.
+    expect(screen.getByText(/45 older comments will not be included/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/no profile changes suggested|proposed changes/i);
+
+    const sent = capturedBody.feedback;
+    const byType = (t) => sent.filter((e) => e.type === t);
+
+    // Comments are trimmed to the cap...
+    expect(byType('paper-comment')).toHaveLength(10);
+    expect(byType('general-comment')).toHaveLength(10);
+    // ...and the trimmed comments are the MOST-RECENT ones (ids pc30..pc39).
+    const keptPaperIds = byType('paper-comment')
+      .map((e) => e.id)
+      .sort();
+    expect(keptPaperIds).toEqual(Array.from({ length: 10 }, (_, i) => `pc${30 + i}`).sort());
+
+    // High-signal events are retained uncapped.
+    expect(byType('star')).toHaveLength(15);
+    expect(byType('dismiss')).toHaveLength(12);
+    expect(byType('scoped-feedback')).toHaveLength(1);
+    expect(byType('filter-override')).toHaveLength(1);
+
+    // Total sent = 10 + 10 + 15 + 12 + 1 + 1 = 49, NOT the raw 94.
+    expect(sent).toHaveLength(49);
+    // The dropped count claimed by the notice matches reality: 94 raw − 49 sent.
+    expect(newFeedback.length - sent.length).toBe(45);
+  });
+});
+
 describe('SuggestDialog — accept/reject/dismiss', () => {
   const starEvent = {
     id: 'e1',

@@ -182,17 +182,24 @@ export default function SuggestDialog({
     setState('loading');
     try {
       const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
+      // Apply the SAME comment cap that drives the "N older comments will not
+      // be included" notice so the POST body matches what the user is told.
+      // applyCap keeps all stars/dismisses/scoped-feedback/filter-overrides and
+      // only trims paper/general comments to the most-recent `cap` per type —
+      // without this, the trimming notice was display-only and the dropped
+      // comments were still sent, inflating token cost.
+      const cappedEvents = applyCap(selectedEvents, cap).kept;
       // Collect briefings referenced by general-comment events so the
       // suggest-profile prompt can cite the content the comment was
       // written against. Only include the editorial layer (executive
       // summary, themes, paper pitches) — not full per-paper reports.
-      const briefings = collectBriefingsForGeneralComments(selectedEvents, briefingHistory);
+      const briefings = collectBriefingsForGeneralComments(cappedEvents, briefingHistory);
       const res = await fetch('/api/suggest-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentProfile: profile,
-          feedback: selectedEvents,
+          feedback: cappedEvents,
           briefings,
           guidance: guidance.trim() || undefined,
           briefingModel,
