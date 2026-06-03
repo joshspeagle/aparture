@@ -402,10 +402,11 @@ describe('useAnalyzerPersistence — cold-save retry + warning', () => {
     window.localStorage.clear();
   });
 
-  it('retries the cold POST and fires onColdSaveFailed when it persistently fails', async () => {
+  it('fails fast (exactly one POST, no retries) on a non-retryable 413 and still warns', async () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // Hot-tier setItem must still succeed; only the cold POST fails.
+    // 413 Payload Too Large: an oversized body can't shrink on retry, so the
+    // helper must give up immediately rather than burn the backoff ladder.
     const failingFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: false,
       status: 413,
@@ -419,9 +420,8 @@ describe('useAnalyzerPersistence — cold-save retry + warning', () => {
     });
     renderHook(() => useAnalyzerPersistence(props));
 
-    // Advance past the 400ms debounce, then drain the retry ladder. Each
-    // attempt awaits a backoff (500ms, 1000ms); advanceTimersByTimeAsync
-    // flushes the microtasks between fetches too.
+    // Advance past the 400ms debounce, then drain any (non-)backoff. A
+    // fail-fast path makes a single POST and never schedules a backoff timer.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500);
       await vi.advanceTimersByTimeAsync(2000);
@@ -430,7 +430,40 @@ describe('useAnalyzerPersistence — cold-save retry + warning', () => {
     const postCalls = failingFetch.mock.calls.filter(
       (call) => call[0] === '/api/sessions' && call[1]?.method === 'POST'
     );
-    // 3 attempts (COLD_SAVE_MAX_ATTEMPTS).
+    // Exactly ONE attempt — no retries on a permanent client error.
+    expect(postCalls.length).toBe(1);
+    expect(onColdSaveFailed).toHaveBeenCalledTimes(1);
+    expect(onColdSaveFailed.mock.calls[0][0]).toMatch(/could not be saved|lost if you refresh/i);
+    vi.useRealTimers();
+  });
+
+  it('retries up to the cap and fires onColdSaveFailed on a persistent transient (500) failure', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // 500 is transient/retryable; the full ladder (3 attempts) must run before
+    // surfacing the warning.
+    const failingFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'internal error' }),
+    });
+    const onColdSaveFailed = vi.fn();
+
+    const props = makeProps({
+      results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+      onColdSaveFailed,
+    });
+    renderHook(() => useAnalyzerPersistence(props));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    const postCalls = failingFetch.mock.calls.filter(
+      (call) => call[0] === '/api/sessions' && call[1]?.method === 'POST'
+    );
+    // 3 attempts (COLD_SAVE_MAX_ATTEMPTS) for a retryable status.
     expect(postCalls.length).toBe(3);
     expect(onColdSaveFailed).toHaveBeenCalledTimes(1);
     expect(onColdSaveFailed.mock.calls[0][0]).toMatch(/could not be saved|lost if you refresh/i);

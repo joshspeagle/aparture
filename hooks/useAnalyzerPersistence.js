@@ -233,9 +233,10 @@ export function readInitialConfig() {
 }
 
 // Number of cold-session POST attempts before we give up and warn the user.
-// Heavy runs (e.g. 30 PDFs) can exceed the 20mb body limit → 413, but most
-// failures are transient (disk contention, dropped connection); a short retry
-// ladder recovers those without poisoning the UX.
+// Most failures are transient (disk contention, dropped connection, 5xx/429);
+// a short retry ladder recovers those without poisoning the UX. Permanent
+// client errors (413 oversized body, other 4xx) bypass the ladder via
+// isRetryableStatus and fail after a single attempt — a retry can't help.
 const COLD_SAVE_MAX_ATTEMPTS = 3;
 const COLD_SAVE_BASE_DELAY_MS = 500;
 
@@ -243,10 +244,26 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Permanent client-error statuses that cannot succeed on retry with the same
+// body. 413 (Payload Too Large) is the motivating case: a 30-paper run can
+// exceed the 20mb body limit, and the body doesn't shrink between attempts, so
+// retrying just wastes the backoff before surfacing the warning. The other 4xx
+// here (400/401/403/404) are equally permanent for an identical request.
+// Everything else — thrown/network errors, all 5xx, and the transient 408/429 —
+// stays on the retry ladder.
+const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404, 413]);
+
+// Decide whether a non-ok response status is worth retrying. Called only on
+// responses (thrown/network errors are always retryable and handled in the
+// catch block).
+function isRetryableStatus(status) {
+  return !NON_RETRYABLE_STATUSES.has(status);
+}
+
 // POST the cold-tier session entry with bounded retry + linear-ish backoff.
 // Resolves true on the first HTTP-ok response, false once all attempts are
-// exhausted (final !res.ok or thrown). Best-effort: never throws, so the
-// live run is never disrupted.
+// exhausted OR a non-retryable status (413/4xx) is hit. Best-effort: never
+// throws, so the live run is never disrupted.
 async function postColdSessionWithRetry({ password, coldEntry }) {
   for (let attempt = 1; attempt <= COLD_SAVE_MAX_ATTEMPTS; attempt++) {
     try {
@@ -256,6 +273,14 @@ async function postColdSessionWithRetry({ password, coldEntry }) {
         body: JSON.stringify({ password, entry: coldEntry }),
       });
       if (res.ok) return true;
+      // Fail fast on permanent client errors (e.g. 413 oversized body): a
+      // retry with the same payload can't succeed, so don't burn the backoff.
+      if (!isRetryableStatus(res.status)) {
+        console.warn(
+          `[useAnalyzerPersistence] cold session POST returned non-retryable HTTP ${res.status}; not retrying`
+        );
+        return false;
+      }
       console.warn(
         `[useAnalyzerPersistence] cold session POST returned HTTP ${res.status} (attempt ${attempt}/${COLD_SAVE_MAX_ATTEMPTS})`
       );

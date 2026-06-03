@@ -231,6 +231,86 @@ describe('ingest.harvest — jittered inter-request spacing', () => {
     expect(sleepImpl).not.toHaveBeenCalled();
   });
 
+  it('sleeps BETWEEN consecutive fill-up requests (and across the broad→fill-up boundary) but not before the first request of the run', async () => {
+    // One broad OAI prefix request (cs) returns a single cs.GT paper — below
+    // the 5-paper threshold, so fill-ups fire. Two fill-up steps each return 0
+    // new papers, so both steps run. Total network requests: 1 broad + 2
+    // fill-up = 3 → exactly 2 spacing sleeps:
+    //   - broad → fill-up step 1 (the broad→fill-up boundary)
+    //   - fill-up step 1 → fill-up step 2 (between consecutive fill-ups)
+    // and NONE before the broad request (the first of the run).
+    const harvestOaiImpl = vi
+      .fn()
+      // Broad cs fetch: 1 cs.GT paper (below threshold).
+      .mockResolvedValueOnce([{ ...examplePaper('seed', ''), categories: ['cs.GT'] }])
+      // Fill-up step 1: no new papers (still below threshold → step 2 runs).
+      .mockResolvedValueOnce([])
+      // Fill-up step 2: no new papers.
+      .mockResolvedValueOnce([]);
+    const spacingMsImpl = vi.fn(() => 4001);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3, 7],
+        minPapersPerSubcategory: 5,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+        spacingMsImpl,
+        sleepImpl,
+      }
+    );
+
+    // 3 requests total (broad + 2 fill-up steps).
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(3);
+    // 2 spacing sleeps — one fewer than the request count (no leading delay).
+    expect(sleepImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenCalledWith(4001);
+  });
+
+  it('does not sleep before the very first request when a single broad fetch triggers exactly one fill-up step', async () => {
+    // 1 broad request + 1 fill-up step (the fill returns enough to reach the
+    // threshold so no further steps fire) = 2 requests → exactly 1 sleep
+    // (broad → fill-up). Proves the first request of the run is never spaced.
+    const harvestOaiImpl = vi
+      .fn()
+      .mockResolvedValueOnce([{ ...examplePaper('seed', ''), categories: ['cs.GT'] }])
+      .mockResolvedValueOnce([
+        { ...examplePaper('f1', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f2', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f3', ''), categories: ['cs.GT'] },
+        { ...examplePaper('f4', ''), categories: ['cs.GT'] },
+      ]);
+    const sleepImpl = vi.fn().mockResolvedValue();
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'oai-only',
+        selectedSubcategories: ['cs.GT'],
+        fillupSchedule: [3, 7, 14],
+        minPapersPerSubcategory: 5,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl: vi.fn(),
+        sleepImpl,
+      }
+    );
+
+    expect(harvestOaiImpl).toHaveBeenCalledTimes(2); // broad + 1 fill-up step
+    expect(sleepImpl).toHaveBeenCalledTimes(1); // only the broad→fill-up gap
+  });
+
   it('sleeps BETWEEN consecutive Atom subcategory requests in atom-only mode', async () => {
     const fetchAtomImpl = vi
       .fn()
@@ -375,6 +455,7 @@ describe('ingest.harvest — fill-ups', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl: vi.fn(),
+        sleepImpl: noSleep,
       }
     );
 
@@ -517,6 +598,7 @@ describe('ingest.harvest — windowSemantics', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl: vi.fn(),
+        sleepImpl: noSleep,
       }
     );
 
@@ -559,6 +641,7 @@ describe('ingest.harvest — windowSemantics', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl: vi.fn(),
+        sleepImpl: noSleep,
       }
     );
 
@@ -788,6 +871,7 @@ describe('ingest.harvest — targetDaysBack anchor logic', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl: vi.fn(),
+        sleepImpl: noSleep,
       }
     );
 
@@ -833,6 +917,7 @@ describe('ingest.harvest — targetDaysBack anchor logic', () => {
         abortSignal: { aborted: false },
         harvestOaiImpl,
         fetchAtomImpl: vi.fn(),
+        sleepImpl: noSleep,
       }
     );
 
