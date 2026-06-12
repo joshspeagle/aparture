@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useProfile } from '../../../hooks/useProfile.js';
 
 describe('useProfile', () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('initializes with empty profile when no state exists', () => {
@@ -66,6 +70,25 @@ describe('useProfile', () => {
       });
     }
     expect(result.current.profile.revisions.length).toBeLessThanOrEqual(20);
+  });
+
+  it('keeps the in-memory profile edit when localStorage quota is exceeded (no crash mid-click)', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window.Storage.prototype, 'setItem').mockImplementation(() => {
+      const err = new Error('quota');
+      err.name = 'QuotaExceededError';
+      throw err;
+    });
+    // Pre-fix this threw out of the state updater, crashing the interaction
+    // and losing the edit.
+    expect(() => {
+      act(() => {
+        result.current.updateProfile('edited under quota pressure');
+      });
+    }).not.toThrow();
+    expect(result.current.profile.content).toBe('edited under quota pressure');
+    expect(warn).toHaveBeenCalled();
   });
 
   it('surfaces migration notice when Phase 1 profile conflicts with scoringCriteria', () => {

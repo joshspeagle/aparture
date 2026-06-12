@@ -17,15 +17,15 @@ function getSystemPreference() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function resolveTheme(theme) {
-  if (theme === 'auto') return getSystemPreference();
-  return theme;
-}
-
 export function useTheme() {
   const [theme, setThemeState] = useState(getStoredTheme);
+  // The resolved system preference is REAL state (not derived on the fly):
+  // an OS theme change in auto mode must re-render resolvedTheme consumers
+  // (e.g. the Sidebar theme icon). The previous setThemeState((prev) => prev)
+  // listener was a React bail-out no-op, so consumers never updated.
+  const [systemPreference, setSystemPreference] = useState(getSystemPreference);
 
-  const resolvedTheme = resolveTheme(theme);
+  const resolvedTheme = theme === 'auto' ? systemPreference : theme;
 
   const setTheme = useCallback((newTheme) => {
     setThemeState(newTheme);
@@ -37,28 +37,23 @@ export function useTheme() {
   // Apply data-theme attribute to <html>
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    const resolved = resolveTheme(theme);
     if (theme === 'auto') {
       // In auto mode, remove data-theme so the CSS media query takes over
       document.documentElement.removeAttribute('data-theme');
     } else {
-      document.documentElement.dataset.theme = resolved;
+      document.documentElement.dataset.theme = theme;
     }
   }, [theme]);
 
-  // Listen for system preference changes in auto mode
+  // Track system preference changes. Always listening (not just in auto mode)
+  // keeps systemPreference fresh for the moment the user switches to auto.
   useEffect(() => {
-    if (
-      typeof window === 'undefined' ||
-      typeof window.matchMedia !== 'function' ||
-      theme !== 'auto'
-    )
-      return;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => setThemeState((prev) => prev); // Force re-render to update resolvedTheme
+    const handler = (e) => setSystemPreference(e.matches ? 'dark' : 'light');
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, [theme]);
+  }, []);
 
   return { theme, resolvedTheme, setTheme };
 }

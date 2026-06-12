@@ -6,6 +6,7 @@ import {
   DEFAULT_CONFIG,
   migrateLegacyConfig,
 } from '../../../hooks/useAnalyzerPersistence.js';
+import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 
@@ -288,6 +289,203 @@ describe('useAnalyzerPersistence — load effect', () => {
       const resolved = typeof lastCall === 'function' ? lastCall({ finalRanking: [] }) : lastCall;
       expect(resolved.allPapers).toEqual([{ id: '1' }, { id: '2' }]);
     });
+  });
+});
+
+describe('useAnalyzerPersistence — reload-time cold-tier clobber guard', () => {
+  // Hot blob shape after a refresh: sessionId + finalRanking + password, but
+  // NO heavy fields (those live only on disk). Restoring it re-triggers the
+  // save effect; the cold POST must wait for the mount-time cold GET to settle
+  // or it would overwrite the on-disk heavy data with empty arrays.
+  function seedTieredHotBlob() {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        sessionId: 'sess-abc',
+        results: { finalRanking: [{ id: '1', finalScore: 8 }] },
+        filterResults: { total: 100, yesCount: 5, maybeCount: 3, noCount: 92 },
+        password: 'test-pw',
+      })
+    );
+  }
+
+  function postCalls() {
+    return global.fetch.mock.calls.filter(
+      (call) => call[0] === '/api/sessions' && call[1]?.method === 'POST'
+    );
+  }
+
+  afterEach(() => {
+    useAnalyzerStore.setState(initialState());
+  });
+
+  it('holds the cold POST while the mount-time cold GET is still in flight', async () => {
+    vi.useFakeTimers();
+    seedTieredHotBlob();
+    // Cold GET never resolves within the test — simulates a slow disk read.
+    let releaseCold;
+    const coldGate = new Promise((resolve) => {
+      releaseCold = resolve;
+    });
+    global.fetch.mockImplementation(async (url) => {
+      if (typeof url === 'string' && url.startsWith('/api/sessions/sess-abc')) {
+        await coldGate;
+        return { ok: true, status: 200, json: async () => ({ id: 'sess-abc', results: {} }) };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+
+    // In-memory state mirrors the hot restore: finalRanking + password present,
+    // heavy fields EMPTY — exactly the payload that used to clobber disk.
+    const props = makeProps({
+      results: { allPapers: [], scoredPapers: [], finalRanking: [{ id: '1', finalScore: 8 }] },
+    });
+    renderHook(() => useAnalyzerPersistence(props));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    // Debounce elapsed, but the cold GET hasn't settled → no POST fired.
+    expect(postCalls()).toHaveLength(0);
+    // Hot tier still saved normally.
+    expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY)).sessionId).toBe('sess-abc');
+    releaseCold();
+    vi.useRealTimers();
+  });
+
+  it('after a FAILED cold GET for an adopted sessionId, skips empty-heavy POSTs but allows real-data saves', async () => {
+    vi.useFakeTimers();
+    seedTieredHotBlob();
+    global.fetch.mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url.startsWith('/api/sessions/sess-abc') && !opts?.method) {
+        // Mount-time cold GET fails — the on-disk file may still hold heavy data.
+        return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+
+    const emptyHeavyProps = makeProps({
+      results: { allPapers: [], scoredPapers: [], finalRanking: [{ id: '1', finalScore: 8 }] },
+    });
+    const { rerender } = renderHook((p) => useAnalyzerPersistence(p), {
+      initialProps: emptyHeavyProps,
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    // Settled (GET failed) but the payload's heavy fields are all empty →
+    // POST is skipped so the adopted on-disk file is not clobbered.
+    expect(postCalls()).toHaveLength(0);
+
+    // A run produces real heavy data → save proceeds normally.
+    rerender(
+      makeProps({
+        ...emptyHeavyProps,
+        results: { allPapers: [{ id: '9' }], scoredPapers: [], finalRanking: [] },
+      })
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(postCalls().length).toBeGreaterThan(0);
+    const body = JSON.parse(postCalls()[0][1].body);
+    expect(body.entry.results.allPapers).toEqual([{ id: '9' }]);
+    vi.useRealTimers();
+  });
+
+  it('POSTs normally after a SUCCESSFUL cold load settles', async () => {
+    vi.useFakeTimers();
+    seedTieredHotBlob();
+    global.fetch.mockImplementation(async (url, opts) => {
+      if (typeof url === 'string' && url.startsWith('/api/sessions/sess-abc') && !opts?.method) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'sess-abc',
+            results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+
+    const props = makeProps({
+      results: { allPapers: [], scoredPapers: [], finalRanking: [{ id: '1', finalScore: 8 }] },
+    });
+    const { rerender } = renderHook((p) => useAnalyzerPersistence(p), { initialProps: props });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    // The merged state lands via setResults in the real app; mirror it here.
+    rerender(
+      makeProps({
+        ...props,
+        results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+      })
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(postCalls().length).toBeGreaterThan(0);
+    vi.useRealTimers();
+  });
+
+  it('fresh runs (no stored blob) still save normally — gate settles synchronously on mount', async () => {
+    vi.useFakeTimers();
+    const props = makeProps({
+      results: { allPapers: [{ id: '1' }], scoredPapers: [], finalRanking: [] },
+    });
+    renderHook(() => useAnalyzerPersistence(props));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(postCalls()).toHaveLength(1);
+    vi.useRealTimers();
+  });
+
+  it('skips the cold-tier merge when a run is already in progress at GET-resolve time', async () => {
+    seedTieredHotBlob();
+    let resolvedColdGet = false;
+    global.fetch.mockImplementation(async (url) => {
+      if (typeof url === 'string' && url.startsWith('/api/sessions/sess-abc')) {
+        resolvedColdGet = true;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'sess-abc',
+            results: { allPapers: [{ id: 'stale' }], scoredPapers: [], finalRanking: [] },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    // A new run started before the GET resolved.
+    useAnalyzerStore.setState({
+      processing: { ...useAnalyzerStore.getState().processing, isRunning: true },
+    });
+
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+
+    await waitFor(() => expect(resolvedColdGet).toBe(true));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // Hot restore called setResults with the plain parsed object; the cold
+    // merge would have called it with an updater FUNCTION. None allowed here.
+    const updaterCalls = props.setResults.mock.calls.filter(
+      (call) => typeof call[0] === 'function'
+    );
+    expect(updaterCalls).toHaveLength(0);
   });
 });
 

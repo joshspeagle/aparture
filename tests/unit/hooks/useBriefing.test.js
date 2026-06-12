@@ -703,6 +703,87 @@ describe('useBriefing', () => {
     });
   });
 
+  // --- MAX_HISTORY rotation unlinks cold files ---
+
+  it('unlinks the cold file of the entry rotated off the 90-entry cap', async () => {
+    const deleteCalls = [];
+    vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
+      if (opts?.method === 'DELETE') deleteCalls.push(String(url));
+      return { ok: true, status: 200, json: async () => ({ id: 'x', bytesWritten: 0 }) };
+    });
+
+    const { result } = renderHook(() => useBriefing({ password: 'pw' }));
+    let firstId;
+    await act(async () => {
+      firstId = await result.current.saveBriefing('2025-01-01', makeBriefing('oldest'));
+      for (let i = 1; i < 91; i++) {
+        const d = new Date(Date.UTC(2025, 0, 1));
+        d.setUTCDate(d.getUTCDate() + i);
+        await result.current.saveBriefing(d.toISOString().slice(0, 10), makeBriefing('x'));
+      }
+    });
+
+    expect(result.current.history.length).toBe(90);
+    // The oldest entry was rotated off the cap → its cold file must be
+    // unlinked so disk and index stay consistent (no orphans).
+    expect(deleteCalls.some((url) => url.includes(encodeURIComponent(firstId)))).toBe(true);
+  });
+
+  // --- Reindex retry on transient failure ---
+
+  describe('reindex retry', () => {
+    it('retries the empty-index rebuild after a transient non-OK response when password changes', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      let indexCalls = 0;
+      vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('/api/briefings?index=1')) {
+          indexCalls += 1;
+          if (indexCalls === 1) {
+            // Transient failure — must NOT permanently forfeit the rebuild.
+            return { ok: false, status: 500, json: async () => ({ error: 'boom' }) };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              entries: [
+                {
+                  id: 'disk-1',
+                  date: '2026-04-20',
+                  timestamp: 1,
+                  archived: false,
+                  briefing: { executiveSummary: 'from disk' },
+                },
+              ],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({ id: 'x' }) };
+      });
+
+      const { result, rerender } = renderHook(({ password }) => useBriefing({ password }), {
+        initialProps: { password: 'pw' },
+      });
+
+      // First attempt 500s — history stays empty, tried-ref stays unset.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 80));
+      });
+      expect(indexCalls).toBe(1);
+      expect(result.current.history).toEqual([]);
+
+      // Password change re-fires the effect — the rebuild now succeeds.
+      rerender({ password: 'pw-2' });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 80));
+      });
+      expect(indexCalls).toBe(2);
+      expect(result.current.history.map((b) => b.id)).toEqual(['disk-1']);
+      warnSpy.mockRestore();
+    });
+  });
+
   // --- Migration from aparture-briefing-history (legacy key) — Task 12 ---
 
   describe('migration from aparture-briefing-history', () => {
@@ -762,6 +843,41 @@ describe('useBriefing', () => {
 
       // In-memory state reflects migrated entries
       expect(result.current.history).toHaveLength(2);
+    });
+
+    it('defers migration until password is available (no 401-burning POSTs at mount)', async () => {
+      const legacy = [
+        {
+          id: 'e1',
+          date: '2026-04-20',
+          timestamp: 1,
+          archived: false,
+          briefing: { executiveSummary: 'one', papers: [] },
+        },
+      ];
+      window.localStorage.setItem('aparture-briefing-history', JSON.stringify(legacy));
+
+      // Mount with an EMPTY password (mirrors the pre-hydration state).
+      // Pre-fix, the effect fired once on mount with passwordRef.current=''
+      // and every per-entry POST 401ed, stranding entries in the legacy blob.
+      const { rerender } = renderHook(({ password }) => useBriefing({ password }), {
+        initialProps: { password: '' },
+      });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem('aparture-briefing-history')).not.toBeNull();
+
+      // Password hydrates → effect re-fires and the migration runs.
+      rerender({ password: 'test-pw' });
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(window.localStorage.getItem('aparture-briefing-history')).toBeNull();
+      const index = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
+      expect(index.map((b) => b.id)).toEqual(['e1']);
     });
 
     it('retains failed legacy entries for retry while persisting successes', async () => {
