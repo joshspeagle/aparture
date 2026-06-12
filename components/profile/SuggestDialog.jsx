@@ -157,6 +157,11 @@ export default function SuggestDialog({
   // close/reopen. Reset the request-cycle state (but not the user's selection
   // / guidance) whenever the dialog transitions to open, so a stale result or
   // error from a previous session never flashes on reopen.
+  //
+  // Deliberate render-phase adjustment (not an effect): the `isOpen !==
+  // wasOpen` guard makes it loop-safe, React re-renders synchronously before
+  // paint, and an effect-based reset would flash the stale content for a
+  // frame. See react.dev "storing information from previous renders".
   const [wasOpen, setWasOpen] = useState(isOpen);
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);

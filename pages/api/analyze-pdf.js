@@ -287,7 +287,9 @@ export default async function handler(req, res) {
         base64Data = _testPdfBase64;
       } else {
         if (!isAllowedPdfUrl(pdfUrl)) {
-          return res.status(400).json({ error: 'pdfUrl must be an https://arxiv.org URL' });
+          return res.status(400).json({
+            error: `pdfUrl must be an https URL on one of: ${[...ALLOWED_PDF_HOSTS].join(', ')}`,
+          });
         }
         // Download PDF for normal analysis - try direct fetch first, fallback to Playwright if blocked
         console.log('Downloading PDF from:', pdfUrl);
