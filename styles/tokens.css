@@ -33,10 +33,13 @@
   --aparture-hover: #ede6d5;
   --aparture-focus-ring: #b31b1b;
 
-  /* Typography */
-  --aparture-font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --aparture-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --aparture-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Typography.
+   * --font-serif/--font-sans/--font-mono carry the hashed next/font family
+   * names (set on :root by pages/_app.js). The quoted names are fallbacks
+   * for contexts where _app.js didn't run (tests, Storybook-style harnesses). */
+  --aparture-font-serif: var(--font-serif, 'Source Serif 4'), Georgia, 'Times New Roman', serif;
+  --aparture-font-sans: var(--font-sans, 'Inter'), system-ui, -apple-system, sans-serif;
+  --aparture-font-mono: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace;
 
   /* Type scale */
   --aparture-text-xs: 14px;

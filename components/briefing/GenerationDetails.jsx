@@ -217,24 +217,27 @@ export default function GenerationDetails({ generationMetadata }) {
                       fontFamily: 'var(--aparture-font-mono)',
                       fontSize: 'var(--aparture-text-xs)',
                       fontWeight: 600,
+                      // Documented semantic status colors (see CLAUDE.md) with
+                      // translucent backgrounds so both themes work. Verdict
+                      // YES = hallucination found = error red.
                       color:
                         hallucinationCheck.verdict === 'YES'
-                          ? '#b91c1c'
+                          ? '#ef4444'
                           : hallucinationCheck.verdict === 'MAYBE'
-                            ? '#b45309'
-                            : '#15803d',
+                            ? '#f59e0b'
+                            : '#22c55e',
                       background:
                         hallucinationCheck.verdict === 'YES'
-                          ? '#fef2f2'
+                          ? 'rgba(239,68,68,0.08)'
                           : hallucinationCheck.verdict === 'MAYBE'
-                            ? '#fffbeb'
-                            : '#f0fdf4',
+                            ? 'rgba(245,158,11,0.08)'
+                            : 'rgba(34,197,94,0.08)',
                       border: `1px solid ${
                         hallucinationCheck.verdict === 'YES'
-                          ? '#fecaca'
+                          ? 'rgba(239,68,68,0.3)'
                           : hallucinationCheck.verdict === 'MAYBE'
-                            ? '#fde68a'
-                            : '#bbf7d0'
+                            ? 'rgba(245,158,11,0.3)'
+                            : 'rgba(34,197,94,0.3)'
                       }`,
                       borderRadius: '12px',
                       padding: '2px 10px',

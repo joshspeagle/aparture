@@ -356,7 +356,7 @@ function PaperCard({
                               day: 'numeric',
                             })}
                           </span>
-                          <span style={{ color: 'var(--aparture-ink)' }}>{c.comment}</span>
+                          <span style={{ color: 'var(--aparture-ink)' }}>{c.text}</span>
                         </div>
                       ))}
                     </div>
@@ -742,12 +742,17 @@ export default function App() {
     pipeline;
 
   // --- Auth handlers ---
+  // In-flight guard: handleAuth is async, so without this a double submit
+  // (button + Enter, or rapid clicks) fires overlapping requests.
+  const [authing, setAuthing] = useState(false);
   const handleAuth = async () => {
+    if (authing) return;
     if (!password.trim()) {
       addError('Please enter a password');
       return;
     }
 
+    setAuthing(true);
     try {
       const response = await fetch('/api/score-abstracts', {
         method: 'POST',
@@ -771,6 +776,8 @@ export default function App() {
       setIsAuthenticated(true);
     } catch {
       addError('Authentication failed');
+    } finally {
+      setAuthing(false);
     }
   };
 
@@ -934,38 +941,49 @@ export default function App() {
   );
 
   // --- Filter row paper comment ---
+  // Resolve the real title/summary from the filter buckets so the feedback
+  // event doesn't carry an empty paperTitle (which renders a blank main line
+  // in FeedbackItem). Row comment callbacks key papers by arxivId ?? id.
   const handleFilterRowComment = useCallback(
     ({ arxivId, text }) => {
+      const paper = [
+        ...(filterResults.yes ?? []),
+        ...(filterResults.maybe ?? []),
+        ...(filterResults.no ?? []),
+      ].find((p) => (p.arxivId ?? p.id) === arxivId);
       const today = todayStr();
       feedback.addPaperComment(
         {
           arxivId,
-          paperTitle: '',
-          quickSummary: '',
+          paperTitle: paper?.title ?? '',
+          quickSummary: paper?.filterSummary ?? '',
           score: null,
           briefingDate: today,
         },
         text
       );
     },
-    [feedback]
+    [feedback, filterResults]
   );
 
   // --- MS gate per-row paper comment ---
+  // Same title resolution as handleMSStar/handleMSDismiss: the score-review
+  // surface renders from results.availablePapers.
   const handleMSRowComment = useCallback(
     ({ arxivId, text }) => {
+      const paper = (results.availablePapers ?? []).find((p) => (p.arxivId ?? p.id) === arxivId);
       feedback.addPaperComment(
         {
           arxivId,
-          paperTitle: '',
-          quickSummary: '',
-          score: null,
+          paperTitle: paper?.title ?? '',
+          quickSummary: paper?.filterSummary ?? '',
+          score: paper?.relevanceScore ?? null,
           briefingDate: todayStr(),
         },
         text
       );
     },
-    [feedback]
+    [feedback, results]
   );
 
   // --- Score-review gate handlers ---
@@ -984,11 +1002,10 @@ export default function App() {
   // edge cases where a paper might carry only `id`.
 
   // useCallback deps include `feedback` (the whole hook return object) rather
-  // than specific methods like feedback.addStar. The hook return is referentially
-  // stable per render (useFeedback returns a stable object), so this is
-  // equivalent to listing individual methods but matches the existing pattern
-  // in the codebase. Don't refactor to method-level deps without confirming
-  // stability of the hook return.
+  // than specific methods like feedback.addStar. The hook return object is
+  // memoized inside useFeedback (useMemo), so its identity only changes when
+  // the underlying events change — listing it is equivalent to listing
+  // individual methods and matches the existing pattern in the codebase.
 
   // Star a paper at the score-review gate: updates the MS store AND fires a
   // useFeedback event so the selection flows into the suggest-profile prompt.
@@ -1101,24 +1118,6 @@ export default function App() {
       setQuickSummariesById,
       setFullReportsById,
     });
-  };
-
-  // --- Stage display helpers ---
-  const getStageDisplay = () => {
-    const stages = {
-      idle: 'Ready',
-      fetching: 'Fetching Categories',
-      'initial-scoring': 'Scoring Abstracts',
-      selecting: 'Selecting Top Papers',
-      'deep-analysis': 'Analyzing PDFs',
-      complete: 'Complete',
-    };
-    return stages[processing.stage] || processing.stage;
-  };
-
-  const getProgressPercentage = () => {
-    if (processing.progress.total === 0) return 0;
-    return Math.round((processing.progress.current / processing.progress.total) * 100);
   };
 
   const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
@@ -1248,7 +1247,7 @@ export default function App() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAuth()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
                 placeholder="Enter password"
                 style={{
                   width: '100%',
@@ -1267,6 +1266,7 @@ export default function App() {
 
             <button
               onClick={handleAuth}
+              disabled={authing}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -1277,11 +1277,12 @@ export default function App() {
                 fontFamily: 'var(--aparture-font-sans)',
                 fontSize: 'var(--aparture-text-sm)',
                 fontWeight: 500,
-                cursor: 'pointer',
+                cursor: authing ? 'not-allowed' : 'pointer',
+                opacity: authing ? 0.6 : 1,
                 transition: 'all 150ms ease',
               }}
             >
-              Access Analyzer
+              {authing ? 'Checking…' : 'Access Analyzer'}
             </button>
           </div>
 
@@ -1402,8 +1403,6 @@ export default function App() {
           onRunDryRun={runDryRunTest}
           onRunMinimalTest={runMinimalTest}
           onExport={exportResults}
-          getStageDisplay={getStageDisplay}
-          getProgressPercentage={getProgressPercentage}
           onSetVerdict={setFilterVerdict}
           bucketFeedbackByBucket={bucketFeedbackByBucket}
           onBucketFeedback={handleBucketFeedback}

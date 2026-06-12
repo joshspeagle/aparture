@@ -383,6 +383,77 @@ describe('SuggestDialog — comment cap is applied to the POST body, not display
   });
 });
 
+describe('SuggestDialog — close/reopen lifecycle', () => {
+  const starEvent = {
+    id: 'e1',
+    type: 'star',
+    arxivId: '2504.01234',
+    paperTitle: 'Circuit analysis',
+    quickSummary: 'summary',
+    score: 9.2,
+    timestamp: 1700000000000,
+    briefingDate: '2026-04-10',
+  };
+
+  const baseProps = {
+    onClose: vi.fn(),
+    profile: 'current profile',
+    newFeedback: [starEvent],
+    cap: { commentCap: 30 },
+    briefingModel: 'gemini-3.1-pro',
+    provider: 'google',
+    password: 'test',
+    onAccept: vi.fn(),
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resets a stale error when the dialog is reopened', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(<SuggestDialog {...baseProps} isOpen={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    expect(await screen.findByText(/suggestion failed/i)).toBeInTheDocument();
+
+    // Close, then reopen — the stale error banner must not reappear.
+    rerender(<SuggestDialog {...baseProps} isOpen={false} />);
+    rerender(<SuggestDialog {...baseProps} isOpen={true} />);
+    expect(screen.queryByText(/suggestion failed/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /generate suggestion/i })).toBeInTheDocument();
+  });
+
+  it('aborts the in-flight request when the dialog closes during loading and reopens in selection state', async () => {
+    let capturedSignal = null;
+    const fetchMock = vi.fn().mockImplementation(
+      (url, opts) =>
+        new Promise((_, reject) => {
+          capturedSignal = opts.signal;
+          opts.signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError'))
+          );
+        })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { rerender } = render(<SuggestDialog {...baseProps} isOpen={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    expect(await screen.findByText(/asking/i)).toBeInTheDocument();
+    expect(capturedSignal).not.toBeNull();
+    expect(capturedSignal.aborted).toBe(false);
+
+    // Close while loading: the fetch is aborted...
+    rerender(<SuggestDialog {...baseProps} isOpen={false} />);
+    expect(capturedSignal.aborted).toBe(true);
+
+    // ...and reopening shows the selection state, not a stale loading/error view.
+    rerender(<SuggestDialog {...baseProps} isOpen={true} />);
+    expect(await screen.findByRole('button', { name: /generate suggestion/i })).toBeInTheDocument();
+    expect(screen.queryByText(/asking/i)).toBeNull();
+    expect(screen.queryByText(/suggestion failed/i)).toBeNull();
+  });
+});
+
 describe('SuggestDialog — accept/reject/dismiss', () => {
   const starEvent = {
     id: 'e1',

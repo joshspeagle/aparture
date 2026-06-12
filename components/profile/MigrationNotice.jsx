@@ -7,13 +7,15 @@ export default function MigrationNotice({ notice, onDismiss }) {
   return (
     <div
       style={{
+        // Warning banner pattern (matches SuggestDialog's cap notice):
+        // translucent amber chrome + token ink so both themes stay readable.
         marginBottom: 'var(--aparture-space-4)',
         borderRadius: '4px',
-        border: '1px solid rgba(217, 119, 6, 0.4)',
-        background: 'rgba(120, 53, 15, 0.2)',
+        border: '1px solid rgba(245, 158, 11, 0.4)',
+        background: 'rgba(245, 158, 11, 0.08)',
         padding: 'var(--aparture-space-4) var(--aparture-space-4)',
         fontSize: 'var(--aparture-text-sm)',
-        color: '#fde68a',
+        color: 'var(--aparture-ink)',
       }}
     >
       <p style={{ marginBottom: 'var(--aparture-space-2)' }}>
@@ -27,10 +29,10 @@ export default function MigrationNotice({ notice, onDismiss }) {
               type="button"
               style={{
                 borderRadius: '4px',
-                border: '1px solid rgba(217, 119, 6, 0.6)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
                 padding: '4px 12px',
                 fontSize: 'var(--aparture-text-xs)',
-                color: '#fef3c7',
+                color: '#f59e0b',
                 background: 'transparent',
                 cursor: 'pointer',
               }}
@@ -114,10 +116,10 @@ export default function MigrationNotice({ notice, onDismiss }) {
           onClick={onDismiss}
           style={{
             borderRadius: '4px',
-            border: '1px solid rgba(217, 119, 6, 0.6)',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
             padding: '4px 12px',
             fontSize: 'var(--aparture-text-xs)',
-            color: '#fef3c7',
+            color: '#f59e0b',
             background: 'transparent',
             cursor: 'pointer',
           }}

@@ -6,6 +6,7 @@ const TYPE_OPTIONS = [
   { value: 'dismisses', label: '⊘ Dismisses' },
   { value: 'comments', label: '💬 Comments' },
   { value: 'overrides', label: '⇄ Overrides' },
+  { value: 'scoped', label: '📋 Notes' },
 ];
 
 const DATE_OPTIONS = [

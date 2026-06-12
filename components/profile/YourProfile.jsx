@@ -74,6 +74,15 @@ export default function YourProfile({
           marginBottom: 'var(--aparture-space-3)',
         }}
         onClick={() => setCollapsed((c) => !c)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setCollapsed((c) => !c);
+          }
+        }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aparture-space-3)' }}>
           <h2

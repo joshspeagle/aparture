@@ -13,7 +13,8 @@ function SourceBadge({ source }) {
     source === 'suggested'
       ? {
           background: 'rgba(59, 130, 246, 0.15)',
-          color: '#93c5fd',
+          // Documented informational blue — #93c5fd was unreadable in light mode.
+          color: '#3b82f6',
           borderColor: 'rgba(59, 130, 246, 0.3)',
         }
       : {
