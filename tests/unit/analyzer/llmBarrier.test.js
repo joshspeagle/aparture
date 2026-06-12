@@ -94,6 +94,38 @@ describe('LLMRateLimitBarrier', () => {
     expect(resolved).toBe(true);
   });
 
+  it('acquire(abortSignal) breaks a long pause early when aborted', async () => {
+    vi.useFakeTimers();
+    const b = new LLMRateLimitBarrier();
+    b.rateLimited({ retryAfterMs: 60000 });
+    const controller = new AbortController();
+    let resolved = false;
+    const p = b.acquire(controller.signal).then(() => {
+      resolved = true;
+    });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(resolved).toBe(false);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    await p;
+    expect(resolved).toBe(true);
+  });
+
+  it('acquire() without a signal remains backward compatible', async () => {
+    vi.useFakeTimers();
+    const b = new LLMRateLimitBarrier();
+    b.rateLimited({ retryAfterMs: 2000 });
+    let resolved = false;
+    const p = b.acquire().then(() => {
+      resolved = true;
+    });
+    await vi.advanceTimersByTimeAsync(1900);
+    expect(resolved).toBe(false);
+    await vi.advanceTimersByTimeAsync(200);
+    await p;
+    expect(resolved).toBe(true);
+  });
+
   it('handles null/undefined retryAfterMs gracefully', () => {
     const b = new LLMRateLimitBarrier();
     expect(() => b.rateLimited({ retryAfterMs: null })).not.toThrow();

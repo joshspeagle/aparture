@@ -104,6 +104,25 @@ describe('ArxivDownloadThrottle', () => {
     expect(done).toBe(true);
   });
 
+  it('honors a rateLimited() that fires mid-sleep (re-reads nextAvailableAt)', async () => {
+    const t = new ArxivDownloadThrottle({ minSpacingMs: 1000 });
+    await t.acquire();
+    const secondPromise = t.acquire();
+    let done = false;
+    secondPromise.then(() => {
+      done = true;
+    });
+    // Partway through the min-spacing sleep, a sibling reports a 429 with a
+    // 3s Retry-After. The in-flight acquire must NOT wake at the original
+    // 1s mark — it should re-read nextAvailableAt and keep waiting.
+    await vi.advanceTimersByTimeAsync(500);
+    t.rateLimited({ retryAfterMs: 3000 }); // deadline now 3.5s from start
+    await vi.advanceTimersByTimeAsync(600); // past original 1s window
+    expect(done).toBe(false);
+    await vi.advanceTimersByTimeAsync(2500); // clears the extended window
+    expect(done).toBe(true);
+  });
+
   it('ignores negative retryAfterMs', async () => {
     const t = new ArxivDownloadThrottle({ minSpacingMs: 100 });
     await t.acquire();

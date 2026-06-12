@@ -195,6 +195,52 @@ describe('pipeline — parallel filter (Stage 2)', () => {
   );
 
   test(
+    'failed filter batches land in the MAYBE bucket (not just papersToScore)',
+    { timeout: 30000 },
+    async () => {
+      setupStore({ filterConcurrency: 2, filterBatchSize: 1 });
+      pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
+
+      let filterCalls = 0;
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/quick-filter')) {
+          filterCalls += 1;
+          // Every filter batch fails hard (maxRetries=0 → no retry ladder).
+          return {
+            ok: false,
+            status: 500,
+            json: async () => ({ error: 'filter route exploded' }),
+          };
+        }
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          return buildScoredBatchResponse(body.papers?.length ?? 1);
+        }
+        if (typeof url === 'string' && /\/api\/analyze-pdf(?:$|\?|#)/.test(url)) {
+          return buildPDFResponse(8.0, body.title ?? 'paper');
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+
+      expect(filterCalls).toBeGreaterThan(0);
+      // The MAYBE fallback must be visible in the filterResults bucket the
+      // gate-resume path and FilterResultsList rebuild from — 5 TEST_PAPERS,
+      // all from failed batches.
+      const { filterResults } = useAnalyzerStore.getState();
+      expect(filterResults.maybe).toHaveLength(5);
+      expect(filterResults.maybe.every((p) => p.filterVerdict === 'MAYBE')).toBe(true);
+      expect(filterResults.yes).toHaveLength(0);
+      expect(filterResults.no).toHaveLength(0);
+    }
+  );
+
+  test(
     'dry-run forces serial filter execution regardless of config',
     { timeout: 15000 },
     async () => {

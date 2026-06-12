@@ -407,6 +407,30 @@ describe('ingest.harvest — auto mode', () => {
     expect(result.modeUsed).toBe('auto-mixed');
   });
 
+  it('re-throws an abort instead of tripping the breaker and falling back to Atom', async () => {
+    const abortSignal = { aborted: false };
+    const harvestOaiImpl = vi.fn().mockImplementationOnce(async () => {
+      // Abort fires mid-OAI-fetch; harvestOai surfaces it as the abort error.
+      abortSignal.aborted = true;
+      throw new Error('Operation aborted');
+    });
+    const fetchAtomImpl = vi.fn();
+
+    await expect(
+      harvest(
+        { ...baseWindow, mode: 'auto', selectedSubcategories: ['cs.AI'] },
+        {
+          password: 'pw',
+          abortSignal,
+          harvestOaiImpl,
+          fetchAtomImpl,
+          sleepImpl: noSleep,
+        }
+      )
+    ).rejects.toThrow(/aborted/i);
+    expect(fetchAtomImpl).not.toHaveBeenCalled();
+  });
+
   it('propagates Atom failure when both paths fail in auto mode', async () => {
     const harvestOaiImpl = vi.fn().mockRejectedValueOnce(new ArxivThrottledError('rate limit'));
     const fetchAtomImpl = vi
