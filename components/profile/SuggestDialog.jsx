@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
 import { iconFor } from '../feedback/eventMeta.js';
@@ -153,6 +153,43 @@ export default function SuggestDialog({
     setError(null);
   }
 
+  // The dialog is always mounted at the app root, so internal state survives
+  // close/reopen. Reset the request-cycle state (but not the user's selection
+  // / guidance) whenever the dialog transitions to open, so a stale result or
+  // error from a previous session never flashes on reopen.
+  //
+  // Deliberate render-phase adjustment (not an effect): the `isOpen !==
+  // wasOpen` guard makes it loop-safe, React re-renders synchronously before
+  // paint, and an effect-based reset would flash the stale content for a
+  // frame. See react.dev "storing information from previous renders".
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      setState('selection');
+      setResponse(null);
+      setError(null);
+    }
+  }
+
+  // Abort any in-flight suggest-profile fetch when the dialog closes (or the
+  // component unmounts) — cancelling during loading previously let the fetch
+  // resolve in the background and surface its result/error on reopen.
+  const abortRef = useRef(null);
+  useEffect(() => {
+    if (!isOpen) {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    }
+  }, [isOpen]);
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    },
+    []
+  );
+
   const capStats = useMemo(() => applyCap(newFeedback, cap).stats, [newFeedback, cap]);
   const droppedCount =
     capStats.paperCommentTotal +
@@ -180,6 +217,8 @@ export default function SuggestDialog({
   async function handleGenerate() {
     setError(null);
     setState('loading');
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
       // Apply the SAME comment cap that drives the "N older comments will not
@@ -206,6 +245,7 @@ export default function SuggestDialog({
           provider,
           password,
         }),
+        signal: controller.signal,
       });
       if (!res.ok) {
         // Surface the route's structured details (e.g. provider rate-limit
@@ -224,6 +264,10 @@ export default function SuggestDialog({
       setResponse(data);
       setState('result');
     } catch (e) {
+      // Swallow aborts (user closed the dialog mid-request) — the open
+      // transition resets state, so surfacing them as errors would only
+      // leave a stale banner for the next session.
+      if (e.name === 'AbortError') return;
       setError(e.message);
       setState('selection');
     }

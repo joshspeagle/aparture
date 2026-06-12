@@ -130,6 +130,30 @@ describe('useSeenPapers — recordRun', () => {
   });
 });
 
+describe('useSeenPapers — bootstrap read is mount-only', () => {
+  it('reads the stored index from localStorage only once, not on every render', () => {
+    window.localStorage.setItem(
+      'aparture-seen-papers-index',
+      JSON.stringify({ _migratedAt: Date.now(), _dedupeVersion: 3, 'seeded.000': '2026-04-01' })
+    );
+    const getItemSpy = vi.spyOn(window.Storage.prototype, 'getItem');
+    const indexReads = () =>
+      getItemSpy.mock.calls.filter((call) => call[0] === 'aparture-seen-papers-index').length;
+
+    const { result, rerender } = renderHook(() => useSeenPapers({ password: 'pw' }));
+    const readsAtMount = indexReads();
+    expect(readsAtMount).toBeGreaterThan(0);
+
+    // The stored index can reach ~1.25 MB; re-parsing it on every App render
+    // was pure waste. Post-mount renders must not hit localStorage again.
+    rerender();
+    rerender();
+    rerender();
+    expect(indexReads()).toBe(readsAtMount);
+    expect(result.current.index['seeded.000']).toBe('2026-04-01');
+  });
+});
+
 describe('useSeenPapers — 90-day prune', () => {
   it('drops entries older than 90 days on every write', () => {
     // Seed an index with one stale + one fresh entry.

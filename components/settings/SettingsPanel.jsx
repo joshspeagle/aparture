@@ -790,6 +790,14 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                 disabled={processing.isRunning}
               />
               <Checkbox
+                label="Pause before deep analysis"
+                checked={config.pauseBeforeDeepAnalysis ?? true}
+                onChange={(e) =>
+                  setConfig((prev) => ({ ...prev, pauseBeforeDeepAnalysis: e.target.checked }))
+                }
+                disabled={processing.isRunning}
+              />
+              <Checkbox
                 label="Pause before briefing to review scores and add feedback"
                 checked={config.pauseBeforeBriefing ?? true}
                 onChange={(e) =>
@@ -890,7 +898,9 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Days to Look Back
                     </label>
-                    <Input {...integerInputProps('daysBack', 7, 1, 30)} />
+                    {/* defaultVal must track DEFAULT_CONFIG.daysBack in
+                        hooks/useAnalyzerPersistence.js */}
+                    <Input {...integerInputProps('daysBack', 1, 1, 30)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',
@@ -940,7 +950,9 @@ export default function SettingsPanel({ config, setConfig, processing }) {
                     >
                       Retry Attempts
                     </label>
-                    <Input {...integerInputProps('maxRetries', 3, 0, 10)} />
+                    {/* defaultVal must track DEFAULT_CONFIG.maxRetries in
+                        hooks/useAnalyzerPersistence.js */}
+                    <Input {...integerInputProps('maxRetries', 4, 0, 10)} />
                     <p
                       style={{
                         fontFamily: 'var(--aparture-font-sans)',

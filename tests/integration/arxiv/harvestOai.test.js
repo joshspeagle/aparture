@@ -241,15 +241,21 @@ describe('harvestOai', () => {
         }),
       });
 
+    const sleepImpl = vi.fn().mockResolvedValue();
     const records = await harvestOai({
       ...baseArgs,
       fetchImpl,
-      sleepImpl: () => Promise.resolve(),
+      sleepImpl,
+      spacingMsImpl: () => 3333,
     });
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
     // Pre-expiry record is discarded; restart's records are what we keep.
     expect(records.map((r) => r.id)).toEqual(['AFTER-RESTART']);
+    // ToU spacing applies before the restart request too: one sleep between
+    // page 1 and page 2 (resumption spacing), one before the restart.
+    expect(sleepImpl).toHaveBeenCalledTimes(2);
+    expect(sleepImpl).toHaveBeenLastCalledWith(3333);
     // The third call should be the restart (no resumptionToken, full set/from/until).
     const restartBody = JSON.parse(fetchImpl.mock.calls[2][1].body);
     expect(restartBody.resumptionToken).toBeUndefined();

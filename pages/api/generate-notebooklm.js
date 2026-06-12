@@ -21,19 +21,16 @@ import { renderPaperReport } from '../../lib/notebooklm/renderPaperReport.js';
 import { buildFocusPrompt } from '../../lib/notebooklm/buildFocusPrompt.js';
 import { bundleZip } from '../../lib/notebooklm/bundleZip.js';
 import { INSTRUCTIONS_MD } from '../../lib/notebooklm/instructions.js';
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 const GUIDE_PROMPT_PATH = path.join(process.cwd(), 'prompts/notebooklm-discussion-guide.md');
 
-function checkPassword(password) {
-  return password === process.env.ACCESS_PASSWORD;
-}
-
 function renderGuidePrompt(template, { themes, papers, duration, date }) {
   return template
-    .replaceAll('{{themes}}', JSON.stringify(themes, null, 2))
-    .replaceAll('{{papers}}', JSON.stringify(papers, null, 2))
-    .replaceAll('{{duration}}', String(duration))
-    .replaceAll('{{date}}', date);
+    .replaceAll('{{themes}}', () => JSON.stringify(themes, null, 2))
+    .replaceAll('{{papers}}', () => JSON.stringify(papers, null, 2))
+    .replaceAll('{{duration}}', () => String(duration))
+    .replaceAll('{{date}}', () => date);
 }
 
 // Strip a leading/trailing code fence if the LLM wrapped its output in
@@ -71,7 +68,7 @@ export default async function handler(req, res) {
 
   // Auth gate first: validate password (if supplied) before any body
   // checks so a wrong password reliably returns 401, not 400.
-  if (password !== undefined && !checkPassword(password)) {
+  if (password !== undefined && !checkAccessPassword(password)) {
     return res.status(401).json({ error: 'invalid password' });
   }
   if (!briefing) {

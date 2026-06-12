@@ -1,6 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useFeedback } from '../../../hooks/useFeedback.js';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('useFeedback', () => {
   beforeEach(() => {
@@ -105,6 +109,37 @@ describe('useFeedback', () => {
     unmount();
     const { result: result2 } = renderHook(() => useFeedback());
     expect(result2.current.events).toHaveLength(1);
+  });
+
+  it('keeps the in-memory event when localStorage quota is exceeded (no crash mid-click)', () => {
+    const { result } = renderHook(() => useFeedback());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(window.Storage.prototype, 'setItem').mockImplementation(() => {
+      const err = new Error('quota');
+      err.name = 'QuotaExceededError';
+      throw err;
+    });
+    // Pre-fix this threw out of the state updater, crashing the click handler
+    // and losing the input.
+    expect(() => {
+      act(() => {
+        result.current.addStar(samplePaper);
+      });
+    }).not.toThrow();
+    expect(result.current.events).toHaveLength(1);
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it('returns a referentially stable object across unrelated re-renders', () => {
+    const { result, rerender } = renderHook(() => useFeedback());
+    const first = result.current;
+    rerender();
+    expect(result.current).toBe(first);
+    // ...but a new reference once events actually change.
+    act(() => {
+      result.current.addStar(samplePaper);
+    });
+    expect(result.current).not.toBe(first);
   });
 });
 

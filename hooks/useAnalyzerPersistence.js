@@ -17,6 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
+import { useAnalyzerStore } from '../stores/analyzerStore.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
@@ -354,6 +355,25 @@ export function useAnalyzerPersistence({
   // otherwise lazily generated on the first save. Survives renders via ref.
   const sessionIdRef = useRef(null);
 
+  // Reload-clobber guard. The mount-time hot restore (setResults + setPassword
+  // below) re-triggers the debounced save effect, whose cold POST is built from
+  // in-memory results where allPapers/scoredPapers/filter buckets are still
+  // EMPTY (the hot blob only carries finalRanking + counts). Without a gate,
+  // that POST overwrites the on-disk session file's heavy fields with empty
+  // arrays — and if the in-flight cold GET then fails (or the tab closes in
+  // the window), the run data is permanently destroyed. Cold POSTs are held
+  // until the mount-time cold load has SETTLED: success, failure, or
+  // nothing-to-load all count as settled. Fresh runs are unaffected — with no
+  // sessionId/cold-fetch to wait on, the ref flips true synchronously on mount,
+  // well before the first 400ms-debounced save fires.
+  const coldLoadSettledRef = useRef(false);
+  // Set when the mount-time cold GET failed for an ADOPTED (pre-existing)
+  // sessionId: the on-disk file may still hold heavy data we couldn't read, so
+  // additionally skip cold POSTs whose heavy fields are all empty — they could
+  // only clobber. Cleared as soon as a save carries real heavy data (a new run
+  // legitimately supersedes the old file).
+  const blockEmptyColdSaveRef = useRef(false);
+
   // Load on mount. Config is already restored by readInitialConfig at
   // useState init time, so this effect only restores non-config state.
   // Two paths:
@@ -363,12 +383,16 @@ export function useAnalyzerPersistence({
   //      No migration: next save converts to tiered shape.
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
+    if (!raw) {
+      coldLoadSettledRef.current = true;
+      return;
+    }
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch (e) {
       console.error('Failed to parse saved analyzer state:', e);
+      coldLoadSettledRef.current = true;
       return;
     }
 
@@ -420,7 +444,18 @@ export function useAnalyzerPersistence({
       (parsed.results?.scoredPapers?.length ?? 0) > 0;
     if (parsed.sessionId && !hotHasHeavy) {
       fetchColdSession(parsed.sessionId, parsed.password).then((cold) => {
-        if (!cold) return;
+        coldLoadSettledRef.current = true;
+        if (!cold) {
+          // The adopted sessionId's on-disk file couldn't be read but may
+          // still exist with heavy data — block empty-heavy cold POSTs from
+          // overwriting it (see blockEmptyColdSaveRef above).
+          blockEmptyColdSaveRef.current = true;
+          return;
+        }
+        // Staleness guard: if a new run started while this GET was in flight,
+        // merging the PREVIOUS run's heavy data over the in-flight run's
+        // state would corrupt it. The new run repopulates everything itself.
+        if (useAnalyzerStore.getState().processing.isRunning) return;
         // Merge cold heavy fields into the existing hot finalRanking so
         // we don't overwrite it with whatever the cold tier had (cold may
         // be slightly stale if save was mid-flight at refresh time).
@@ -447,6 +482,10 @@ export function useAnalyzerPersistence({
           }));
         }
       });
+    } else {
+      // Legacy blob (heavy fields inline) or no sessionId — no cold fetch to
+      // wait on; saving may proceed immediately.
+      coldLoadSettledRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -511,7 +550,24 @@ export function useAnalyzerPersistence({
       // Cold tier — full payload, only POSTed when there's actual results
       // worth shipping to disk. Skips empty saves (password-only changes
       // don't need a cold write). Best-effort.
-      if (hasResults && isAuthenticated && password) {
+      //
+      // Reload-clobber gate (see coldLoadSettledRef): while the mount-time
+      // cold load is unsettled, the heavy fields here are empty hot-tier
+      // restores, not real run data — POSTing them would overwrite the
+      // on-disk session. Skipping is safe: the cold GET's merge (or any later
+      // state change) re-triggers this effect and the next save lands.
+      const heavyEmpty =
+        (results?.allPapers?.length ?? 0) === 0 &&
+        (results?.scoredPapers?.length ?? 0) === 0 &&
+        (filterResults?.yes?.length ?? 0) === 0 &&
+        (filterResults?.maybe?.length ?? 0) === 0 &&
+        (filterResults?.no?.length ?? 0) === 0;
+      const coldSaveBlocked =
+        !coldLoadSettledRef.current || (blockEmptyColdSaveRef.current && heavyEmpty);
+      if (hasResults && isAuthenticated && password && !coldSaveBlocked) {
+        // Real heavy data legitimately supersedes an adopted on-disk file
+        // whose mount-time GET failed — lift the empty-save block.
+        if (!heavyEmpty) blockEmptyColdSaveRef.current = false;
         const coldEntry = buildColdEntry({
           sessionId,
           results,

@@ -116,10 +116,9 @@ function readStoredCurrent() {
 const LEGACY_HISTORY_KEY = 'aparture-briefing-history';
 
 // Migration: move legacy single-key history entries to per-file storage +
-// rebuild the index. Runs on every mount; no-op when the legacy key is
-// absent. Failures (e.g. 401 because password wasn't hydrated yet, or a
+// rebuild the index. No-op when the legacy key is absent. Failures (e.g. a
 // transient 500) keep the affected entries in the legacy blob so a later
-// mount can retry — historically we removed the legacy key on partial
+// attempt can retry — historically we removed the legacy key on partial
 // failure, which silently orphaned briefings as soon as the post-migration
 // disk file was missing.
 async function migrateLegacyHistoryIfNeeded({ password }) {
@@ -173,13 +172,26 @@ async function migrateLegacyHistoryIfNeeded({ password }) {
     (a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0)
   );
 
-  window.localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+  // safeSetItem: a quota failure here must not throw out of the migration —
+  // log and carry on with in-memory state; the next attempt rewrites both keys.
+  if (!safeSetItem(HISTORY_KEY, JSON.stringify(merged))) {
+    console.warn(
+      '[useBriefing migration] localStorage quota exceeded; merged index could not be persisted (in-memory state preserved for this session)'
+    );
+  }
   if (remainingLegacy.length === 0) {
     window.localStorage.removeItem(LEGACY_HISTORY_KEY);
   } else {
-    window.localStorage.setItem(LEGACY_HISTORY_KEY, JSON.stringify(remainingLegacy));
+    // On quota failure the legacy key keeps its previous (fuller) contents —
+    // the next attempt re-POSTs already-migrated entries, which is idempotent
+    // (same ids overwrite the same files on disk).
+    if (!safeSetItem(LEGACY_HISTORY_KEY, JSON.stringify(remainingLegacy))) {
+      console.warn(
+        '[useBriefing migration] localStorage quota exceeded; trimmed legacy blob could not be persisted'
+      );
+    }
     console.warn(
-      `[useBriefing migration] ${remainingLegacy.length}/${legacy.length} legacy entries could not be migrated; will retry on next mount`
+      `[useBriefing migration] ${remainingLegacy.length}/${legacy.length} legacy entries could not be migrated; will retry later`
     );
   }
   return merged;
@@ -245,19 +257,43 @@ export function useBriefing({ password = '' } = {}) {
     }
   }, []);
 
-  // One-shot migration from the legacy single-key history to filesystem +
-  // search-capable index. No-op when the legacy key is absent; the ref-in-
-  // empty-deps pattern keeps this from firing on every render.
+  // Migration from the legacy single-key history to filesystem + search-
+  // capable index. Depends on `password` so it waits for the store-hydrated
+  // value rather than firing once on mount with an empty string — the latter
+  // would 401 every per-entry POST and strand the entries in the legacy blob
+  // forever, repeating on every reload (same failure mode as the seen-papers
+  // v2 migration, fixed in useSeenPapers). The success ref blocks re-runs once
+  // the legacy key is fully drained; partial failures leave it unset so the
+  // next password change gets another shot.
+  const legacyMigrationSuccessRef = useRef(false);
   useEffect(() => {
-    migrateLegacyHistoryIfNeeded({ password: passwordRef.current }).then((migrated) => {
-      if (migrated) setHistory(migrated);
-    });
-  }, []);
+    if (!password || legacyMigrationSuccessRef.current) return;
+    let cancelled = false;
+    migrateLegacyHistoryIfNeeded({ password })
+      .then((migrated) => {
+        if (cancelled) return;
+        if (migrated) setHistory(migrated);
+        // Only seal once the legacy key is gone (every entry POSTed, or there
+        // was nothing to migrate). Entries retained for retry leave it unset.
+        if (typeof window !== 'undefined' && !window.localStorage.getItem(LEGACY_HISTORY_KEY)) {
+          legacyMigrationSuccessRef.current = true;
+        }
+      })
+      .catch((err) => {
+        console.warn('[useBriefing migration] failed:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [password]);
 
   // Fallback: when the local hot-tier index is empty but disk has briefings
   // (e.g. fresh machine on a Dropbox-synced repo, or localStorage was
-  // cleared), rebuild the index from disk so the UI list isn't blank. Fires
-  // at most once per session, only after password is available.
+  // cleared), rebuild the index from disk so the UI list isn't blank. The
+  // tried-ref is only set on a DEFINITIVE outcome (rebuild succeeded, disk is
+  // empty, or the hot index already has entries) — cancellation and transient
+  // non-OK/network failures leave it unset so the password-dep retry still
+  // works instead of permanently forfeiting the rebuild for the session.
   const reindexTriedRef = useRef(false);
   useEffect(() => {
     if (!password || reindexTriedRef.current) return;
@@ -272,12 +308,17 @@ export function useBriefing({ password = '' } = {}) {
       }
       try {
         const res = await fetch(`/api/briefings?index=1&password=${encodeURIComponent(password)}`);
-        if (cancelled || !res.ok) {
-          reindexTriedRef.current = true;
+        if (cancelled) return;
+        if (!res.ok) {
+          // Transient (401 pre-hydration, 5xx, ...) — leave the ref unset so a
+          // later password change retries.
+          console.warn(`[useBriefing reindex] HTTP ${res.status}; will retry`);
           return;
         }
         const { entries = [] } = await res.json();
-        if (cancelled || entries.length === 0) {
+        if (cancelled) return;
+        if (entries.length === 0) {
+          // Definitive: disk has no briefings, nothing to rebuild.
           reindexTriedRef.current = true;
           return;
         }
@@ -287,7 +328,6 @@ export function useBriefing({ password = '' } = {}) {
         reindexTriedRef.current = true;
       } catch (err) {
         console.warn('[useBriefing reindex] failed:', err);
-        reindexTriedRef.current = true;
       }
     }, 50);
     return () => {
@@ -335,7 +375,14 @@ export function useBriefing({ password = '' } = {}) {
       setCurrent(entry);
       persistCurrent(entry);
       setHistory((prev) => {
-        const next = [buildIndexEntry(entry), ...prev].slice(0, MAX_HISTORY);
+        const full = [buildIndexEntry(entry), ...prev];
+        const next = full.slice(0, MAX_HISTORY);
+        // Entries rotated off the MAX_HISTORY tail must have their cold files
+        // unlinked too — same lossy-but-consistent contract as the quota-prune
+        // path. Without this, capped-out histories orphan one
+        // reports/briefings/<id>.json per save.
+        const rotatedOff = full.slice(MAX_HISTORY);
+        if (rotatedOff.length > 0) unlinkDroppedColdFiles(rotatedOff);
         persistHistory(next, unlinkDroppedColdFiles);
         return next;
       });

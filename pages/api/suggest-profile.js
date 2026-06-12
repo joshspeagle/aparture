@@ -150,7 +150,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!apiKey) {
+  // Fixture mode never hits a provider, so a missing key is not an error there
+  // (and a dummy key would pollute the fixture hash).
+  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
     res.status(401).json({ error: 'missing apiKey or password' });
     return;
   }
@@ -183,7 +185,15 @@ export default async function handler(req, res) {
     const promptOverride = process.env.APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE;
     const callMode = callModelMode ?? { mode: 'live' };
     const isFixture = callMode.mode === 'fixture';
-    const useCaching = provider === 'anthropic' && !promptOverride && !isFixture;
+    // When user guidance is present, renderSuggestPrompt prepends a guidance
+    // block ahead of the template prefix, so cachePrefix is no longer a true
+    // prefix of fullPrompt — caching must be disabled or the slice below would
+    // corrupt the prompt (cachePrefix + tail !== fullRenderedPrompt).
+    const useCaching =
+      provider === 'anthropic' &&
+      !promptOverride &&
+      !isFixture &&
+      fullPrompt.startsWith(cachePrefix);
     const finalPrompt = promptOverride ?? fullPrompt;
     const variableTail = useCaching ? fullPrompt.slice(cachePrefix.length) : finalPrompt;
 

@@ -95,6 +95,33 @@ describe('fetchAtom', () => {
     await expect(fetchAtom({ ...baseArgs, fetchImpl })).rejects.toBeInstanceOf(ArxivNetworkError);
   });
 
+  it('warns via statusCallback when the response hits the 300-result cap', async () => {
+    const entryXml = (i) => `<entry>
+      <id>http://arxiv.org/abs/2604.${String(10000 + i)}v1</id>
+      <title>Paper ${i}</title>
+      <summary>Abstract ${i}</summary>
+      <published>2026-04-28T00:00:00Z</published>
+      <updated>2026-04-28T00:00:00Z</updated>
+      <author><name>A. Author</name></author>
+      <category term="cs.AI"/>
+      <link title="pdf" href="http://arxiv.org/pdf/2604.${String(10000 + i)}v1" rel="related" type="application/pdf"/>
+    </entry>`;
+    const cappedXml = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">${Array.from(
+      { length: 300 },
+      (_, i) => entryXml(i)
+    ).join('')}</feed>`;
+    const statusCallback = vi.fn();
+    await fetchAtom({ ...baseArgs, statusCallback, fetchImpl: mockFetchOk(cappedXml) });
+    expect(statusCallback).toHaveBeenCalledWith(expect.stringMatching(/truncated/i));
+  });
+
+  it('does not warn about truncation below the result cap', async () => {
+    const statusCallback = vi.fn();
+    await fetchAtom({ ...baseArgs, statusCallback, fetchImpl: mockFetchOk(ATOM_XML) });
+    const messages = statusCallback.mock.calls.map((c) => c[0]).join('\n');
+    expect(messages).not.toMatch(/truncated/i);
+  });
+
   it('throws ArxivParseError when arXiv returns an <error> element', async () => {
     const errXml = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><error>malformed query</error></feed>`;
     const fetchImpl = mockFetchOk(errXml);

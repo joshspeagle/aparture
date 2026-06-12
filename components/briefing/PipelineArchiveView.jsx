@@ -19,8 +19,11 @@ export default function PipelineArchiveView({ entry, onBack }) {
     );
   }
 
+  // Append T00:00:00 so the YYYY-MM-DD string parses as LOCAL midnight, not
+  // UTC — bare date strings render one day early in UTC-negative timezones
+  // (same pattern as SidebarBriefingList.formatBriefingLabel).
   const formattedDate = entry.date
-    ? new Date(entry.date).toLocaleDateString('en-US', {
+    ? new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

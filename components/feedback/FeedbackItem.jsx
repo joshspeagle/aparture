@@ -20,9 +20,11 @@ function labelFor(event) {
     return `${icon} ${scopeKindLabel(event.scope).toLowerCase()}`;
   }
   if (event.type === 'filter-override') {
-    return `${icon} filter override on ${event.paperTitle ?? event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
+    return `${icon} filter override on ${event.paperTitle || event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
   }
-  const title = event.paperTitle ?? event.arxivId ?? 'paper';
+  // `||` not `??`: legacy events may carry paperTitle: '' — fall through to
+  // the arxivId rather than rendering a blank label.
+  const title = event.paperTitle || event.arxivId || 'paper';
   return `${icon} ${event.type} on ${title} (${event.arxivId})`;
 }
 
@@ -99,7 +101,7 @@ export default function FeedbackItem({ event }) {
             <span style={{ marginRight: '4px' }} aria-hidden>
               {icon}
             </span>
-            {event.paperTitle ?? event.arxivId}
+            {event.paperTitle || event.arxivId}
             <span
               style={{
                 marginLeft: '8px',
@@ -152,7 +154,9 @@ export default function FeedbackItem({ event }) {
             <span style={{ marginRight: '4px' }} aria-hidden>
               {icon}
             </span>
-            {event.paperTitle ?? event.arxivId}
+            {/* `||` not `??`: paper comments from filter/score-review rows may
+                carry paperTitle: '' on legacy events — show the id instead. */}
+            {event.paperTitle || event.arxivId}
             <span
               style={{
                 marginLeft: '8px',

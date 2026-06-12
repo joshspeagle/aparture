@@ -101,6 +101,8 @@ These recur with consistent meaning across components and have no `--aparture-*`
 | `#ef4444`             | error / stop / NO / removed                         |
 | `#f97316`             | filter-override feedback event                      |
 | `#6366f1`             | scoped-feedback event (bucket / score-review / run) |
+| `#a855f7`             | paper-comment feedback event / score badge accent   |
+| `#64748b`             | dismissed / muted negative                          |
 | `#3b82f6`             | informational / suggested source                    |
 | `rgba(0,0,0,0.5)`     | modal overlay scrim                                 |
 

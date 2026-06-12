@@ -4,6 +4,8 @@
 // validates password, surfaces 429/5xx as 429 with upstreamStatus/retryAfter.
 // See spec §3.4.
 
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
+
 const OAI_HOST = 'https://oaipmh.arxiv.org/oai';
 
 function extractResumptionToken(xml) {
@@ -18,7 +20,7 @@ export default async function handler(req, res) {
 
   const { password, resumptionToken, set, from, until, metadataPrefix } = req.body ?? {};
 
-  if (password !== process.env.ACCESS_PASSWORD) {
+  if (!checkAccessPassword(password)) {
     return res.status(401).json({ error: 'Invalid password' });
   }
 
@@ -47,7 +49,9 @@ export default async function handler(req, res) {
 
   let response;
   try {
-    response = await fetch(url, { headers });
+    // OAI pages can be slow under load, but a stalled upstream should not pin
+    // the route for undici's ~5 min default.
+    response = await fetch(url, { headers, signal: AbortSignal.timeout(60_000) });
   } catch (err) {
     console.error('OAI proxy network error:', err);
     return res.status(500).json({ error: err.message });

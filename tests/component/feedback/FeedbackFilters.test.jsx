@@ -5,12 +5,21 @@ import FeedbackFilters from '../../../components/feedback/FeedbackFilters.jsx';
 describe('FeedbackFilters', () => {
   const defaultFilters = { type: 'all', newOnly: false, dateRange: 'all' };
 
-  it('renders four type toggle buttons', () => {
+  it('renders the type toggle buttons', () => {
     render(<FeedbackFilters filters={defaultFilters} onFiltersChange={() => {}} />);
     expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /star/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /dismiss/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /comment/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /override/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /notes/i })).toBeInTheDocument();
+  });
+
+  it('calls onFiltersChange with type=scoped when the Notes button is clicked', () => {
+    const onFiltersChange = vi.fn();
+    render(<FeedbackFilters filters={defaultFilters} onFiltersChange={onFiltersChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /notes/i }));
+    expect(onFiltersChange).toHaveBeenCalledWith({ ...defaultFilters, type: 'scoped' });
   });
 
   it('marks the active type with data-active attribute', () => {

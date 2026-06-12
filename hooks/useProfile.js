@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { migrateFromPhase1 } from '../lib/profile/migrations.js';
+import { safeSetItem } from '../lib/persistence/safeStorage.js';
 
 const PROFILE_KEY = 'aparture-profile';
 const MIGRATION_DISMISSED_KEY = 'aparture-migration-notice-dismissed';
@@ -43,9 +44,17 @@ function readInitialState(config) {
 export function useProfile(config = {}) {
   const [state, setState] = useState(() => readInitialState(config));
 
+  // Persist via safeSetItem so a QuotaExceededError can't throw out of the
+  // state updaters that call this mid-click — a raw setItem here used to crash
+  // the interaction and lose the user's edit. On quota failure, log and keep
+  // the in-memory state for the session (standard fallback; see safeStorage.js).
   const persist = useCallback((nextProfile) => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+    if (typeof window === 'undefined') return;
+    const ok = safeSetItem(PROFILE_KEY, JSON.stringify(nextProfile));
+    if (!ok) {
+      console.warn(
+        '[useProfile] localStorage quota exceeded; profile could not be persisted (in-memory state preserved for this session)'
+      );
     }
   }, []);
 

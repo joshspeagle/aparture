@@ -64,6 +64,23 @@ describe('filterEvents', () => {
     expect(result).toHaveLength(2);
   });
 
+  it('filters by type=scoped (scoped-feedback only)', () => {
+    const events = [
+      makeStar('s1', 'p1', NOW),
+      {
+        id: 'sf1',
+        type: 'scoped-feedback',
+        scope: { kind: 'score-review' },
+        text: 'too lenient this round',
+        timestamp: NOW,
+        briefingDate: '2026-04-10',
+      },
+    ];
+    const result = filterEvents(events, { ...defaultFilters, type: 'scoped' });
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('scoped-feedback');
+  });
+
   it('filters by newOnly=true using cutoff', () => {
     const events = [makeStar('s1', 'p1', NOW - 10000), makeStar('s2', 'p2', NOW + 10000)];
     const result = filterEvents(events, { ...defaultFilters, newOnly: true }, { cutoff: NOW });
@@ -135,22 +152,19 @@ describe('FeedbackTimeline', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders all events with no divider when cutoff is 0', () => {
+  it('renders all events with no incorporated section when cutoff is 0', () => {
     const events = [makeStar('s1', 'p1', NOW), makeStar('s2', 'p2', NOW + 1000)];
     const { container } = render(
       <FeedbackTimeline events={events} filters={defaultFilters} cutoff={0} />
     );
-    expect(container.querySelector('.border-dashed')).toBeNull();
+    expect(screen.queryByText(/already incorporated/i)).toBeNull();
     // Two star feedback items rendered
     expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(2);
   });
 
-  it('renders a dashed divider when cutoff splits the events', () => {
+  it('renders both sections when cutoff splits the events', () => {
     const events = [makeStar('s-old', 'pA', NOW - 1000), makeStar('s-new', 'pB', NOW + 1000)];
-    const { container } = render(
-      <FeedbackTimeline events={events} filters={defaultFilters} cutoff={NOW} />
-    );
-    expect(container.querySelector('.border-dashed')).not.toBeNull();
+    render(<FeedbackTimeline events={events} filters={defaultFilters} cutoff={NOW} />);
     expect(screen.getByText(/new since last revision/i)).toBeInTheDocument();
     expect(screen.getByText(/already incorporated/i)).toBeInTheDocument();
   });

@@ -3,10 +3,7 @@ import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-
-function checkPassword(password) {
-  return password === process.env.ACCESS_PASSWORD;
-}
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 // Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
 // Portable subset only; value constraints enforced in validateScoringResponse.
@@ -117,7 +114,7 @@ export default async function handler(req, res) {
   // defaults to Google; resolving the Google key here would 401 a user who
   // only has CLAUDE_API_KEY / OPENAI_API_KEY set. The empty-papers path needs
   // no provider key at all — it never calls the model.
-  if (!apiKey && password && !checkPassword(password)) {
+  if (!apiKey && password && !checkAccessPassword(password)) {
     return res.status(401).json({ error: 'Invalid password' });
   }
 

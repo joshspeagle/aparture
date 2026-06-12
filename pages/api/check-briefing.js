@@ -154,7 +154,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!apiKey) {
+  // Fixture mode never hits a provider, so a missing key is not an error there
+  // (and a dummy key would pollute the fixture hash).
+  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
     res.status(401).json({ error: 'missing apiKey or password' });
     return;
   }
@@ -167,8 +169,8 @@ export default async function handler(req, res) {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'check-briefing.md');
     const template = await fs.readFile(templatePath, 'utf8');
     const fullPrompt = template
-      .replace('{{briefing}}', renderBriefingText(briefing))
-      .replace('{{papers}}', renderPapersCorpus(papers));
+      .replace('{{briefing}}', () => renderBriefingText(briefing))
+      .replace('{{papers}}', () => renderPapersCorpus(papers));
 
     // The stable cache prefix is the template text before {{briefing}} (the static
     // instructions). The variable tail is the rendered briefing + papers content.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { callCheckBriefing } from '../../../lib/analyzer/briefingClient.js';
+import { callCheckBriefing, runBriefingGeneration } from '../../../lib/analyzer/briefingClient.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -58,5 +58,42 @@ describe('callCheckBriefing — non-fatal contract', () => {
       json: async () => ({ error: 'check failed' }),
     });
     await expect(callCheckBriefing(baseArgs)).resolves.toBeNull();
+  });
+});
+
+describe('runBriefingGeneration — abort handling', () => {
+  it('re-throws the pipeline abort shape instead of recording a synthesis error', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const setters = {
+      setSynthesizing: vi.fn(),
+      setSynthesisError: vi.fn(),
+      setBriefingCheckResult: vi.fn(),
+      setBriefingStage: vi.fn(),
+      setQuickSummariesById: vi.fn(),
+      setFullReportsById: vi.fn(),
+    };
+    const saveBriefing = vi.fn();
+
+    await expect(
+      runBriefingGeneration({
+        results: {
+          finalRanking: [{ arxivId: '2605.0001', title: 'T', abstract: 'A', score: 8 }],
+        },
+        briefingModel: 'gemini-3.1-pro',
+        profile: { content: 'profile' },
+        password: 'pw',
+        saveBriefing,
+        abortSignal: { aborted: true },
+        ...setters,
+      })
+    ).rejects.toThrow('Operation aborted');
+
+    // Abort is not a failure: no error recorded, nothing persisted, no LLM
+    // routes called, and the synthesizing flag is cleared on the way out.
+    expect(setters.setSynthesisError).toHaveBeenCalledTimes(1); // only the initial null reset
+    expect(setters.setSynthesisError).toHaveBeenCalledWith(null);
+    expect(saveBriefing).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setters.setSynthesizing).toHaveBeenLastCalledWith(false);
   });
 });

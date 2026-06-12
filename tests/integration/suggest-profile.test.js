@@ -230,13 +230,14 @@ describe('suggest-profile API route (fixture mode)', () => {
     expect(jsonBody.retried).toBe(false);
   });
 
-  it('rejects requests with neither apiKey nor password', async () => {
+  it('rejects live-mode requests with neither apiKey nor password', async () => {
+    // Fixture mode deliberately skips the missing-key 401 (no provider is
+    // ever hit); the live path must still reject credential-less requests.
     const { req, res, getResponse } = createMockReqRes({
       currentProfile: PROFILE_NO_CHANGE,
       feedback: FEEDBACK_NO_CHANGE,
       briefingModel: 'claude-opus-4-6',
       provider: 'anthropic',
-      callModelMode: { mode: 'fixture', fixturesDir },
     });
 
     await handler(req, res);

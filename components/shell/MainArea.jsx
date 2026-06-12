@@ -68,8 +68,6 @@ export default function MainArea({
   onRunDryRun,
   onRunMinimalTest,
   onExport,
-  getStageDisplay: _getStageDisplay,
-  getProgressPercentage: _getProgressPercentage,
   onSetVerdict,
   bucketFeedbackByBucket,
   onBucketFeedback,
@@ -348,7 +346,10 @@ export default function MainArea({
       <div className="briefing-surface">
         <BriefingView
           briefing={entry.briefing}
-          date={new Date(entry.date).toLocaleDateString('en-US', {
+          // Append T00:00:00 so the YYYY-MM-DD string parses as LOCAL midnight,
+          // not UTC — bare date strings render one day early in UTC-negative
+          // timezones (same pattern as SidebarBriefingList.formatBriefingLabel).
+          date={new Date(entry.date + 'T00:00:00').toLocaleDateString('en-US', {
             month: 'long',
             day: 'numeric',
             year: 'numeric',
@@ -387,21 +388,26 @@ export default function MainArea({
           />
         </div>
 
-        {/* NotebookLM card below feedback */}
-        <div style={{ marginTop: 'var(--aparture-space-6)' }}>
-          <NotebookLMCard
-            currentBriefing={currentBriefing}
-            podcastDuration={podcastDuration}
-            setPodcastDuration={setPodcastDuration}
-            notebookLMModel={notebookLMModel}
-            setNotebookLMModel={setNotebookLMModel}
-            notebookLMGenerating={notebookLMGenerating}
-            notebookLMStatus={notebookLMStatus}
-            notebookLMContent={notebookLMContent}
-            onGenerateNotebookLM={onGenerateNotebookLM}
-            processing={processing}
-          />
-        </div>
+        {/* NotebookLM card below feedback. The card operates on
+            currentBriefing, so only show it when the viewed entry IS the
+            current briefing — on archived briefings it would silently
+            generate a bundle for the newest briefing instead. */}
+        {entry.id === currentBriefing?.id && (
+          <div style={{ marginTop: 'var(--aparture-space-6)' }}>
+            <NotebookLMCard
+              currentBriefing={currentBriefing}
+              podcastDuration={podcastDuration}
+              setPodcastDuration={setPodcastDuration}
+              notebookLMModel={notebookLMModel}
+              setNotebookLMModel={setNotebookLMModel}
+              notebookLMGenerating={notebookLMGenerating}
+              notebookLMStatus={notebookLMStatus}
+              notebookLMContent={notebookLMContent}
+              onGenerateNotebookLM={onGenerateNotebookLM}
+              processing={processing}
+            />
+          </div>
+        )}
       </div>
     );
   }

@@ -24,7 +24,7 @@
 //   node scripts/smoke-llm-routes.mjs --providers=anthropic --model-anthropic=claude-sonnet-4.6
 //
 //   # test a specific route on one provider with a specific model
-//   node scripts/smoke-llm-routes.mjs --only=synthesize --providers=google --model-google=gemini-3-pro
+//   node scripts/smoke-llm-routes.mjs --only=synthesize --providers=google --model-google=gemini-3.1-pro
 //
 // Loads .env.local, calls each handler in-process with callModelMode: 'live',
 // and reports PASS/FAIL per (route, provider). Uses minimum-viable payloads

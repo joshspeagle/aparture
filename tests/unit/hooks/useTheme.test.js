@@ -76,4 +76,66 @@ describe('useTheme', () => {
     expect(result.current.theme).toBe('auto');
     expect(result.current.resolvedTheme).toBe('light');
   });
+
+  it('updates resolvedTheme when the OS preference changes in auto mode', () => {
+    // Capture the change listener so the test can simulate an OS theme flip.
+    // Pre-fix the handler was setThemeState((prev) => prev) — a React bail-out
+    // no-op — so resolvedTheme consumers never re-rendered on OS theme change.
+    let changeListener;
+    window.matchMedia = (query) => ({
+      matches: false,
+      media: query,
+      addEventListener: (_event, cb) => {
+        changeListener = cb;
+      },
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    });
+
+    const { result } = renderHook(() => useTheme());
+    expect(result.current.resolvedTheme).toBe('light');
+
+    act(() => {
+      changeListener({ matches: true });
+    });
+    expect(result.current.resolvedTheme).toBe('dark');
+
+    act(() => {
+      changeListener({ matches: false });
+    });
+    expect(result.current.resolvedTheme).toBe('light');
+  });
+
+  it('an OS preference change does not affect resolvedTheme for explicit themes', () => {
+    let changeListener;
+    window.matchMedia = (query) => ({
+      matches: false,
+      media: query,
+      addEventListener: (_event, cb) => {
+        changeListener = cb;
+      },
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    });
+
+    const { result } = renderHook(() => useTheme());
+    act(() => {
+      result.current.setTheme('light');
+    });
+    act(() => {
+      changeListener({ matches: true });
+    });
+    expect(result.current.resolvedTheme).toBe('light');
+    // ...but switching to auto picks up the tracked preference immediately.
+    act(() => {
+      result.current.setTheme('auto');
+    });
+    expect(result.current.resolvedTheme).toBe('dark');
+  });
 });

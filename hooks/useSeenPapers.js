@@ -204,16 +204,27 @@ async function migrateFromBriefings({ password, signal }) {
  *   which historically poisoned the index with aborted-run papers).
  */
 export function useSeenPapers({ password = '' } = {}) {
-  const initial = readStored();
-  const initialVersion = Number.isInteger(initial?._dedupeVersion) ? initial._dedupeVersion : 0;
-  const needsMigration = !initial?._migratedAt || initialVersion < CURRENT_DEDUPE_VERSION;
-  // When the stored index predates CURRENT_DEDUPE_VERSION it was built from
-  // sessions (v1) and is poisoned by aborted-run papers. Start the in-memory
-  // state empty so the pipeline doesn't dedupe against bad data during the
-  // rebuild window — localStorage is cleared inside the migration effect.
-  const isVersionUpgrade = needsMigration && Boolean(initial?._migratedAt);
-  const [index, setIndex] = useState(isVersionUpgrade ? {} : (initial ?? {}));
-  const [ready, setReady] = useState(!needsMigration);
+  // One-time bootstrap read, computed lazily at mount. readStored does a
+  // localStorage.getItem + JSON.parse of an index that can reach ~1.25 MB —
+  // running that in the hook body on every App render was pure waste: the
+  // value is only needed to seed state, and this hook owns all writes, so
+  // post-mount renders never need a fresh read.
+  const [bootstrap] = useState(() => {
+    const initial = readStored();
+    const initialVersion = Number.isInteger(initial?._dedupeVersion) ? initial._dedupeVersion : 0;
+    const needsMigration = !initial?._migratedAt || initialVersion < CURRENT_DEDUPE_VERSION;
+    // When the stored index predates CURRENT_DEDUPE_VERSION it was built from
+    // sessions (v1) and is poisoned by aborted-run papers. Start the in-memory
+    // state empty so the pipeline doesn't dedupe against bad data during the
+    // rebuild window — localStorage is cleared inside the migration effect.
+    const isVersionUpgrade = needsMigration && Boolean(initial?._migratedAt);
+    return { initial, needsMigration, isVersionUpgrade };
+  });
+  const { needsMigration, isVersionUpgrade } = bootstrap;
+  const [index, setIndex] = useState(() =>
+    bootstrap.isVersionUpgrade ? {} : (bootstrap.initial ?? {})
+  );
+  const [ready, setReady] = useState(!bootstrap.needsMigration);
 
   // Migration from briefings on disk. Runs when either (a) we've never
   // migrated, or (b) the stored index predates CURRENT_DEDUPE_VERSION.

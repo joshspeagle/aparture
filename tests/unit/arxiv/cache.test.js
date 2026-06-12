@@ -81,6 +81,70 @@ describe('cache', () => {
     );
   });
 
+  it('deletes the expired entry from storage on lookup', () => {
+    store({
+      set: 'cs',
+      from: '2026-04-28',
+      until: '2026-04-29',
+      mode: 'auto',
+      records: [examplePaper('A')],
+      now: 0,
+    });
+    lookup({
+      set: 'cs',
+      from: '2026-04-28',
+      until: '2026-04-29',
+      mode: 'auto',
+      ttlMinutes: 60,
+      now: 60 * 60 * 1000 + 1,
+    });
+    const after = JSON.parse(localStorage.getItem('aparture-arxiv-cache'));
+    expect(after['cs|2026-04-28|2026-04-29|auto']).toBeUndefined();
+  });
+
+  it('windowSemantics is part of the cache key when provided', () => {
+    store({
+      set: 'cs:cs:GT',
+      from: '2026-04-28',
+      until: '2026-04-29',
+      mode: 'auto',
+      windowSemantics: 'submitted-only',
+      records: [examplePaper('A')],
+    });
+    // Other semantics value: miss.
+    expect(
+      lookup({
+        set: 'cs:cs:GT',
+        from: '2026-04-28',
+        until: '2026-04-29',
+        mode: 'auto',
+        windowSemantics: 'submitted-or-updated',
+        ttlMinutes: 60,
+      })
+    ).toBeNull();
+    // No semantics (broad-fetch key shape): also a miss.
+    expect(
+      lookup({
+        set: 'cs:cs:GT',
+        from: '2026-04-28',
+        until: '2026-04-29',
+        mode: 'auto',
+        ttlMinutes: 60,
+      })
+    ).toBeNull();
+    // Matching semantics: hit.
+    expect(
+      lookup({
+        set: 'cs:cs:GT',
+        from: '2026-04-28',
+        until: '2026-04-29',
+        mode: 'auto',
+        windowSemantics: 'submitted-only',
+        ttlMinutes: 60,
+      })
+    ).not.toBeNull();
+  });
+
   it('mode is part of the cache key', () => {
     store({
       set: 'cs',

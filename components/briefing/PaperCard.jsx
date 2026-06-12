@@ -149,7 +149,7 @@ export default function PaperCard({
                     day: 'numeric',
                   })}
                 </span>
-                <span className="paper-comment-text">{c.comment}</span>
+                <span className="paper-comment-text">{c.text}</span>
               </div>
             ))}
           </div>

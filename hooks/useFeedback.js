@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { safeSetItem } from '../lib/persistence/safeStorage.js';
 
 const FEEDBACK_KEY = 'aparture-feedback';
 
@@ -14,9 +15,17 @@ function readInitialEvents() {
   }
 }
 
+// Persist via safeSetItem so a QuotaExceededError can't throw out of the
+// state updaters that call this mid-click — a raw setItem here used to crash
+// the interaction and lose the user's input. On quota failure, log and keep
+// the in-memory state for the session (standard fallback; see safeStorage.js).
 function persist(events) {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(FEEDBACK_KEY, JSON.stringify({ events }));
+  if (typeof window === 'undefined') return;
+  const ok = safeSetItem(FEEDBACK_KEY, JSON.stringify({ events }));
+  if (!ok) {
+    console.warn(
+      '[useFeedback] localStorage quota exceeded; feedback events could not be persisted (in-memory state preserved for this session)'
+    );
   }
 }
 
@@ -158,14 +167,29 @@ export function useFeedback() {
 
   const getNewSince = useCallback((cutoff) => events.filter((e) => e.timestamp > cutoff), [events]);
 
-  return {
-    events,
-    addStar,
-    addDismiss,
-    addPaperComment,
-    addGeneralComment,
-    addFilterOverride,
-    addScopedFeedback,
-    getNewSince,
-  };
+  // Memoized so the returned object is referentially stable across unrelated
+  // renders (App.jsx publishes it into the store's reactContext on every
+  // render and relies on the reference only changing when events change).
+  return useMemo(
+    () => ({
+      events,
+      addStar,
+      addDismiss,
+      addPaperComment,
+      addGeneralComment,
+      addFilterOverride,
+      addScopedFeedback,
+      getNewSince,
+    }),
+    [
+      events,
+      addStar,
+      addDismiss,
+      addPaperComment,
+      addGeneralComment,
+      addFilterOverride,
+      addScopedFeedback,
+      getNewSince,
+    ]
+  );
 }

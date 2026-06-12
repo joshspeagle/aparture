@@ -1,13 +1,15 @@
 // API route to proxy arXiv requests (avoids CORS issues)
 
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { query, maxResults = 300, password } = req.body;
+  const { query, maxResults = 300, password } = req.body ?? {};
 
-  if (password !== process.env.ACCESS_PASSWORD) {
+  if (!checkAccessPassword(password)) {
     return res.status(401).json({ error: 'Invalid password' });
   }
 
@@ -36,7 +38,9 @@ export default async function handler(req, res) {
       headers.From = contactEmail;
     }
 
-    const response = await fetch(url, { headers });
+    // A stalled upstream would otherwise pin this route for undici's ~5 min
+    // default; an Atom page normally returns in seconds.
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(30_000) });
 
     if (response.status === 429 || response.status >= 500) {
       const retryAfter = response.headers.get('retry-after');

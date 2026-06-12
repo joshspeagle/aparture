@@ -147,7 +147,12 @@ export default async function handler(req, res) {
     }
 
     // Repair
-    const { briefing, repaired } = await repairBriefing({
+    const {
+      briefing,
+      repaired,
+      tokensIn: repairTokensIn,
+      tokensOut: repairTokensOut,
+    } = await repairBriefing({
       briefing: response.structured,
       inputPaperIds,
       callModel: (input) => callModel(input, callMode),
@@ -156,8 +161,8 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       briefing,
-      tokensIn: response.tokensIn,
-      tokensOut: response.tokensOut,
+      tokensIn: response.tokensIn + (repairTokensIn ?? 0),
+      tokensOut: response.tokensOut + (repairTokensOut ?? 0),
       repaired,
       preflight,
       originalValidationErrors: validation.errors,

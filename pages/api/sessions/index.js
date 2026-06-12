@@ -11,6 +11,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
+import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
 
 // Next.js' default API body limit is 1mb; a full session payload (allPapers
 // + scoredPapers + full filterResults verdicts) for a 600+-paper run is in
@@ -35,7 +36,7 @@ function validateId(id) {
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const password = req.query.password;
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     const dir = getSessionsDir();
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const { password, entry } = req.body ?? {};
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     if (!entry || typeof entry !== 'object') {
@@ -74,7 +75,9 @@ export default async function handler(req, res) {
       await fs.mkdir(dir, { recursive: true });
       await sweepStaleTmpOrphans(dir);
       const serialized = JSON.stringify(entry, null, 2);
-      const tmpPath = `${filePath}.tmp`;
+      // Unique tmp suffix: concurrent saves for the same id must not
+      // interleave on a shared tmp file.
+      const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
       await fs.writeFile(tmpPath, serialized, 'utf8');
       await fs.rename(tmpPath, filePath);
       return res

@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const password = req.query.password;
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     try {
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     const password = req.query.password;
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     try {
