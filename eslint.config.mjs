@@ -58,6 +58,7 @@ export default [
         DOMParser: 'readonly',
         XPathResult: 'readonly',
         AbortController: 'readonly',
+        AbortSignal: 'readonly',
         DOMException: 'readonly',
         Storage: 'readonly',
         // Node.js globals

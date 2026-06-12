@@ -187,6 +187,21 @@ function extractParsed(result) {
   }
 }
 
+// SSRF guard: pdfUrl is client-controlled and fetched server-side. Without
+// an allowlist the server could be pointed at internal/loopback/metadata
+// endpoints. The Playwright fallback is already constrained to arxiv.org via
+// the extracted ID; this brings the direct-fetch path in line.
+const ALLOWED_PDF_HOSTS = new Set(['arxiv.org', 'www.arxiv.org', 'export.arxiv.org']);
+
+function isAllowedPdfUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && ALLOWED_PDF_HOSTS.has(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Static cacheable prefix: scoring rubric + user profile.
  * Identical for every PDF call in a run with the same scoringCriteria.
@@ -208,7 +223,7 @@ export default async function handler(req, res) {
     correctionPrompt,
     callModelMode,
     _testPdfBase64, // test escape hatch: skip download in NODE_ENV=test
-  } = req.body;
+  } = req.body ?? {};
 
   // Resolve auth + API key
   const modelConfig = MODEL_REGISTRY[model];
@@ -271,6 +286,9 @@ export default async function handler(req, res) {
       if (_testPdfBase64 && process.env.NODE_ENV === 'test') {
         base64Data = _testPdfBase64;
       } else {
+        if (!isAllowedPdfUrl(pdfUrl)) {
+          return res.status(400).json({ error: 'pdfUrl must be an https://arxiv.org URL' });
+        }
         // Download PDF for normal analysis - try direct fetch first, fallback to Playwright if blocked
         console.log('Downloading PDF from:', pdfUrl);
         let pdfBuffer;
@@ -285,6 +303,7 @@ export default async function handler(req, res) {
               'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             },
+            signal: AbortSignal.timeout(120_000),
           });
 
           // On 429/503 with a Retry-After, honor the header and retry once
@@ -303,6 +322,7 @@ export default async function handler(req, res) {
                 'User-Agent':
                   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
               },
+              signal: AbortSignal.timeout(120_000),
             });
           }
 

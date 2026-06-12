@@ -272,12 +272,6 @@ const getModelsByProvider = (provider) => {
 };
 
 // Default model configuration
-const DEFAULT_MODELS = {
-  filterModel: 'gemini-2.5-flash-lite',
-  scoringModel: 'gemini-3-flash',
-  pdfModel: 'gemini-3.1-pro',
-};
-
 // Export for both CommonJS and ES modules
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -287,14 +281,12 @@ if (typeof module !== 'undefined' && module.exports) {
     getModelsForPDF,
     getModelsForQuickFilter,
     getModelsByProvider,
-    DEFAULT_MODELS,
   };
 }
 
 // ES module exports
 export {
   AVAILABLE_MODELS,
-  DEFAULT_MODELS,
   getModel,
   getModelsByProvider,
   getModelsForPDF,

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
   // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
   let apiKey = clientApiKey;
   if (!apiKey && password) {
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       res.status(401).json({ error: 'invalid password' });
       return;
     }
@@ -50,12 +51,12 @@ export default async function handler(req, res) {
     const template = await fs.readFile(templatePath, 'utf8');
 
     const fullPrompt = template
-      .replaceAll('{{title}}', paper.title ?? '')
-      .replaceAll('{{authors}}', (paper.authors ?? []).join(', '))
-      .replaceAll('{{arxivId}}', paper.arxivId)
-      .replaceAll('{{fullReport}}', fullReport)
-      .replaceAll('{{abstract}}', paper.abstract ?? '')
-      .replaceAll('{{scoringJustification}}', paper.scoringJustification ?? '');
+      .replaceAll('{{title}}', () => paper.title ?? '')
+      .replaceAll('{{authors}}', () => (paper.authors ?? []).join(', '))
+      .replaceAll('{{arxivId}}', () => paper.arxivId)
+      .replaceAll('{{fullReport}}', () => fullReport)
+      .replaceAll('{{abstract}}', () => paper.abstract ?? '')
+      .replaceAll('{{scoringJustification}}', () => paper.scoringJustification ?? '');
 
     // The stable cache prefix is the template text before the first per-paper
     // placeholder ({{title}}). The variable tail is the rendered paper content.

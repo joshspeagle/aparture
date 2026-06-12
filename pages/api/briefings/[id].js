@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
+import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const password = req.query.password;
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     try {
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     const password = req.query.password;
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     try {
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     const { password, patch } = req.body ?? {};
-    if (password !== process.env.ACCESS_PASSWORD) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     if (!patch || typeof patch !== 'object') {
@@ -83,7 +84,9 @@ export default async function handler(req, res) {
       const current = JSON.parse(raw);
       const merged = { ...current, ...safePatch };
       const serialized = JSON.stringify(merged, null, 2);
-      const tmpPath = `${resolved.filePath}.tmp`;
+      // Unique tmp suffix: concurrent writes for the same id must not
+      // interleave on a shared tmp file.
+      const tmpPath = `${resolved.filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
       await sweepStaleTmpOrphans(resolved.dir);
       await fs.writeFile(tmpPath, serialized, 'utf8');
       await fs.rename(tmpPath, resolved.filePath);

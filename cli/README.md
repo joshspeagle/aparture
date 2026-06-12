@@ -118,7 +118,6 @@ Located in `cli/tests/`:
 - `test-browser-auth.js` - Phase 2: Authentication
 - `test-browser-dryrun.js` - Phase 3: Dry run workflow
 - `test-browser-minimal.js` - Phase 4: Minimal API test (3 papers)
-- `test-notebooklm.js` - Phase 6: NotebookLM automation test
 
 ## Workflow Details
 
@@ -344,15 +343,6 @@ npm run test:dryrun
 npm run test:minimal
 ```
 
-### Testing NotebookLM Independently
-
-```bash
-# Test NotebookLM automation with existing files
-node cli/tests/test-notebooklm.js
-```
-
-Uses existing report files from `reports/` to test podcast generation without running full analysis.
-
 ## Development
 
 ### Running Individual Test Phases
@@ -371,9 +361,6 @@ npm run test:dryrun
 # Phase 4: Minimal API test
 node cli/tests/test-browser-minimal.js
 npm run test:minimal
-
-# Phase 6b: NotebookLM
-node cli/tests/test-notebooklm.js
 ```
 
 ### File Structure
@@ -393,7 +380,6 @@ cli/
     ├── test-browser-auth.js
     ├── test-browser-dryrun.js
     ├── test-browser-minimal.js
-    ├── test-notebooklm.js
     ├── test-config.js
     ├── test-server.js
     ├── test-pdf-download.js

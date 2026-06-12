@@ -3,10 +3,7 @@ import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-
-function checkPassword(password) {
-  return password === process.env.ACCESS_PASSWORD;
-}
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 // Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
 // Portable subset only; value constraints enforced in validateRescoreResponse.
@@ -131,7 +128,7 @@ export default async function handler(req, res) {
 
   let apiKey = clientApiKey;
   if (!apiKey && password) {
-    if (!checkPassword(password)) {
+    if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
     if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
@@ -147,6 +144,13 @@ export default async function handler(req, res) {
   const isFixture = callMode.mode === 'fixture';
   const cacheable = provider === 'anthropic';
   const expectedCount = (papers ?? []).length;
+
+  // Empty batch is a no-op: a real call would render an empty papers section,
+  // fail count validation on any model output, retry, and 502 — billing two
+  // calls for nothing. Mirrors score-abstracts' early return.
+  if (!correctionPrompt && expectedCount === 0) {
+    return res.status(200).json({ rescores: [], rawResponse: '[]' });
+  }
 
   const structuredOutput = {
     name: 'rescore_response',
