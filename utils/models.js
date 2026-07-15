@@ -92,8 +92,8 @@ const MODEL_REGISTRY = {
   'gemini-3.5-flash': {
     apiId: 'gemini-3.5-flash',
     provider: 'Google',
-    inputPerMTok: null,
-    outputPerMTok: null,
+    inputPerMTok: 1.5,
+    outputPerMTok: 9.0,
   },
 
   // Google — Gemini 3.x (mixed preview / GA)

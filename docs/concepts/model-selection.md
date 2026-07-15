@@ -36,7 +36,7 @@ The registry in `utils/models.js` is the authoritative source (it now carries pe
 | `claude-sonnet-4.6` | `claude-sonnet-4-6` | 1M      | $3 / $15       | Yes               |
 | `claude-haiku-4.5`  | `claude-haiku-4-5`  | 200k    | $1 / $5        | No                |
 
-Opus 4.8 is the current flagship; Sonnet 5 launched with introductory pricing ($2 / $10 through 2026-08-31, then $3 / $15). The pre-4.6 legacy entries (Opus 4.5/4.1, Sonnet 4.5, Haiku 3.5) were removed from the registry in July 2026: Haiku 3.5's API ID was retired upstream (selecting it returned a live 404), Opus 4.1 retires 2026-08-05, and the others predate adaptive thinking. Saved configs pointing at any of them are migrated automatically to the closest current-generation equivalent.
+Opus 4.8 is the current flagship; Sonnet 5 launched with introductory pricing ($2 / $10 through 2026-08-31, then $3 / $15 — the table above shows the post-intro list price). The pre-4.6 legacy entries (Opus 4.5/4.1, Sonnet 4.5, Haiku 3.5) were removed from the registry in July 2026: Haiku 3.5's API ID was retired upstream (selecting it returned a live 404), Opus 4.1 retires 2026-08-05, and the others predate adaptive thinking. Saved configs pointing at any of them are migrated automatically to the closest current-generation equivalent.
 
 ### OpenAI (GPT)
 
@@ -60,11 +60,11 @@ OpenAI caches automatically when prompt prefixes repeat, so the cached-input col
 
 ### Google (Gemini)
 
-Gemini 3.5 Flash reached GA and is Google's current top model — it is also Aparture's shipped default for the scoring, post-processing, PDF, and briefing slots. Its per-token pricing was not published in our 2026-07 snapshot (the registry records `null` rather than a guess); check Google's pricing page before high-volume runs.
+Gemini 3.5 Flash reached GA and is Google's current top model — it is also Aparture's shipped default for the scoring, post-processing, PDF, and briefing slots. Its list pricing is $1.50 / $9.00 per million tokens (input/output), verified against Google's pricing page in the 2026-07 snapshot.
 
 | User-facing ID     | API ID             | Input / Output |
 | ------------------ | ------------------ | -------------- |
-| `gemini-3.5-flash` | `gemini-3.5-flash` | see Google     |
+| `gemini-3.5-flash` | `gemini-3.5-flash` | $1.50 / $9.00  |
 
 Gemini 3.x tier. Pro and Flash are still preview-only upstream (Google has already shut down sibling previews, so treat these as churn-prone); Flash-Lite reached GA in May 2026. The user-facing IDs stay stable when Google graduates the remaining previews — only the API IDs change.
 
@@ -119,7 +119,7 @@ All-Google, GA models only. What `DEFAULT_CONFIG` sets.
 | `briefingModel`       | `gemini-3.5-flash`      |
 | `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
-Gemini 3.5 Flash pricing was not published in our 2026-07 snapshot, so no ballpark total is quoted here — check Google's pricing page. The previous all-3.x-preview default ran roughly $1.00–2.50 per 100-paper run for scale.
+Ballpark cost for a 100-paper run: roughly $1.00–2.00 at Gemini 3.5 Flash's $1.50 / $9.00 list pricing — in the same band as the previous all-3.x-preview default (roughly $1.00–2.50), since 3.5 Flash undercuts the Gemini 3.1 Pro that used to hold the PDF and briefing slots.
 
 ### Free tier (Gemini 2.5 throughout)
 

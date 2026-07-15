@@ -73,7 +73,7 @@ Sonnet 5 and Opus 4.8 share list pricing with the Sonnet 4.6 / Opus 4.7 generati
 
 ### Google
 
-Aparture's shipped defaults now use GA `gemini-3.5-flash` for scoring, PDFs, and briefing; its per-token pricing was not published in our 2026-07 snapshot, so the worked table below keeps the previous Gemini 3.x preview lineup for scale.
+Aparture's shipped defaults now use GA `gemini-3.5-flash` for scoring, PDFs, and briefing, priced at $1.50 / $9.00 per MTok (input/output) as of 2026-07. The worked table below keeps the previous Gemini 3.x preview lineup for scale.
 
 | Stage                   | Model                 | 100 papers in | 250 papers in |
 | ----------------------- | --------------------- | ------------: | ------------: |
