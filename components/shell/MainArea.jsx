@@ -315,7 +315,7 @@ export default function MainArea({
   if (activeView === 'welcome') {
     return (
       <div className="briefing-surface">
-        <WelcomeView />
+        <WelcomeView profile={profile} config={config} testState={testState} />
       </div>
     );
   }

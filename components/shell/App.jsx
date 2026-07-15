@@ -12,6 +12,7 @@ import { exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
 import { createAnalysisPipeline } from '../../lib/analyzer/pipeline.js';
 import { readInitialConfig, useAnalyzerPersistence } from '../../hooks/useAnalyzerPersistence.js';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import { useGateTitle } from '../../hooks/useGateTitle.js';
 import { useProfile } from '../../hooks/useProfile.js';
 import { useBriefing } from '../../hooks/useBriefing.js';
 import { useFeedback } from '../../hooks/useFeedback.js';
@@ -578,6 +579,10 @@ export default function App() {
   const processingTiming = useAnalyzerStore((s) => s.processingTiming);
   const testState = useAnalyzerStore((s) => s.testState);
   const isAuthenticated = useAnalyzerStore((s) => s.isAuthenticated);
+
+  // Flip the tab title while the pipeline waits at a review gate; restores
+  // the previous title when processing resumes or ends.
+  useGateTitle(processing.stage);
 
   // MS (score-review gate) state.
   const msStarredIds = useAnalyzerStore((s) => s.msStarredIds);
@@ -1229,16 +1234,29 @@ export default function App() {
                 color: 'var(--aparture-accent)',
               }}
             />
+            {/* Wordmark — same serif Ap[ar]ture treatment as the sidebar logo. */}
             <h1
               style={{
-                fontFamily: 'var(--aparture-font-sans)',
+                fontFamily: 'var(--aparture-font-serif)',
                 fontSize: 'var(--aparture-text-2xl)',
                 fontWeight: 700,
+                letterSpacing: '-0.01em',
                 color: 'var(--aparture-ink)',
                 marginBottom: '8px',
               }}
             >
-              aparture
+              <span>Ap</span>
+              <span
+                style={{
+                  color: 'var(--aparture-accent)',
+                  fontWeight: 700,
+                  borderBottom: '3px solid var(--aparture-accent)',
+                  paddingBottom: '2px',
+                }}
+              >
+                ar
+              </span>
+              <span>ture</span>
             </h1>
             <p
               style={{
@@ -1247,7 +1265,7 @@ export default function App() {
                 color: 'var(--aparture-mute)',
               }}
             >
-              Enter password to access
+              Enter the <code>ACCESS_PASSWORD</code> from your <code>.env.local</code> file.
             </p>
           </div>
 
@@ -1292,8 +1310,28 @@ export default function App() {
                 transition: 'all 150ms ease',
               }}
             >
-              {authing ? 'Checking…' : 'Access Analyzer'}
+              {authing ? 'Checking…' : 'Unlock'}
             </button>
+
+            <p
+              style={{
+                fontFamily: 'var(--aparture-font-sans)',
+                fontSize: 'var(--aparture-text-xs)',
+                color: 'var(--aparture-mute)',
+                textAlign: 'center',
+                margin: 0,
+              }}
+            >
+              First time here?{' '}
+              <a
+                href="https://joshspeagle.github.io/aparture/getting-started/install"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: 'var(--aparture-mute)', textDecoration: 'underline' }}
+              >
+                Install guide ↗
+              </a>
+            </p>
           </div>
 
           {processing.errors.length > 0 && (

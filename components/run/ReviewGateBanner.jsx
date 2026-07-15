@@ -40,6 +40,18 @@ export default function ReviewGateBanner({
           {title}
         </h2>
         <div style={{ flex: 1 }} />
+        <a
+          href="https://joshspeagle.github.io/aparture/using/review-gates"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: 'var(--aparture-mute)',
+            fontSize: 'var(--aparture-text-xs)',
+            textDecoration: 'none',
+          }}
+        >
+          docs ↗
+        </a>
         {onSkipRemaining && (
           <button
             type="button"
