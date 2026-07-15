@@ -711,7 +711,8 @@ describe('migrateLegacyConfig — v7 → v8', () => {
     };
     const result = migrateLegacyConfig(v7Config);
     expect(result.pauseBeforeDeepAnalysis).toBe(true);
-    expect(result.version).toBe(8);
+    // Migrations chain: v7 configs land on the current version.
+    expect(result.version).toBe(DEFAULT_CONFIG.version);
   });
   it('preserves existing pauseBeforeDeepAnalysis if already set', () => {
     const config = { version: 7, pauseBeforeDeepAnalysis: false };
@@ -720,8 +721,67 @@ describe('migrateLegacyConfig — v7 → v8', () => {
   });
 });
 
+describe('migrateLegacyConfig — v8 → v9 (removed Anthropic model remap)', () => {
+  it('remaps every removed Anthropic ID across all model slots', () => {
+    const v8Config = {
+      version: 8,
+      filterModel: 'claude-haiku-3.5',
+      scoringModel: 'claude-sonnet-4.5',
+      postProcessingModel: 'claude-opus-4.5',
+      pdfModel: 'claude-opus-4.1',
+      briefingModel: 'claude-opus-4.5',
+      quickSummaryModel: 'claude-haiku-3.5',
+      notebookLMModel: 'claude-sonnet-4.5',
+    };
+    const result = migrateLegacyConfig(v8Config);
+    expect(result.version).toBe(9);
+    expect(result.filterModel).toBe('claude-haiku-4.5');
+    expect(result.scoringModel).toBe('claude-sonnet-5');
+    expect(result.postProcessingModel).toBe('claude-opus-4-8');
+    expect(result.pdfModel).toBe('claude-opus-4-8');
+    expect(result.briefingModel).toBe('claude-opus-4-8');
+    expect(result.quickSummaryModel).toBe('claude-haiku-4.5');
+    expect(result.notebookLMModel).toBe('claude-sonnet-5');
+  });
+
+  it('leaves still-registered model selections untouched', () => {
+    const v8Config = {
+      version: 8,
+      filterModel: 'gemini-3.1-flash-lite',
+      scoringModel: 'gemini-3-flash',
+      pdfModel: 'gemini-3.1-pro',
+      briefingModel: 'claude-opus-4.7',
+      quickSummaryModel: 'gpt-5.4-nano',
+    };
+    const result = migrateLegacyConfig(v8Config);
+    expect(result.version).toBe(9);
+    // Preview Google IDs still work; explicit user selections are preserved.
+    expect(result.filterModel).toBe('gemini-3.1-flash-lite');
+    expect(result.scoringModel).toBe('gemini-3-flash');
+    expect(result.pdfModel).toBe('gemini-3.1-pro');
+    expect(result.briefingModel).toBe('claude-opus-4.7');
+    expect(result.quickSummaryModel).toBe('gpt-5.4-nano');
+  });
+
+  it('chains from older versions through the remap (v7 with a retired model)', () => {
+    const v7Config = { version: 7, pdfModel: 'claude-opus-4.1' };
+    const result = migrateLegacyConfig(v7Config);
+    expect(result.version).toBe(9);
+    expect(result.pauseBeforeDeepAnalysis).toBe(true);
+    expect(result.pdfModel).toBe('claude-opus-4-8');
+  });
+});
+
 describe('DEFAULT_CONFIG', () => {
   it('includes pauseBeforeDeepAnalysis: true', () => {
     expect(DEFAULT_CONFIG.pauseBeforeDeepAnalysis).toBe(true);
+  });
+
+  it('defaults model slots to GA models (no preview-only heavy slots)', () => {
+    expect(DEFAULT_CONFIG.version).toBe(9);
+    expect(DEFAULT_CONFIG.scoringModel).toBe('gemini-3.5-flash');
+    expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.5-flash');
+    expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.5-flash');
+    expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.5-flash');
   });
 });

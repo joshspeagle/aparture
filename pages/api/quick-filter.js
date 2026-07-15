@@ -2,6 +2,7 @@ import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
@@ -135,11 +136,13 @@ export default async function handler(req, res) {
     else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
   }
 
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
+  if (!apiKey && callMode.mode !== 'fixture') {
     return res.status(401).json({ error: 'missing credentials' });
   }
 
-  const callMode = callModelMode ?? { mode: 'live' };
   const isFixture = callMode.mode === 'fixture';
   const cacheable = provider === 'anthropic';
   const expectedCount = (papers ?? []).length;

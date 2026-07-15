@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAnalyzerStore } from '../../../stores/analyzerStore.js';
+import { DEFAULT_MODEL_ID } from '../../../utils/models.js';
 
 beforeEach(() => {
   // Reset the store to pristine data values between tests via the
@@ -107,10 +108,10 @@ describe('analyzerStore — testState slice', () => {
 });
 
 describe('analyzerStore — notebookLM slice', () => {
-  it('starts with defaults (20 minutes, gemini-3.1-pro)', () => {
+  it('starts with defaults (20 minutes, DEFAULT_MODEL_ID)', () => {
     const { notebookLM } = useAnalyzerStore.getState();
     expect(notebookLM.podcastDuration).toBe(20);
-    expect(notebookLM.notebookLMModel).toBe('gemini-3.1-pro');
+    expect(notebookLM.notebookLMModel).toBe(DEFAULT_MODEL_ID);
     expect(notebookLM.notebookLMStatus).toBe('');
     expect(notebookLM.notebookLMContent).toBeNull();
     expect(notebookLM.notebookLMGenerating).toBe(false);

@@ -5,6 +5,7 @@
 // useAnalyzerStore.getState(), and no React Context provider is needed.
 
 import { create } from 'zustand';
+import { DEFAULT_MODEL_ID } from '../utils/models.js';
 
 // Initial state factory — called from tests to reset between cases,
 // and used once at store creation. Separated so the test harness can
@@ -56,7 +57,7 @@ export function initialState() {
     // --- notebookLM slice ---
     notebookLM: {
       podcastDuration: 20,
-      notebookLMModel: 'gemini-3.1-pro',
+      notebookLMModel: DEFAULT_MODEL_ID,
       notebookLMStatus: '',
       notebookLMContent: null,
       notebookLMGenerating: false,

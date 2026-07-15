@@ -6,7 +6,7 @@
 import { Lock } from 'lucide-react';
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MODEL_REGISTRY } from '../../utils/models';
+import { DEFAULT_MODEL_ID, MODEL_REGISTRY } from '../../utils/models';
 import { runBriefingGeneration } from '../../lib/analyzer/briefingClient.js';
 import { exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
 import { createAnalysisPipeline } from '../../lib/analyzer/pipeline.js';
@@ -1077,7 +1077,7 @@ export default function App() {
 
   // --- Briefing generation ---
   const handleGenerateBriefing = () => {
-    const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? 'gemini-3.1-pro';
+    const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? DEFAULT_MODEL_ID;
     const filterVerdictCounts = {
       yes: filterResults.yes?.length ?? 0,
       maybe: filterResults.maybe?.length ?? 0,
@@ -1462,7 +1462,7 @@ export default function App() {
         newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
         briefingHistory={briefingHistory}
         cap={{ commentCap: 30 }}
-        briefingModel={config.briefingModel ?? config.pdfModel ?? 'gemini-3.1-pro'}
+        briefingModel={config.briefingModel ?? config.pdfModel ?? DEFAULT_MODEL_ID}
         provider={(
           MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
         ).toLowerCase()}

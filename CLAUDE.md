@@ -156,9 +156,9 @@ All LLM-calling routes go through `lib/llm/callModel.js` — never call a provid
 3. Top-level schema MUST be `type: 'object'`. Wrap arrays as `{items: [...]}`.
 4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce in the validator.
 
-Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking on model family (Opus/Sonnet on, Haiku off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
+Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking on model family + version (Opus/Sonnet 4.6+ and 5.x on; Haiku and pre-4.6 legacy IDs off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
 
-**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` and skip the `!apiKey` 401 when `callModelMode?.mode === 'fixture'`.
+**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` and skip the `!apiKey` 401 when `callMode.mode === 'fixture'`. Always resolve `callMode` via `resolveCallModelMode(callModelMode)` (`lib/llm/resolveCallModelMode.js`): client-supplied fixture mode is honored only under `NODE_ENV === 'test'` and forced back to live in production.
 
 ### Analyzer module split
 
@@ -241,7 +241,7 @@ Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/s
 
 **Source of truth:** `utils/models.js` (`MODEL_REGISTRY` + `AVAILABLE_MODELS`). Don't duplicate IDs/pricing here — they rot fast.
 
-**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is gated on model family — enabled for Opus/Sonnet, disabled for Haiku. When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
+**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is gated on model family + version — enabled for Opus/Sonnet 4.6+ (including the 5.x line), disabled for Haiku and pre-4.6 Opus/Sonnet IDs (which require the older `{type: "enabled", budget_tokens}` shape). When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
 
 **Not in the registry:** OpenAI o-series (`o3`, `o4-mini`) and xAI Grok. Adding Grok would need a new `lib/llm/structured/xai.js` adapter — xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
 

@@ -8,6 +8,7 @@ import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
 import { repairBriefing } from '../../lib/synthesis/repair.js';
 import { estimateTokens, budgetPreflight } from '../../lib/llm/tokenBudget.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 export default async function handler(req, res) {
@@ -45,9 +46,12 @@ export default async function handler(req, res) {
     return;
   }
   const apiKey = resolved.apiKey;
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
   // Skip the auth check in fixture mode — fixture-based tests don't need a
   // real key because callModel never actually hits the network.
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  if (!apiKey && callMode.mode !== 'fixture') {
     res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }
@@ -74,25 +78,35 @@ export default async function handler(req, res) {
     // `cachePrefix + variableTail === fullPrompt` holds byte-for-byte.
     const papersSlotPos = template.indexOf('{{papers}}');
     const templatePrefix = template.slice(0, papersSlotPos);
-    const cachePrefix = templatePrefix.replaceAll('{{profile}}', profile ?? '');
-    const splitIndex = cachePrefix.length;
+    // Function replacement: a string value would get GetSubstitution semantics
+    // ($$, $&, $`, $') and corrupt LaTeX-bearing profiles — matching
+    // lib/synthesis/renderPrompt.js.
+    const cachePrefix = templatePrefix.replaceAll('{{profile}}', () => profile ?? '');
 
     // Phase 1.5.1: optional retry hint from the client-side hallucination
     // check + retry flow. Appended to the prompt so the model knows this is
     // a second attempt and needs to ground claims more carefully.
-    const variableTail = retryHint
-      ? `${fullPrompt.slice(splitIndex)}\n\n# Retry hint from validator\n\n${retryHint}`
-      : fullPrompt.slice(splitIndex);
+    const hintSuffix = retryHint ? `\n\n# Retry hint from validator\n\n${retryHint}` : '';
 
     // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
     // tests. When active (or when running in fixture mode), disable caching so
     // the fixture hash keys only on {provider, model, prompt, apiKey} — a
     // predictable, stable value.
     const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
-    const callMode = callModelMode ?? { mode: 'live' };
     const isFixture = callMode.mode === 'fixture';
-    const finalPrompt = promptOverride ?? cachePrefix + variableTail;
-    const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;
+    const finalPrompt = promptOverride ?? fullPrompt + hintSuffix;
+    // Defensive prefix check (mirrors suggest-profile): the computed
+    // cachePrefix must be a byte-for-byte prefix of the full rendered prompt,
+    // or the cache split would corrupt the prompt. On mismatch, fall back to
+    // sending the intact full prompt uncached rather than erroring.
+    const useCaching =
+      provider === 'anthropic' &&
+      !isFixture &&
+      !promptOverride &&
+      fullPrompt.startsWith(cachePrefix);
+    const variableTail = useCaching
+      ? fullPrompt.slice(cachePrefix.length) + hintSuffix
+      : finalPrompt;
 
     // Token budget pre-flight (estimate against the full prompt string)
     const estimatedTokens = estimateTokens({ provider, model: modelApiId, text: finalPrompt });

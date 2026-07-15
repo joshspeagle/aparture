@@ -19,7 +19,7 @@ The current-generation models from all three providers are broadly comparable on
 
 <a class="landing-card" href="/aparture/getting-started/api-keys-google.html">
   <h3>Google Gemini</h3>
-  <p>Free tier covers an all-Flash model setup end-to-end, and no credit card is needed to start. Using Gemini 3.1 Pro (the stronger model Aparture defaults to for PDF analysis and briefing) requires enabling billing.</p>
+  <p>Free tier covers an all-Flash model setup end-to-end, and no credit card is needed to start. Aparture's out-of-the-box defaults now use GA Gemini Flash models throughout; only the optional Gemini 3.1 Pro (Preview) upgrade requires enabling billing.</p>
 </a>
 
 <a class="landing-card" href="/aparture/getting-started/api-keys-openai.html">
@@ -61,15 +61,19 @@ Per-stage breakdown for the recommended picks on each provider. The reference ca
 
 ### Anthropic
 
-| Stage                   | Model             | 100 papers in | 250 papers in |
-| ----------------------- | ----------------- | ------------: | ------------: |
-| Filter                  | Claude Haiku 4.5  |         $0.07 |         $0.16 |
-| Scoring                 | Claude Sonnet 4.6 |         $0.23 |         $0.47 |
-| PDFs + briefing + audit | Claude Opus 4.7   |         $2.99 |         $4.45 |
-| Quick summaries         | Claude Haiku 4.5  |         $0.07 |         $0.11 |
-| **Total / run**         |                   |    **~$3.35** |    **~$5.20** |
+| Stage                   | Model            | 100 papers in | 250 papers in |
+| ----------------------- | ---------------- | ------------: | ------------: |
+| Filter                  | Claude Haiku 4.5 |         $0.07 |         $0.16 |
+| Scoring                 | Claude Sonnet 5  |         $0.23 |         $0.47 |
+| PDFs + briefing + audit | Claude Opus 4.8  |         $2.99 |         $4.45 |
+| Quick summaries         | Claude Haiku 4.5 |         $0.07 |         $0.11 |
+| **Total / run**         |                  |    **~$3.35** |    **~$5.20** |
+
+Sonnet 5 and Opus 4.8 share list pricing with the Sonnet 4.6 / Opus 4.7 generation they replaced, so the totals carry over unchanged.
 
 ### Google
+
+Aparture's shipped defaults now use GA `gemini-3.5-flash` for scoring, PDFs, and briefing; its per-token pricing was not published in our 2026-07 snapshot, so the worked table below keeps the previous Gemini 3.x preview lineup for scale.
 
 | Stage                   | Model                 | 100 papers in | 250 papers in |
 | ----------------------- | --------------------- | ------------: | ------------: |
@@ -93,7 +97,7 @@ Prompt caching (explicit on Anthropic, automatic on OpenAI, not wired for Google
 
 ## Can I run completely free?
 
-Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and the 3.x preview counterparts) — all of those are free for free-tier accounts. The only Gemini model that isn't free is Gemini 3.1 Pro Preview, which Aparture's out-of-the-box defaults use for PDF analysis and briefing. If you want everything free on Google, swap those two slots to a Flash model in Settings.
+Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and their 3.x counterparts) — Google's free tier covers Flash-family models. Aparture's out-of-the-box defaults are now all Flash-family (GA `gemini-3.5-flash` plus `gemini-3.1-flash-lite`); the only registered Gemini model that requires a paid tier is Gemini 3.1 Pro (Preview). Check your per-model caps in AI Studio, since free-tier coverage for newly released models can lag.
 
 Two caveats worth knowing up front:
 
@@ -119,4 +123,4 @@ Key added and dev server restarted? Confirm it works: [Verify your setup →](/g
 
 ---
 
-_Pricing snapshot taken 2026-04-19. Provider pricing, free-tier policies, and rate-limit tiers drift over time. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/docs/about-claude/models), [developers.openai.com/api/docs](https://developers.openai.com/api/docs/pricing), and [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to production volumes._
+_Pricing snapshot taken 2026-07-15. Provider pricing, free-tier policies, and rate-limit tiers drift over time. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/docs/about-claude/models), [developers.openai.com/api/docs](https://developers.openai.com/api/docs/pricing), and [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) before committing to production volumes._

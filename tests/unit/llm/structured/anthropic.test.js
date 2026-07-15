@@ -55,6 +55,45 @@ describe('buildAnthropicRequest', () => {
     expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
   });
 
+  // Adaptive thinking is version-gated: only 4.6+ Opus/Sonnet (and the 5.x
+  // line) get `thinking: {type: 'adaptive'}`. Pre-4.6 Opus/Sonnet require
+  // the older `{type: 'enabled', budget_tokens}` shape and 400 on adaptive.
+  it.each([
+    ['claude-opus-4-8', true],
+    ['claude-opus-4-7', true],
+    ['claude-opus-4-6', true],
+    ['claude-sonnet-5', true],
+    ['claude-sonnet-4-6', true],
+    ['claude-opus-4.7', true], // dotted user-facing form
+    ['claude-opus-4-5', false], // pre-4.6 legacy — adaptive would 400
+    ['claude-opus-4-1', false],
+    ['claude-sonnet-4-5', false],
+    ['claude-sonnet-4-5-20250929', false], // date-stamped legacy apiId
+    ['claude-haiku-4-5', false], // Haiku never supports adaptive thinking
+    ['claude-haiku-5', false],
+    ['claude-3-5-sonnet-20241022', false], // old date-first naming
+  ])('adaptive thinking gate: %s → %s', (model, expected) => {
+    const req = buildAnthropicRequest({ model, prompt: 'Hi.' });
+    if (expected) {
+      expect(req.body.thinking).toEqual({ type: 'adaptive' });
+    } else {
+      expect(req.body.thinking).toBeUndefined();
+    }
+  });
+
+  it('forces tool_choice on pre-4.6 Opus/Sonnet (thinking off)', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-opus-4-5',
+      prompt: 'Summarize.',
+      structuredOutput: {
+        name: 'summary',
+        schema: { type: 'object', properties: { headline: { type: 'string' } } },
+      },
+    });
+    expect(req.body.thinking).toBeUndefined();
+    expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
+  });
+
   it('defaults max_tokens to 16000 for thinking overhead', () => {
     const req = buildAnthropicRequest({
       model: 'claude-opus-4-7',

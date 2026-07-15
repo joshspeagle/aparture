@@ -5,6 +5,7 @@ import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
 import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryAfter.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -246,11 +247,12 @@ export default async function handler(req, res) {
     return res.status(authStatus).json({ error: authError });
   }
 
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
+  if (!apiKey && callMode.mode !== 'fixture') {
     return res.status(401).json({ error: 'missing credentials' });
   }
-
-  const callMode = callModelMode ?? { mode: 'live' };
 
   const structuredOutput = {
     name: 'pdf_analysis',
