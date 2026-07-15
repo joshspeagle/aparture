@@ -41,7 +41,7 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 
 ### `ACCESS_PASSWORD`
 
-The password that gates every API route. The web UI sends it in the `password` field on every request; each route compares it to `process.env.ACCESS_PASSWORD` and returns `401 Invalid password` on mismatch. The check fails closed: when `ACCESS_PASSWORD` is unset or empty, every request is rejected rather than silently accepted. Never sent to the browser — the client stores only what the user typed.
+The password that gates every API route. The web UI sends it in the `password` field of the JSON body on POST/PATCH requests, and in the `x-aparture-password` request header on GET/DELETE requests (never in the URL query string, which would leak into dev-server logs and browser history); each route validates it against `process.env.ACCESS_PASSWORD` with a constant-time comparison and returns `401 Invalid password` on mismatch. The check fails closed: when `ACCESS_PASSWORD` is unset or empty, every request is rejected rather than silently accepted. Never sent to the browser — the client stores only what the user typed.
 
 ```bash
 ACCESS_PASSWORD=correct-horse-battery-staple

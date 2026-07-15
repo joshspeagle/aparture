@@ -33,7 +33,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    const password = req.query.password;
+    // Auth via request header, NOT the query string — `?password=` leaks
+    // into dev-server logs and browser history.
+    const password = req.headers?.['x-aparture-password'];
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
@@ -48,7 +50,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
-    const password = req.query.password;
+    // Auth via request header, NOT the query string — `?password=` leaks
+    // into dev-server logs and browser history.
+    const password = req.headers?.['x-aparture-password'];
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }

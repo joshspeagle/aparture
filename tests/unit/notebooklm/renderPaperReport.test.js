@@ -61,4 +61,19 @@ describe('renderPaperReport', () => {
     expect(content).toContain('**Score:** 7.5/10');
     expect(content).toContain('No deep analysis available for this paper.');
   });
+
+  it('sanitizes the slash in old-style arXiv ids for the ZIP entry name', () => {
+    const oldStyle = {
+      arxivId: 'astro-ph/0601001',
+      title: 'An old-style identifier paper',
+      finalScore: 8.0,
+      scoreJustification: 'Classic.',
+    };
+    const { filename, content } = renderPaperReport(oldStyle, 2);
+    // Filename must stay flat under papers/ — no nested folder from the '/'.
+    expect(filename).toBe('papers/02-astro-ph-0601001-an-old-style-identifier-paper.md');
+    expect(filename.match(/\//g)).toHaveLength(1); // only the papers/ separator
+    // The report body keeps the REAL id.
+    expect(content).toContain('**arXiv:** astro-ph/0601001');
+  });
 });

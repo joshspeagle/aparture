@@ -248,10 +248,10 @@ export function useBriefing({ password = '' } = {}) {
   const unlinkDroppedColdFiles = useCallback((droppedEntries) => {
     for (const entry of droppedEntries) {
       if (!entry?.id) continue;
-      fetch(
-        `/api/briefings/${encodeURIComponent(entry.id)}?password=${encodeURIComponent(passwordRef.current)}`,
-        { method: 'DELETE' }
-      ).catch((err) => {
+      fetch(`/api/briefings/${encodeURIComponent(entry.id)}`, {
+        method: 'DELETE',
+        headers: { 'x-aparture-password': passwordRef.current },
+      }).catch((err) => {
         console.warn('[useBriefing] failed to unlink quota-pruned cold briefing', entry.id, err);
       });
     }
@@ -307,7 +307,9 @@ export function useBriefing({ password = '' } = {}) {
         return;
       }
       try {
-        const res = await fetch(`/api/briefings?index=1&password=${encodeURIComponent(password)}`);
+        const res = await fetch('/api/briefings?index=1', {
+          headers: { 'x-aparture-password': password },
+        });
         if (cancelled) return;
         if (!res.ok) {
           // Transient (401 pre-hydration, 5xx, ...) — leave the ref unset so a
@@ -403,9 +405,9 @@ export function useBriefing({ password = '' } = {}) {
     if (state?.id === id && !state._strippedFromHot) return state;
 
     try {
-      const res = await fetch(
-        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`
-      );
+      const res = await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
+        headers: { 'x-aparture-password': passwordRef.current },
+      });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
@@ -433,10 +435,10 @@ export function useBriefing({ password = '' } = {}) {
       });
 
       try {
-        await fetch(
-          `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(passwordRef.current)}`,
-          { method: 'DELETE' }
-        );
+        await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { 'x-aparture-password': passwordRef.current },
+        });
       } catch (err) {
         console.warn('[useBriefing] delete failed for', id, err);
       }

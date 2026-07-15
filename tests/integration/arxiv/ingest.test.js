@@ -539,6 +539,67 @@ describe('ingest.harvest — cache', () => {
     expect(result.perPrefix[0]).toMatchObject({ driver: 'cache', cached: true });
     expect(result.papers).toHaveLength(1);
   });
+
+  it('caches broad Atom fetches too (atom-only re-run within TTL skips the driver)', async () => {
+    const atomWindow = {
+      ...baseWindow,
+      mode: 'atom-only',
+      selectedSubcategories: ['cs.AI'],
+      cacheTtlMinutes: 60,
+    };
+    // Prime cache with one real fetch.
+    const fetchAtomImpl1 = vi.fn().mockResolvedValueOnce([examplePaper('A', 'cs.AI')]);
+    await harvest(atomWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl: fetchAtomImpl1,
+      harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
+    });
+    expect(fetchAtomImpl1).toHaveBeenCalledTimes(1);
+
+    // Second run with the same window: cache hit, no Atom call.
+    const fetchAtomImpl2 = vi.fn();
+    const result = await harvest(atomWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl: fetchAtomImpl2,
+      harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
+    });
+
+    expect(fetchAtomImpl2).not.toHaveBeenCalled();
+    expect(result.perPrefix[0]).toMatchObject({ driver: 'cache', cached: true });
+    expect(result.papers).toHaveLength(1);
+  });
+
+  it('atom-only cacheTtlMinutes: 0 disables the broad Atom cache', async () => {
+    const atomWindow = {
+      ...baseWindow,
+      mode: 'atom-only',
+      selectedSubcategories: ['cs.AI'],
+      cacheTtlMinutes: 0,
+    };
+    const fetchAtomImpl = vi
+      .fn()
+      .mockResolvedValueOnce([examplePaper('A', 'cs.AI')])
+      .mockResolvedValueOnce([examplePaper('A', 'cs.AI')]);
+    await harvest(atomWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl,
+      harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
+    });
+    await harvest(atomWindow, {
+      password: 'pw',
+      abortSignal: { aborted: false },
+      fetchAtomImpl,
+      harvestOaiImpl: vi.fn(),
+      sleepImpl: noSleep,
+    });
+    expect(fetchAtomImpl).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('ingest.harvest — windowSemantics', () => {

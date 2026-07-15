@@ -351,9 +351,11 @@ async function postColdSessionWithRetry({ password, coldEntry }) {
 async function fetchColdSession(sessionId, password) {
   if (!sessionId) return null;
   try {
-    const res = await fetch(
-      `/api/sessions/${encodeURIComponent(sessionId)}?password=${encodeURIComponent(password ?? '')}`
-    );
+    // Password travels in a header, not the query string (query values leak
+    // into dev-server logs and browser history).
+    const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { 'x-aparture-password': password ?? '' },
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {

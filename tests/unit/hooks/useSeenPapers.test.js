@@ -421,12 +421,13 @@ describe('useSeenPapers — migration from existing briefings', () => {
   it('retries migration when initial list fetch 401s (password not hydrated yet)', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     let listCalls = 0;
-    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
       const u = String(url);
       if (u.includes('/api/briefings?') || u.endsWith('/api/briefings')) {
         listCalls += 1;
-        // First call (empty password) gets 401; second (real password) succeeds.
-        if (u.endsWith('password=')) {
+        // First call (empty password header) gets 401; second (real password)
+        // succeeds. Password now travels in the x-aparture-password header.
+        if (!opts?.headers?.['x-aparture-password']) {
           return { ok: false, status: 401, json: async () => ({ error: 'no password' }) };
         }
         return { ok: true, status: 200, json: async () => ({ ids: ['b1'] }) };

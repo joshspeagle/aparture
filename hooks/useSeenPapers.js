@@ -119,7 +119,8 @@ async function migrateFromBriefings({ password, signal }) {
   if (typeof window === 'undefined') return null;
   let listRes;
   try {
-    listRes = await fetch(`/api/briefings?password=${encodeURIComponent(password ?? '')}`, {
+    listRes = await fetch('/api/briefings', {
+      headers: { 'x-aparture-password': password ?? '' },
       signal,
     });
   } catch (err) {
@@ -153,10 +154,10 @@ async function migrateFromBriefings({ password, signal }) {
 
   await pool.run(ids, async (id) => {
     try {
-      const res = await fetch(
-        `/api/briefings/${encodeURIComponent(id)}?password=${encodeURIComponent(password ?? '')}`,
-        { signal }
-      );
+      const res = await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
+        headers: { 'x-aparture-password': password ?? '' },
+        signal,
+      });
       if (!res.ok) {
         console.warn(`[useSeenPapers migration] briefing ${id} returned HTTP ${res.status}`);
         anyFailed = true;

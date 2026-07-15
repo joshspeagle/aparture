@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   callCheckBriefing,
+  callSynthesize,
   generateQuickSummaries,
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
@@ -67,6 +68,85 @@ describe('callCheckBriefing — non-fatal contract', () => {
       json: async () => ({ error: 'check failed' }),
     });
     await expect(callCheckBriefing(baseArgs)).resolves.toBeNull();
+  });
+});
+
+describe('callSynthesize — no-structured-output retry', () => {
+  const synthArgs = {
+    profile: 'my profile',
+    papers: [{ arxivId: '2605.0001', title: 'T' }],
+    provider: 'anthropic',
+    modelId: 'claude-sonnet-5',
+    password: 'pw',
+  };
+
+  const okResponse = (briefing) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ briefing }),
+  });
+
+  const noStructuredResponse = () => ({
+    ok: false,
+    status: 502,
+    json: async () => ({ error: 'model did not return structured output' }),
+  });
+
+  it('retries once when the route reports missing structured output', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(noStructuredResponse())
+      .mockResolvedValueOnce(okResponse({ executiveSummary: 'second try' }));
+
+    const result = await callSynthesize(synthArgs);
+    expect(result.briefing.executiveSummary).toBe('second try');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry more than once — a second miss surfaces as an error', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(noStructuredResponse())
+      .mockResolvedValueOnce(noStructuredResponse());
+
+    await expect(callSynthesize(synthArgs)).rejects.toThrow(
+      'model did not return structured output'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry other 502s — the original error message surfaces', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({ error: 'briefing validation failed', details: 'bad citation' }),
+    });
+
+    await expect(callSynthesize(synthArgs)).rejects.toThrow('bad citation');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry non-502 failures (429 propagates as a rate-limit error)', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ provider: 'anthropic', retryAfterMs: 3000 }),
+    });
+
+    await expect(callSynthesize(synthArgs)).rejects.toThrow(/rate limited/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the parsed briefing on first success without extra calls', async () => {
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(okResponse({ executiveSummary: 'first try' }));
+
+    const result = await callSynthesize(synthArgs);
+    expect(result.briefing.executiveSummary).toBe('first try');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
