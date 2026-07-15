@@ -17,6 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
+import { BLANK_PROFILE_TEMPLATE } from '../lib/profile/starterTemplates.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
@@ -31,41 +32,14 @@ function generateSessionId() {
 
 export const DEFAULT_CONFIG = {
   version: 9,
-  selectedCategories: [
-    'cs.AI',
-    'cs.CL',
-    'cs.CV',
-    'cs.IR',
-    'cs.LG',
-    'cs.MA',
-    'cs.NE',
-    'stat.AP',
-    'stat.CO',
-    'stat.ME',
-    'stat.ML',
-    'stat.OT',
-    'stat.TH',
-    'astro-ph.CO',
-    'astro-ph.EP',
-    'astro-ph.GA',
-    'astro-ph.HE',
-    'astro-ph.IM',
-    'astro-ph.SR',
-  ],
-  scoringCriteria: `**Core Methodological Interests:**
-**Statistical Learning:** Deep learning advances, general ML methods, novel architectures and training techniques with practical applications
-**Uncertainty Quantification & Robustness:** Principled approaches to model uncertainty, calibration, conformal prediction, robustness evaluation, out-of-distribution detection, Bayesian deep learning
-**Mechanistic Interpretability:** Understanding how models work internally, feature attribution, causal discovery in neural networks—not just making them "more honest" through prompting
-**Advanced Statistical Methods:** Novel sampling/inference techniques, variational inference, hierarchical modeling, state space models, time series analysis, probabilistic programming innovations
-**AI for Scientific Discovery:** Methods specifically designed to accelerate scientific understanding, not just routine applications of existing ML to new domains. Be highly selective with LLM papers—only major architectural innovations or fundamental breakthroughs, not incremental applications or fine-tuning studies.
-
-**Astrophysics Domain Interests:**
-**Galaxy Formation & Evolution:** Observational studies of galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphological evolution
-**Stellar Populations & Evolution:** Stellar activity, stellar populations as galactic tracers, stellar physics and evolution, star clusters, star formation processes
-**Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
-**Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
-
-**Research Philosophy:** Values EITHER (1) fundamental methodological advances in general OR (2) significant observational/data-driven astrophysical insights. Papers excelling in ANY category above should score highly - they do NOT need to match multiple domains. A landmark ML paper should score as highly as a landmark astrophysics paper. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
+  // Neutral first-run defaults (2026-07): fresh installs get a small starter
+  // category set and the bracketed fill-in profile template instead of a
+  // personal research profile. The old shipped profile lives on as the
+  // 'breadth-example' entry in lib/profile/starterTemplates.js. Existing
+  // users are unaffected — readInitialConfig merges their saved config over
+  // these defaults, and both keys exist in every v2+ saved config.
+  selectedCategories: ['cs.LG', 'stat.ML'],
+  scoringCriteria: BLANK_PROFILE_TEMPLATE,
   maxDeepAnalysis: 30,
   finalOutputCount: 30,
   daysBack: 1,

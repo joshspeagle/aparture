@@ -16,11 +16,13 @@ Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSW
 
 The sidebar carries a list of past briefings (empty for now), a light/dark theme toggle, and three nav links — <span class="ui-action">Profile</span>, <span class="ui-action">Settings</span>, and <span class="ui-action">Pipeline</span> — that you'll cycle between during this run. Click each one now just to get a feel for the layout; there's nothing to fill in or change yet.
 
-## 2. Write a starter profile
+## 2. Pick a starter template, or write your own
 
-Open the <span class="ui-action">Profile</span> view. The text box at the top is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
+Open the <span class="ui-action">Profile</span> view. On a fresh install a template picker sits at the top: four example profiles, each of which fills in the profile text and sets a matching arXiv category list in one click. Pick the one closest to your field — the focused single-subfield example is the best model for most people — or skip the picker entirely. The templates are examples, not defaults; the point is to see one full run work, then replace the text with your own research.
 
-A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly _not_ interested in (the filter model leans heavily on negatives) is already enough to get useful output. Something like:
+Below the picker, the profile text box is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
+
+A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly _not_ interested in (the filter model leans heavily on negatives) is already enough to get useful output. The shipped fill-in template looks like this:
 
 ```text
 I am a researcher working on [YOUR FIELD]. I care most about methodological
@@ -41,13 +43,13 @@ I'm not interested in:
 - Engineering or systems work without a research angle
 ```
 
-Edit the bracketed placeholders to match your actual work, then click <span class="ui-action">Save changes</span>. Writing a good profile is its own craft — [Writing a good profile](/using/writing-a-profile) covers it in depth when you're ready.
+Edit the bracketed placeholders to match your actual work, then click <span class="ui-action">Save changes</span>. Writing a good profile is its own craft — [Writing a good profile](/using/writing-a-profile) covers it in depth when you're ready, including the template list and how to keep several named profiles.
 
-## 3. Pick a couple of categories and leave the models alone
+## 3. Check your categories and leave the models alone
 
-Open the <span class="ui-action">Settings</span> view. Two things to set, one to leave alone, everything else to skip for now:
+Open the <span class="ui-action">Settings</span> view. Two things to check, one to leave alone, everything else to skip for now:
 
-- **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
+- **ArXiv Categories** — if you picked a starter template, its categories are already set and you can move on. Otherwise pick two or three to start: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
 - **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summaries, Gemini 3.5 Flash for scoring, PDF analysis, and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.

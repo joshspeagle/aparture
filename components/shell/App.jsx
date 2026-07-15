@@ -508,6 +508,12 @@ export default function App() {
     clearHistory,
     migrationNotice,
     dismissMigrationNotice,
+    profiles,
+    activeProfileName,
+    saveAs,
+    switchTo,
+    deleteProfile,
+    renameProfile,
   } = useProfile({ scoringCriteria: config.scoringCriteria });
   // Read password before useBriefing so it can be passed in; the store read
   // is cheap and this is a render-time closure.
@@ -1388,6 +1394,13 @@ export default function App() {
           newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
           onSuggestClick={openSuggestDialog}
           disabled={processing?.isRunning ?? false}
+          // Named profiles
+          profiles={profiles}
+          activeProfileName={activeProfileName}
+          onSaveProfileAs={saveAs}
+          onSwitchProfile={switchTo}
+          onDeleteProfile={deleteProfile}
+          onRenameProfile={renameProfile}
           // Settings view
           config={config}
           setConfig={setConfig}

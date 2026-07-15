@@ -4,6 +4,7 @@ import Card from '../ui/Card.jsx';
 import TextArea from '../ui/TextArea.jsx';
 import MigrationNotice from './MigrationNotice.jsx';
 import HistoryDropdown from './HistoryDropdown.jsx';
+import ProfileSwitcher from './ProfileSwitcher.jsx';
 
 export default function YourProfile({
   profile,
@@ -17,6 +18,13 @@ export default function YourProfile({
   draftContent,
   setDraftContent,
   disabled = false,
+  // Named profiles (snapshots of the working slot; see hooks/useProfile.js)
+  profiles,
+  activeProfileName,
+  saveAs,
+  switchTo,
+  deleteProfile,
+  renameProfile,
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -118,6 +126,21 @@ export default function YourProfile({
 
       {!collapsed && (
         <>
+          {/* Named-profile switcher. Disabled while the draft is dirty so
+              switching or snapshotting can't silently use stale committed
+              content — save or discard first, same rule as Suggest. */}
+          {profiles && Object.keys(profiles).length > 0 && (
+            <ProfileSwitcher
+              profiles={profiles}
+              activeProfileName={activeProfileName}
+              saveAs={saveAs}
+              switchTo={switchTo}
+              deleteProfile={deleteProfile}
+              renameProfile={renameProfile}
+              disabled={disabled || dirty}
+            />
+          )}
+
           {/* Updated timestamp */}
           <div
             style={{

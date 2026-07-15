@@ -17,6 +17,7 @@ import FilterResultsList from '../filter/FilterResultsList.jsx';
 import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
 import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
+import StarterTemplatePicker from '../profile/StarterTemplatePicker.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
@@ -49,6 +50,13 @@ export default function MainArea({
   newFeedback,
   onSuggestClick,
   disabled,
+  // Named profiles
+  profiles,
+  activeProfileName,
+  onSaveProfileAs,
+  onSwitchProfile,
+  onDeleteProfile,
+  onRenameProfile,
   // For settings view
   config,
   setConfig,
@@ -119,6 +127,14 @@ export default function MainArea({
   if (activeView === 'profile') {
     return (
       <div className="config-surface">
+        {/* First-run starter templates — renders only while the profile is
+            still the untouched shipped template and hasn't been dismissed. */}
+        <StarterTemplatePicker
+          profile={profile}
+          updateProfile={updateProfile}
+          setConfig={setConfig}
+          disabled={disabled}
+        />
         <YourProfile
           profile={profile}
           updateProfile={updateProfile}
@@ -131,6 +147,12 @@ export default function MainArea({
           draftContent={draftContent}
           setDraftContent={setDraftContent}
           disabled={disabled}
+          profiles={profiles}
+          activeProfileName={activeProfileName}
+          saveAs={onSaveProfileAs}
+          switchTo={onSwitchProfile}
+          deleteProfile={onDeleteProfile}
+          renameProfile={onRenameProfile}
         />
       </div>
     );
