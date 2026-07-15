@@ -1,14 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
-import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
+import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
 import { repairBriefing } from '../../lib/synthesis/repair.js';
 import { estimateTokens, budgetPreflight } from '../../lib/llm/tokenBudget.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 export default async function handler(req, res) {
@@ -37,24 +36,17 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Resolve API key via the shared helper (validates password, picks env key
-  // by provider). This matches the pattern used by the other briefing routes
-  // (check-briefing, suggest-profile, analyze-pdf).
-  const resolved = resolveApiKey({ clientApiKey, password, provider });
-  if (resolved.error) {
-    res.status(resolved.status).json({ error: resolved.error });
+  // Shared route auth: validates the password, picks the env key by
+  // provider, resolves callMode, and skips the missing-credentials 401 in
+  // fixture mode (see lib/llm/resolveRouteAuth.js). This matches the pattern
+  // used by the other briefing routes (check-briefing, suggest-profile,
+  // analyze-pdf).
+  const auth = resolveRouteAuth({ apiKey: clientApiKey, password, provider, callModelMode });
+  if (!auth.ok) {
+    res.status(auth.status).json({ error: auth.error });
     return;
   }
-  const apiKey = resolved.apiKey;
-  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
-  // (see resolveCallModelMode); in production it is forced back to live.
-  const callMode = resolveCallModelMode(callModelMode);
-  // Skip the auth check in fixture mode — fixture-based tests don't need a
-  // real key because callModel never actually hits the network.
-  if (!apiKey && callMode.mode !== 'fixture') {
-    res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
-    return;
-  }
+  const { apiKey, callMode } = auth;
 
   // Resolve user-facing model ID to the provider's apiId via MODEL_REGISTRY.
   // If the caller already passed an apiId, or the ID is unknown to the

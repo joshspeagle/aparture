@@ -57,7 +57,7 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 
 Each file in `pages/api/` owns one pipeline stage — read the file for its purpose. Exception: `validate-setup.js` is a non-LLM probe route — free pre-flight validation of keys/model IDs/request syntax via provider count-tokens (Anthropic, Google) and model-GET (OpenAI) endpoints (`lib/llm/validateSetup.js`, deliberately not routed through `callModel`). Two cross-cutting patterns:
 
-**Auth pattern.** All routes accept EITHER `apiKey` (for future BYOK flows) OR `password` validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the resolved provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). Web UI uses the password path; Phase 2 Electron will use the apiKey path from OS keychain.
+**Auth pattern.** All routes accept EITHER `apiKey` (for future BYOK flows) OR `password` validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the resolved provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). LLM routes share `lib/llm/resolveRouteAuth.js` — a two-phase helper (`checkRoutePassword` password gate, `resolveRouteAuth` full ladder incl. callMode + fixture-aware credential check) with per-route error-message overrides. Web UI uses the password path; Phase 2 Electron will use the apiKey path from OS keychain.
 
 **Model slot separation.** Config has distinct `briefingModel` (drives `/api/synthesize` + `/api/suggest-profile`), `pdfModel` (drives `/api/analyze-pdf`), `filterModel`, `scoringModel`, `quickSummaryModel`, `notebookLMModel`. All default to the same model on first run; tunable independently.
 

@@ -2,10 +2,9 @@ import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 // Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
 // Portable subset only: type/properties/required/items/enum + additionalProperties
@@ -127,24 +126,17 @@ export default async function handler(req, res) {
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
   const modelApiId = modelConfig?.apiId ?? modelToUse;
 
-  let apiKey = clientApiKey;
-  if (!apiKey && password) {
-    if (!checkAccessPassword(password)) {
-      return res.status(401).json({ error: 'Invalid password' });
-    }
-    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  const auth = resolveRouteAuth({
+    apiKey: clientApiKey,
+    password,
+    provider,
+    callModelMode,
+    messages: { invalidPassword: 'Invalid password', missingCredentials: 'missing credentials' },
+  });
+  if (!auth.ok) {
+    return res.status(auth.status).json({ error: auth.error });
   }
-
-  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
-  // (see resolveCallModelMode); in production it is forced back to live.
-  const callMode = resolveCallModelMode(callModelMode);
-  if (!apiKey && callMode.mode !== 'fixture') {
-    return res.status(401).json({ error: 'missing credentials' });
-  }
-
-  const isFixture = callMode.mode === 'fixture';
+  const { apiKey, callMode, isFixture } = auth;
   const cacheable = provider === 'anthropic';
   const expectedCount = (papers ?? []).length;
 
