@@ -1,5 +1,7 @@
 # Aparture CLI Automation
 
+> **Deprecation notice.** This CLI automation layer is scheduled for removal when the Aparture desktop app ships. The web UI is the supported interface for running analyses. `npm run test:dryrun` and `npm run test:minimal` remain the supported verification entry points for now. Expect no new features here.
+
 Comprehensive end-to-end automation for arXiv paper analysis and podcast generation using Playwright browser automation.
 
 ## Overview

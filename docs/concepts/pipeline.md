@@ -112,9 +112,9 @@ The scoring prompt asks the model to evaluate each paper on two dimensions (0–
 
 The prompt explicitly calibrates the Quality dimension strictly: most competent work is expected to score 4–6 on quality, not 7+. A 9 on the final score therefore requires both strong profile alignment _and_ a paper the model considers genuinely transformative — a deliberately rare event. In practice a run's highest-scored paper often lands in the 7.5–8.5 range, and 9+ is reserved for the handful of papers that clear both bars.
 
-This rubric lives in the `pages/api/score-abstracts.js` prompt. See [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration — for instance, if you mostly read applied work that shouldn't cap at 6 on quality.
+This rubric lives in `prompts/rubric-scoring.md` — an editable template file that's re-read on every call, so changes take effect on the next run without a rebuild. See [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration — for instance, if you mostly read applied work that shouldn't cap at 6 on quality.
 
-**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3-flash`), `scoringBatchSize` (default 3), `scoringConcurrency` (default 3).
+**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3.5-flash`), `scoringBatchSize` (default 3), `scoringConcurrency` (default 3).
 
 **Output.** `scoredPapers` with `relevanceScore`, `scoreJustification`, and `initialScore` (preserved for post-processing). Papers that failed to score are kept separately in `failedPapers` and don't advance.
 
@@ -128,7 +128,7 @@ This rubric lives in the `pages/api/score-abstracts.js` prompt. See [Reference: 
 
 **Why it matters.** Stage 3 scores each paper independently, which can let different batches drift in calibration — early batches may score stricter than late ones, or vice versa. The post-processing pass normalises the ranking without changing which papers advance.
 
-**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5), `postProcessingConcurrency` (default 3).
+**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3.5-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5), `postProcessingConcurrency` (default 3).
 
 **Output.** `scoredPapers` updated with `adjustedScore`, `adjustmentReason`, and a `scoreAdjustment` trail.
 
@@ -146,7 +146,7 @@ On **Anthropic** providers, the pool applies a cache-warmup barrier: the first w
 
 Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's RPM cap — Gemini's free-tier 60 RPM in particular.
 
-**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.1-pro`), `pdfAnalysisConcurrency` (default 3).
+**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.5-flash`), `pdfAnalysisConcurrency` (default 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
@@ -160,7 +160,7 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
 2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.1-pro`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.5-flash`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
 4. **Call `/api/check-briefing`** to audit the briefing against the source corpus — a second, independent LLM pass looks for claims that aren't supported by the papers' abstracts, quick summaries, or full reports.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
 6. **Save** the briefing + generation metadata to the app's local storage (browser-side, 90-day rolling window).
@@ -238,7 +238,7 @@ The **briefing** is the editorial product: synthesis LLM output with an executiv
 
 The **Download Report** is a flat markdown export compiled by `lib/analyzer/exportReport.js` from Stage 4's per-paper deep-analysis outputs. It has no editorial framing, no theme grouping, no profile-shaped "why it matters" — just the raw technical write-ups stitched together, one after another, with scores and metadata. No LLM call happens at export time; it's a deterministic compile of cached outputs. The card surfaces as soon as Stage 4 finishes, which means **it's visible during the pre-briefing pause** — you can export the technical detail without waiting on or running briefing synthesis at all.
 
-Neither depends on the other existing. In day-to-day use, the briefing is what you read; the report is mostly useful for archival or for handing someone a self-contained file. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 2.
+Neither depends on the other existing. In day-to-day use, the briefing is what you read; the report is mostly useful for archival or for handing someone a self-contained file. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 3, the pre-briefing pause.
 
 ## Reading this alongside the UI
 
@@ -248,7 +248,7 @@ Neither depends on the other existing. In day-to-day use, the briefing is what y
 
 ## Where to tune what
 
-- **Skip a stage?** Toggle `useQuickFilter` or `enableScorePostProcessing` in Settings. Both stages are safe to skip when your profile is narrow and well-calibrated.
+- **Skip a stage?** Post-processing has a Settings checkbox (**Enable Post-Processing**); the quick filter is governed by the `useQuickFilter` config flag, which has no Settings control — see [Tuning the pipeline → Quick filter](/using/tuning-the-pipeline#quick-filter). Both stages are safe to skip when your profile is narrow and well-calibrated.
 - **Pick a different model per stage?** The config exposes `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, `briefingModel`, and `quickSummaryModel` as independent slots. See [Model selection](/concepts/model-selection) for recommended combinations.
 - **Tune the briefing output?** Edit `prompts/synthesis.md` — it takes effect on the next run, no rebuild needed. See [Prompts](/reference/prompts).
 - **Understand what stars and dismissals do?** They feed synthesis as engagement signals and become part of the briefing's framing. See [Giving feedback](/using/giving-feedback).

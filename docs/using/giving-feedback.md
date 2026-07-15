@@ -90,11 +90,12 @@ All six feed the same local feedback store. When you run the refinement flow, it
 
 ### Paper cards carry star, dismiss, and comment buttons
 
-Any paper card in Aparture has three controls: <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, and <span class="ui-action">+ comment</span>. You'll run into them in three places:
+Any paper card in Aparture has three controls: <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, and <span class="ui-action">+ comment</span>. You'll run into them in two places:
 
 - **Analysis Results list** (Pipeline view). As soon as the PDF-analysis stage finishes, each card is fully interactive — you don't have to wait for the briefing to write before marking papers.
 - **Paper cards inside a briefing.** Same three controls in the rendered briefing. The briefing itself was written from whatever signals existed when synthesis ran, so marking papers here doesn't change what you're reading — the feedback feeds the refinement flow instead.
-- **Filter results** at Gate 1. Once scoring has run on a given paper, its card also carries the star and dismiss buttons (comment too, once you're past the filter-review pause).
+
+Filter rows at Gate 1 are different: they carry the verdict buttons and a <span class="ui-action">💬 add comment</span> control, but no star or dismiss — those signals only exist from the score-review gate onward.
 
 Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way. The comment button opens a small text box labelled _"Your thoughts on this paper…"_ with Save and Cancel; saving attaches the note to that paper.
 
@@ -175,4 +176,4 @@ Diversity matters as much as raw volume. All stars and no dismisses, or all over
 Also worth reading:
 
 - Go deeper on the refinement flow itself. → [Refining over time](/using/refining-over-time)
-- The two pause gates are slowing your runs and you want to adjust them. → [Review gates](/using/review-gates)
+- The three pause gates are slowing your runs and you want to adjust them. → [Review gates](/using/review-gates)

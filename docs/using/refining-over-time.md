@@ -133,7 +133,7 @@ A few things the flow won't do:
 
 ## Next
 
-[Review gates →](/using/review-gates) — with a sense of how feedback flows back into the profile, you can decide whether the two pause gates during a run still earn their keep for you.
+[Review gates →](/using/review-gates) — with a sense of how feedback flows back into the profile, you can decide whether the three pause gates during a run still earn their keep for you.
 
 Also worth reading:
 

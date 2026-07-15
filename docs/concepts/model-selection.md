@@ -4,7 +4,7 @@ Each pipeline stage reads from its own model slot, and picking the right model f
 
 ## The model slots
 
-Aparture exposes six independent model slots plus one for the optional podcast add-on. Every slot ships with a default so you can run without touching them, and every slot can be swapped per run without restarting the server.
+Aparture exposes six independent model slots plus one for the optional podcast add-on. Every slot ships with a default so you can run without touching them, and any slot can be swapped per run without restarting the server. Five have drop-downs in the Settings panel; `postProcessingModel` is the exception — it lives only in the saved config, with no Settings control.
 
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
