@@ -5,7 +5,8 @@
 
 import { Lock } from 'lucide-react';
 import PropTypes from 'prop-types';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { localDateStr } from '../../lib/dates.js';
 import { DEFAULT_MODEL_ID, MODEL_REGISTRY } from '../../utils/models';
 import { runBriefingGeneration } from '../../lib/analyzer/briefingClient.js';
 import { exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
@@ -24,14 +25,20 @@ import SuggestDialog from '../profile/SuggestDialog.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Local-timezone "today" — shared convention with SidebarBriefingList's
+// "Today" label detection (see lib/dates.js for the UTC-drift rationale).
+const todayStr = () => localDateStr();
 
 // Phase 1.5.1 D5 fix: PaperCard hoisted to module scope so React can reconcile
 // cards across re-renders rather than unmount/remount them (which would destroy
 // the inline comment textarea state during active scoring / progress ticks).
 // All closure-captured data (feedback state, callbacks, briefing date) is now
 // passed explicitly as props.
-function PaperCard({
+//
+// Memoized: with stable handler props from App, a card re-renders only when
+// its own paper/feedback props change — not on every progress tick that
+// re-renders the results list.
+const PaperCard = memo(function PaperCard({
   paper,
   idx,
   showDeepAnalysis,
@@ -130,7 +137,7 @@ function PaperCard({
               #{idx + 1}
             </span>
             <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
-              {(paper.finalScore || paper.relevanceScore).toFixed(1)}/10
+              {(paper.finalScore ?? paper.relevanceScore ?? 0).toFixed(1)}/10
             </span>
             <a
               href={`https://arxiv.org/abs/${paper.id}`}
@@ -464,7 +471,7 @@ function PaperCard({
       </div>
     </div>
   );
-}
+});
 
 PaperCard.propTypes = {
   paper: PropTypes.shape({
@@ -793,29 +800,33 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setIsAuthenticated(false);
     setPassword('');
     localStorage.removeItem('arxivAnalyzerState');
-  };
+  }, [setIsAuthenticated, setPassword]);
 
   // --- Pipeline control handlers ---
-  const handleStart = () => {
-    if (processing?.isRunning) return;
+  // All useCallback'd with store-action deps only (stable identities from
+  // getState()), so the memoized MainArea doesn't see fresh function props
+  // on every render. Live values (processing.isRunning etc.) are read from
+  // the store at call time instead of being closed over.
+  const handleStart = useCallback(() => {
+    if (useAnalyzerStore.getState().processing?.isRunning) return;
     startProcessing(false, false);
-  };
+  }, [startProcessing]);
 
-  const handlePause = () => {
+  const handlePause = useCallback(() => {
     pauseRef.current = true;
     setProcessing((prev) => ({ ...prev, isPaused: true }));
-  };
+  }, [setProcessing]);
 
-  const handleResume = () => {
+  const handleResume = useCallback(() => {
     pauseRef.current = false;
     setProcessing((prev) => ({ ...prev, isPaused: false }));
-  };
+  }, [setProcessing]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     console.log('Stop button clicked - aborting all operations');
 
     if (abortControllerRef.current) {
@@ -839,9 +850,9 @@ export default function App() {
     }));
 
     addStatus('Operation stopped by user');
-  };
+  }, [setProcessing, setTestState, addStatus]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     handleStop();
     // Full slice replacement — setResults merges patches, so a partial
     // object here would leave run-added keys (availablePapers, failedPapers,
@@ -866,10 +877,13 @@ export default function App() {
     });
     setProcessingTiming({ startTime: null, endTime: null, duration: null });
     localStorage.removeItem('arxivAnalyzerState');
-  };
+  }, [handleStop, resetResults, setFilterResults, setProcessing, setProcessingTiming]);
 
   // --- Export handlers ---
-  const exportResults = () => exportAnalysisReport({ results, processingTiming, config });
+  const exportResults = useCallback(() => {
+    const { results: liveResults, processingTiming: liveTiming } = useAnalyzerStore.getState();
+    exportAnalysisReport({ results: liveResults, processingTiming: liveTiming, config });
+  }, [config]);
 
   // --- Filter verdict cycling ---
   const setFilterVerdict = useCallback(
@@ -961,10 +975,15 @@ export default function App() {
   // in FeedbackItem). Row comment callbacks key papers by arxivId ?? id.
   const handleFilterRowComment = useCallback(
     ({ arxivId, text }) => {
+      // Read the live buckets from the store at call time (rather than
+      // closing over the subscribed `filterResults`) so this handler stays
+      // referentially stable across filter-batch updates — a prerequisite
+      // for the memoized FilterResultRow to skip re-renders.
+      const liveFilterResults = useAnalyzerStore.getState().filterResults;
       const paper = [
-        ...(filterResults.yes ?? []),
-        ...(filterResults.maybe ?? []),
-        ...(filterResults.no ?? []),
+        ...(liveFilterResults.yes ?? []),
+        ...(liveFilterResults.maybe ?? []),
+        ...(liveFilterResults.no ?? []),
       ].find((p) => (p.arxivId ?? p.id) === arxivId);
       const today = todayStr();
       feedback.addPaperComment(
@@ -978,7 +997,7 @@ export default function App() {
         text
       );
     },
-    [feedback, filterResults]
+    [feedback]
   );
 
   // --- MS gate per-row paper comment ---
@@ -986,7 +1005,12 @@ export default function App() {
   // surface renders from results.availablePapers.
   const handleMSRowComment = useCallback(
     ({ arxivId, text }) => {
-      const paper = (results.availablePapers ?? []).find((p) => (p.arxivId ?? p.id) === arxivId);
+      // getState() read keeps this handler stable across results updates
+      // (see handleFilterRowComment).
+      const liveResults = useAnalyzerStore.getState().results;
+      const paper = (liveResults.availablePapers ?? []).find(
+        (p) => (p.arxivId ?? p.id) === arxivId
+      );
       feedback.addPaperComment(
         {
           arxivId,
@@ -998,12 +1022,14 @@ export default function App() {
         text
       );
     },
-    [feedback, results]
+    [feedback]
   );
 
-  // --- Score-review gate handlers ---
-  // Resume the pipeline after the user clicks Continue in ScoreReviewSurface.
-  const handleResumeFromScoreReview = useCallback(() => {
+  // --- Gate resume handler (shared) ---
+  // Resume the pipeline after the user clicks Continue at any review gate
+  // (filter review, score review, pre-briefing review) — all three gates
+  // pause via pauseRef + isPaused, so one stable callback serves them all.
+  const resumePipeline = useCallback(() => {
     pauseRef.current = false;
     setProcessing((prev) => ({ ...prev, isPaused: false }));
   }, [setProcessing]);
@@ -1024,13 +1050,19 @@ export default function App() {
 
   // Star a paper at the score-review gate: updates the MS store AND fires a
   // useFeedback event so the selection flows into the suggest-profile prompt.
+  // Non-toggling ensureStar: msAddStar toggles the gate's Set, but the
+  // feedback log must never silently DROP a pre-existing star event while
+  // the gate UI shows the paper as starred — ensureStar no-ops when the
+  // latest event already matches. (Un-starring at the gate only affects the
+  // gate's PDF selection, not the accumulated feedback signal.)
   const handleMSStar = useCallback(
     (id) => {
       msAddStar(id);
-      const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
+      const liveResults = useAnalyzerStore.getState().results;
+      const paper = (liveResults.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
       if (paper) {
         const today = todayStr();
-        feedback.addStar({
+        feedback.ensureStar({
           arxivId: paper.arxivId ?? paper.id,
           paperTitle: paper.title,
           quickSummary: paper.filterSummary ?? '',
@@ -1039,18 +1071,19 @@ export default function App() {
         });
       }
     },
-    [msAddStar, results, feedback]
+    [msAddStar, feedback]
   );
 
   // Dismiss a paper at the score-review gate: updates the MS store AND fires a
-  // useFeedback event.
+  // useFeedback event (non-toggling — see handleMSStar).
   const handleMSDismiss = useCallback(
     (id) => {
       msAddDismiss(id);
-      const paper = (results.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
+      const liveResults = useAnalyzerStore.getState().results;
+      const paper = (liveResults.availablePapers ?? []).find((p) => (p.id ?? p.arxivId) === id);
       if (paper) {
         const today = todayStr();
-        feedback.addDismiss({
+        feedback.ensureDismiss({
           arxivId: paper.arxivId ?? paper.id,
           paperTitle: paper.title,
           quickSummary: paper.filterSummary ?? '',
@@ -1059,7 +1092,7 @@ export default function App() {
         });
       }
     },
-    [msAddDismiss, results, feedback]
+    [msAddDismiss, feedback]
   );
 
   // --- Pre-briefing paper promotion ---
@@ -1091,12 +1124,15 @@ export default function App() {
   );
 
   // --- Briefing generation ---
-  const handleGenerateBriefing = () => {
+  const handleGenerateBriefing = useCallback(() => {
+    // Live store reads (not the subscribed slices) keep this callback stable
+    // across run-time updates so the memoized MainArea isn't invalidated.
+    const { results: liveResults, filterResults: liveFilterResults } = useAnalyzerStore.getState();
     const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? DEFAULT_MODEL_ID;
     const filterVerdictCounts = {
-      yes: filterResults.yes?.length ?? 0,
-      maybe: filterResults.maybe?.length ?? 0,
-      no: filterResults.no?.length ?? 0,
+      yes: liveFilterResults.yes?.length ?? 0,
+      maybe: liveFilterResults.maybe?.length ?? 0,
+      no: liveFilterResults.no?.length ?? 0,
     };
     const generationMetadata = {
       profileSnapshot: profile?.content ?? '',
@@ -1106,6 +1142,9 @@ export default function App() {
       briefingModel: resolvedBriefingModel,
       categories: [...(config?.selectedCategories ?? [])],
       filterVerdictCounts,
+      // Persisted so archived briefings show THEIR run's screened count
+      // instead of whatever the live results slice holds at view time.
+      papersScreened: liveResults?.allPapers?.length ?? 0,
       feedbackCutoff: profile?.lastFeedbackCutoff ?? null,
       briefingRetryOnYes: config.briefingRetryOnYes ?? true,
       briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
@@ -1114,7 +1153,7 @@ export default function App() {
     };
 
     return runBriefingGeneration({
-      results,
+      results: liveResults,
       briefingModel: resolvedBriefingModel,
       pdfModel: config?.pdfModel,
       quickSummaryModel: config?.quickSummaryModel,
@@ -1133,7 +1172,9 @@ export default function App() {
       setQuickSummariesById,
       setFullReportsById,
     });
-  };
+    // Store setters (setSynthesizing etc.) are stable getState() actions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, profile, password, briefingHistory, stableSaveBriefingAndSwitch]);
 
   const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
 
@@ -1150,19 +1191,10 @@ export default function App() {
     ]);
     return {
       scoredPaperIds,
-      unscoredYes: filterResults.yes.filter((p) => !scoredPaperIds.has(p.id)),
-      unscoredMaybe: filterResults.maybe.filter((p) => !scoredPaperIds.has(p.id)),
-      unscoredNo: filterResults.no.filter((p) => !scoredPaperIds.has(p.id)),
       scoredYesCount: filterResults.yes.filter((p) => scoredPaperIds.has(p.id)).length,
       scoredMaybeCount: filterResults.maybe.filter((p) => scoredPaperIds.has(p.id)).length,
     };
-  }, [
-    results.scoredPapers,
-    results.failedPapers,
-    filterResults.yes,
-    filterResults.maybe,
-    filterResults.no,
-  ]);
+  }, [results.scoredPapers, results.failedPapers, filterResults.yes, filterResults.maybe]);
 
   const feedbackIndex = useMemo(() => {
     const idx = new Map();
@@ -1183,24 +1215,77 @@ export default function App() {
   }, [feedback.events]);
 
   const paperCardBriefingDate = currentBriefing?.date ?? todayStr();
-  const renderPaperCard = (paper, idx, showDeepAnalysis) => {
-    const entry = feedbackIndex.get(paper.id);
-    return (
-      <PaperCard
-        key={paper.id}
-        paper={paper}
-        idx={idx}
-        showDeepAnalysis={showDeepAnalysis}
-        starred={entry?.starred ?? false}
-        dismissed={entry?.dismissed ?? false}
-        briefingDate={paperCardBriefingDate}
-        feedbackEvents={feedback.events}
-        onStar={feedback.addStar}
-        onDismiss={feedback.addDismiss}
-        onComment={feedback.addPaperComment}
-      />
-    );
-  };
+  // useCallback: renderPaperCard is handed down through the memoized MainArea
+  // to the results list; card props themselves are stable references
+  // (feedback hook is memoized), so the memo'd PaperCard skips re-renders.
+  const renderPaperCard = useCallback(
+    (paper, idx, showDeepAnalysis) => {
+      const entry = feedbackIndex.get(paper.id);
+      return (
+        <PaperCard
+          key={paper.id}
+          paper={paper}
+          idx={idx}
+          showDeepAnalysis={showDeepAnalysis}
+          starred={entry?.starred ?? false}
+          dismissed={entry?.dismissed ?? false}
+          briefingDate={paperCardBriefingDate}
+          feedbackEvents={feedback.events}
+          onStar={feedback.addStar}
+          onDismiss={feedback.addDismiss}
+          onComment={feedback.addPaperComment}
+        />
+      );
+    },
+    [feedbackIndex, paperCardBriefingDate, feedback]
+  );
+
+  // --- Stable wrappers for handlers previously declared inline in JSX ---
+  const handleRemoveOrphanBriefing = useCallback(
+    (id) => {
+      deleteBriefing(id);
+      setActiveView('welcome');
+    },
+    [deleteBriefing]
+  );
+
+  // Resolve the paper from whichever briefing is active. Current briefing
+  // has full in-memory papers; archived briefings use the async-loaded
+  // selectedEntry. Sidebar index has arxivId/title/score too, so it's fine
+  // as a last-resort fallback.
+  const handleBriefingAddComment = useCallback(
+    (arxivId, text) => {
+      const entryKey = activeView.startsWith('briefing:')
+        ? activeView.slice('briefing:'.length)
+        : currentBriefing?.id;
+      const entry =
+        currentBriefing?.id === entryKey
+          ? currentBriefing
+          : selectedEntry?.id === entryKey
+            ? selectedEntry
+            : briefingHistory?.find((b) => b.id === entryKey);
+      const paper = entry?.briefing?.papers?.find((p) => p.arxivId === arxivId);
+      if (!paper) return;
+      feedback.addPaperComment(
+        {
+          arxivId,
+          paperTitle: paper.title,
+          quickSummary: paper.quickSummary ?? '',
+          score: paper.score,
+          briefingDate: entry.date ?? todayStr(),
+        },
+        text
+      );
+    },
+    [activeView, currentBriefing, selectedEntry, briefingHistory, feedback]
+  );
+
+  const handleAddGeneralComment = useCallback(
+    (text, briefingId) => {
+      feedback.addGeneralComment(text, todayStr(), briefingId);
+    },
+    [feedback]
+  );
 
   // --- Auth gate ---
   if (!isAuthenticated) {
@@ -1382,10 +1467,7 @@ export default function App() {
           // Briefing views
           selectedEntry={selectedEntry}
           selectedStatus={selectedStatus}
-          onRemoveOrphanBriefing={(id) => {
-            deleteBriefing(id);
-            setActiveView('welcome');
-          }}
+          onRemoveOrphanBriefing={handleRemoveOrphanBriefing}
           currentBriefing={currentBriefing}
           quickSummariesById={quickSummariesById}
           fullReportsById={fullReportsById}
@@ -1393,33 +1475,7 @@ export default function App() {
           feedbackEvents={feedback.events}
           onStar={feedback.addStar}
           onDismiss={feedback.addDismiss}
-          onAddComment={(arxivId, text) => {
-            // Resolve the paper from whichever briefing is active. Current
-            // briefing has full in-memory papers; archived briefings use the
-            // async-loaded selectedEntry. Sidebar index has arxivId/title/score
-            // too, so it's fine as a last-resort fallback.
-            const entryKey = activeView.startsWith('briefing:')
-              ? activeView.slice('briefing:'.length)
-              : currentBriefing?.id;
-            const entry =
-              currentBriefing?.id === entryKey
-                ? currentBriefing
-                : selectedEntry?.id === entryKey
-                  ? selectedEntry
-                  : briefingHistory?.find((b) => b.id === entryKey);
-            const paper = entry?.briefing?.papers?.find((p) => p.arxivId === arxivId);
-            if (!paper) return;
-            feedback.addPaperComment(
-              {
-                arxivId,
-                paperTitle: paper.title,
-                quickSummary: paper.quickSummary ?? '',
-                score: paper.score,
-                briefingDate: entry.date ?? todayStr(),
-              },
-              text
-            );
-          }}
+          onAddComment={handleBriefingAddComment}
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
@@ -1465,16 +1521,10 @@ export default function App() {
           onScoreReviewFeedback={handleScoreReviewFeedback}
           onAddPaperComment={handleFilterRowComment}
           onSkipRemainingGates={skipRemainingGates}
-          onContinueAfterFilter={() => {
-            pauseRef.current = false;
-            setProcessing((prev) => ({ ...prev, isPaused: false }));
-          }}
-          onContinueAfterScoreReview={handleResumeFromScoreReview}
+          onContinueAfterFilter={resumePipeline}
+          onContinueAfterScoreReview={resumePipeline}
           onAddMSPaperComment={handleMSRowComment}
-          onContinueAfterReview={() => {
-            pauseRef.current = false;
-            setProcessing((prev) => ({ ...prev, isPaused: false }));
-          }}
+          onContinueAfterReview={resumePipeline}
           msStarredIds={msStarredIds}
           msDismissedIds={msDismissedIds}
           onMSStar={handleMSStar}
@@ -1490,10 +1540,7 @@ export default function App() {
           lastFeedbackCutoff={profile?.lastFeedbackCutoff ?? null}
           runFeedbackSavedText={runFeedbackSavedText}
           onRunFeedback={handleRunFeedback}
-          onAddGeneralComment={(text, briefingId) => {
-            const today = todayStr();
-            feedback.addGeneralComment(text, today, briefingId);
-          }}
+          onAddGeneralComment={handleAddGeneralComment}
           onPromotePaper={handlePromotePaper}
           // NotebookLM
           podcastDuration={podcastDuration}

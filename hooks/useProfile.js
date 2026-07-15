@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { migrateFromPhase1 } from '../lib/profile/migrations.js';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 
@@ -17,6 +17,9 @@ const ACTIVE_PROFILE_KEY = 'aparture-active-profile';
 
 // Resolve the named-profile map + active pointer, seeding from the working
 // profile on first load (migrates the existing single profile as "Default").
+// PURE — no localStorage writes. Seed/repair persistence happens in the
+// mount effect inside useProfile (render-phase writes from a useState
+// initializer are a side effect React may double-invoke under StrictMode).
 function readInitialProfiles(storage, profile) {
   let profiles = null;
   try {
@@ -29,14 +32,11 @@ function readInitialProfiles(storage, profile) {
     const seeded = {
       Default: { content: profile.content, updatedAt: profile.updatedAt || Date.now() },
     };
-    safeSetItem(PROFILES_KEY, JSON.stringify(seeded));
-    safeSetItem(ACTIVE_PROFILE_KEY, 'Default');
     return { profiles: seeded, activeProfileName: 'Default' };
   }
   let active = storage.getItem(ACTIVE_PROFILE_KEY);
   if (!active || !profiles[active]) {
     active = Object.keys(profiles)[0];
-    safeSetItem(ACTIVE_PROFILE_KEY, active);
   }
   return { profiles, activeProfileName: active };
 }
@@ -67,12 +67,10 @@ function readInitialState(config) {
   }
 
   // First run (no stored profile): migrate from the legacy Phase-1 markdown key
-  // if present, otherwise seed from config.scoringCriteria.
+  // if present, otherwise seed from config.scoringCriteria. The migrated
+  // profile is PERSISTED by the mount effect in useProfile, not here — the
+  // initializer must stay side-effect free.
   const { profile, notice } = migrateFromPhase1(window.localStorage, config);
-  window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  if (window.localStorage.getItem(PHASE_1_PROFILE_KEY)) {
-    window.localStorage.removeItem(PHASE_1_PROFILE_KEY);
-  }
 
   const dismissed = window.localStorage.getItem(MIGRATION_DISMISSED_KEY) === 'true';
   return {
@@ -84,6 +82,34 @@ function readInitialState(config) {
 
 export function useProfile(config = {}) {
   const [state, setState] = useState(() => readInitialState(config));
+
+  // Persist whatever the (pure) initializer computed but couldn't write:
+  // the migrated working profile on first run, the seeded/repaired named-
+  // profile map, and the legacy Phase-1 key cleanup. Runs once on mount —
+  // moving these writes out of the useState initializer keeps render pure
+  // (StrictMode double-invokes initializers) while preserving the persisted
+  // end state byte-for-byte.
+  const initialPersistDoneRef = useRef(false);
+  useEffect(() => {
+    if (initialPersistDoneRef.current) return;
+    initialPersistDoneRef.current = true;
+    if (typeof window === 'undefined') return;
+    const storage = window.localStorage;
+    if (!storage.getItem(PROFILE_KEY)) {
+      safeSetItem(PROFILE_KEY, JSON.stringify(state.profile));
+    }
+    if (storage.getItem(PHASE_1_PROFILE_KEY)) {
+      storage.removeItem(PHASE_1_PROFILE_KEY);
+    }
+    if (!storage.getItem(PROFILES_KEY)) {
+      safeSetItem(PROFILES_KEY, JSON.stringify(state.profiles));
+    }
+    if (storage.getItem(ACTIVE_PROFILE_KEY) !== state.activeProfileName) {
+      safeSetItem(ACTIVE_PROFILE_KEY, state.activeProfileName);
+    }
+    // Mount-only by design; state.* here is the initializer's output.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist via safeSetItem so a QuotaExceededError can't throw out of the
   // state updaters that call this mid-click — a raw setItem here used to crash

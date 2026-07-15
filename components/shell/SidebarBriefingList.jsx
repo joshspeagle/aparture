@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { filterBriefings } from '../../lib/briefing/filterBriefings.js';
+import { localDateStr } from '../../lib/dates.js';
 import Input from '../ui/Input.jsx';
 
 /**
@@ -12,11 +13,10 @@ import Input from '../ui/Input.jsx';
  */
 function formatBriefingLabel(dateStr, timestamp, showTime) {
   const date = new Date(dateStr + 'T00:00:00');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const todayISO = today.toISOString().slice(0, 10);
-  const isToday = dateStr === todayISO;
+  // Local-date comparison via the shared lib/dates.js helper. The old
+  // local-midnight → toISOString() idiom converted through UTC, so in UTC+
+  // timezones "Today" pointed at yesterday's briefing.
+  const isToday = dateStr === localDateStr();
 
   let base;
   if (isToday) {

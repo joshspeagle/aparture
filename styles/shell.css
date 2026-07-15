@@ -1,6 +1,17 @@
 /* Shell layout — sidebar + main area.
  * Uses design tokens from tokens.css for all visual properties. */
 
+/* Keyboard-focus visibility — global. Component inline styles historically
+ * set `outline: none`, which left keyboard focus invisible on every field
+ * and pill. The ring uses the dedicated focus token (red-accent in light,
+ * lighter red in dark — defined in tokens.css for both themes and both
+ * data-theme overrides). :focus-visible keeps mouse clicks ring-free on
+ * buttons while always marking keyboard/tab focus. */
+:focus-visible {
+  outline: 2px solid var(--aparture-focus-ring);
+  outline-offset: 2px;
+}
+
 .shell {
   display: flex;
   min-height: 100vh;

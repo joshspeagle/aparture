@@ -65,7 +65,7 @@ export default function ControlPanel({
             <Button
               variant="secondary"
               onClick={onPause}
-              style={{ borderColor: '#eab308', color: '#eab308' }}
+              style={{ borderColor: '#f59e0b', color: '#f59e0b' }}
             >
               <Pause className="w-4 h-4" />
               Pause

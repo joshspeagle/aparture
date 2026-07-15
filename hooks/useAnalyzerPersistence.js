@@ -100,6 +100,47 @@ export const DEFAULT_CONFIG = {
   pauseBeforeDeepAnalysis: true,
 };
 
+// Integer config fields (all edited via SettingsPanel's integerInputProps).
+// The panel allows '' while typing and clamps on blur — but the 400ms
+// debounced save can persist the in-flight '' (and blur never runs if the
+// tab closes), so numeric keys could reload as '' and break slicing math
+// (`.slice(0, '')` → empty top-N). normalizeIntegerConfigFields restores the
+// DEFAULT_CONFIG value for any non-finite entry; applied both at load
+// (readInitialConfig) and at save (debounced effect) so bad values neither
+// persist nor survive a reload.
+export const INTEGER_CONFIG_KEYS = [
+  'maxDeepAnalysis',
+  'finalOutputCount',
+  'daysBack',
+  'batchSize',
+  'maxCorrections',
+  'maxRetries',
+  'filterBatchSize',
+  'filterConcurrency',
+  'scoringBatchSize',
+  'scoringConcurrency',
+  'postProcessingCount',
+  'postProcessingBatchSize',
+  'postProcessingConcurrency',
+  'pdfAnalysisConcurrency',
+  'quickSummaryConcurrency',
+  'maxAbstractDisplay',
+  'minPapersPerSubcategory',
+  'arxivCacheTtlMinutes',
+];
+
+export function normalizeIntegerConfigFields(config) {
+  let changed = false;
+  const next = { ...config };
+  for (const key of INTEGER_CONFIG_KEYS) {
+    if (typeof next[key] !== 'number' || !Number.isFinite(next[key])) {
+      next[key] = DEFAULT_CONFIG[key];
+      changed = true;
+    }
+  }
+  return changed ? next : config;
+}
+
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
 // (or null if the config should be discarded in favor of fresh defaults).
 export function migrateLegacyConfig(config) {
@@ -231,7 +272,9 @@ export function readInitialConfig() {
     if (merged.briefingModel === undefined || merged.briefingModel === null) {
       merged.briefingModel = merged.pdfModel ?? DEFAULT_CONFIG.briefingModel;
     }
-    return merged;
+    // Repair integer fields persisted mid-edit as '' (see
+    // normalizeIntegerConfigFields) so numeric keys never reload as ''.
+    return normalizeIntegerConfigFields(merged);
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -428,7 +471,19 @@ export function useAnalyzerPersistence({
       if (timing.endTime) timing.endTime = new Date(timing.endTime);
       setProcessingTiming(timing);
     }
-    if (parsed.testState) setTestState(parsed.testState);
+    if (parsed.testState) {
+      // Revive Date fields — JSON round-trips them as ISO strings, and
+      // ControlPanel calls `.toLocaleString()` expecting real Dates (on a
+      // string that renders the raw ISO text).
+      const revivedTestState = { ...parsed.testState };
+      for (const key of ['lastDryRunTime', 'lastMinimalTestTime']) {
+        if (revivedTestState[key]) {
+          const revived = new Date(revivedTestState[key]);
+          revivedTestState[key] = Number.isNaN(revived.getTime()) ? null : revived;
+        }
+      }
+      setTestState(revivedTestState);
+    }
     if (parsed.notebookLM) {
       if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
       if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
@@ -531,8 +586,10 @@ export function useAnalyzerPersistence({
       const sessionId = sessionIdRef.current;
 
       // Hot tier — bounded blob, safe under localStorage quota.
+      // normalizeIntegerConfigFields: never persist an in-flight '' from the
+      // Settings panel's freeform integer inputs.
       const hotEntry = buildHotEntry({
-        config,
+        config: normalizeIntegerConfigFields(config),
         sessionId,
         finalRanking: results?.finalRanking,
         filterResults,

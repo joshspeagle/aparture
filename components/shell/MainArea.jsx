@@ -1,6 +1,7 @@
 // components/shell/MainArea.jsx
 // Routes activeView to the correct content panel.
 
+import { memo } from 'react';
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
@@ -24,7 +25,11 @@ import WelcomeView from '../welcome/WelcomeView.jsx';
 import PreBriefingGate from './PreBriefingGate.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 
-export default function MainArea({
+// Memoized below (see `export default memo(MainArea)`): App subscribes to
+// high-frequency store slices (processing/statusLog, filterResults), so
+// anything that keeps ~70 props referentially stable across those ticks
+// lets whole subtrees skip re-rendering.
+function MainArea({
   activeView,
   // For briefing views
   selectedEntry,
@@ -377,7 +382,15 @@ export default function MainArea({
             year: 'numeric',
           })}
           briefingDate={entry.date}
-          papersScreened={results?.allPapers?.length ?? 0}
+          // Prefer the count persisted at generation time — the live results
+          // slice reflects whatever run is CURRENTLY in memory, which is
+          // wrong for archived briefings. The live fallback only applies to
+          // the just-generated current briefing (whose metadata may predate
+          // the papersScreened field).
+          papersScreened={
+            entry.generationMetadata?.papersScreened ??
+            (entry.id === currentBriefing?.id ? (results?.allPapers?.length ?? 0) : 0)
+          }
           quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
           fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
           feedbackEvents={feedbackEvents}
@@ -406,7 +419,10 @@ export default function MainArea({
             onSuggestClick={onSuggestClick}
             lastFeedbackCutoff={lastFeedbackCutoff}
             runFeedbackSavedText={runFeedbackSavedText}
-            onRunFeedback={onRunFeedback}
+            // Run-scope feedback is bound to TODAY's date; under an archived
+            // briefing it would render today's note and stamp today's date on
+            // save. Only offer it on the current briefing.
+            onRunFeedback={entry.id === currentBriefing?.id ? onRunFeedback : null}
           />
         </div>
 
@@ -437,6 +453,8 @@ export default function MainArea({
   // Fallback
   return null;
 }
+
+export default memo(MainArea);
 
 // Shared not-found UI: index entry exists but disk file is missing (404 from
 // /api/briefings/[id]). Offers to remove the orphan from the local index so

@@ -143,6 +143,98 @@ describe('useFeedback', () => {
   });
 });
 
+describe('ensureStar / ensureDismiss (non-toggling, gate handlers)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const samplePaper = {
+    arxivId: '2504.01234',
+    paperTitle: 'Circuit-level analysis of reasoning',
+    quickSummary: 'mechanistic interpretability paper',
+    score: 9.2,
+    briefingDate: '2026-04-10',
+  };
+
+  it('ensureStar appends a star event when none exists', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].type).toBe('star');
+    expect(result.current.events[0].arxivId).toBe('2504.01234');
+  });
+
+  it('ensureStar is a no-op when the paper is already starred (never removes)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(samplePaper);
+    });
+    const existingId = result.current.events[0].id;
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].type).toBe('star');
+    // Same event object — no replacement, no re-stamp.
+    expect(result.current.events[0].id).toBe(existingId);
+  });
+
+  it('ensureStar keeps the state reference when nothing changes', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    const before = result.current.events;
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    expect(result.current.events).toBe(before);
+  });
+
+  it('ensureStar replaces a prior dismiss (latest-wins flip)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addDismiss(samplePaper);
+    });
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].type).toBe('star');
+  });
+
+  it('ensureDismiss is a no-op when already dismissed and replaces a prior star', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(samplePaper);
+    });
+    act(() => {
+      result.current.ensureDismiss(samplePaper);
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].type).toBe('dismiss');
+    const existingId = result.current.events[0].id;
+    act(() => {
+      result.current.ensureDismiss(samplePaper);
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].id).toBe(existingId);
+  });
+
+  it('ensure* persists to localStorage like the toggling variants', () => {
+    const { result, unmount } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.ensureStar(samplePaper);
+    });
+    unmount();
+    const { result: result2 } = renderHook(() => useFeedback());
+    expect(result2.current.events).toHaveLength(1);
+    expect(result2.current.events[0].type).toBe('star');
+  });
+});
+
 describe('addScopedFeedback — bucket scope', () => {
   beforeEach(() => {
     window.localStorage.clear();

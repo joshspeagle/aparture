@@ -57,7 +57,9 @@ export default function BriefingView({
 
       {(briefing.themes ?? []).map((theme, idx) => (
         <ThemeSection
-          key={theme.title}
+          // Index-keyed: theme titles are LLM output with no uniqueness
+          // guarantee, and the list is static per briefing (never reordered).
+          key={idx}
           index={idx + 1}
           title={theme.title}
           argument={theme.argument}

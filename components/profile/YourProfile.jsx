@@ -53,9 +53,10 @@ export default function YourProfile({
       else if (e.type === 'dismiss') acc.dismisses++;
       else if (e.type === 'paper-comment' || e.type === 'general-comment') acc.comments++;
       else if (e.type === 'filter-override') acc.overrides++;
+      else if (e.type === 'scoped-feedback') acc.scopedNotes++;
       return acc;
     },
-    { stars: 0, dismisses: 0, comments: 0, overrides: 0 }
+    { stars: 0, dismisses: 0, comments: 0, overrides: 0, scopedNotes: 0 }
   );
   const totalNew = (newFeedback ?? []).length;
 
@@ -209,7 +210,9 @@ export default function YourProfile({
                 since your last revision
                 {feedbackCounts.stars > 0 ||
                 feedbackCounts.dismisses > 0 ||
-                feedbackCounts.comments > 0
+                feedbackCounts.comments > 0 ||
+                feedbackCounts.overrides > 0 ||
+                feedbackCounts.scopedNotes > 0
                   ? ': '
                   : '.'}
                 {[
@@ -221,6 +224,8 @@ export default function YourProfile({
                     `${feedbackCounts.comments} comment${feedbackCounts.comments === 1 ? '' : 's'}`,
                   feedbackCounts.overrides > 0 &&
                     `${feedbackCounts.overrides} filter override${feedbackCounts.overrides === 1 ? '' : 's'}`,
+                  feedbackCounts.scopedNotes > 0 &&
+                    `${feedbackCounts.scopedNotes} scoped note${feedbackCounts.scopedNotes === 1 ? '' : 's'}`,
                 ]
                   .filter(Boolean)
                   .join(', ')}

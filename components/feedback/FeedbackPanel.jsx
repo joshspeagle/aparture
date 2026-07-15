@@ -55,15 +55,20 @@ export default function FeedbackPanel({
         lastFeedbackCutoff={lastFeedbackCutoff}
       />
 
-      <div style={{ marginBottom: 'var(--aparture-space-3, 12px)' }}>
-        <ScopedCommentInput
-          scope={{ kind: 'run' }}
-          triggerLabel="+ feedback on this run"
-          placeholder={RUN_FEEDBACK_PLACEHOLDER}
-          savedText={runFeedbackSavedText}
-          onSave={({ text }) => onRunFeedback(text)}
-        />
-      </div>
+      {/* Run-scope feedback is date-bound to today's run; callers omit the
+          handler on archived briefings so an old briefing never shows (or
+          stamps) today's run note. */}
+      {onRunFeedback && (
+        <div style={{ marginBottom: 'var(--aparture-space-3, 12px)' }}>
+          <ScopedCommentInput
+            scope={{ kind: 'run' }}
+            triggerLabel="+ feedback on this run"
+            placeholder={RUN_FEEDBACK_PLACEHOLDER}
+            savedText={runFeedbackSavedText}
+            onSave={({ text }) => onRunFeedback(text)}
+          />
+        </div>
+      )}
 
       <div style={{ marginBottom: 'var(--aparture-space-4)' }}>
         <GeneralCommentInput

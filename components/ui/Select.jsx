@@ -13,7 +13,8 @@ export default function Select({ className, children, style: overrideStyle, ...r
     borderRadius: '4px',
     boxSizing: 'border-box',
     width: '100%',
-    outline: 'none',
+    // No `outline: 'none'` here: the global :focus-visible rule in
+    // styles/shell.css provides the keyboard-focus ring.
     appearance: 'none',
     WebkitAppearance: 'none',
     backgroundImage: `url("${CHEVRON_SVG}")`,

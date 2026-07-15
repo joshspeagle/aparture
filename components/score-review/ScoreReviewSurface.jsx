@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import TextArea from '../ui/TextArea.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
+import {
+  COMMENT_CANCEL_BUTTON_STYLE,
+  COMMENT_SAVE_BUTTON_STYLE,
+} from '../filter/FilterResultsList.jsx';
 
 function RowComment({ arxivId, onAddPaperComment }) {
   const [expanded, setExpanded] = useState(false);
@@ -47,13 +51,14 @@ function RowComment({ arxivId, onAddPaperComment }) {
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
         <button
+          type="button"
           onClick={() => setExpanded(false)}
-          style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}
+          style={COMMENT_CANCEL_BUTTON_STYLE}
         >
-          cancel
+          Cancel
         </button>
-        <button onClick={save} style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}>
-          save
+        <button type="button" onClick={save} style={COMMENT_SAVE_BUTTON_STYLE}>
+          Save
         </button>
       </div>
     </div>
@@ -65,7 +70,10 @@ function RowComment({ arxivId, onAddPaperComment }) {
 // to the same string for arXiv papers (which always carry arxivId); the
 // id-fallback exists only for legacy paper shapes that predate the arxivId
 // field. Consistent with the pattern in handleMSStar/Dismiss in App.jsx.
-function ScoreRow({
+//
+// Memoized: rows re-render only when their own props change, not on every
+// progress tick that re-renders the surrounding gate surface.
+const ScoreRow = memo(function ScoreRow({
   paper,
   isStarred,
   isDismissed,
@@ -142,7 +150,7 @@ function ScoreRow({
       </div>
     </div>
   );
-}
+});
 
 function ScoreGroup({
   label,

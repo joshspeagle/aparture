@@ -105,6 +105,30 @@ describe('readInitialConfig', () => {
     expect(config.scoringCriteria).not.toContain('Astrophysics Domain Interests');
     expect(config.selectedCategories).toEqual(['cs.LG', 'stat.ML']);
   });
+
+  // Regression: SettingsPanel's integer inputs store '' while typing, and the
+  // 400ms debounced save can persist that mid-edit state (blur-clamp never
+  // runs if the tab closes). Numeric keys must never reload as ''.
+  it("integer fields persisted as '' reload as their defaults", () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: { ...DEFAULT_CONFIG, maxDeepAnalysis: '', daysBack: '', filterConcurrency: '' },
+      })
+    );
+    const config = readInitialConfig();
+    expect(config.maxDeepAnalysis).toBe(DEFAULT_CONFIG.maxDeepAnalysis);
+    expect(config.daysBack).toBe(DEFAULT_CONFIG.daysBack);
+    expect(config.filterConcurrency).toBe(DEFAULT_CONFIG.filterConcurrency);
+  });
+
+  it('valid integer fields pass through normalization unchanged', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ config: { ...DEFAULT_CONFIG, maxDeepAnalysis: 12 } })
+    );
+    expect(readInitialConfig().maxDeepAnalysis).toBe(12);
+  });
 });
 
 describe('useAnalyzerPersistence — DEFAULT_CONFIG', () => {
