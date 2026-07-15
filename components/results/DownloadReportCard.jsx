@@ -1,6 +1,7 @@
-import { Download, TestTube } from 'lucide-react';
+import { Download } from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
+import TestModeBadge from '../ui/TestModeBadge.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import { computeActualCost, formatUsd, STAGE_LABELS } from '../../lib/analyzer/costEstimate.js';
 
@@ -40,25 +41,7 @@ export default function DownloadReportCard({
         >
           Download Report
         </h2>
-        {testState.dryRunInProgress && (
-          <span
-            style={{
-              marginLeft: '12px',
-              padding: '2px 8px',
-              background: 'rgba(245,158,11,0.12)',
-              color: '#f59e0b',
-              fontSize: 'var(--aparture-text-xs)',
-              fontFamily: 'var(--aparture-font-sans)',
-              borderRadius: '9999px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            <TestTube className="w-3 h-3" />
-            TEST DATA
-          </span>
-        )}
+        {testState.dryRunInProgress && <TestModeBadge label="TEST DATA" />}
       </div>
 
       {processingTiming.startTime && (

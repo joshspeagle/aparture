@@ -3,6 +3,7 @@ import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
@@ -156,12 +157,7 @@ export default async function handler(req, res) {
     // Token usage summed across every provider call this request makes
     // (initial + backend auto-correction), returned on the 200 body so the
     // client can accumulate per-stage cost.
-    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
-    const addUsage = (r) => {
-      usage.tokensIn += r?.tokensIn ?? 0;
-      usage.tokensOut += r?.tokensOut ?? 0;
-      usage.cacheReadTok += r?.cacheReadTok ?? 0;
-    };
+    const { usage, addUsage } = createUsageAccumulator();
 
     if (correctionPrompt) {
       const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt;

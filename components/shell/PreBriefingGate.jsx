@@ -7,6 +7,7 @@
 // it in as `children` so the banner heads it rather than trailing below it.
 // The cut-papers expander trails after the list.
 
+import { useMemo } from 'react';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
 import AnalyzedExpander from './AnalyzedExpander.jsx';
@@ -42,17 +43,20 @@ export default function PreBriefingGate({
   // (briefingModel), over the papers currently in the final ranking. Hidden
   // when either model has no registry pricing (never show "$null").
   const briefingPaperCount = results.finalRanking?.length ?? 0;
-  const est =
-    config && briefingPaperCount > 0
-      ? estimateRunCost({
-          counts: { quickSummary: briefingPaperCount, briefing: briefingPaperCount },
-          config,
-        })
-      : null;
-  const costLine =
-    est && !est.hasUnknownPricing && est.total != null
+  // Memoized: the estimate only depends on the paper count and model config,
+  // not on the expander/comment interactions that re-render the gate.
+  const costLine = useMemo(() => {
+    const est =
+      config && briefingPaperCount > 0
+        ? estimateRunCost({
+            counts: { quickSummary: briefingPaperCount, briefing: briefingPaperCount },
+            config,
+          })
+        : null;
+    return est && !est.hasUnknownPricing && est.total != null
       ? `Briefing over ${briefingPaperCount} paper${briefingPaperCount === 1 ? '' : 's'} — est. ${formatUsd(est.total)}`
       : null;
+  }, [briefingPaperCount, config]);
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>

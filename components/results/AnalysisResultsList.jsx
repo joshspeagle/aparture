@@ -1,5 +1,6 @@
-import { FileText, TestTube } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import Card from '../ui/Card.jsx';
+import TestModeBadge from '../ui/TestModeBadge.jsx';
 
 export default function AnalysisResultsList({
   results,
@@ -22,19 +23,6 @@ export default function AnalysisResultsList({
   ]);
   const showTwoSections = results.finalRanking.length > 0 && POST_PDF_STAGES.has(processing.stage);
 
-  const testBadgeStyle = {
-    marginLeft: '12px',
-    padding: '2px 8px',
-    background: 'rgba(245,158,11,0.12)',
-    color: '#f59e0b',
-    fontSize: 'var(--aparture-text-xs)',
-    fontFamily: 'var(--aparture-font-sans)',
-    borderRadius: '9999px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-  };
-
   return (
     <Card>
       <div
@@ -51,12 +39,7 @@ export default function AnalysisResultsList({
         >
           {results.finalRanking.length > 0 ? 'Analysis Results' : 'Scored Papers'}
         </h2>
-        {testState.dryRunInProgress && (
-          <span style={testBadgeStyle}>
-            <TestTube className="w-3 h-3" />
-            TEST DATA
-          </span>
-        )}
+        {testState.dryRunInProgress && <TestModeBadge label="TEST DATA" />}
       </div>
 
       {showTwoSections ? (

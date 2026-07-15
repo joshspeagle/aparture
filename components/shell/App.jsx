@@ -804,6 +804,26 @@ export default function App() {
     return idx;
   }, [feedback.events]);
 
+  // Shared "feedback since the last profile update" list — consumed by both
+  // MainArea (profile view) and SuggestDialog, so the filter runs once.
+  const newFeedback = useMemo(
+    () => feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0),
+    [feedback, profile?.lastFeedbackCutoff]
+  );
+
+  // MainArea's subtree only reads processing.{stage,isRunning,isPaused}
+  // (ProgressTimeline subscribes to the store directly for progress/logs).
+  // Passing a memoized subset keeps the memoized MainArea from re-rendering
+  // on every statusLog/progress tick.
+  const processingForMainArea = useMemo(
+    () => ({
+      stage: processing.stage,
+      isRunning: processing.isRunning,
+      isPaused: processing.isPaused,
+    }),
+    [processing.stage, processing.isRunning, processing.isPaused]
+  );
+
   const paperCardBriefingDate = currentBriefing?.date ?? todayStr();
   // useCallback: renderPaperCard is handed down through the memoized MainArea
   // to the results list; card props themselves are stable references
@@ -1084,7 +1104,7 @@ export default function App() {
           dismissMigrationNotice={dismissMigrationNotice}
           draftContent={draftContent}
           setDraftContent={setDraftContent}
-          newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
+          newFeedback={newFeedback}
           onSuggestClick={openSuggestDialog}
           disabled={processing?.isRunning ?? false}
           // Named profiles
@@ -1097,7 +1117,7 @@ export default function App() {
           // Settings view
           config={config}
           setConfig={setConfig}
-          processing={processing}
+          processing={processingForMainArea}
           // Pipeline view
           testState={testState}
           processingTiming={processingTiming}
@@ -1160,7 +1180,7 @@ export default function App() {
         isOpen={showSuggestDialog}
         onClose={() => setShowSuggestDialog(false)}
         profile={profile?.content ?? ''}
-        newFeedback={feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0)}
+        newFeedback={newFeedback}
         briefingHistory={briefingHistory}
         cap={{ commentCap: 30 }}
         briefingModel={config.briefingModel ?? config.pdfModel ?? DEFAULT_MODEL_ID}

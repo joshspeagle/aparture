@@ -1,6 +1,11 @@
 import Checkbox from '../../ui/Checkbox.jsx';
 import Input from '../../ui/Input.jsx';
-import { integerInputPropsFor } from '../shared.js';
+import {
+  integerInputPropsFor,
+  SECTION_TITLE_STYLE,
+  FIELD_LABEL_STYLE,
+  HELP_TEXT_STYLE,
+} from '../shared.js';
 
 export default function FilterOptionsSection({ config, setConfig, processing }) {
   const integerInputProps = integerInputPropsFor({ config, setConfig, processing });
@@ -12,19 +17,7 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
         borderTop: '1px solid var(--aparture-hairline)',
       }}
     >
-      <p
-        style={{
-          fontFamily: 'var(--aparture-font-sans)',
-          fontSize: 'var(--aparture-text-xs)',
-          fontWeight: 600,
-          color: 'var(--aparture-mute)',
-          marginBottom: 'var(--aparture-space-2)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}
-      >
-        Filter Options
-      </p>
+      <p style={SECTION_TITLE_STYLE}>Filter Options</p>
       <div
         className="settings-field-row"
         style={{
@@ -34,68 +27,17 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
         }}
       >
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Filter Batch Size
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Filter Batch Size</label>
           <Input {...integerInputProps('filterBatchSize', 3, 1, 20)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Papers per API call
-          </p>
+          <p style={HELP_TEXT_STYLE}>Papers per API call</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Parallel Filter Calls
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Parallel Filter Calls</label>
           <Input {...integerInputProps('filterConcurrency', 3, 1, 20)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Max concurrent calls
-          </p>
+          <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
         </div>
         <div style={{ flex: 2 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Categories to Process
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Categories to Process</label>
           <div
             style={{
               display: 'flex',
@@ -128,16 +70,7 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
               />
             ))}
           </div>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Filter results to score
-          </p>
+          <p style={HELP_TEXT_STYLE}>Filter results to score</p>
         </div>
       </div>
     </div>

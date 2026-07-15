@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ARXIV_CATEGORIES, getCategoryDisplayName } from '../../../utils/arxivCategories.js';
 import Button from '../../ui/Button.jsx';
+import { HELP_TEXT_STYLE } from '../shared.js';
 
 export default function CategoriesSection({ config, setConfig, processing }) {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -279,14 +280,7 @@ export default function CategoriesSection({ config, setConfig, processing }) {
         )}
       </div>
 
-      <p
-        style={{
-          fontFamily: 'var(--aparture-font-sans)',
-          fontSize: 'var(--aparture-text-xs)',
-          color: 'var(--aparture-mute)',
-          marginTop: '4px',
-        }}
-      >
+      <p style={HELP_TEXT_STYLE}>
         Click categories to select them. Use &quot;Add All&quot; to select entire sections.
       </p>
     </div>

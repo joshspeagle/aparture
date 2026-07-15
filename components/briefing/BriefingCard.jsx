@@ -1,6 +1,7 @@
-import { Loader2, Newspaper, TestTube } from 'lucide-react';
+import { Loader2, Newspaper } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
+import TestModeBadge from '../ui/TestModeBadge.jsx';
 
 export default function BriefingCard({
   results,
@@ -57,25 +58,7 @@ export default function BriefingCard({
           >
             Briefing
           </h2>
-          {testState.dryRunInProgress && (
-            <span
-              style={{
-                marginLeft: '12px',
-                padding: '2px 8px',
-                background: 'rgba(245,158,11,0.12)',
-                color: '#f59e0b',
-                fontSize: 'var(--aparture-text-xs)',
-                borderRadius: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontFamily: 'var(--aparture-font-sans)',
-              }}
-            >
-              <TestTube className="w-3 h-3" />
-              TEST MODE
-            </span>
-          )}
+          {testState.dryRunInProgress && <TestModeBadge label="TEST MODE" />}
         </div>
         {briefingCheckResult && (
           <span

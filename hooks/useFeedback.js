@@ -36,6 +36,22 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// The single star/dismiss event literal — both the toggling (addStar/
+// addDismiss) and non-toggling (ensureStar/ensureDismiss) paths build their
+// replacement event here.
+function makeReactionEvent(type, paper) {
+  return {
+    id: makeId(),
+    type,
+    arxivId: paper.arxivId,
+    paperTitle: paper.paperTitle,
+    quickSummary: paper.quickSummary,
+    score: paper.score,
+    timestamp: Date.now(),
+    briefingDate: paper.briefingDate,
+  };
+}
+
 export function useFeedback() {
   const [events, setEvents] = useState(() => readInitialEvents());
 
@@ -45,6 +61,10 @@ export function useFeedback() {
         (e) => (e.type === 'star' || e.type === 'dismiss') && e.arxivId === arxivId
       );
       const next = buildNext(existing);
+      // Keep-unchanged shortcircuit: buildNext returning the EXISTING event
+      // means "leave the log as-is" — no persist round-trip, no reorder
+      // (splice-and-reappend would move the event to the tail).
+      if (next && next === existing) return prev;
       const filtered = prev.filter(
         (e) => !((e.type === 'star' || e.type === 'dismiss') && e.arxivId === arxivId)
       );
@@ -58,16 +78,7 @@ export function useFeedback() {
     (type, paper) => {
       replaceStarOrDismiss(paper.arxivId, (existing) => {
         if (existing?.type === type) return null;
-        return {
-          id: makeId(),
-          type,
-          arxivId: paper.arxivId,
-          paperTitle: paper.paperTitle,
-          quickSummary: paper.quickSummary,
-          score: paper.score,
-          timestamp: Date.now(),
-          briefingDate: paper.briefingDate,
-        };
+        return makeReactionEvent(type, paper);
       });
     },
     [replaceStarOrDismiss]
@@ -80,34 +91,19 @@ export function useFeedback() {
   // msStarredIds Set toggles independently of the feedback log, so calling
   // the toggling addStar there could silently REMOVE a pre-existing star
   // event while the gate UI shows the paper as starred. ensure* is a no-op
-  // when the latest star/dismiss event for the paper already matches, and
-  // otherwise replaces the opposing reaction (latest-wins, like addStar).
-  const ensureReaction = useCallback((type, paper) => {
-    setEvents((prev) => {
-      const existing = prev.find(
-        (e) => (e.type === 'star' || e.type === 'dismiss') && e.arxivId === paper.arxivId
-      );
-      if (existing?.type === type) return prev; // already in the desired state
-      const filtered = prev.filter(
-        (e) => !((e.type === 'star' || e.type === 'dismiss') && e.arxivId === paper.arxivId)
-      );
-      const next = [
-        ...filtered,
-        {
-          id: makeId(),
-          type,
-          arxivId: paper.arxivId,
-          paperTitle: paper.paperTitle,
-          quickSummary: paper.quickSummary,
-          score: paper.score,
-          timestamp: Date.now(),
-          briefingDate: paper.briefingDate,
-        },
-      ];
-      persist(next);
-      return next;
-    });
-  }, []);
+  // when the latest star/dismiss event for the paper already matches
+  // (returning `existing` hits replaceStarOrDismiss's keep-unchanged
+  // shortcircuit), and otherwise replaces the opposing reaction
+  // (latest-wins, like addStar).
+  const ensureReaction = useCallback(
+    (type, paper) => {
+      replaceStarOrDismiss(paper.arxivId, (existing) => {
+        if (existing?.type === type) return existing; // already in the desired state
+        return makeReactionEvent(type, paper);
+      });
+    },
+    [replaceStarOrDismiss]
+  );
 
   const ensureStar = useCallback((paper) => ensureReaction('star', paper), [ensureReaction]);
   const ensureDismiss = useCallback((paper) => ensureReaction('dismiss', paper), [ensureReaction]);

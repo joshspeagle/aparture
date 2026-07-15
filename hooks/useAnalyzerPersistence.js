@@ -120,9 +120,11 @@ export const DEFAULT_CONFIG = {
 // debounced save can persist the in-flight '' (and blur never runs if the
 // tab closes), so numeric keys could reload as '' and break slicing math
 // (`.slice(0, '')` → empty top-N). normalizeIntegerConfigFields restores the
-// DEFAULT_CONFIG value for any non-finite entry; applied both at load
-// (readInitialConfig) and at save (debounced effect) so bad values neither
-// persist nor survive a reload.
+// DEFAULT_CONFIG value for any non-finite entry. Load time (readInitialConfig)
+// is the single persistence chokepoint where it's applied — everything read
+// back from storage passes through it, so a mid-edit '' that reaches the hot
+// blob can never survive a reload. (The blur clamp in components/settings/
+// shared.js still fixes the live in-memory value.)
 export const INTEGER_CONFIG_KEYS = [
   'maxDeepAnalysis',
   'finalOutputCount',
@@ -605,11 +607,12 @@ export function useAnalyzerPersistence({
       if (!sessionIdRef.current) sessionIdRef.current = generateSessionId();
       const sessionId = sessionIdRef.current;
 
-      // Hot tier — bounded blob, safe under localStorage quota.
-      // normalizeIntegerConfigFields: never persist an in-flight '' from the
-      // Settings panel's freeform integer inputs.
+      // Hot tier — bounded blob, safe under localStorage quota. A mid-edit
+      // '' from the Settings panel's integer inputs may be persisted here;
+      // readInitialConfig repairs it on the next load (see
+      // INTEGER_CONFIG_KEYS), so no save-side normalization is needed.
       const hotEntry = buildHotEntry({
-        config: normalizeIntegerConfigFields(config),
+        config,
         sessionId,
         finalRanking: results?.finalRanking,
         filterResults,

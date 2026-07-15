@@ -1,10 +1,15 @@
 import { memo, useState } from 'react';
-import { FileText, TestTube } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
-import { ROW_TINT as SHARED_ROW_TINT } from '../ui/ActionPill.jsx';
+import TestModeBadge from '../ui/TestModeBadge.jsx';
+import { ROW_TINT as SHARED_ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
+import {
+  COMMENT_CANCEL_BUTTON_STYLE,
+  COMMENT_SAVE_BUTTON_STYLE,
+} from '../ui/commentButtonStyles.js';
 
 const BUCKET_PLACEHOLDERS = {
   YES: 'e.g., "Lots of pure theory today — I\'m more interested in applied work this quarter." Or: "Missing the diffusion-model angle I\'ve been tracking — expected 1-2 papers there." Or: "Too many marginal hits — please be stricter about novelty."',
@@ -13,10 +18,12 @@ const BUCKET_PLACEHOLDERS = {
   NO: 'e.g., "Too aggressive — I\'d expect more of these to reach scoring." Or: "Good rejection bar — these are clearly off-topic." Or: "Lots of borderline ones got filtered — methodology criteria are too strict."',
 };
 
+// References into the shared semantic palette (components/ui/ActionPill.jsx)
+// — the verdict pills use the same green/amber/red the other review surfaces do.
 const VERDICT_COLORS = {
-  YES: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
-  MAYBE: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' },
-  NO: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' },
+  YES: SEMANTIC_COLORS.green,
+  MAYBE: SEMANTIC_COLORS.amber,
+  NO: SEMANTIC_COLORS.red,
 };
 
 // Maps the filter's YES/MAYBE/NO verdict to the shared row-tint palette.
@@ -138,33 +145,6 @@ function RowComment({ arxivId, onAddPaperComment }) {
     </div>
   );
 }
-
-// Token-based comment-button styles, matching the PaperCard comment buttons
-// in components/shell/App.jsx (ghost cancel, accent save).
-export const COMMENT_CANCEL_BUTTON_STYLE = {
-  fontFamily: 'var(--aparture-font-sans)',
-  fontSize: 'var(--aparture-text-xs)',
-  padding: '2px 8px',
-  borderRadius: '4px',
-  border: '1px solid var(--aparture-hairline)',
-  background: 'transparent',
-  color: 'var(--aparture-mute)',
-  cursor: 'pointer',
-  transition: 'all 150ms ease',
-};
-
-export const COMMENT_SAVE_BUTTON_STYLE = {
-  fontFamily: 'var(--aparture-font-sans)',
-  fontSize: 'var(--aparture-text-xs)',
-  padding: '2px 8px',
-  borderRadius: '4px',
-  border: '1px solid var(--aparture-accent)',
-  background: 'var(--aparture-accent)',
-  color: '#fff',
-  fontWeight: 500,
-  cursor: 'pointer',
-  transition: 'all 150ms ease',
-};
 
 // Memoized: rows re-render only when their own props change, not on every
 // filter-batch progress tick that re-renders the surrounding list.
@@ -322,19 +302,6 @@ export default function FilterResultsList({
     scoredMaybeCount: 0,
   };
 
-  const testBadgeStyle = {
-    marginLeft: '12px',
-    padding: '2px 8px',
-    background: 'rgba(245,158,11,0.12)',
-    color: '#f59e0b',
-    fontSize: 'var(--aparture-text-xs)',
-    fontFamily: 'var(--aparture-font-sans)',
-    borderRadius: '9999px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-  };
-
   const sectionTitleStyle = (color) => ({
     fontFamily: 'var(--aparture-font-sans)',
     fontSize: 'var(--aparture-text-sm)',
@@ -402,12 +369,7 @@ export default function FilterResultsList({
               </span>
             )}
           </h2>
-          {testState?.dryRunInProgress && (
-            <span style={testBadgeStyle}>
-              <TestTube className="w-3 h-3" />
-              TEST DATA
-            </span>
-          )}
+          {testState?.dryRunInProgress && <TestModeBadge label="TEST DATA" />}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>

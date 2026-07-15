@@ -1,6 +1,6 @@
 import Checkbox from '../../ui/Checkbox.jsx';
 import Input from '../../ui/Input.jsx';
-import { integerInputPropsFor } from '../shared.js';
+import { integerInputPropsFor, FIELD_LABEL_STYLE, HELP_TEXT_STYLE } from '../shared.js';
 
 export default function ScoringOptionsSection({ config, setConfig, processing }) {
   const integerInputProps = integerInputPropsFor({ config, setConfig, processing });
@@ -50,131 +50,31 @@ export default function ScoringOptionsSection({ config, setConfig, processing })
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Scoring Batch Size
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Scoring Batch Size</label>
           <Input {...integerInputProps('scoringBatchSize', 3, 1, 10)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Papers per API call
-          </p>
+          <p style={HELP_TEXT_STYLE}>Papers per API call</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Parallel Scoring Calls
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Parallel Scoring Calls</label>
           <Input {...integerInputProps('scoringConcurrency', 3, 1, 20)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Max concurrent calls
-          </p>
+          <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
         </div>
         {config.enableScorePostProcessing && (
           <>
             <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--aparture-mute)',
-                  marginBottom: '4px',
-                }}
-              >
-                Review Batch Size
-              </label>
+              <label style={FIELD_LABEL_STYLE}>Review Batch Size</label>
               <Input {...integerInputProps('postProcessingBatchSize', 5, 3, 10)} />
-              <p
-                style={{
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-xs)',
-                  color: 'var(--aparture-mute)',
-                  marginTop: '4px',
-                }}
-              >
-                Papers per comparison
-              </p>
+              <p style={HELP_TEXT_STYLE}>Papers per comparison</p>
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--aparture-mute)',
-                  marginBottom: '4px',
-                }}
-              >
-                Parallel Review Calls
-              </label>
+              <label style={FIELD_LABEL_STYLE}>Parallel Review Calls</label>
               <Input {...integerInputProps('postProcessingConcurrency', 3, 1, 20)} />
-              <p
-                style={{
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-xs)',
-                  color: 'var(--aparture-mute)',
-                  marginTop: '4px',
-                }}
-              >
-                Max concurrent calls
-              </p>
+              <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
             </div>
             <div style={{ flex: 1 }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--aparture-mute)',
-                  marginBottom: '4px',
-                }}
-              >
-                Papers to Review
-              </label>
+              <label style={FIELD_LABEL_STYLE}>Papers to Review</label>
               <Input {...integerInputProps('postProcessingCount', 50, 5, 200)} />
-              <p
-                style={{
-                  fontFamily: 'var(--aparture-font-sans)',
-                  fontSize: 'var(--aparture-text-xs)',
-                  color: 'var(--aparture-mute)',
-                  marginTop: '4px',
-                }}
-              >
-                Top papers to post-process
-              </p>
+              <p style={HELP_TEXT_STYLE}>Top papers to post-process</p>
             </div>
           </>
         )}

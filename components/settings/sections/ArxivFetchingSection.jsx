@@ -1,6 +1,11 @@
 import Checkbox from '../../ui/Checkbox.jsx';
 import Input from '../../ui/Input.jsx';
-import { integerInputPropsFor } from '../shared.js';
+import {
+  integerInputPropsFor,
+  SECTION_TITLE_STYLE,
+  FIELD_LABEL_STYLE,
+  HELP_TEXT_STYLE,
+} from '../shared.js';
 
 export default function ArxivFetchingSection({ config, setConfig, processing }) {
   const integerInputProps = integerInputPropsFor({ config, setConfig, processing });
@@ -12,32 +17,9 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
         borderTop: '1px solid var(--aparture-hairline)',
       }}
     >
-      <p
-        style={{
-          fontFamily: 'var(--aparture-font-sans)',
-          fontSize: 'var(--aparture-text-xs)',
-          fontWeight: 600,
-          color: 'var(--aparture-mute)',
-          marginBottom: 'var(--aparture-space-2)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}
-      >
-        ArXiv Fetching
-      </p>
+      <p style={SECTION_TITLE_STYLE}>ArXiv Fetching</p>
       <div style={{ marginBottom: 'var(--aparture-space-3)' }}>
-        <label
-          style={{
-            display: 'block',
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: 'var(--aparture-text-sm)',
-            fontWeight: 500,
-            color: 'var(--aparture-mute)',
-            marginBottom: '4px',
-          }}
-        >
-          Ingestion Mode
-        </label>
+        <label style={FIELD_LABEL_STYLE}>Ingestion Mode</label>
         <div
           role="radiogroup"
           style={{
@@ -79,30 +61,12 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
             );
           })}
         </div>
-        <p
-          style={{
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: 'var(--aparture-text-xs)',
-            color: 'var(--aparture-mute)',
-            marginTop: '4px',
-          }}
-        >
+        <p style={HELP_TEXT_STYLE}>
           Auto tries OAI-PMH first, falls back to Atom on failure. Override only for debugging.
         </p>
       </div>
       <div style={{ marginBottom: 'var(--aparture-space-3)' }}>
-        <label
-          style={{
-            display: 'block',
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: 'var(--aparture-text-sm)',
-            fontWeight: 500,
-            color: 'var(--aparture-mute)',
-            marginBottom: '4px',
-          }}
-        >
-          Window Semantics
-        </label>
+        <label style={FIELD_LABEL_STYLE}>Window Semantics</label>
         <div
           role="radiogroup"
           style={{
@@ -143,14 +107,7 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
             );
           })}
         </div>
-        <p
-          style={{
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: 'var(--aparture-text-xs)',
-            color: 'var(--aparture-mute)',
-            marginTop: '4px',
-          }}
-        >
+        <p style={HELP_TEXT_STYLE}>
           Submitted only matches legacy behavior; Include updates also surfaces v2 of older papers
         </p>
       </div>
@@ -159,43 +116,12 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Min Papers Per Subcategory
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Min Papers Per Subcategory</label>
           <Input {...integerInputProps('minPapersPerSubcategory', 5, 0, 100)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Floor before fill-ups trigger
-          </p>
+          <p style={HELP_TEXT_STYLE}>Floor before fill-ups trigger</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Fill-Up Lookback (Days)
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Fill-Up Lookback (Days)</label>
           <Input
             type="text"
             defaultValue={(config.lookbackExtensions ?? [3, 7, 14]).join(', ')}
@@ -209,41 +135,12 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
             }}
             disabled={processing.isRunning}
           />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Comma-separated days for staged fill-ups
-          </p>
+          <p style={HELP_TEXT_STYLE}>Comma-separated days for staged fill-ups</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-sm)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: '4px',
-            }}
-          >
-            Cache TTL (minutes)
-          </label>
+          <label style={FIELD_LABEL_STYLE}>Cache TTL (minutes)</label>
           <Input {...integerInputProps('arxivCacheTtlMinutes', 60, 0, 4320)} />
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              color: 'var(--aparture-mute)',
-              marginTop: '4px',
-            }}
-          >
-            Reuse recent arXiv responses (0 disables)
-          </p>
+          <p style={HELP_TEXT_STYLE}>Reuse recent arXiv responses (0 disables)</p>
         </div>
       </div>
       <div style={{ marginTop: 'var(--aparture-space-3)' }}>

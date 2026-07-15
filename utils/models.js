@@ -340,6 +340,15 @@ const getModel = (modelId) => {
   return AVAILABLE_MODELS.find((m) => m.id === modelId);
 };
 
+// Registry provider for a user-facing model id ('Anthropic' | 'OpenAI' |
+// 'Google'), or null when the id isn't registered. Callers own their own
+// fallback: the API routes default to Google, and the client-side barrier
+// key in lib/analyzer/stages/support.js mirrors that so acquire/signal land
+// on the same rate-limit barrier.
+const providerForModel = (modelId) => {
+  return MODEL_REGISTRY[modelId]?.provider ?? null;
+};
+
 const getModelsForPDF = () => {
   return AVAILABLE_MODELS.filter((m) => m.supportsPDF);
 };
@@ -363,6 +372,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getModelsForPDF,
     getModelsForQuickFilter,
     getModelsByProvider,
+    providerForModel,
   };
 }
 
@@ -375,4 +385,5 @@ export {
   getModelsForPDF,
   getModelsForQuickFilter,
   MODEL_REGISTRY,
+  providerForModel,
 };

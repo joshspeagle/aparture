@@ -7,6 +7,10 @@ import PropTypes from 'prop-types';
 import { memo, useState } from 'react';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
+import {
+  COMMENT_CANCEL_BUTTON_STYLE,
+  COMMENT_SAVE_BUTTON_STYLE,
+} from '../ui/commentButtonStyles.js';
 
 // Phase 1.5.1 D5 fix: RankedPaperCard hoisted to module scope so React can reconcile
 // cards across re-renders rather than unmount/remount them (which would destroy
@@ -62,20 +66,6 @@ const RankedPaperCard = memo(function RankedPaperCard({
     padding: '2px 8px',
     borderRadius: '4px',
     display: 'inline-block',
-  };
-
-  const feedbackBtnBase = {
-    fontFamily: 'var(--aparture-font-sans)',
-    fontSize: 'var(--aparture-text-xs)',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: 'var(--aparture-hairline)',
-    background: 'transparent',
-    color: 'var(--aparture-mute)',
-    cursor: 'pointer',
-    transition: 'all 150ms ease',
   };
 
   const inFinalRanking = showDeepAnalysis && paper.deepAnalysis;
@@ -380,9 +370,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                   <button
                     type="button"
                     onClick={handleCancelComment}
-                    style={{
-                      ...feedbackBtnBase,
-                    }}
+                    style={COMMENT_CANCEL_BUTTON_STYLE}
                   >
                     Cancel
                   </button>
@@ -391,14 +379,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                     onClick={handleSaveComment}
                     disabled={commentText.trim().length === 0}
                     style={{
-                      fontFamily: 'var(--aparture-font-sans)',
-                      fontSize: 'var(--aparture-text-xs)',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--aparture-accent)',
-                      background: 'var(--aparture-accent)',
-                      color: '#fff',
-                      fontWeight: 500,
+                      ...COMMENT_SAVE_BUTTON_STYLE,
                       cursor: commentText.trim().length === 0 ? 'not-allowed' : 'pointer',
                       opacity: commentText.trim().length === 0 ? 0.5 : 1,
                     }}
