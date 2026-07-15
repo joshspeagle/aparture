@@ -39,7 +39,8 @@ Whichever provider you picked, the steps back in Aparture are the same:
    - `GOOGLE_AI_API_KEY=AIzaSy...` for Google
    - `OPENAI_API_KEY=sk-proj-...` for OpenAI
 3. Restart `npm run dev` if it was already running. Next.js reads `.env.local` once at server startup.
-4. Run the [Minimal API Test](/getting-started/verify-setup) from the UI. That's a 5-paper end-to-end test that confirms your key authenticates and the pipeline runs cleanly.
+4. Run the [API Setup Check](/getting-started/verify-setup#step-0-api-setup-check-free) from the UI. It verifies the key, every configured model ID, and (on Anthropic and Google) request syntax — free, no tokens sampled.
+5. Run the [Minimal API Test](/getting-started/verify-setup) from the UI. That's a 5-paper end-to-end test that confirms your key authenticates and the pipeline runs cleanly.
 
 Aparture's defaults are all-Google. If you picked Anthropic or OpenAI, the Minimal API Test still hits Google unless you switch at least one model slot in Settings to the provider you just set up. The per-provider pages walk through this.
 

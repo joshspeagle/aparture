@@ -218,6 +218,7 @@ function MainArea({
             <ControlPanel
               processing={processing}
               testState={testState}
+              config={config}
               onStart={onStart}
               onPause={onPause}
               onResume={onResume}
