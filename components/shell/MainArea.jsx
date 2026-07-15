@@ -374,6 +374,7 @@ function MainArea({
       <div className="briefing-surface">
         <BriefingView
           briefing={entry.briefing}
+          testMode={entry.generationMetadata?.testMode ?? false}
           // Append T00:00:00 so the YYYY-MM-DD string parses as LOCAL midnight,
           // not UTC — bare date strings render one day early in UTC-negative
           // timezones (same pattern as SidebarBriefingList.formatBriefingLabel).

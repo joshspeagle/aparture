@@ -668,6 +668,7 @@ export default function App() {
     try {
       const entryForExtraction = {
         briefing,
+        generationMetadata: metadata,
         pipelineArchive: options?.pipelineArchive,
       };
       const papers = papersFromBriefing(entryForExtraction);
@@ -1135,6 +1136,8 @@ export default function App() {
       no: liveFilterResults.no?.length ?? 0,
     };
     const generationMetadata = {
+      // Manual generation during a dry run still uses mock pipeline results.
+      testMode: !!testState?.dryRunInProgress,
       profileSnapshot: profile?.content ?? '',
       filterModel: config?.filterModel ?? '',
       scoringModel: config?.scoringModel ?? '',

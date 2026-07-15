@@ -394,8 +394,9 @@ export default function FilterResultsList({
                   marginLeft: '8px',
                 }}
               >
-                (Processing batch {filterResults.currentBatch || 0} of{' '}
-                {filterResults.totalBatches || 0})
+                (Processing batch{' '}
+                {Math.min((filterResults.currentBatch || 0) + 1, filterResults.totalBatches || 1)}{' '}
+                of {filterResults.totalBatches || 0})
               </span>
             )}
           </h2>

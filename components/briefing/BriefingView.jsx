@@ -27,6 +27,7 @@ export default function BriefingView({
   date,
   briefingDate,
   papersScreened = 0,
+  testMode = false,
   quickSummariesById = {},
   fullReportsById = {},
   feedbackEvents,
@@ -52,6 +53,7 @@ export default function BriefingView({
         papersInFocus={briefing.papers?.length ?? 0}
         papersScreened={papersScreened}
         readingTimeMinutes={readingTimeMinutes}
+        testMode={testMode}
       />
       <ExecutiveSummary text={briefing.executiveSummary} />
 

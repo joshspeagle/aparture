@@ -109,6 +109,10 @@ describe('pipeline — dry-run briefing is fully mocked', () => {
       expect(Object.keys(extras.quickSummariesById).length).toBeGreaterThan(0);
       expect(metadata.hallucinationCheck).toMatchObject({ verdict: 'NO' });
 
+      // Dry-run briefings stay identifiable as mock data after the run ends
+      // (the TEST MODE chip in BriefingHeader keys off this).
+      expect(metadata.testMode).toBe(true);
+
       // No swallowed briefing failure.
       expect(state.briefingUI.synthesisError).toBeNull();
     }
