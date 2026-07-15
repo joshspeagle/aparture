@@ -10,6 +10,7 @@ import {
   AVAILABLE_MODELS,
   DEFAULT_MODEL_ID,
   getModel,
+  supportsAdaptiveThinkingByApiId,
 } from '../../../utils/models.js';
 
 describe('utils/models.js — registry ↔ UI-list consistency', () => {
@@ -67,6 +68,27 @@ describe('utils/models.js — per-entry required fields', () => {
     }
   });
 
+  it('every Anthropic registry entry declares supportsAdaptiveThinking; non-Anthropic entries omit it', () => {
+    // The Anthropic adapter's thinking gate is registry-driven
+    // (lib/llm/structured/anthropic.js): a missing flag on an Anthropic entry
+    // would silently push that model onto the version-regex fallback. The
+    // flag is meaningless for other providers, so they must omit it (see the
+    // MODEL_REGISTRY header comment).
+    for (const [id, entry] of Object.entries(MODEL_REGISTRY)) {
+      if (entry.provider === 'Anthropic') {
+        expect(
+          typeof entry.supportsAdaptiveThinking,
+          `supportsAdaptiveThinking missing (or non-boolean) for Anthropic entry "${id}"`
+        ).toBe('boolean');
+      } else {
+        expect(
+          'supportsAdaptiveThinking' in entry,
+          `supportsAdaptiveThinking must be omitted on non-Anthropic entry "${id}"`
+        ).toBe(false);
+      }
+    }
+  });
+
   it('every AVAILABLE_MODELS entry carries UI metadata (name, capability flags, apiKeyEnv)', () => {
     for (const model of AVAILABLE_MODELS) {
       expect(typeof model.name, `name missing for "${model.id}"`).toBe('string');
@@ -78,6 +100,28 @@ describe('utils/models.js — per-entry required fields', () => {
       expect(typeof model.description, `description missing for "${model.id}"`).toBe('string');
       expect(typeof model.apiKeyEnv, `apiKeyEnv missing for "${model.id}"`).toBe('string');
     }
+  });
+});
+
+describe('utils/models.js — supportsAdaptiveThinkingByApiId', () => {
+  it('resolves registered Anthropic apiIds to their flag', () => {
+    expect(supportsAdaptiveThinkingByApiId('claude-opus-4-8')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-sonnet-4-6')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-haiku-4-5')).toBe(false);
+  });
+
+  it('accepts dotted user-facing registry keys as a fallback', () => {
+    // 'claude-opus-4.7' is a registry KEY whose apiId is 'claude-opus-4-7';
+    // callers occasionally pass the user-facing form straight through.
+    expect(supportsAdaptiveThinkingByApiId('claude-opus-4.7')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-haiku-4.5')).toBe(false);
+  });
+
+  it('returns undefined for unregistered ids so callers can fall back', () => {
+    expect(supportsAdaptiveThinkingByApiId('claude-opus-4-5')).toBeUndefined();
+    expect(supportsAdaptiveThinkingByApiId('gpt-5.6-sol')).toBeUndefined();
+    expect(supportsAdaptiveThinkingByApiId('')).toBeUndefined();
+    expect(supportsAdaptiveThinkingByApiId(undefined)).toBeUndefined();
   });
 });
 

@@ -5,6 +5,16 @@
 // list price, snapshot 2026-07. `null` means the price was not verifiable at
 // snapshot time — never guess. Update alongside docs/concepts/model-selection.md
 // and docs/getting-started/api-keys.md (see CLAUDE.md doc-trigger table).
+//
+// `supportsAdaptiveThinking` (Anthropic entries ONLY — non-Anthropic entries
+// omit it, the flag is meaningless for other providers): whether the API
+// model accepts `thinking: {type: 'adaptive'}`. True for Opus/Sonnet 4.6+
+// and the 5.x line; false for Haiku (live-verified 400: "adaptive thinking
+// is not supported on this model" against claude-haiku-4-5) and any pre-4.6
+// Opus/Sonnet ID that gets added (those require the older
+// `{type: 'enabled', budget_tokens}` shape and reject adaptive). The
+// Anthropic adapter consults this flag via supportsAdaptiveThinkingByApiId
+// below; keep it in sync when adding Anthropic models.
 
 // Model registry with actual API model IDs
 const MODEL_REGISTRY = {
@@ -14,36 +24,42 @@ const MODEL_REGISTRY = {
   'claude-opus-4-8': {
     apiId: 'claude-opus-4-8',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
     inputPerMTok: 5,
     outputPerMTok: 25,
   },
   'claude-opus-4.7': {
     apiId: 'claude-opus-4-7',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
     inputPerMTok: 5,
     outputPerMTok: 25,
   },
   'claude-opus-4.6': {
     apiId: 'claude-opus-4-6',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
     inputPerMTok: 5,
     outputPerMTok: 25,
   },
   'claude-sonnet-5': {
     apiId: 'claude-sonnet-5',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
     inputPerMTok: 3,
     outputPerMTok: 15,
   },
   'claude-sonnet-4.6': {
     apiId: 'claude-sonnet-4-6',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
     inputPerMTok: 3,
     outputPerMTok: 15,
   },
   'claude-haiku-4.5': {
     apiId: 'claude-haiku-4-5',
     provider: 'Anthropic',
+    supportsAdaptiveThinking: false,
     inputPerMTok: 1,
     outputPerMTok: 5,
   },
@@ -349,6 +365,22 @@ const providerForModel = (modelId) => {
   return MODEL_REGISTRY[modelId]?.provider ?? null;
 };
 
+// Adaptive-thinking capability lookup keyed by API model id (what the
+// Anthropic adapter receives), with the user-facing registry key accepted as
+// a fallback for callers that pass ids straight through unresolved. Returns
+// `true`/`false` when the id is registered, `undefined` when it is not —
+// callers (lib/llm/structured/anthropic.js) fall back to version-parsing
+// heuristics for unregistered ids (smoke-script overrides, raw apiIds).
+// Scans at call time rather than precomputing so registry edits (including
+// test fixtures) are always reflected.
+const supportsAdaptiveThinkingByApiId = (apiId) => {
+  if (!apiId) return undefined;
+  const entry =
+    Object.values(MODEL_REGISTRY).find((m) => m.apiId === apiId) ?? MODEL_REGISTRY[apiId];
+  if (!entry || !('supportsAdaptiveThinking' in entry)) return undefined;
+  return entry.supportsAdaptiveThinking === true;
+};
+
 const getModelsForPDF = () => {
   return AVAILABLE_MODELS.filter((m) => m.supportsPDF);
 };
@@ -373,6 +405,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getModelsForQuickFilter,
     getModelsByProvider,
     providerForModel,
+    supportsAdaptiveThinkingByApiId,
   };
 }
 
@@ -386,4 +419,5 @@ export {
   getModelsForQuickFilter,
   MODEL_REGISTRY,
   providerForModel,
+  supportsAdaptiveThinkingByApiId,
 };
