@@ -4,7 +4,7 @@ layout: home
 hero:
   name: <span class="hero-name">Ap<span class="ar-highlight">ar</span>ture</span>
   text: <span class="tagline-text">Bringing the <span class="arxiv-highlight"><span class="arxiv-ar-highlight">ar</span>Xiv</span> into focus</span>
-  tagline: Multi-stage research paper discovery and analysis using LLMs
+  tagline: One briefing a day instead of the listings, with every citation checked
   actions:
     - theme: brand
       text: Get Started
@@ -14,7 +14,7 @@ hero:
       link: https://github.com/joshspeagle/aparture
 ---
 
-Aparture is a local web app for daily arXiv monitoring using LLMs. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile.
+Aparture is a local web app that reads the day's arXiv so you can stop skimming it. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile. Every citation in that briefing is checked against the papers it was actually given before anything renders.
 
 It's designed to be used over weeks rather than once: you star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. Those signals feed into a profile-refinement flow that proposes edits you can accept or reject individually, so the briefings gradually converge on what you actually want to see.
 
