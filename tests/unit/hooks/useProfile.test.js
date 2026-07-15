@@ -158,6 +158,47 @@ describe('useProfile', () => {
   });
 });
 
+describe('useProfile — corrupt stored profile repair (C8)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('replaces a corrupt aparture-profile blob on mount (one-time repair)', () => {
+    window.localStorage.setItem('aparture-profile', '{not-valid-json!!');
+    window.localStorage.setItem('aparture-profile-md', 'I study flows.');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+
+    // Initializer fell back to the Phase-1 migration…
+    expect(result.current.profile.content).toBe('I study flows.');
+    // …and the mount effect REPLACED the corrupt blob, so the next load
+    // parses cleanly instead of re-migrating forever.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-profile'));
+    expect(stored.content).toBe('I study flows.');
+  });
+
+  it('does NOT rewrite a valid stored profile on mount', () => {
+    const valid = {
+      content: 'hand-written profile',
+      updatedAt: 123,
+      lastFeedbackCutoff: 0,
+      revisions: [],
+    };
+    window.localStorage.setItem('aparture-profile', JSON.stringify(valid));
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+
+    expect(result.current.profile.content).toBe('hand-written profile');
+    const profileWrites = setItemSpy.mock.calls.filter(([key]) => key === 'aparture-profile');
+    expect(profileWrites).toHaveLength(0);
+  });
+});
+
 describe('useProfile — named profiles', () => {
   beforeEach(() => {
     window.localStorage.clear();

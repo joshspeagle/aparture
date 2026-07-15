@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { buildIndexEntry } from '../lib/briefing/buildIndexEntry.js';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { encodePasswordHeader } from '../lib/auth/passwordHeader.js';
 
 const CURRENT_KEY = 'aparture-briefing-current';
 const HISTORY_KEY = 'aparture-briefing-index';
@@ -250,7 +251,7 @@ export function useBriefing({ password = '' } = {}) {
       if (!entry?.id) continue;
       fetch(`/api/briefings/${encodeURIComponent(entry.id)}`, {
         method: 'DELETE',
-        headers: { 'x-aparture-password': passwordRef.current },
+        headers: { 'x-aparture-password': encodePasswordHeader(passwordRef.current) },
       }).catch((err) => {
         console.warn('[useBriefing] failed to unlink quota-pruned cold briefing', entry.id, err);
       });
@@ -308,7 +309,7 @@ export function useBriefing({ password = '' } = {}) {
       }
       try {
         const res = await fetch('/api/briefings?index=1', {
-          headers: { 'x-aparture-password': password },
+          headers: { 'x-aparture-password': encodePasswordHeader(password) },
         });
         if (cancelled) return;
         if (!res.ok) {
@@ -406,7 +407,7 @@ export function useBriefing({ password = '' } = {}) {
 
     try {
       const res = await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
-        headers: { 'x-aparture-password': passwordRef.current },
+        headers: { 'x-aparture-password': encodePasswordHeader(passwordRef.current) },
       });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -437,7 +438,7 @@ export function useBriefing({ password = '' } = {}) {
       try {
         await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
           method: 'DELETE',
-          headers: { 'x-aparture-password': passwordRef.current },
+          headers: { 'x-aparture-password': encodePasswordHeader(passwordRef.current) },
         });
       } catch (err) {
         console.warn('[useBriefing] delete failed for', id, err);

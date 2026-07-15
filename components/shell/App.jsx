@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { localDateStr } from '../../lib/dates.js';
 import { DEFAULT_MODEL_ID, MODEL_REGISTRY } from '../../utils/models';
 import { runBriefingGeneration } from '../../lib/analyzer/briefingClient.js';
+import { buildGenerationMetadata } from '../../lib/analyzer/generationMetadata.js';
 import { exportAnalysisReport } from '../../lib/analyzer/exportReport.js';
 import { createAnalysisPipeline } from '../../lib/analyzer/pipeline.js';
 import { readInitialConfig, useAnalyzerPersistence } from '../../hooks/useAnalyzerPersistence.js';
@@ -177,6 +178,9 @@ export default function App() {
     addError,
     addStatus,
     setReactContext,
+    clearSkippedDueToRecaptcha,
+    resetCostTracking,
+    msClear,
   } = useAnalyzerStore.getState();
 
   // Pipeline — reads state from the Zustand store. Only React refs are
@@ -426,8 +430,25 @@ export default function App() {
       isPaused: false,
     });
     setProcessingTiming({ startTime: null, endTime: null, duration: null });
+    // Run-scoped extras that would otherwise survive a reset: the reCAPTCHA
+    // skip summary card, per-stage cost accumulation, MS star/dismiss
+    // selections, and a stale synthesis error banner.
+    clearSkippedDueToRecaptcha();
+    resetCostTracking();
+    msClear();
+    setSynthesisError(null);
     localStorage.removeItem('arxivAnalyzerState');
-  }, [handleStop, resetResults, setFilterResults, setProcessing, setProcessingTiming]);
+  }, [
+    handleStop,
+    resetResults,
+    setFilterResults,
+    setProcessing,
+    setProcessingTiming,
+    clearSkippedDueToRecaptcha,
+    resetCostTracking,
+    msClear,
+    setSynthesisError,
+  ]);
 
   // --- Export handlers ---
   const exportResults = useCallback(() => {
@@ -677,36 +698,36 @@ export default function App() {
   const handleGenerateBriefing = useCallback(() => {
     // Live store reads (not the subscribed slices) keep this callback stable
     // across run-time updates so the memoized MainArea isn't invalidated.
-    const { results: liveResults, filterResults: liveFilterResults } = useAnalyzerStore.getState();
-    const resolvedBriefingModel = config?.briefingModel ?? config?.pdfModel ?? DEFAULT_MODEL_ID;
-    const filterVerdictCounts = {
-      yes: liveFilterResults.yes?.length ?? 0,
-      maybe: liveFilterResults.maybe?.length ?? 0,
-      no: liveFilterResults.no?.length ?? 0,
-    };
-    const generationMetadata = {
-      // Manual generation during a dry run still uses mock pipeline results.
-      testMode: !!testState?.dryRunInProgress,
-      profileSnapshot: profile?.content ?? '',
-      filterModel: config?.filterModel ?? '',
-      scoringModel: config?.scoringModel ?? '',
-      pdfModel: config?.pdfModel ?? '',
-      briefingModel: resolvedBriefingModel,
-      categories: [...(config?.selectedCategories ?? [])],
-      filterVerdictCounts,
-      // Persisted so archived briefings show THEIR run's screened count
-      // instead of whatever the live results slice holds at view time.
+    const {
+      results: liveResults,
+      filterResults: liveFilterResults,
+      reactContext: liveContext,
+    } = useAnalyzerStore.getState();
+
+    // Run-origin signal: results.fromDryRun is stamped by startProcessing on
+    // every finalRanking write, so a regenerate over dry-run results stays
+    // mocked (and marked TEST MODE) even after testState.dryRunInProgress has
+    // flipped back to false at run end. Live dryRunInProgress is NOT usable
+    // here — the button is disabled while a run is in progress, so at the
+    // first clickable moment that flag is always false.
+    const fromDryRun = !!liveResults?.fromDryRun;
+
+    const generationMetadata = buildGenerationMetadata({
+      config,
+      profile,
+      filterResults: liveFilterResults,
       papersScreened: liveResults?.allPapers?.length ?? 0,
-      feedbackCutoff: profile?.lastFeedbackCutoff ?? null,
-      briefingRetryOnYes: config.briefingRetryOnYes ?? true,
-      briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
-      pauseAfterFilter: config.pauseAfterFilter ?? true,
-      timestamp: new Date().toISOString(),
-    };
+      testMode: fromDryRun,
+    });
+
+    // Fresh AbortController so Stop (and any future cancel affordance) can
+    // abort a manual generation. Safe to overwrite the ref: the Generate
+    // button is disabled while the pipeline is running.
+    abortControllerRef.current = new AbortController();
 
     return runBriefingGeneration({
       results: liveResults,
-      briefingModel: resolvedBriefingModel,
+      briefingModel: generationMetadata.briefingModel,
       pdfModel: config?.pdfModel,
       quickSummaryModel: config?.quickSummaryModel,
       quickSummaryConcurrency: config?.quickSummaryConcurrency,
@@ -714,7 +735,10 @@ export default function App() {
       briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
       profile,
       password,
-      briefingHistory,
+      // Engagement (stars/dismisses/comments) and the pipeline archive must
+      // reach the synthesizer exactly as they do on the auto-run path.
+      feedbackEvents: liveContext?.feedback?.events ?? [],
+      filterResults: liveFilterResults,
       saveBriefing: stableSaveBriefingAndSwitch,
       generationMetadata,
       setSynthesizing,
@@ -723,6 +747,7 @@ export default function App() {
       setBriefingStage,
       setQuickSummariesById,
       setFullReportsById,
+      addStatus,
       // Per-stage token-usage accumulation, same sink the pipeline uses.
       onUsage: (stage, model, data) => {
         if (typeof data?.tokensIn !== 'number' && typeof data?.tokensOut !== 'number') return;
@@ -732,10 +757,14 @@ export default function App() {
           cacheReadTok: data.cacheReadTok ?? 0,
         });
       },
+      abortSignal: abortControllerRef.current.signal,
+      // Regenerating over dry-run results must stay fully mocked — real
+      // routes would 401 on a keyless install and bill a configured one.
+      mockTester: fromDryRun ? mockAPITesterRef.current : null,
     });
     // Store setters (setSynthesizing etc.) are stable getState() actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, profile, password, briefingHistory, stableSaveBriefingAndSwitch]);
+  }, [config, profile, password, stableSaveBriefingAndSwitch]);
 
   const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
 

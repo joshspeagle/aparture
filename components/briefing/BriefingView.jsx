@@ -26,7 +26,9 @@ export default function BriefingView({
   briefing,
   date,
   briefingDate,
-  papersScreened = 0,
+  // null (the default) means "not recorded" — BriefingHeader omits the
+  // "· N screened" segment rather than rendering a misleading 0.
+  papersScreened = null,
   testMode = false,
   quickSummariesById = {},
   fullReportsById = {},

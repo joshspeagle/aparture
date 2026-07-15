@@ -46,6 +46,7 @@ function readInitialState(config) {
     return {
       profile: { content: '', updatedAt: 0, lastFeedbackCutoff: 0, revisions: [] },
       notice: null,
+      needsRepair: false,
       profiles: {},
       activeProfileName: 'Default',
     };
@@ -56,13 +57,26 @@ function readInitialState(config) {
   // trigger re-armed every time `clearHistory` emptied the revision list, so it
   // wiped edited profiles on reload. It could also only ever fire in a state
   // app code can't produce, so it was removed.)
+  //
+  // needsRepair: a truthy-but-corrupt stored value must be OVERWRITTEN by the
+  // mount effect. The effect's "persist only when the key is missing" guard
+  // would otherwise see the corrupt blob as present, skip the write, and the
+  // hook would re-run the Phase-1 migration on every single load forever.
+  let needsRepair = false;
   const stored = window.localStorage.getItem(PROFILE_KEY);
   if (stored) {
     try {
       const profile = JSON.parse(stored);
-      return { profile, notice: null, ...readInitialProfiles(window.localStorage, profile) };
+      return {
+        profile,
+        notice: null,
+        needsRepair: false,
+        ...readInitialProfiles(window.localStorage, profile),
+      };
     } catch {
-      // Corrupt JSON — fall through to a fresh Phase-1 migration.
+      // Corrupt JSON — fall through to a fresh Phase-1 migration and flag
+      // the mount effect to replace the unparseable blob.
+      needsRepair = true;
     }
   }
 
@@ -76,6 +90,7 @@ function readInitialState(config) {
   return {
     profile,
     notice: dismissed ? null : notice,
+    needsRepair,
     ...readInitialProfiles(window.localStorage, profile),
   };
 }
@@ -95,7 +110,11 @@ export function useProfile(config = {}) {
     initialPersistDoneRef.current = true;
     if (typeof window === 'undefined') return;
     const storage = window.localStorage;
-    if (!storage.getItem(PROFILE_KEY)) {
+    // Write when the key is missing (first run / fresh migration) OR when the
+    // initializer found a corrupt blob (needsRepair) — a corrupt-but-truthy
+    // value would otherwise never be repaired and the user would silently
+    // re-migrate on every load. A valid stored profile is NOT rewritten.
+    if (!storage.getItem(PROFILE_KEY) || state.needsRepair) {
       safeSetItem(PROFILE_KEY, JSON.stringify(state.profile));
     }
     if (storage.getItem(PHASE_1_PROFILE_KEY)) {

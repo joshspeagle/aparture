@@ -347,6 +347,57 @@ describe('useAnalyzerPersistence — load effect', () => {
   });
 });
 
+describe('useAnalyzerPersistence — load effect notebookLM model repair (C4)', () => {
+  // notebookLM.model persists OUTSIDE config (hotEntry.notebookLM.model), so
+  // the v8→v9 config migration never touches it. The load effect must apply
+  // the shared retired-model remap itself, and fall back to the default for
+  // IDs the registry no longer knows.
+  it("remaps a retired stored notebookLM model ('claude-haiku-3.5' → 'claude-haiku-4.5')", async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        notebookLM: { duration: 20, model: 'claude-haiku-3.5', content: null },
+      })
+    );
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+    await waitFor(() => {
+      expect(props.setNotebookLMModel).toHaveBeenCalledWith('claude-haiku-4.5');
+    });
+  });
+
+  it('falls back to the default model for unknown junk IDs', async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        notebookLM: { duration: 20, model: 'totally-unknown-model', content: null },
+      })
+    );
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+    await waitFor(() => {
+      expect(props.setNotebookLMModel).toHaveBeenCalledWith('gemini-3.5-flash');
+    });
+  });
+
+  it('restores a still-registered model unchanged', async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        notebookLM: { duration: 20, model: 'claude-opus-4.7', content: null },
+      })
+    );
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+    await waitFor(() => {
+      expect(props.setNotebookLMModel).toHaveBeenCalledWith('claude-opus-4.7');
+    });
+  });
+});
+
 describe('useAnalyzerPersistence — reload-time cold-tier clobber guard', () => {
   // Hot blob shape after a refresh: sessionId + finalRanking + password, but
   // NO heavy fields (those live only on disk). Restoring it re-triggers the

@@ -50,25 +50,26 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 
 ## Master symptom table
 
-| Symptom                                                              | Likely cause                                                      | Jump to                                                                   |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install        | [npm install failures](#npm-install-failures)                             |
-| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or Apple Silicon without Rosetta | [Playwright install failures](#playwright-install-failures)               |
-| `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                          | [Port 3000 already in use](#port-3000-already-in-use)                     |
-| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF          | [ACCESS_PASSWORD mismatch](#access_password-mismatch)                     |
-| `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                           | [`.env.local` not loading](#env-local-not-loading)                        |
-| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                     | [API key format issues](#api-key-format-issues)                           |
-| `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                            | [arXiv rate limits](#arxiv-rate-limits)                                   |
-| Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                       | [arXiv rate-limited](#arxiv-rate-limited)                                 |
-| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`            | ArXiv served reCAPTCHA HTML instead of PDF bytes                  | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
-| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                    | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
-| `Filter/Score/PDF API error: 429`                                    | Provider rate-limit                                               | [Provider rate limits](#provider-rate-limits)                             |
-| `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window              | [Context overflow](#context-overflow)                                     |
-| Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops       | [Cost spike mid-run](#cost-spike-mid-run)                                 |
-| Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab | [Stuck stage](#stuck-stage)                                               |
-| `Briefing generation failed: synthesis failed`                       | Schema validation + repair both failed                            | [Briefing schema-validation failure](#briefing-schema-validation-failure) |
-| Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged              | [Hallucination-retry loop](#hallucination-retry-loop)                     |
-| Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                        | [Hallucination-retry loop](#hallucination-retry-loop)                     |
+| Symptom                                                              | Likely cause                                                           | Jump to                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install             | [npm install failures](#npm-install-failures)                             |
+| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or Apple Silicon without Rosetta      | [Playwright install failures](#playwright-install-failures)               |
+| `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                               | [Port 3000 already in use](#port-3000-already-in-use)                     |
+| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access_password-mismatch)                     |
+| `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                        |
+| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                           |
+| `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                                 | [arXiv rate limits](#arxiv-rate-limits)                                   |
+| Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                            | [arXiv rate-limited](#arxiv-rate-limited)                                 |
+| `Failed to download PDF: HTTP 403` (or 404 / timeout)                | Genuine download failure — retried, then reported with the real status | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
+| `reCAPTCHA detected` / Playwright fallback firing                    | ArXiv served a reCAPTCHA interstitial instead of PDF bytes             | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
+| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                         | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
+| `Filter/Score/PDF API error: 429`                                    | Provider rate-limit                                                    | [Provider rate limits](#provider-rate-limits)                             |
+| `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window                   | [Context overflow](#context-overflow)                                     |
+| Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops            | [Cost spike mid-run](#cost-spike-mid-run)                                 |
+| Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab      | [Stuck stage](#stuck-stage)                                               |
+| `Briefing generation failed: synthesis failed`                       | Schema validation + repair both failed                                 | [Briefing schema-validation failure](#briefing-schema-validation-failure) |
+| Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged                   | [Hallucination-retry loop](#hallucination-retry-loop)                     |
+| Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                             | [Hallucination-retry loop](#hallucination-retry-loop)                     |
 
 ---
 
@@ -288,7 +289,9 @@ Symptoms: `npm run dev` logs show `arXiv 429` repeatedly, run reports `arXiv: au
 
 ### reCAPTCHA on PDF downloads
 
-ArXiv's PDF endpoint starts serving reCAPTCHA HTML after roughly 10–20 rapid downloads. Aparture detects this automatically (the response doesn't begin with `%PDF-`) and falls back to Playwright, which reuses a persistent cookie jar at `temp/playwright-profile/` to clear the challenge.
+ArXiv's PDF endpoint starts serving reCAPTCHA HTML after roughly 10–20 rapid downloads. Aparture detects this automatically — an HTTP-OK response whose body doesn't begin with `%PDF-` is treated as the interstitial — and falls back to Playwright, which reuses a persistent cookie jar at `temp/playwright-profile/` to clear the challenge.
+
+Genuine network/HTTP failures (a 403, a 404, a timeout, an exhausted 429) are **not** treated as reCAPTCHA: they go through the normal retry ladder and are reported with their real HTTP status, so a `Failed to download PDF: HTTP 403` line means the download itself failed, not that a challenge fired.
 
 **With Playwright installed.** The fallback fires transparently. Terminal output:
 

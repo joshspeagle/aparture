@@ -14,7 +14,7 @@
 //   --briefing-model-<provider>=<id>  override only the briefing model for <provider>
 //
 // Model overrides accept user-facing IDs from utils/models.js MODEL_REGISTRY
-// (e.g. 'claude-opus-4.5', 'gemini-3-flash', 'gpt-5.4'). The smoke script
+// (e.g. 'claude-opus-4.7', 'gemini-3-flash', 'gpt-5.4'). The smoke script
 // passes them through to the API routes; each route's handler resolves the
 // apiId via MODEL_REGISTRY before calling the provider.
 //

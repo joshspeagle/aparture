@@ -15,7 +15,9 @@
 // arrays) are dropped from the hot blob — they live only on disk now.
 
 import { useEffect, useRef } from 'react';
+import { DEFAULT_MODEL_ID, MODEL_REGISTRY } from '../utils/models.js';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { encodePasswordHeader } from '../lib/auth/passwordHeader.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
 import { BLANK_PROFILE_TEMPLATE } from '../lib/profile/starterTemplates.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
@@ -29,6 +31,19 @@ function generateSessionId() {
   }
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
+
+// 2026-07 model-registry refresh: retired/removed model IDs → their closest
+// current-generation replacement. Shared between the v8→v9 config migration
+// (which walks config's model slots) and the load effect's notebookLM.model
+// repair — the notebookLM model does NOT live in config (it persists at
+// hotEntry.notebookLM.model, see lib/session/buildHotEntry.js), so the config
+// migration alone can't fix it.
+export const RETIRED_MODEL_REMAP = {
+  'claude-haiku-3.5': 'claude-haiku-4.5',
+  'claude-opus-4.1': 'claude-opus-4-8',
+  'claude-opus-4.5': 'claude-opus-4-8',
+  'claude-sonnet-4.5': 'claude-sonnet-5',
+};
 
 export const DEFAULT_CONFIG = {
   version: 9,
@@ -207,12 +222,6 @@ export function migrateLegacyConfig(config) {
   // Anthropic adapter). Google defaults also moved to GA gemini-3.5-flash,
   // but existing preview selections are left alone — they still work.
   if (config.version === 8) {
-    const modelRemap = {
-      'claude-haiku-3.5': 'claude-haiku-4.5',
-      'claude-opus-4.1': 'claude-opus-4-8',
-      'claude-opus-4.5': 'claude-opus-4-8',
-      'claude-sonnet-4.5': 'claude-sonnet-5',
-    };
     const modelSlots = [
       'filterModel',
       'scoringModel',
@@ -223,7 +232,7 @@ export function migrateLegacyConfig(config) {
       'notebookLMModel',
     ];
     for (const slot of modelSlots) {
-      const mapped = modelRemap[config[slot]];
+      const mapped = RETIRED_MODEL_REMAP[config[slot]];
       if (mapped) config[slot] = mapped;
     }
     config.version = 9;
@@ -354,7 +363,7 @@ async function fetchColdSession(sessionId, password) {
     // Password travels in a header, not the query string (query values leak
     // into dev-server logs and browser history).
     const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
-      headers: { 'x-aparture-password': password ?? '' },
+      headers: { 'x-aparture-password': encodePasswordHeader(password) },
     });
     if (!res.ok) return null;
     return await res.json();
@@ -488,7 +497,16 @@ export function useAnalyzerPersistence({
     }
     if (parsed.notebookLM) {
       if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
-      if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
+      if (parsed.notebookLM.model) {
+        // The notebookLM model persists OUTSIDE config (hotEntry.notebookLM),
+        // so the v8→v9 config migration never sees it. Remap retired IDs here
+        // and fall back to the default when the stored ID (remapped or not)
+        // isn't in the registry — restoring an unknown ID would leave the
+        // Select with no matching option and /api/generate-notebooklm
+        // returning a persistent 400 until the user re-picks manually.
+        const remapped = RETIRED_MODEL_REMAP[parsed.notebookLM.model] ?? parsed.notebookLM.model;
+        setNotebookLMModel(MODEL_REGISTRY[remapped] ? remapped : DEFAULT_MODEL_ID);
+      }
       if (parsed.notebookLM.content) setNotebookLMContent(parsed.notebookLM.content);
     }
     if (parsed.password) {

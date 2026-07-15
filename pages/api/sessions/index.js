@@ -12,6 +12,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
 import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
+import { decodePasswordHeader } from '../../../lib/auth/passwordHeader.js';
 
 // Next.js' default API body limit is 1mb; a full session payload (allPapers
 // + scoredPapers + full filterResults verdicts) for a 600+-paper run is in
@@ -37,7 +38,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Auth via request header, NOT the query string — `?password=` leaks
     // into dev-server logs and browser history.
-    const password = req.headers?.['x-aparture-password'];
+    // Header values are percent-encoded by the client (fetch's ByteString
+    // constraint rejects non-Latin1 chars); decode before comparing.
+    // Malformed encoding decodes to null -> wrong password -> 401.
+    const password = decodePasswordHeader(req.headers?.['x-aparture-password']);
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }

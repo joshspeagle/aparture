@@ -390,10 +390,12 @@ function MainArea({
           // slice reflects whatever run is CURRENTLY in memory, which is
           // wrong for archived briefings. The live fallback only applies to
           // the just-generated current briefing (whose metadata may predate
-          // the papersScreened field).
+          // the papersScreened field). Archived entries without the field
+          // pass null so BriefingHeader omits the segment instead of
+          // rendering a misleading "0 screened".
           papersScreened={
             entry.generationMetadata?.papersScreened ??
-            (entry.id === currentBriefing?.id ? (results?.allPapers?.length ?? 0) : 0)
+            (entry.id === currentBriefing?.id ? (results?.allPapers?.length ?? 0) : null)
           }
           quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
           fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
