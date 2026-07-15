@@ -24,7 +24,10 @@ export default function BriefingOptionsSection({ config, setConfig, processing }
       >
         Briefing Options
       </p>
-      <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+      <div
+        className="settings-field-row"
+        style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
+      >
         <div style={{ flex: 1 }}>
           <label
             style={{

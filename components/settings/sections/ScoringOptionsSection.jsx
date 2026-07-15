@@ -45,7 +45,10 @@ export default function ScoringOptionsSection({ config, setConfig, processing })
           disabled={processing.isRunning}
         />
       </div>
-      <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+      <div
+        className="settings-field-row"
+        style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
+      >
         <div style={{ flex: 1 }}>
           <label
             style={{

@@ -52,3 +52,111 @@
   margin: 0 auto;
   padding: var(--aparture-space-8) var(--aparture-space-6);
 }
+
+/* Mobile top bar + scrim — display: none on desktop so the ≥768px layout
+ * is pixel-identical to the pre-drawer shell. */
+.shell-topbar {
+  display: none;
+}
+
+.shell-scrim {
+  display: none;
+}
+
+/* Off-canvas sidebar drawer under 768px.
+ * The sidebar becomes a fixed drawer translated off-canvas; a slim sticky
+ * top bar (hamburger + wordmark) opens it, and tapping the scrim or
+ * selecting a nav item closes it (state lives in App.jsx). z-order:
+ * topbar (30) < scrim (40) < sidebar (50). */
+@media (max-width: 767px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .shell-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--aparture-space-2);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    min-height: 48px;
+    background: var(--aparture-sidebar-bg);
+    border-bottom: 1px solid var(--aparture-hairline);
+    padding: var(--aparture-space-1) var(--aparture-space-2);
+  }
+
+  .shell-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--aparture-ink);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .shell-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+  }
+
+  .shell-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .shell-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    /* Documented modal-overlay scrim value (see CLAUDE.md status colors). */
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* On mobile the main area scrolls with the page — the fixed-height split
+   * panes only make sense beside a sticky sidebar. */
+  .shell-main {
+    height: auto;
+    overflow-y: visible;
+  }
+
+  .briefing-surface {
+    padding: var(--aparture-space-8) var(--aparture-space-4);
+  }
+
+  .config-surface {
+    padding: var(--aparture-space-6) var(--aparture-space-4);
+  }
+
+  /* Touch affordance for gate Continue buttons and verdict/action pills —
+   * inline styles set padding only, so this min-size applies without
+   * specificity fights and leaves desktop untouched. */
+  .touch-target {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  /* Settings multi-column field rows (Advanced Options) stack two-up on
+   * mobile. The min-width clamps each field's flex-basis so the row wraps
+   * instead of forcing the whole page past the viewport; desktop keeps the
+   * single-row inline flex: 1/2 layout. */
+  .settings-field-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-field-row > div {
+    min-width: 45%;
+  }
+}

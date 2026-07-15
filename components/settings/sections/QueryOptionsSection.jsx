@@ -18,7 +18,10 @@ export default function QueryOptionsSection({ config, setConfig, processing }) {
       >
         Query Options
       </p>
-      <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+      <div
+        className="settings-field-row"
+        style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
+      >
         <div style={{ flex: 1 }}>
           <label
             style={{

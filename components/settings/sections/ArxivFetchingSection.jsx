@@ -154,7 +154,10 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
           Submitted only matches legacy behavior; Include updates also surfaces v2 of older papers
         </p>
       </div>
-      <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+      <div
+        className="settings-field-row"
+        style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
+      >
         <div style={{ flex: 1 }}>
           <label
             style={{

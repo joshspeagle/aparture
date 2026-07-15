@@ -35,7 +35,17 @@ export default function ReviewGateBanner({
           {description}
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--aparture-space-3)' }}>
+      {/* flexWrap lets the docs link / skip link / Continue button drop to
+          their own line on narrow (mobile) viewports instead of overflowing;
+          on desktop everything fits on one line as before. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 'var(--aparture-space-2) var(--aparture-space-3)',
+        }}
+      >
         <h2 style={{ margin: 0, fontSize: 'var(--aparture-text-base)', fontWeight: 600 }}>
           {title}
         </h2>
@@ -55,6 +65,7 @@ export default function ReviewGateBanner({
         {onSkipRemaining && (
           <button
             type="button"
+            className="touch-target"
             onClick={onSkipRemaining}
             style={{
               background: 'transparent',
@@ -69,7 +80,7 @@ export default function ReviewGateBanner({
             Skip remaining gates this run
           </button>
         )}
-        <Button variant="primary" onClick={onContinue}>
+        <Button variant="primary" className="touch-target" onClick={onContinue}>
           {continueLabel}
         </Button>
       </div>

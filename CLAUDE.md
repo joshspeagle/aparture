@@ -83,12 +83,14 @@ Pipeline stages follow `docs/concepts/pipeline.md` (Stage 1 fetch → Stage 5 br
 
 Four layers, each with a distinct job:
 
-| Layer                   | File                  | Used for                                                             |
-| ----------------------- | --------------------- | -------------------------------------------------------------------- |
-| **Tokens**              | `styles/tokens.css`   | Palette, typography, spacing — consumed via `var(--aparture-*)`      |
-| **Shell layout**        | `styles/shell.css`    | Structural classes (`.shell`, `.shell-sidebar`, `.briefing-surface`) |
-| **Briefing typography** | `styles/briefing.css` | Reading-surface rules scoped to `.briefing-prose`                    |
-| **Inline styles**       | component files       | Component-local visual properties, variant/state switching           |
+| Layer            | File                | Used for                                                             |
+| ---------------- | ------------------- | -------------------------------------------------------------------- |
+| **Tokens**       | `styles/tokens.css` | Palette, typography, spacing — consumed via `var(--aparture-*)`      |
+| **Shell layout** | `styles/shell.css`  | Structural classes (`.shell`, `.shell-sidebar`, `.briefing-surface`) |
+
+**Responsive breakpoint (768px).** Under 768px `styles/shell.css` turns the sidebar into an off-canvas drawer (`.shell-topbar` hamburger + `.shell-scrim` + `.shell-sidebar--open`; open/close state lives in `App.jsx`, `MobileTopBar.jsx` is the top bar). The same media block provides `.touch-target` (≥40px tap size for gate Continue buttons and verdict/action pills) and `.settings-field-row` (two-up wrap for multi-column settings rows). Desktop ≥768px is untouched by all of these — mobile rules live only inside the media query.
+| **Briefing typography** | `styles/briefing.css` | Reading-surface rules scoped to `.briefing-prose` |
+| **Inline styles** | component files | Component-local visual properties, variant/state switching |
 
 **Rules:** always reference `var(--aparture-*)` for colors/typography/spacing (never hardcode palette); use `className` for shell layout, briefing-prose BEM, and Lucide icon sizing (`w-*`, `h-*`, `animate-spin`); use inline `style={{...}}` for everything else. **Avoid adding new Tailwind classes** — utility layer is present in `globals.css` but only Lucide sizing + one legacy `md:grid-cols-3` remain.
 

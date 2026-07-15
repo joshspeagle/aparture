@@ -208,3 +208,24 @@
   font-size: var(--aparture-text-xs);
   margin-right: var(--aparture-space-2);
 }
+
+/* Mobile reading pass (< 768px). The surrounding .briefing-surface
+ * (shell.css) owns the horizontal gutters on small screens, so the prose
+ * block drops its own; paper cards tighten, and action-row links/buttons
+ * get real touch targets. Desktop is untouched. */
+@media (max-width: 767px) {
+  .briefing-prose {
+    padding: var(--aparture-space-6) 0;
+  }
+
+  .briefing-prose .paper-card {
+    padding: var(--aparture-space-4);
+  }
+
+  .briefing-prose .paper-card .action-row a,
+  .briefing-prose .paper-card .action-row button {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+}

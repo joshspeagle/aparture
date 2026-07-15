@@ -40,6 +40,8 @@ export default function ActionPill({
   return (
     <button
       type="button"
+      // ≥40px touch target under 768px (shell.css); inert on desktop.
+      className="touch-target"
       onClick={onClick}
       title={title}
       data-testid={dataTestId}

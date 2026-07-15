@@ -26,6 +26,7 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
         Filter Options
       </p>
       <div
+        className="settings-field-row"
         style={{
           display: 'flex',
           gap: 'var(--aparture-space-4)',
@@ -98,6 +99,9 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
           <div
             style={{
               display: 'flex',
+              // Wrap so YES/MAYBE/NO checkboxes never force horizontal
+              // overflow inside a narrow (mobile) field; inert on desktop.
+              flexWrap: 'wrap',
               gap: 'var(--aparture-space-4)',
               padding: '6px 0',
             }}

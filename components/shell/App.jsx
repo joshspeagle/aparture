@@ -19,6 +19,7 @@ import { useFeedback } from '../../hooks/useFeedback.js';
 import { useSeenPapers } from '../../hooks/useSeenPapers.js';
 import { papersFromBriefing } from '../../lib/seenPapers/papersFromBriefing.js';
 import Sidebar from './Sidebar.jsx';
+import MobileTopBar from './MobileTopBar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
 import RankedPaperCard from '../results/RankedPaperCard.jsx';
@@ -34,6 +35,19 @@ export default function App() {
 
   // activeView: 'welcome' | 'profile' | 'settings' | 'pipeline' | 'briefing:<date>'
   const [activeView, setActiveView] = useState('welcome');
+
+  // Mobile off-canvas drawer (< 768px — see shell.css). The state lives here
+  // because App owns the shell markup (top bar + scrim + sidebar) and the
+  // nav-selection path that must close the drawer. On desktop the drawer
+  // classes are inert, so this state has no visual effect ≥768px.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const openMobileSidebar = useCallback(() => setMobileSidebarOpen(true), []);
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
+  // Selecting any nav item (view entry or briefing) closes the drawer.
+  const handleSelectView = useCallback((view) => {
+    setActiveView(view);
+    setMobileSidebarOpen(false);
+  }, []);
 
   // Briefing (Phase 1) state
   const {
@@ -344,6 +358,13 @@ export default function App() {
     if (useAnalyzerStore.getState().processing?.isRunning) return;
     startProcessing(false, false);
   }, [startProcessing]);
+
+  // Sidebar "+ New Briefing": also dismiss the mobile drawer so the run's
+  // progress view isn't hidden behind it.
+  const handleNewBriefing = useCallback(() => {
+    setMobileSidebarOpen(false);
+    handleStart();
+  }, [handleStart]);
 
   const handlePause = useCallback(() => {
     pauseRef.current = true;
@@ -988,17 +1009,26 @@ export default function App() {
   // --- Authenticated shell ---
   return (
     <div className="shell">
+      {/* Mobile-only top bar (hamburger + wordmark) — display: none ≥768px. */}
+      <MobileTopBar onMenuClick={openMobileSidebar} />
+
       <Sidebar
         briefingHistory={briefingHistory}
         feedbackEvents={feedback.events}
         activeView={activeView}
-        onSelectView={setActiveView}
-        onNewBriefing={handleStart}
+        onSelectView={handleSelectView}
+        onNewBriefing={handleNewBriefing}
         newBriefingDisabled={processing?.isRunning ?? false}
         feedbackCount={feedback.events.length}
         onDeleteBriefing={deleteBriefing}
         onToggleArchive={toggleArchive}
+        mobileOpen={mobileSidebarOpen}
       />
+
+      {/* Scrim behind the open drawer — tap to close (mobile only). */}
+      {mobileSidebarOpen && (
+        <div className="shell-scrim" onClick={closeMobileSidebar} aria-hidden="true" />
+      )}
 
       <div className="shell-main">
         <MainArea

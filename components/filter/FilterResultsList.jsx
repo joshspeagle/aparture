@@ -35,6 +35,8 @@ function VerdictButton({ option, isActive, disabled, originalVerdict, onClick })
     <button
       type="button"
       role="radio"
+      // ≥40px touch target under 768px (shell.css); inert on desktop.
+      className="touch-target"
       aria-checked={isActive}
       // Re-click on the active verdict is a handler no-op (not `disabled`):
       // the active option must stay focusable so keyboard users can land on

@@ -24,7 +24,10 @@ export default function PdfAnalysisSection({ config, setConfig, processing }) {
       >
         PDF Analysis Options
       </p>
-      <div style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}>
+      <div
+        className="settings-field-row"
+        style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
+      >
         <div style={{ flex: 1 }}>
           <label
             style={{

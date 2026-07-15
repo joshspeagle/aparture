@@ -117,9 +117,12 @@ export default function Sidebar({
   feedbackCount,
   onDeleteBriefing,
   onToggleArchive,
+  // Mobile off-canvas drawer state (< 768px). On desktop the modifier class
+  // has no effect — shell.css only styles it inside the mobile media query.
+  mobileOpen = false,
 }) {
   return (
-    <div className="shell-sidebar">
+    <div className={mobileOpen ? 'shell-sidebar shell-sidebar--open' : 'shell-sidebar'}>
       {/* Logo */}
       <div
         style={{
