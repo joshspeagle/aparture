@@ -256,6 +256,7 @@ function MainArea({
                 onContinue={onContinueAfterScoreReview}
                 onSkipRemaining={onSkipRemainingGates}
                 onAddPaperComment={onAddMSPaperComment}
+                pdfModel={config?.pdfModel}
                 scopedCommentInput={
                   <ScopedCommentInput
                     scope={{ kind: 'score-review' }}
@@ -281,6 +282,7 @@ function MainArea({
               onContinueAfterReview={onContinueAfterReview}
               onSkipRemainingGates={onSkipRemainingGates}
               onAddGeneralComment={onAddGeneralComment}
+              config={config}
             >
               {analysisResults}
             </PreBriefingGate>

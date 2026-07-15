@@ -2,6 +2,9 @@ import { memo, useState } from 'react';
 import TextArea from '../ui/TextArea.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
+import { resolveAdditiveSet } from '../../lib/analyzer/resolveAdditiveSet.js';
+import { estimateStageCost, formatUsd } from '../../lib/analyzer/costEstimate.js';
+import { getModel } from '../../utils/models.js';
 import {
   COMMENT_CANCEL_BUTTON_STYLE,
   COMMENT_SAVE_BUTTON_STYLE,
@@ -213,6 +216,7 @@ export default function ScoreReviewSurface({
   onSkipRemaining,
   onAddPaperComment, // optional: fires {arxivId, text} for a per-row paper comment
   scopedCommentInput, // optional: a pre-mounted ScopedCommentInput element for score-review scope
+  pdfModel, // optional: config.pdfModel, enables the projected-spend line
 }) {
   const borderlineSize = Math.min(maxDeepAnalysis, 50);
   const topN = availablePapers.slice(0, maxDeepAnalysis);
@@ -220,6 +224,22 @@ export default function ScoreReviewSurface({
   const lowScore = availablePapers.slice(maxDeepAnalysis + borderlineSize);
 
   const groupProps = { starredIds, dismissedIds, onStar, onDismiss, onAddPaperComment };
+
+  // Projected Stage 4 spend for the LIVE selection — recomputed on every
+  // star/dismiss because the selection is (top-N ∪ starred) − dismissed,
+  // the same resolution startProcessing applies after the gate. Hidden when
+  // the PDF model has no registry pricing (never show "$null").
+  const pdfSet = resolveAdditiveSet({ availablePapers, maxDeepAnalysis, starredIds, dismissedIds });
+  const pdfEstimate = estimateStageCost({
+    stage: 'pdf',
+    paperCount: pdfSet.length,
+    modelId: pdfModel,
+  });
+  const costLine =
+    pdfEstimate.cost != null
+      ? `${pdfSet.length} paper${pdfSet.length === 1 ? '' : 's'} will be deep-read — est. ` +
+        `${formatUsd(pdfEstimate.cost)} (${getModel(pdfModel)?.name ?? pdfModel})`
+      : null;
 
   return (
     <section
@@ -237,7 +257,24 @@ export default function ScoreReviewSurface({
         onContinue={onContinue}
         onSkipRemaining={onSkipRemaining}
       >
-        {scopedCommentInput}
+        {/* Conditional so the banner's children wrapper (and its margin)
+            doesn't render when there's nothing to put in it. */}
+        {costLine || scopedCommentInput ? (
+          <>
+            {costLine && (
+              <div
+                style={{
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  marginBottom: scopedCommentInput ? 'var(--aparture-space-2, 8px)' : 0,
+                }}
+              >
+                {costLine}
+              </div>
+            )}
+            {scopedCommentInput}
+          </>
+        ) : null}
       </ReviewGateBanner>
       <div
         style={{

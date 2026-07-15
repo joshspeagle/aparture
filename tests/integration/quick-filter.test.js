@@ -58,6 +58,12 @@ describe('quick-filter API route (fixture mode)', () => {
       verdict: 'MAYBE',
     });
     expect(typeof jsonBody.rawResponse).toBe('string');
+    // Token usage rides along on the 200 body (summed across the route's
+    // provider calls) so the client can accumulate per-stage cost. The
+    // fixture reports 100 in / 50 out; no correction call fires.
+    expect(jsonBody.tokensIn).toBe(100);
+    expect(jsonBody.tokensOut).toBe(50);
+    expect(jsonBody.cacheReadTok).toBe(0);
   });
 
   it('rejects invalid password', async () => {

@@ -25,7 +25,9 @@ This page covers what each gate shows, what to do there, and when it's worth tur
   5. Briefing           (editorial synthesis + hallucination audit)
 ```
 
-All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early. Each gate presents the same banner — a one-line summary, a <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link — at the head of the section it gates. While a gate is waiting, the browser tab title changes to _"⏸ Waiting for your review — Aparture"_, so a backgrounded run signals when it needs you; the title restores when the run resumes.
+All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early.
+
+Gates 2 and 3 also show the projected spend of the stage they hold back. The score-review banner shows how many papers will be deep-read and a rough cost on your PDF model, updating live as you star and exclude; the pre-briefing banner does the same for the briefing. The numbers come from average token counts and the pricing snapshot in the model registry — planning figures, not a bill. If the registry has no price for the selected model, the line is hidden. Each gate presents the same banner — a one-line summary, a <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link — at the head of the section it gates. While a gate is waiting, the browser tab title changes to _"⏸ Waiting for your review — Aparture"_, so a backgrounded run signals when it needs you; the title restores when the run resumes.
 
 ## Gate 1 — after the quick filter
 

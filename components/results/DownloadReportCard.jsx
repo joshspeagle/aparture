@@ -1,6 +1,8 @@
 import { Download, TestTube } from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
+import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import { computeActualCost, formatUsd, STAGE_LABELS } from '../../lib/analyzer/costEstimate.js';
 
 export default function DownloadReportCard({
   testState,
@@ -11,6 +13,15 @@ export default function DownloadReportCard({
   onExport,
 }) {
   const hasReport = results.finalRanking.length > 0;
+
+  // Actual run cost, computed from the token counts the API routes returned
+  // (accumulated per stage during the run) and the registry pricing snapshot.
+  // Dry runs record no usage, so nothing renders — not $0.00. Stages whose
+  // model has no registry pricing are omitted from the breakdown and total.
+  const costByStage = useAnalyzerStore((s) => s.costTracking.byStage);
+  const actualCost = computeActualCost(costByStage);
+  const pricedStages = actualCost.byStage.filter((s) => s.cost != null);
+  const showCost = actualCost.hasUsage && actualCost.total != null;
 
   return (
     <Card>
@@ -74,6 +85,12 @@ export default function DownloadReportCard({
               {Math.min(results.scoredPapers.length, config.maxDeepAnalysis)} papers analyzed
               {' \u00b7 '}
               {results.finalRanking.length} papers summarized
+              {showCost && (
+                <>
+                  {' \u00b7 '}
+                  est. cost {formatUsd(actualCost.total)}
+                </>
+              )}
             </>
           ) : processing.isRunning ? (
             <>
@@ -84,6 +101,24 @@ export default function DownloadReportCard({
           ) : (
             `Last started: ${processingTiming.startTime.toLocaleString()}`
           )}
+        </p>
+      )}
+
+      {/* Per-stage cost breakdown. Provider list prices drift, so this is
+          labeled as an estimate from token counts, not a bill. */}
+      {processingTiming.endTime && actualCost.hasUsage && pricedStages.length > 0 && (
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            lineHeight: 1.6,
+            margin: 0,
+            marginBottom: 'var(--aparture-space-4)',
+          }}
+        >
+          {pricedStages.map((s) => `${STAGE_LABELS[s.stage]} ${formatUsd(s.cost)}`).join(' · ')}
+          {' — estimated from token counts'}
         </p>
       )}
 

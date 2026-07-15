@@ -333,3 +333,45 @@ describe('analyzerStore — MS slices', () => {
     expect(useAnalyzerStore.getState().msDismissedIds.size).toBe(0);
   });
 });
+
+describe('analyzerStore — costTracking slice', () => {
+  it('starts empty', () => {
+    expect(useAnalyzerStore.getState().costTracking.byStage).toEqual({});
+  });
+
+  it('addStageUsage accumulates tokens and call count per stage', () => {
+    const { addStageUsage } = useAnalyzerStore.getState();
+    addStageUsage('filter', 'claude-haiku-4.5', { tokensIn: 100, tokensOut: 20, cacheReadTok: 5 });
+    addStageUsage('filter', 'claude-haiku-4.5', { tokensIn: 50, tokensOut: 10, cacheReadTok: 0 });
+    expect(useAnalyzerStore.getState().costTracking.byStage.filter).toEqual({
+      model: 'claude-haiku-4.5',
+      tokensIn: 150,
+      tokensOut: 30,
+      cacheReadTok: 5,
+      calls: 2,
+    });
+  });
+
+  it('keeps the first-recorded model even if a later call passes another', () => {
+    const { addStageUsage } = useAnalyzerStore.getState();
+    addStageUsage('scoring', 'model-a', { tokensIn: 1, tokensOut: 1, cacheReadTok: 0 });
+    addStageUsage('scoring', 'model-b', { tokensIn: 1, tokensOut: 1, cacheReadTok: 0 });
+    expect(useAnalyzerStore.getState().costTracking.byStage.scoring.model).toBe('model-a');
+  });
+
+  it('tracks stages independently and tolerates missing usage fields', () => {
+    const { addStageUsage } = useAnalyzerStore.getState();
+    addStageUsage('pdf', 'm', { tokensIn: 10 });
+    addStageUsage('briefing', 'm', { tokensOut: 7 });
+    const { byStage } = useAnalyzerStore.getState().costTracking;
+    expect(byStage.pdf).toMatchObject({ tokensIn: 10, tokensOut: 0, cacheReadTok: 0, calls: 1 });
+    expect(byStage.briefing).toMatchObject({ tokensIn: 0, tokensOut: 7, calls: 1 });
+  });
+
+  it('resetCostTracking clears the slice', () => {
+    const { addStageUsage, resetCostTracking } = useAnalyzerStore.getState();
+    addStageUsage('filter', 'm', { tokensIn: 1, tokensOut: 1, cacheReadTok: 0 });
+    resetCostTracking();
+    expect(useAnalyzerStore.getState().costTracking.byStage).toEqual({});
+  });
+});

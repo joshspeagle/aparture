@@ -164,6 +164,16 @@ export default async function handler(req, res) {
     let responseText;
     let parsed;
 
+    // Token usage summed across every provider call this request makes
+    // (initial + backend auto-correction), returned on the 200 body so the
+    // client can accumulate per-stage cost.
+    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
+    const addUsage = (r) => {
+      usage.tokensIn += r?.tokensIn ?? 0;
+      usage.tokensOut += r?.tokensOut ?? 0;
+      usage.cacheReadTok += r?.cacheReadTok ?? 0;
+    };
+
     if (correctionPrompt) {
       // Client-triggered correction: send the provided prompt as-is, but still
       // pass structuredOutput so the retry produces schema-valid JSON.
@@ -182,6 +192,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
     } else {
       // Normal path: cached prefix + variable tail.
       const { cachePrefix, variableTail } = await loadRubricPrompt(
@@ -212,6 +223,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
 
       // Backend auto-correction: if the first response fails validation, re-run
       // with the ORIGINAL prompt body (papers + profile) plus an error hint so
@@ -249,6 +261,7 @@ export default async function handler(req, res) {
         );
         responseText = correctedResult.text;
         parsed = extractParsed(correctedResult);
+        addUsage(correctedResult);
       }
     }
 
@@ -267,6 +280,9 @@ export default async function handler(req, res) {
     res.status(200).json({
       verdicts: finalValidation.verdicts,
       rawResponse: responseText,
+      tokensIn: usage.tokensIn,
+      tokensOut: usage.tokensOut,
+      cacheReadTok: usage.cacheReadTok,
     });
   } catch (error) {
     console.error('Error filtering papers:', error);

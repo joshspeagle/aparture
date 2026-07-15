@@ -109,5 +109,10 @@ describe('analyze-pdf-quick API route (fixture mode)', () => {
     expect(statusCode).toBe(200);
     expect(jsonBody.arxivId).toBe('2504.99999');
     expect(jsonBody.quickSummary).toContain('compression of the full report');
+    // Usage triple for client-side cost tracking. The fixture reports
+    // 500 in / 80 out and no cache reads.
+    expect(jsonBody.tokensIn).toBe(500);
+    expect(jsonBody.tokensOut).toBe(80);
+    expect(jsonBody.cacheReadTok).toBe(0);
   });
 });

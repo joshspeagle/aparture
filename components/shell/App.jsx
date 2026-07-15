@@ -1174,6 +1174,15 @@ export default function App() {
       setBriefingStage,
       setQuickSummariesById,
       setFullReportsById,
+      // Per-stage token-usage accumulation, same sink the pipeline uses.
+      onUsage: (stage, model, data) => {
+        if (typeof data?.tokensIn !== 'number' && typeof data?.tokensOut !== 'number') return;
+        useAnalyzerStore.getState().addStageUsage(stage, model, {
+          tokensIn: data.tokensIn ?? 0,
+          tokensOut: data.tokensOut ?? 0,
+          cacheReadTok: data.cacheReadTok ?? 0,
+        });
+      },
     });
     // Store setters (setSynthesizing etc.) are stable getState() actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps

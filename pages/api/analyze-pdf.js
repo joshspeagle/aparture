@@ -267,6 +267,16 @@ export default async function handler(req, res) {
     let responseText;
     let parsed;
 
+    // Token usage summed across every provider call this request makes
+    // (initial + backend auto-correction), returned on the 200 body so the
+    // client can accumulate per-stage cost.
+    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
+    const addUsage = (r) => {
+      usage.tokensIn += r?.tokensIn ?? 0;
+      usage.tokensOut += r?.tokensOut ?? 0;
+      usage.cacheReadTok += r?.cacheReadTok ?? 0;
+    };
+
     if (correctionPrompt) {
       // Client-triggered correction: text-only, no PDF, but still force schema.
       const result = await callModel(
@@ -283,6 +293,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
     } else {
       // Main PDF path
       let base64Data;
@@ -456,6 +467,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
 
       // Backend auto-correction: re-submit the PDF + prompt with an error hint
       // appended, so the model has full context to re-analyze (not just the
@@ -493,6 +505,7 @@ export default async function handler(req, res) {
         );
         responseText = correctedResult.text;
         parsed = extractParsed(correctedResult);
+        addUsage(correctedResult);
       }
     }
 
@@ -510,6 +523,9 @@ export default async function handler(req, res) {
     res.status(200).json({
       analysis: parsed,
       rawResponse: responseText,
+      tokensIn: usage.tokensIn,
+      tokensOut: usage.tokensOut,
+      cacheReadTok: usage.cacheReadTok,
     });
   } catch (error) {
     // Graceful degradation: PDF requires reCAPTCHA bypass but Playwright is
