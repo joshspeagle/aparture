@@ -11,6 +11,10 @@ You'll also get your first look at Aparture's review gates on these runs, which 
 3. Enter the value of `ACCESS_PASSWORD` from your `.env.local`.
 4. In the Control Panel, click **System Tests** to expand the collapsed section. You'll see three cards — **API Setup Check**, **Dry Run Test**, and **Minimal API Test** — with a **Check API Setup**, a **Run Dry Test**, and a **Run API Test** button (the API Test button stays disabled, reading _Run Dry Test First_, until the Dry Run completes).
 
+![The Pipeline view with the System Tests section expanded, showing three cards side by side: API Setup Check with a Check API Setup button, Dry Run Test with a Run Dry Test button, and Minimal API Test with a disabled Run Dry Test First button](/screenshots/system-tests.png)
+
+_The System Tests section expanded. The Minimal API Test stays locked until a Dry Run has completed._
+
 ## Step 0: API Setup Check (free)
 
 The **Check API Setup** button probes each provider you've configured, without sampling a single token. It reads every configured model slot (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, NotebookLM), dedupes slots that share a model, and runs one free probe per unique provider/model pair.

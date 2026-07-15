@@ -14,6 +14,10 @@ The pipeline's LLMs read it the way that collaborator would: to understand who y
 
 On a fresh install the Profile page opens with a template picker: four example profiles, each of which sets both the profile text and a matching arXiv category list. They are examples, not defaults — pick the one closest to your field, run the pipeline once, then replace the text with your own research.
 
+![The starter template picker at the top of the Profile page: four template cards, each with a short description, a category count, and a "Use this template" button, above the profile text box](/screenshots/template-picker.png)
+
+_The template picker on a fresh install. Choosing a card fills the profile text and sets the matching arXiv categories in one click._
+
 | Template                                    | Shape                                                                                                      | Categories                            |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | **Focused: Bayesian cosmology**             | A narrow single-subfield profile — the first worked example below                                          | `astro-ph.CO` + `astro-ph.IM`         |
@@ -195,6 +199,10 @@ Reverting is non-destructive — the current version moves into history as a new
 ## Named profiles
 
 You can keep several profiles and switch between them — one for your main research agenda, one for a side project, one broad "conference season" sweep. The control sits at the top of the Profile page: a dropdown showing the active profile plus <span class="ui-action">Save as…</span>, <span class="ui-action">Rename</span>, and <span class="ui-action">Delete</span>.
+
+![The Profile page with the named-profile switcher at the top: a PROFILE dropdown showing "Default" next to Save as…, Rename, and Delete buttons, above the profile text box and the Suggest improvements card](/screenshots/profile-switcher.png)
+
+_The profile switcher sits above the text box. The active profile in the dropdown is what every run reads._
 
 Named profiles are snapshots. <span class="ui-action">Save as…</span> stores the current profile text under a name; switching loads a snapshot into the editor. The active profile is what every run reads — the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one. Switching away doesn't lose anything: the outgoing text is saved back into its own snapshot, and the swap is also recorded in the revision history like any other edit.
 

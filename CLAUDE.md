@@ -284,3 +284,5 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 | `lib/llm/callModel.js`, `lib/llm/ProviderError.js`, `lib/llm/retryAfter.js`, `lib/analyzer/RateLimitError.js` | `reference/troubleshooting.md` (provider rate limits), `using/tuning-the-pipeline.md` (`maxRetries`, rate-limit barrier)                          |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).
+
+**Screenshots:** user-doc screenshots live in `docs/public/screenshots/` (embedded as `/screenshots/<name>.png`), captured at 1440×900 in light theme; retake when the UI changes materially.

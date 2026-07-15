@@ -95,6 +95,10 @@ Any paper card in Aparture has three controls: <span class="ui-action">☆ star<
 - **Analysis Results list** (Pipeline view). As soon as the PDF-analysis stage finishes, each card is fully interactive — you don't have to wait for the briefing to write before marking papers.
 - **Paper cards inside a briefing.** Same three controls in the rendered briefing. The briefing itself was written from whatever signals existed when synthesis ran, so marking papers here doesn't change what you're reading — the feedback feeds the refinement flow instead.
 
+![A briefing paper card with its action row along the bottom: quick summary, full report, star, dismiss, and comment controls](/screenshots/feedback-controls.png)
+
+_The action row on a briefing paper card (dry-run content). Star, dismiss, and comment are the three feedback controls; quick summary and full report expand cached material._
+
 Filter rows at Gate 1 are different: they carry the verdict buttons and a <span class="ui-action">💬 add comment</span> control, but no star or dismiss — those signals only exist from the score-review gate onward.
 
 Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way. The comment button opens a small text box labelled _"Your thoughts on this paper…"_ with Save and Cancel; saving attaches the note to that paper.

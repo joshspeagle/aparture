@@ -16,9 +16,17 @@ Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSW
 
 The sidebar carries a list of past briefings (empty for now), a light/dark theme toggle, and three nav links — <span class="ui-action">Profile</span>, <span class="ui-action">Settings</span>, and <span class="ui-action">Pipeline</span> — that you'll cycle between during this run. Click each one now just to get a feel for the layout; there's nothing to fill in or change yet.
 
+![The welcome view after first login: a "Welcome to Aparture" heading, a short description, and a "To get started" card with numbered setup steps and a first-run checklist](/screenshots/welcome-checklist.png)
+
+_The welcome view greets a fresh install with a first-run checklist; items tick off as you complete them._
+
 ## 2. Pick a starter template, or write your own
 
 Open the <span class="ui-action">Profile</span> view. On a fresh install a template picker sits at the top: four example profiles, each of which fills in the profile text and sets a matching arXiv category list in one click. Pick the one closest to your field — the focused single-subfield example is the best model for most people — or skip the picker entirely. The templates are examples, not defaults; the point is to see one full run work, then replace the text with your own research.
+
+![The Profile view on a fresh install, with the four-card starter template picker at the top and the fill-in profile template in the text box below](/screenshots/template-picker.png)
+
+_The starter template picker above the profile text box. It disappears once you save an edit or dismiss it._
 
 Below the picker, the profile text box is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
 
@@ -101,6 +109,10 @@ A quick scan is plenty on this run. If something's obviously in the wrong bucket
 The pipeline moves through abstract scoring and an optional post-processing consistency pass, then parks at its second review gate — _"Score review"_ with a <span class="ui-action">Continue to PDF analysis →</span> button — before any PDF is read. This is the cheapest moment to adjust which papers get the expensive full-text treatment.
 
 The scored list appears in three groups: the top-N papers that will be PDF-analysed as things stand, a borderline band just below the cutoff, and everything else. Each row carries a **STAR** button (guarantees the paper gets PDF-analysed regardless of its score) and a **DISMISS** button (drops it from the PDF set for this run). A free-text _"feedback on this scoring round"_ field takes observations about the round as a whole.
+
+![The score-review gate: a banner with the deep-read count and cost estimate above the Will PDF group, where each paper row carries STAR and DISMISS buttons](/screenshots/gate-2-score-review.png)
+
+_The score-review gate. The banner estimates the cost of the PDF stage it holds back; STAR and DISMISS on each row adjust which papers get the full-text read._
 
 On this first run, a quick skim of the top group is plenty — click <span class="ui-action">Continue to PDF analysis →</span> when the list looks reasonable. [Review gates](/using/review-gates#gate-2-before-pdf-analysis-score-review) covers the selection logic when you want to steer it deliberately.
 
