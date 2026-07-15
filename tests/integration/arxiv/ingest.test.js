@@ -707,6 +707,147 @@ describe('ingest.harvest — windowSemantics', () => {
   });
 });
 
+describe('ingest.harvest — Atom fallback window (un-widened in submitted-only)', () => {
+  // Atom's submittedDate query filters on v1 server-side, so the
+  // announce-lag widening the OAI path needs only burns the 300-result
+  // unpaginated budget on days the user didn't ask for — for cs.LG-scale
+  // categories that silently truncates the target day and can skew the v1
+  // anchor. The Atom driver must receive the UN-widened v1 target window.
+
+  it('atom-only + submitted-only: fetchAtom receives the un-widened target window', async () => {
+    const fetchAtomImpl = vi.fn().mockResolvedValue([
+      {
+        ...examplePaper('A', 'cs.LG'),
+        published: '2026-05-07',
+        updated: '2026-05-07',
+      },
+    ]);
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'atom-only',
+        selectedSubcategories: ['cs.LG'],
+        windowSemantics: 'submitted-only',
+        // Production shape: from is lag-widened 7 days past the 1-day target.
+        from: '2026-04-30',
+        until: '2026-05-07',
+        targetDaysBack: 1,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        fetchAtomImpl,
+        harvestOaiImpl: vi.fn(),
+        sleepImpl: noSleep,
+      }
+    );
+
+    // Un-widened: [until - (targetDaysBack - 1), until] = [2026-05-07, 2026-05-07].
+    expect(fetchAtomImpl).toHaveBeenCalledTimes(1);
+    expect(fetchAtomImpl.mock.calls[0][0]).toMatchObject({
+      from: '2026-05-07',
+      until: '2026-05-07',
+    });
+  });
+
+  it('auto-mode Atom fallback also receives the un-widened window (OAI keeps the widened one)', async () => {
+    const harvestOaiImpl = vi.fn().mockRejectedValueOnce(new ArxivThrottledError('rate limit'));
+    const fetchAtomImpl = vi.fn().mockResolvedValue([
+      {
+        ...examplePaper('A', 'cs.LG'),
+        published: '2026-05-05',
+        updated: '2026-05-05',
+      },
+    ]);
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'auto',
+        selectedSubcategories: ['cs.LG'],
+        windowSemantics: 'submitted-only',
+        from: '2026-04-28',
+        until: '2026-05-07',
+        targetDaysBack: 3,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        harvestOaiImpl,
+        fetchAtomImpl,
+        sleepImpl: noSleep,
+      }
+    );
+
+    // The failed OAI attempt got the widened window as-is…
+    expect(harvestOaiImpl.mock.calls[0][0]).toMatchObject({
+      from: '2026-04-28',
+      until: '2026-05-07',
+    });
+    // …while the Atom fallback fetches only the 3-day v1 target.
+    expect(fetchAtomImpl.mock.calls[0][0]).toMatchObject({
+      from: '2026-05-05',
+      until: '2026-05-07',
+    });
+  });
+
+  it('submitted-or-updated keeps the caller-provided window for Atom', async () => {
+    const fetchAtomImpl = vi.fn().mockResolvedValue([]);
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'atom-only',
+        selectedSubcategories: ['cs.LG'],
+        windowSemantics: 'submitted-or-updated',
+        from: '2026-05-05',
+        until: '2026-05-07',
+        targetDaysBack: 3,
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        fetchAtomImpl,
+        harvestOaiImpl: vi.fn(),
+        sleepImpl: noSleep,
+      }
+    );
+
+    expect(fetchAtomImpl.mock.calls[0][0]).toMatchObject({
+      from: '2026-05-05',
+      until: '2026-05-07',
+    });
+  });
+
+  it('legacy path without targetDaysBack keeps the window as-is', async () => {
+    const fetchAtomImpl = vi.fn().mockResolvedValue([]);
+
+    await harvest(
+      {
+        ...baseWindow,
+        mode: 'atom-only',
+        selectedSubcategories: ['cs.LG'],
+        windowSemantics: 'submitted-only',
+        from: '2026-04-28',
+        until: '2026-04-29',
+      },
+      {
+        password: 'pw',
+        abortSignal: { aborted: false },
+        fetchAtomImpl,
+        harvestOaiImpl: vi.fn(),
+        sleepImpl: noSleep,
+      }
+    );
+
+    expect(fetchAtomImpl.mock.calls[0][0]).toMatchObject({
+      from: '2026-04-28',
+      until: '2026-04-29',
+    });
+  });
+});
+
 describe('ingest.harvest — targetDaysBack anchor logic', () => {
   // Builds a paper with explicit v1 date (published).
   const paperOn = (id, isoDate, fetchedCategory = 'cs.AI') => ({

@@ -599,6 +599,7 @@ export default function App() {
   const {
     setProcessing,
     setResults,
+    resetResults,
     setFilterResults,
     setProcessingTiming,
     setTestState,
@@ -831,7 +832,10 @@ export default function App() {
 
   const handleReset = () => {
     handleStop();
-    setResults({ allPapers: [], scoredPapers: [], finalRanking: [] });
+    // Full slice replacement — setResults merges patches, so a partial
+    // object here would leave run-added keys (availablePapers, failedPapers,
+    // allAnalyzedPapers) alive across the reset.
+    resetResults();
     setFilterResults({
       total: 0,
       yes: [],

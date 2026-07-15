@@ -1,5 +1,14 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { callCheckBriefing, runBriefingGeneration } from '../../../lib/analyzer/briefingClient.js';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import {
+  callCheckBriefing,
+  generateQuickSummaries,
+  runBriefingGeneration,
+} from '../../../lib/analyzer/briefingClient.js';
+import { getLLMBarrier, _resetLLMBarriers } from '../../../lib/analyzer/rateLimit.js';
+
+beforeEach(() => {
+  _resetLLMBarriers();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -58,6 +67,132 @@ describe('callCheckBriefing — non-fatal contract', () => {
       json: async () => ({ error: 'check failed' }),
     });
     await expect(callCheckBriefing(baseArgs)).resolves.toBeNull();
+  });
+});
+
+describe('generateQuickSummaries — retry, barrier, and failure surfacing (P1-7)', () => {
+  const twoPapers = [
+    { arxivId: '2605.0001', title: 'A', fullReport: 'Report A' },
+    { arxivId: '2605.0002', title: 'B', fullReport: 'Report B' },
+  ];
+
+  it('retries a failed quick summary once and keeps the batch result', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Per-paper: first call 500s, retry succeeds.
+    const attemptsByPaper = new Map();
+    vi.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+      const body = JSON.parse(options.body);
+      const id = body.paper.arxivId;
+      const attempt = (attemptsByPaper.get(id) ?? 0) + 1;
+      attemptsByPaper.set(id, attempt);
+      if (attempt === 1) {
+        return { ok: false, status: 500, json: async () => ({ error: 'transient blip' }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ quickSummary: `summary-${id}` }) };
+    });
+
+    const addStatus = vi.fn();
+    const quickById = await generateQuickSummaries({
+      papers: twoPapers,
+      provider: 'google',
+      modelId: 'gemini-3.1-pro',
+      password: 'pw',
+      concurrency: 2,
+      abortSignal: null,
+      addStatus,
+    });
+
+    // The old behavior had no retry: both summaries were silently lost.
+    expect(quickById).toEqual({
+      '2605.0001': 'summary-2605.0001',
+      '2605.0002': 'summary-2605.0002',
+    });
+    // Nothing failed after the retry, so no warning is emitted.
+    expect(addStatus).not.toHaveBeenCalled();
+  });
+
+  it('surfaces an "N/M quick summaries failed" status when retries are exhausted', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'route exploded' }),
+    });
+
+    const addStatus = vi.fn();
+    const quickById = await generateQuickSummaries({
+      papers: twoPapers,
+      provider: 'google',
+      modelId: 'gemini-3.1-pro',
+      password: 'pw',
+      concurrency: 2,
+      abortSignal: null,
+      addStatus,
+    });
+
+    expect(quickById).toEqual({});
+    // 2 attempts per paper (initial + one retry), never more.
+    expect(global.fetch).toHaveBeenCalledTimes(4);
+    expect(addStatus).toHaveBeenCalledWith(expect.stringMatching(/2\/2 quick summaries failed/));
+  });
+
+  it('a 429 signals the shared per-provider barrier with the route retryAfterMs', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const barrier = getLLMBarrier('google');
+    const rateLimitedSpy = vi.spyOn(barrier, 'rateLimited');
+
+    let calls = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ok: false,
+          status: 429,
+          json: async () => ({ provider: 'google', retryAfterMs: 25 }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ quickSummary: 'ok-after-429' }) };
+    });
+
+    const addStatus = vi.fn();
+    const quickById = await generateQuickSummaries({
+      papers: [twoPapers[0]],
+      provider: 'google',
+      modelId: 'gemini-3.1-pro',
+      password: 'pw',
+      concurrency: 1,
+      abortSignal: null,
+      addStatus,
+    });
+
+    // Barrier signaled so sibling pipeline workers pause too, then the
+    // retry (after the Retry-After window) succeeds.
+    expect(rateLimitedSpy).toHaveBeenCalledWith({ retryAfterMs: 25 });
+    expect(quickById).toEqual({ '2605.0001': 'ok-after-429' });
+    expect(addStatus).not.toHaveBeenCalled();
+  });
+
+  it('skips papers without a fullReport and reports failures against the attempted count', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'boom' }),
+    });
+
+    const addStatus = vi.fn();
+    await generateQuickSummaries({
+      papers: [...twoPapers, { arxivId: '2605.0003', title: 'C', fullReport: '' }],
+      provider: 'google',
+      modelId: 'gemini-3.1-pro',
+      password: 'pw',
+      concurrency: 2,
+      abortSignal: null,
+      addStatus,
+    });
+
+    // Denominator is papers WITH reports (2), not all papers (3).
+    expect(addStatus).toHaveBeenCalledWith(expect.stringMatching(/2\/2 quick summaries failed/));
   });
 });
 

@@ -145,6 +145,12 @@ export const useAnalyzerStore = create((set) => ({
 
   // --- results slice actions ---
   setResults: (updater) => set((state) => ({ results: applyPatch(state.results, updater) })),
+  // Full REPLACEMENT of the results slice (setResults merges object patches,
+  // so a partial object can never remove keys). Run-added keys outside the
+  // initial shape (availablePapers, failedPapers, allAnalyzedPapers) are
+  // dropped entirely — call this from Reset and at run-start so stale data
+  // can't leak across resets and runs.
+  resetResults: () => set({ results: initialState().results }),
 
   // --- filterResults slice actions ---
   setFilterResults: (updater) =>

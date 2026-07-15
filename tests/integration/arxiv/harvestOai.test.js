@@ -302,6 +302,39 @@ describe('harvestOai', () => {
     ).rejects.toThrow(/expired/i);
   });
 
+  it('skips a malformed record (no <version>) instead of aborting the harvest', async () => {
+    // A record whose arXivRaw metadata has no <version> elements makes
+    // parseOaiRecord throw ArxivParseError. One such record must not abort
+    // the whole prefix harvest (which in auto mode would trip the circuit
+    // breaker and degrade the run to Atom) — mirror the Atom path's
+    // skip-and-warn per-entry guard.
+    const malformedRecord = `<record>
+  <header><identifier>oai:arXiv.org:2604.BROKEN</identifier><datestamp>2026-04-28</datestamp><setSpec>cs:cs:AI</setSpec></header>
+  <metadata><arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>2604.BROKEN</id><submitter>B</submitter>
+    <title>Broken record</title><authors>Bob Author</authors><abstract>Abs</abstract><categories>cs.AI</categories>
+  </arXivRaw></metadata>
+</record>`;
+    const xml = buildPageXml(
+      `${sampleRecord('2604.0001')}${malformedRecord}${sampleRecord('2604.0002')}`
+    );
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ xml, resumptionToken: '' }),
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const statusCallback = vi.fn();
+
+    const records = await harvestOai({ ...baseArgs, fetchImpl, statusCallback });
+
+    // Good records on either side of the malformed one survive.
+    expect(records.map((r) => r.id)).toEqual(['2604.0001', '2604.0002']);
+    // The skip surfaces to the caller as a status warning.
+    expect(statusCallback).toHaveBeenCalledWith(expect.stringMatching(/skipped 1 malformed/i));
+    warnSpy.mockRestore();
+  });
+
   it('parses the trimmed fixture without errors', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
