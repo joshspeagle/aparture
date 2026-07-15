@@ -35,7 +35,7 @@ You'll see:
 
 - A **TEST MODE** badge (yellow) on the briefing card once the run reaches it.
 - **TEST DATA** badges on the filter results, analysis results, and Download Report cards.
-- Status messages stepping through each stage: `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, `"Synthesizing briefing"`.
+- Status messages stepping through each stage: `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, `"Generating briefing..."`.
 - Intentional failure scenarios cycling through the test data — expect to see `"Mock parse failed: Response is not an array"` followed by `"Mock correction 1/3 succeeded"` at least once. These aren't real errors; they're there to exercise the retry path.
 - A green checkmark on the test card when it finishes.
 

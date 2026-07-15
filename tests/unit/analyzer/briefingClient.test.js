@@ -6,6 +6,8 @@ import {
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
 import { getLLMBarrier, _resetLLMBarriers } from '../../../lib/analyzer/rateLimit.js';
+import { MockAPITester } from '../../../lib/analyzer/mockApi.js';
+import { validateBriefing } from '../../../lib/synthesis/validator.js';
 
 beforeEach(() => {
   _resetLLMBarriers();
@@ -273,6 +275,112 @@ describe('generateQuickSummaries — retry, barrier, and failure surfacing (P1-7
 
     // Denominator is papers WITH reports (2), not all papers (3).
     expect(addStatus).toHaveBeenCalledWith(expect.stringMatching(/2\/2 quick summaries failed/));
+  });
+});
+
+describe('runBriefingGeneration — dry-run mockTester path', () => {
+  const makeMockTester = () =>
+    new MockAPITester({
+      abortControllerRef: { current: null },
+      pauseRef: { current: false },
+      waitForResume: async () => {},
+    });
+
+  const makeSetters = () => ({
+    setSynthesizing: vi.fn(),
+    setSynthesisError: vi.fn(),
+    setBriefingCheckResult: vi.fn(),
+    setBriefingStage: vi.fn(),
+    setQuickSummariesById: vi.fn(),
+    setFullReportsById: vi.fn(),
+  });
+
+  const finalRanking = [
+    {
+      arxivId: '2605.0001',
+      title: 'Paper One',
+      abstract: 'Abstract one',
+      score: 8,
+      deepAnalysis: { summary: 'Deep summary one' },
+    },
+    {
+      arxivId: '2605.0002',
+      title: 'Paper Two',
+      abstract: 'Abstract two',
+      score: 6,
+      deepAnalysis: { summary: 'Deep summary two' },
+    },
+  ];
+
+  it('generates and saves a fully mocked briefing without any fetch calls', async () => {
+    // cacheLastAnalysisRun warns in the node test env (no window) — silence it.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const setters = makeSetters();
+    const saveBriefing = vi.fn();
+
+    await runBriefingGeneration({
+      results: { finalRanking },
+      briefingModel: 'gemini-3.1-pro',
+      profile: { content: 'profile' },
+      password: 'pw',
+      saveBriefing,
+      generationMetadata: { briefingModel: 'gemini-3.1-pro' },
+      mockTester: makeMockTester(),
+      ...setters,
+    });
+
+    // (a) Fully offline: not a single route was fetched, and no error was
+    // swallowed into the synthesis-error slot (only the initial null reset).
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setters.setSynthesisError).toHaveBeenCalledTimes(1);
+    expect(setters.setSynthesisError).toHaveBeenCalledWith(null);
+
+    // (b) A briefing was saved through the normal path, and it passes the
+    // real schema + citation validator against the input paper ids.
+    expect(saveBriefing).toHaveBeenCalledTimes(1);
+    const [, briefing, metadata, extras] = saveBriefing.mock.calls[0];
+    const inputIds = finalRanking.map((p) => p.arxivId);
+    expect(validateBriefing(briefing, inputIds)).toEqual({ ok: true, errors: [] });
+    expect(briefing.papers.map((p) => p.arxivId).sort()).toEqual([...inputIds].sort());
+    for (const theme of briefing.themes) {
+      for (const id of theme.paperIds) {
+        expect(inputIds).toContain(id);
+      }
+    }
+
+    // (c) Quick summaries populated per paper, mentioning the real titles.
+    expect(Object.keys(extras.quickSummariesById).sort()).toEqual([...inputIds].sort());
+    expect(extras.quickSummariesById['2605.0001']).toContain('Paper One');
+    expect(setters.setQuickSummariesById).toHaveBeenCalledWith(extras.quickSummariesById);
+
+    // The mock hallucination check's passing verdict persists with the
+    // briefing metadata, exactly like a real check result would.
+    expect(metadata.hallucinationCheck).toMatchObject({ verdict: 'NO', retried: false });
+    expect(setters.setBriefingCheckResult).toHaveBeenLastCalledWith(
+      expect.objectContaining({ verdict: 'NO' })
+    );
+  });
+
+  it('generateQuickSummaries with mockTester makes no fetch calls and skips report-less papers', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const fetchSpy = vi.spyOn(global, 'fetch');
+    const quickById = await generateQuickSummaries({
+      papers: [
+        { arxivId: '2605.0001', title: 'With Report', fullReport: 'R' },
+        { arxivId: '2605.0002', title: 'Without Report', fullReport: '' },
+      ],
+      provider: 'anthropic',
+      modelId: 'claude-haiku-4.5',
+      password: 'pw',
+      concurrency: 5,
+      abortSignal: null,
+      mockTester: makeMockTester(),
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(Object.keys(quickById)).toEqual(['2605.0001']);
+    expect(quickById['2605.0001']).toContain('With Report');
   });
 });
 
