@@ -47,6 +47,7 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 - `styles/` — `tokens.css`, `shell.css`, `briefing.css` (see "Styling conventions")
 - `tests/fixtures/llm/` — cached LLM responses keyed by input hash
 - `cli/` — CLI browser automation **(scheduled for deletion in Phase 2)**
+- `audits/` — point-in-time repository audit reports, kept as provenance (each is the "before picture" for the fixes that followed it, not current state)
 - `reports/`, `temp/` — **runtime state** (gitignored; see below)
 
 ### Runtime state directories
