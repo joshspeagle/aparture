@@ -249,8 +249,21 @@ describe('AnalysisWorkerPool', () => {
 
   it('cache warmup releases even when no tasks (edge case)', async () => {
     const pool = new AnalysisWorkerPool({ concurrency: 3, cacheWarmup: true });
-    await pool.run([], async () => {});
-    // Should return without hanging
-    expect(true).toBe(true);
+    const workerFn = vi.fn(async () => {});
+    // The empty run must RESOLVE (not hang on the warmup barrier) — race it
+    // against a timeout so a regression fails loudly instead of stalling.
+    const outcome = await Promise.race([
+      pool.run([], workerFn).then(() => 'resolved'),
+      sleep(1000).then(() => 'timed-out'),
+    ]);
+    expect(outcome).toBe('resolved');
+    expect(workerFn).not.toHaveBeenCalled();
+    // And the pool must stay usable afterward: a follow-up warmup run with
+    // real tasks completes every task (no barrier left blocked).
+    const completed = [];
+    await pool.run([1, 2, 3], async (task) => {
+      completed.push(task);
+    });
+    expect(completed.sort()).toEqual([1, 2, 3]);
   });
 });

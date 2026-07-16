@@ -1,6 +1,6 @@
 # Verify setup
 
-Two checkpoint tests sit between "I added my key to `.env.local`" and "I'm ready for a real run" — a fully mocked Dry Run that costs nothing, and a small Minimal API Test that exercises real provider calls on a fixed 5-paper set. Both are UI-driven and live in the Control Panel's **Testing** section.
+Two checkpoint tests sit between "I added my key to `.env.local`" and "I'm ready for a real run" — a fully mocked Dry Run that costs nothing, and a small Minimal API Test that exercises real provider calls on a fixed 5-paper set. Both are UI-driven and live in the Control Panel's **System Tests** section, which is collapsed by default.
 
 You'll also get your first look at Aparture's review gates on these runs, which is useful: they're where you'll be spending most of your attention during real daily use.
 
@@ -9,7 +9,7 @@ You'll also get your first look at Aparture's review gates on these runs, which 
 1. Start the dev server: `npm run dev`
 2. Open `http://localhost:3000` in a browser.
 3. Enter the value of `ACCESS_PASSWORD` from your `.env.local`.
-4. In the Control Panel, find the **Testing** section near the bottom. You'll see two buttons: **Run Dry Test** and **Run Minimal Test** (the Minimal Test stays disabled until the Dry Run completes).
+4. In the Control Panel, click **System Tests** to expand the collapsed section. You'll see two cards — **Dry Run Test** and **Minimal API Test** — with a **Run Dry Test** and a **Run API Test** button (the API Test button stays disabled, reading _Run Dry Test First_, until the Dry Run completes).
 
 ## Dry Run
 
@@ -21,7 +21,7 @@ The Dry Run pipes a real arXiv fetch through a fully mocked LLM stack. It's the 
 - **End-to-end UI flow.** Every pipeline stage (fetch → filter → score → PDF analysis → briefing) renders correctly, and the filter-override pill, star/dismiss controls, and Download Report card all wire up.
 - **Mock response parsing.** JSON parsing, schema validation, and the malformed/missing-field/wrong-type correction loops.
 - **Error recovery.** Retry logic, correction prompts, failure escalation.
-- **Pause gates.** The Stop button, plus the `pauseAfterFilter` and `pauseBeforeBriefing` gates that fire by default.
+- **Pause gates.** The Stop button, plus the `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` gates that fire by default.
 
 ### What it does not validate
 
@@ -39,14 +39,15 @@ You'll see:
 - Intentional failure scenarios cycling through the test data — expect to see `"Mock parse failed: Response is not an array"` followed by `"Mock correction 1/3 succeeded"` at least once. These aren't real errors; they're there to exercise the retry path.
 - A green checkmark on the test card when it finishes.
 
-### ⚠️ You'll need to click through two review gates
+### ⚠️ You'll need to click through three review gates
 
-Aparture ships with `pauseAfterFilter` and `pauseBeforeBriefing` both **on by default**, so the pipeline will stop twice during the Dry Run and wait for you:
+Aparture ships with `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` all **on by default**, so the pipeline will stop three times during the Dry Run and wait for you:
 
 1. **After filtering** — the UI shows three buckets (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>). Click any verdict button to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
-2. **After PDF analysis, before briefing synthesis** — you can star or dismiss any paper, or add a comment. Then click **Continue to briefing →**.
+2. **After scoring, before PDF analysis** — the scored list appears with star and dismiss controls for adjusting which papers get PDF-analysed. Click **Continue to PDF analysis →**.
+3. **After PDF analysis, before briefing synthesis** — you can star or dismiss any paper, or add a comment. Then click **Continue to briefing →**.
 
-If the pipeline looks stuck, check whether it's actually waiting for you at one of these gates. You can disable either gate in **Settings → Review & confirmation**, but leaving them on is the realistic first-run experience.
+If the pipeline looks stuck, check whether it's actually waiting for you at one of these gates. You can disable any gate in **Settings → Review & confirmation**, but leaving them on is the realistic first-run experience.
 
 ### If it fails
 
@@ -110,7 +111,7 @@ When the pipeline pauses at the filter-review gate:
 3. Aim for **at least 2–3 papers in <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so the rest of the pipeline has something to chew on.
 4. Click **Continue to scoring →** once you're happy with the buckets.
 
-This is also your first encounter with the filter-override mechanic, which becomes part of the feedback loop that powers [profile refinement](/using/refining-over-time). Behaviour of this gate is controlled by `pauseAfterFilter` and `categoriesToScore` in **Settings → Review & confirmation**.
+This is also your first encounter with the filter-override mechanic, which becomes part of the feedback loop that powers [profile refinement](/using/refining-over-time). The gate itself is controlled by `pauseAfterFilter` in **Settings → Review & confirmation**; which verdicts advance to scoring is controlled by the **Categories to Process** checkboxes under **Advanced Options → Filter Options**.
 
 ### If it fails
 

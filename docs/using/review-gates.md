@@ -1,8 +1,8 @@
 # Review gates
 
-If you've gone through a run or two, you've already seen both gates in action — the pipeline halts after the filter completes and again before briefing synthesis, each time showing you intermediate results. Both gates are on by default. You can click through any single one without turning it off, and both can be disabled entirely in Settings once you stop catching things at them.
+If you've gone through a run or two, you've already seen all three gates in action — the pipeline halts after the filter completes, again after scoring and before PDF analysis, and once more before briefing synthesis, each time showing you intermediate results. All three gates are on by default. You can click through any single one without turning it off, and each can be disabled in Settings once you stop catching things at it.
 
-This page covers what each gate shows, what to do there, and when it's worth turning one or the other off.
+This page covers what each gate shows, what to do there, and when it's worth turning any of them off.
 
 ## Where they sit in the pipeline
 
@@ -75,7 +75,7 @@ Three groups, each collapsible:
 - **Borderline** — collapsed by default. The next chunk of papers after the top-N cutoff, up to `min(maxDeepAnalysis, 50)` papers. These are the candidates most worth inspecting if you think the default cutoff is landing in the wrong place.
 - **Low score** — collapsed. Everything below the borderline band.
 
-Each row in the list shows the paper's title and authors, its score (pre-analysis), the scoring model's justification, and a `⊘` duplicate badge when applicable. On the right of each row sit three controls:
+Each row in the list shows the paper's title and authors, its score (pre-analysis), the scoring model's justification, and — when the paper appeared in a past run — a muted "seen ‹date›" duplicate chip with a small history icon. On the right of each row sit three controls:
 
 - **★ (star)** — guarantees this paper gets PDF-analysed, regardless of where its score sits.
 - **⊘ (exclude)** — removes this paper from PDF analysis for this run.
@@ -99,7 +99,7 @@ Below the paper list sits a free-text field labelled **"+ feedback on this scori
 
 ### Skip remaining gates this run
 
-A small <span class="ui-action">Skip remaining gates this run</span> link appears near the bottom of this gate, and on Gate 1 and Gate 3. Clicking it bypasses all subsequent default-on gates for the rest of this run — useful when you want a single unattended run without changing your persistent settings. It does not modify any setting; the next run will still pause normally.
+A small <span class="ui-action">Skip remaining gates this run</span> link sits in the top-right of the gate banner, next to the Continue button — on this gate, Gate 1, and Gate 3. Clicking it bypasses all subsequent default-on gates for the rest of this run — useful when you want a single unattended run without changing your persistent settings. It does not modify any setting; the next run will still pause normally.
 
 Click <span class="ui-action">Continue to PDF analysis →</span> when you're done. Stage 4 starts immediately with the adjusted paper set.
 

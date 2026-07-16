@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Aparture is a Next.js web app for multi-stage arXiv paper discovery + analysis using LLMs.
+Aparture's job is to let a researcher stop skimming the arXiv without worrying about what they're missing. Every design decision serves one of three requirements that job imposes: the briefing must be worth reading (synthesis across papers, tuned by a profile the user wrote), it must be checkable (citations validated, claims audited, before display), and the user must stay in control (edits to the profile are proposed, never silent; expensive steps are gated; everything runs locally on their keys). The profile works like memory: it accumulates what the tool learns about the researcher over time, in a form the researcher can read, edit, and carry forward.
+
+Mechanically, it is a Next.js web app running a multi-stage arXiv discovery + analysis pipeline over LLMs. Design principles with code pointers: `docs/concepts/design-principles.md`. Positioning, market landscape, and business case: `POSITIONING.md`.
 
 📚 **Full user docs (VitePress):** [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — built from `docs/`. For features, configuration, or usage questions, check there first.
 
@@ -22,7 +24,7 @@ Standard scripts are in `package.json` (`npm run dev|build|test|lint|format:fix`
 
 ### Tech Stack (non-obvious bits)
 
-- **State:** Zustand (`stores/analyzerStore.js`) — central store replacing ~28 useState calls; 10 slices incl. `reactContext`. Pipeline reads via `getState()`. React hooks (`useProfile`, `useBriefing`, `useFeedback`) wrap localStorage persistence.
+- **State:** Zustand (`stores/analyzerStore.js`) — central store replacing ~28 useState calls; 11 slices incl. `reactContext`. Pipeline reads via `getState()`. React hooks (`useProfile`, `useBriefing`, `useFeedback`) wrap localStorage persistence.
 - **Typography (briefing view):** Source Serif 4 + Inter + JetBrains Mono via `next/font/google` in `pages/_app.js`.
 - **Structured output:** `zod` schema + provider-native structured output (Anthropic `tool_use`, Google `responseSchema`, OpenAI `response_format` strict).
 - **Testing:** Vitest + @testing-library/react + jsdom, **fully fixture-based — zero real LLM calls**.
@@ -45,6 +47,7 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 - `styles/` — `tokens.css`, `shell.css`, `briefing.css` (see "Styling conventions")
 - `tests/fixtures/llm/` — cached LLM responses keyed by input hash
 - `cli/` — CLI browser automation **(scheduled for deletion in Phase 2)**
+- `audits/` — point-in-time repository audit reports, kept as provenance (each is the "before picture" for the fixes that followed it, not current state)
 - `reports/`, `temp/` — **runtime state** (gitignored; see below)
 
 ### Runtime state directories
@@ -94,17 +97,17 @@ Four layers, each with a distinct job:
 
 These recur with consistent meaning across components and have no `--aparture-*` token because they are status indicators, not palette:
 
-| Value                 | Meaning                                             |
-| --------------------- | --------------------------------------------------- |
-| `#22c55e`             | done / success / added / YES                        |
-| `#f59e0b` / `#eab308` | running / MAYBE / warning / test mode               |
-| `#ef4444`             | error / stop / NO / removed                         |
-| `#f97316`             | filter-override feedback event                      |
-| `#6366f1`             | scoped-feedback event (bucket / score-review / run) |
-| `#a855f7`             | paper-comment feedback event / score badge accent   |
-| `#64748b`             | dismissed / muted negative                          |
-| `#3b82f6`             | informational / suggested source                    |
-| `rgba(0,0,0,0.5)`     | modal overlay scrim                                 |
+| Value                 | Meaning                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `#22c55e`             | done / success / added / YES                                                               |
+| `#f59e0b` / `#eab308` | running / MAYBE / warning / test mode                                                      |
+| `#ef4444`             | error / stop / NO / removed                                                                |
+| `#f97316`             | filter-override feedback event; negative score adjustment (paired with `#22c55e` positive) |
+| `#6366f1`             | scoped-feedback event (bucket / score-review / run)                                        |
+| `#a855f7`             | paper-comment feedback event / score badge accent                                          |
+| `#64748b`             | dismissed / muted negative                                                                 |
+| `#3b82f6`             | informational / suggested source                                                           |
+| `rgba(0,0,0,0.5)`     | modal overlay scrim                                                                        |
 
 When adding a new status color, document it here rather than introducing a token.
 
@@ -156,9 +159,9 @@ All LLM-calling routes go through `lib/llm/callModel.js` — never call a provid
 3. Top-level schema MUST be `type: 'object'`. Wrap arrays as `{items: [...]}`.
 4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce in the validator.
 
-Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking on model family (Opus/Sonnet on, Haiku off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
+Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking on model family + version (Opus/Sonnet 4.6+ and 5.x on; Haiku and pre-4.6 legacy IDs off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
 
-**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` and skip the `!apiKey` 401 when `callModelMode?.mode === 'fixture'`.
+**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;` and skip the `!apiKey` 401 when `callMode.mode === 'fixture'`. Always resolve `callMode` via `resolveCallModelMode(callModelMode)` (`lib/llm/resolveCallModelMode.js`): client-supplied fixture mode is honored only under `NODE_ENV === 'test'` and forced back to live in production.
 
 ### Analyzer module split
 
@@ -205,7 +208,7 @@ Both briefings and analyzer sessions use the same hot/cold pattern (introduced 2
 
 ### Paper duplicate detection
 
-Cross-run paper memory: stops the LLM pipeline from re-reading work it's already seen. Always-on detection, default-on removal. Introduced 2026-05-16; see `docs/superpowers/specs/2026-05-16-paper-dedupe-design.md` for the full design.
+Cross-run paper memory: stops the LLM pipeline from re-reading work it's already seen. Always-on detection, default-on removal. Introduced 2026-05-16; the full spec is local-only (`docs/superpowers/specs/2026-05-16-paper-dedupe-design.md`, gitignored — absent from fresh clones). The load-bearing decisions are inlined below.
 
 - **Hot index:** `aparture-seen-papers-index` in localStorage — `{ arxivId → ISO date (YYYY-MM-DD) }` with `_migratedAt` (millis) and `_dedupeVersion` (int) sentinels. Owned by `hooks/useSeenPapers.js`. Earliest-date-wins (first-seen) merge, pruned to a 90-day rolling window on every write via `safeSetItem`. Keys starting with `_` are reserved metadata and skipped by both prune and dedupe lookups.
 - **Cold seed (v3, briefing-anchored, auth-aware):** migration scans `reports/briefings/*.json` via the existing `/api/briefings` endpoints (concurrency cap 4 in `migrateFromBriefings`). Each briefing's paper-id union is extracted via `lib/seenPapers/papersFromBriefing.js` — briefed papers plus `pipelineArchive.filterResults.{yes,maybe,no}` so cost-anchoring is preserved without leaking on aborted runs. The effect depends on `[password]` and uses a `migrationSuccessRef` guard so failed attempts (401, fetch threw, signal aborted) leave sentinels unset and let the next password change retry — v2's "fire-once-on-mount with empty password" pattern marked migrations complete with empty indexes when the store hadn't hydrated yet, permanently stuck. Existing v1/v2 indexes trigger a one-time rebuild: `isVersionUpgrade` resets in-memory state to `{}` and clears localStorage inside the migration effect so the pipeline can't dedupe against poisoned data during the rebuild window. Bump `CURRENT_DEDUPE_VERSION` when migration semantics change again. Phase 2's filesystem-first migration will pick this index up automatically.
@@ -235,13 +238,15 @@ If Playwright is unavailable (e.g. Vercel), route returns HTTP 422 `PLAYWRIGHT_U
 
 ### Refactor Context
 
-Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — check for existence before referencing). Phase 2 scope is in the v2 spec §11 (Electron, filesystem-first state, OS keychain, first-run wizard, memory loop, daily scheduler, full NotebookLM ZIP, HTML export, installers). The feedback-mechanisms expansion (score-review gate, scoped-feedback event type, filter-row comments, staleness suffix, pairing logic in suggest-profile) is specified in `docs/superpowers/specs/2026-05-17-feedback-mechanisms-design.md`.
+Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — they do NOT exist in fresh clones; never treat them as required reading). Anything load-bearing from a spec must be inlined here or in `docs/` — the dedupe and feedback-mechanisms sections above already carry their own decisions.
+
+**Phase 2 (committed definition).** Phase 2 is the planned desktop packaging: an Electron app with filesystem-first state (`~/aparture/{reports,cache}/` replacing repo-local dirs), API keys in the OS keychain (using the existing `apiKey` auth path instead of `ACCESS_PASSWORD`), a first-run wizard, a daily scheduler, full NotebookLM ZIP export, HTML export, and installers. `cli/` is deleted once its dry-run/minimal-test entry points move into the app. Until then the code keeps explicit seams for it: the `BRIEFINGS_DIR`/`SESSIONS_DIR` indirection, the dual `apiKey`/`password` route auth, and the frozen `arxivAnalyzerState` localStorage key.
 
 ## Model Information
 
 **Source of truth:** `utils/models.js` (`MODEL_REGISTRY` + `AVAILABLE_MODELS`). Don't duplicate IDs/pricing here — they rot fast.
 
-**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is gated on model family — enabled for Opus/Sonnet, disabled for Haiku. When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
+**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is gated on model family + version — enabled for Opus/Sonnet 4.6+ (including the 5.x line), disabled for Haiku and pre-4.6 Opus/Sonnet IDs (which require the older `{type: "enabled", budget_tokens}` shape). When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
 
 **Not in the registry:** OpenAI o-series (`o3`, `o4-mini`) and xAI Grok. Adding Grok would need a new `lib/llm/structured/xai.js` adapter — xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
 

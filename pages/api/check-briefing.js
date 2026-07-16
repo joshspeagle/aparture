@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 // Zod schema for the hallucination check structured output
@@ -156,7 +157,10 @@ export default async function handler(req, res) {
 
   // Fixture mode never hits a provider, so a missing key is not an error there
   // (and a dummy key would pollute the fixture hash).
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
+  if (!apiKey && callMode.mode !== 'fixture') {
     res.status(401).json({ error: 'missing apiKey or password' });
     return;
   }
@@ -181,7 +185,6 @@ export default async function handler(req, res) {
     // tests. When active (or when running in fixture mode), disable caching so the
     // fixture hash keys only on {provider, model, prompt, apiKey} — a stable value.
     const promptOverride = process.env.APARTURE_TEST_CHECK_PROMPT_OVERRIDE;
-    const callMode = callModelMode ?? { mode: 'live' };
     const isFixture = callMode.mode === 'fixture';
     const useCaching = provider === 'anthropic' && !promptOverride && !isFixture;
     const finalPrompt = promptOverride ?? fullPrompt;

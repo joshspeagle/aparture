@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { renderBriefingMarkdown } from '../../lib/notebooklm/renderBriefingMarkdown.js';
 import { renderPaperReport } from '../../lib/notebooklm/renderPaperReport.js';
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  const callMode = callModelMode ?? { mode: 'live' };
+  const callMode = resolveCallModelMode(callModelMode);
 
   // Auth gate first: validate password (if supplied) before any body
   // checks so a wrong password reliably returns 401, not 400.

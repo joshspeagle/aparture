@@ -92,6 +92,7 @@ export default defineConfig({
         {
           text: 'Under the Hood',
           items: [
+            { text: 'Design principles', link: '/concepts/design-principles' },
             { text: 'The pipeline', link: '/concepts/pipeline' },
             { text: 'arXiv ingestion', link: '/concepts/arxiv-ingestion' },
             { text: 'Briefing anatomy', link: '/concepts/briefing-anatomy' },

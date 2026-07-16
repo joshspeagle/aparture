@@ -3,6 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { harvestOai } from '../../../lib/arxiv/harvestOai.js';
 import { ArxivThrottledError, ArxivParseError } from '../../../lib/arxiv/errors.js';
+import { parseOaiRecord } from '../../../lib/arxiv/parseOaiRecord.js';
+
+// Wrap parseOaiRecord in a pass-through spy so the rethrow test below can
+// inject a non-parse error for a single call; every other test hits the
+// real implementation.
+vi.mock('../../../lib/arxiv/parseOaiRecord.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, parseOaiRecord: vi.fn(actual.parseOaiRecord) };
+});
 
 const TRIMMED_XML = fs.readFileSync(
   path.resolve('tests/fixtures/arxiv/oai-raw-listrecords-trimmed.xml'),
@@ -300,6 +309,56 @@ describe('harvestOai', () => {
     await expect(
       harvestOai({ ...baseArgs, fetchImpl, sleepImpl: () => Promise.resolve() })
     ).rejects.toThrow(/expired/i);
+  });
+
+  it('skips a malformed record (no <version>) instead of aborting the harvest', async () => {
+    // A record whose arXivRaw metadata has no <version> elements makes
+    // parseOaiRecord throw ArxivParseError. One such record must not abort
+    // the whole prefix harvest (which in auto mode would trip the circuit
+    // breaker and degrade the run to Atom) — mirror the Atom path's
+    // skip-and-warn per-entry guard.
+    const malformedRecord = `<record>
+  <header><identifier>oai:arXiv.org:2604.BROKEN</identifier><datestamp>2026-04-28</datestamp><setSpec>cs:cs:AI</setSpec></header>
+  <metadata><arXivRaw xmlns="http://arxiv.org/OAI/arXivRaw/">
+    <id>2604.BROKEN</id><submitter>B</submitter>
+    <title>Broken record</title><authors>Bob Author</authors><abstract>Abs</abstract><categories>cs.AI</categories>
+  </arXivRaw></metadata>
+</record>`;
+    const xml = buildPageXml(
+      `${sampleRecord('2604.0001')}${malformedRecord}${sampleRecord('2604.0002')}`
+    );
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ xml, resumptionToken: '' }),
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const statusCallback = vi.fn();
+
+    const records = await harvestOai({ ...baseArgs, fetchImpl, statusCallback });
+
+    // Good records on either side of the malformed one survive.
+    expect(records.map((r) => r.id)).toEqual(['2604.0001', '2604.0002']);
+    // The skip surfaces to the caller as a status warning.
+    expect(statusCallback).toHaveBeenCalledWith(expect.stringMatching(/skipped 1 malformed/i));
+    warnSpy.mockRestore();
+  });
+
+  it('rethrows non-parse errors from parseOaiRecord instead of skipping the record', async () => {
+    // The per-record guard exists for malformed OAI data (ArxivParseError
+    // only). A programming error must surface, not become a silently
+    // "skipped" record.
+    const xml = buildPageXml(sampleRecord('2604.0001'));
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ xml, resumptionToken: '' }),
+    });
+    parseOaiRecord.mockImplementationOnce(() => {
+      throw new TypeError('boom: not a parse error');
+    });
+
+    await expect(harvestOai({ ...baseArgs, fetchImpl })).rejects.toThrow('boom: not a parse error');
   });
 
   it('parses the trimmed fixture without errors', async () => {

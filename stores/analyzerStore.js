@@ -5,6 +5,7 @@
 // useAnalyzerStore.getState(), and no React Context provider is needed.
 
 import { create } from 'zustand';
+import { DEFAULT_MODEL_ID } from '../utils/models.js';
 
 // Initial state factory — called from tests to reset between cases,
 // and used once at store creation. Separated so the test harness can
@@ -56,7 +57,7 @@ export function initialState() {
     // --- notebookLM slice ---
     notebookLM: {
       podcastDuration: 20,
-      notebookLMModel: 'gemini-3.1-pro',
+      notebookLMModel: DEFAULT_MODEL_ID,
       notebookLMStatus: '',
       notebookLMContent: null,
       notebookLMGenerating: false,
@@ -144,6 +145,12 @@ export const useAnalyzerStore = create((set) => ({
 
   // --- results slice actions ---
   setResults: (updater) => set((state) => ({ results: applyPatch(state.results, updater) })),
+  // Full REPLACEMENT of the results slice (setResults merges object patches,
+  // so a partial object can never remove keys). Run-added keys outside the
+  // initial shape (availablePapers, failedPapers, allAnalyzedPapers) are
+  // dropped entirely — call this from Reset and at run-start so stale data
+  // can't leak across resets and runs.
+  resetResults: () => set({ results: initialState().results }),
 
   // --- filterResults slice actions ---
   setFilterResults: (updater) =>

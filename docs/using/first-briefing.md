@@ -48,13 +48,13 @@ Edit the bracketed placeholders to match your actual work, then click <span clas
 Open the <span class="ui-action">Settings</span> view. Two things to set, one to leave alone, everything else to skip for now:
 
 - **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
-- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summary, Flash for scoring, Gemini 3.1 Pro for PDF analysis and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
+- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summaries, Gemini 3.5 Flash for scoring, PDF analysis, and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.
 
-## 4. Start the run — and expect two pauses
+## 4. Start the run — and expect three pauses
 
-The Pipeline view shows the Progress Timeline (six stages, all empty) next to a <span class="ui-action">Start Analysis</span> button. One thing worth knowing before you click it: the default run stops and waits for you twice along the way.
+The Pipeline view shows the Progress Timeline (six stages, all empty) next to a <span class="ui-action">Start Analysis</span> button. One thing worth knowing before you click it: the default run stops and waits for you three times along the way.
 
 ```
   1. Fetch papers
@@ -65,14 +65,17 @@ The Pipeline view shows the Progress Timeline (six stages, all empty) next to a 
       │
   3. Score abstracts    (0–10 + justification)
   3.5. Post-process     (optional consistency pass)
+      │
+      ⏸   Gate 2 — review scores, star papers for deep analysis
+      │
   4. Analyze PDFs       (full-text read of the top N)
       │
-      ⏸   Gate 2 — star / dismiss / comment on analysed papers
+      ⏸   Gate 3 — star / dismiss / comment on analysed papers
       │
   5. Briefing           (editorial synthesis + hallucination audit)
 ```
 
-Both pauses are on by default and can be turned off in Settings → Review & confirmation once you've seen a few runs. For this run, clicking through them without much ceremony is fine — the point this time is to notice where they fire and what they show.
+All three pauses are on by default and can be turned off in Settings → Review & confirmation once you've seen a few runs. For this run, clicking through them without much ceremony is fine — the point this time is to notice where they fire and what they show.
 
 Click <span class="ui-action">Start Analysis</span>.
 
@@ -91,15 +94,23 @@ Take a minute to scan what landed where. If something you'd clearly want is in <
 A quick scan is plenty on this run. If something's obviously in the wrong bucket, click its verdict button to move it; if not, <span class="ui-action">Continue to scoring →</span> is perfectly fine. The filter's blind spots tend to become clearer after you've seen a few runs — today, mostly what matters is knowing the gate exists and seeing what it shows you.
 :::
 
-## 6. Scoring and PDF analysis
+## 6. Scoring, then the second pause
 
-The pipeline moves through abstract scoring, an optional post-processing consistency pass, and then deep PDF analysis of the top-ranked papers. PDF analysis is the slowest stretch of the run by some margin — each paper is downloaded, read, and summarised, with the analyses running in parallel in the background. How long it takes varies with how many papers passed the filter, which model you're using for PDFs, and your provider tier.
+The pipeline moves through abstract scoring and an optional post-processing consistency pass, then parks at its second review gate — _"Score review"_ with a <span class="ui-action">Continue to PDF analysis →</span> button — before any PDF is read. This is the cheapest moment to adjust which papers get the expensive full-text treatment.
+
+The scored list appears in three groups: the top-N papers that will be PDF-analysed as things stand, a borderline band just below the cutoff, and everything else. Each row carries a **STAR** button (guarantees the paper gets PDF-analysed regardless of its score) and a **DISMISS** button (drops it from the PDF set for this run). A free-text _"feedback on this scoring round"_ field takes observations about the round as a whole.
+
+On this first run, a quick skim of the top group is plenty — click <span class="ui-action">Continue to PDF analysis →</span> when the list looks reasonable. [Review gates](/using/review-gates#gate-2-before-pdf-analysis-score-review) covers the selection logic when you want to steer it deliberately.
+
+## 7. PDF analysis
+
+Stage 4 reads the selected papers in full. PDF analysis is the slowest stretch of the run by some margin — each paper is downloaded, read, and summarised, with the analyses running in parallel in the background. How long it takes varies with how many papers passed the filter, which model you're using for PDFs, and your provider tier.
 
 This is a good point to step away from the browser for a bit. The timeline and activity log continue updating as each stage completes, and the run survives browser navigation, so you can switch tabs or come back later without losing progress.
 
-## 7. Second pause — before the briefing writes
+## 8. Third pause — before the briefing writes
 
-Once PDF analysis finishes, the pipeline parks at its second review gate with the Analysis Results rendered in the main area. Each paper card carries three feedback controls:
+Once PDF analysis finishes, the pipeline parks at its third review gate with the Analysis Results rendered in the main area. Each paper card carries three feedback controls:
 
 - <span class="ui-action">☆ star</span> — marks the paper as important. The eventual briefing will give it richer treatment and more prominent placement.
 - <span class="ui-action">⊘ dismiss</span> — marks it as uninteresting. The briefing will deprioritise it.
@@ -111,7 +122,7 @@ A <span class="ui-action">Download Report</span> card appears alongside the resu
 
 On this first run, skim the results and click <span class="ui-action">Continue to briefing →</span> without starring or dismissing anything. The feedback controls are where Aparture becomes useful over weeks, not one run; [Giving feedback](/using/giving-feedback) covers what each one actually does downstream when you want to engage with them deliberately.
 
-## 8. Read what you got
+## 9. Read what you got
 
 Once synthesis completes, Aparture saves the new briefing to the sidebar archive and switches the main area to its reading view — the briefing opens on its own page rather than appearing below what you were just looking at. You can always flip back to the run results via the <span class="ui-action">Pipeline</span> nav link, but the briefing view is where most of the useful output lives.
 
@@ -125,7 +136,7 @@ Four blocks are worth recognising across the two views:
 | **NotebookLM**       | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast)                                                                                       |
 
 ::: tip Expect the first briefing to be rough
-The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at either gate. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.
+The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at any of the gates. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.
 :::
 
 ## Next

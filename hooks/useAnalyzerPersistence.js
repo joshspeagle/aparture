@@ -30,7 +30,7 @@ function generateSessionId() {
 }
 
 export const DEFAULT_CONFIG = {
-  version: 8,
+  version: 9,
   selectedCategories: [
     'cs.AI',
     'cs.CL',
@@ -81,22 +81,22 @@ export const DEFAULT_CONFIG = {
   // Number of filter batches fired in parallel. Clamped 1–20 in pipeline.js.
   filterConcurrency: 3,
   categoriesToScore: ['YES', 'MAYBE'],
-  scoringModel: 'gemini-3-flash',
+  scoringModel: 'gemini-3.5-flash',
   scoringBatchSize: 3,
   // Number of scoring batches fired in parallel. Clamped 1–20 in pipeline.js.
   scoringConcurrency: 3,
   enableScorePostProcessing: true,
   postProcessingCount: 50,
   postProcessingBatchSize: 5,
-  postProcessingModel: 'gemini-3-flash',
+  postProcessingModel: 'gemini-3.5-flash',
   // Number of post-processing (Stage 3.5) batches fired in parallel. Clamped 1–20.
   postProcessingConcurrency: 3,
-  pdfModel: 'gemini-3.1-pro',
+  pdfModel: 'gemini-3.5-flash',
   // Stage 3 parallel analysis width. Default 3 is safe across provider tiers
   // (Anthropic Tier 1 with cache warmup; Google/OpenAI have headroom). Clamped
   // 1–20 in pipeline.js.
   pdfAnalysisConcurrency: 3,
-  briefingModel: 'gemini-3.1-pro',
+  briefingModel: 'gemini-3.5-flash',
   // Quick summaries compress each full PDF analysis into a ~300-word pre-read.
   // Small/cheap text-only model is appropriate (input is the text of the full
   // report, not the PDF). Flash-Lite by default; fall back to briefingModel if
@@ -182,6 +182,36 @@ export function migrateLegacyConfig(config) {
   if (config.version === 7) {
     config.pauseBeforeDeepAnalysis = config.pauseBeforeDeepAnalysis ?? true;
     config.version = 8;
+  }
+
+  // v8 → v9: 2026-07 model-registry refresh. Removed Anthropic entries are
+  // remapped to their closest current-generation equivalent in every model
+  // slot: claude-haiku-3.5's apiId was retired upstream (live 404 since
+  // 2026-02-19), claude-opus-4.1 retires 2026-08-05, and claude-opus-4.5 /
+  // claude-sonnet-4.5 predate adaptive thinking (400 against the current
+  // Anthropic adapter). Google defaults also moved to GA gemini-3.5-flash,
+  // but existing preview selections are left alone — they still work.
+  if (config.version === 8) {
+    const modelRemap = {
+      'claude-haiku-3.5': 'claude-haiku-4.5',
+      'claude-opus-4.1': 'claude-opus-4-8',
+      'claude-opus-4.5': 'claude-opus-4-8',
+      'claude-sonnet-4.5': 'claude-sonnet-5',
+    };
+    const modelSlots = [
+      'filterModel',
+      'scoringModel',
+      'postProcessingModel',
+      'pdfModel',
+      'briefingModel',
+      'quickSummaryModel',
+      'notebookLMModel',
+    ];
+    for (const slot of modelSlots) {
+      const mapped = modelRemap[config[slot]];
+      if (mapped) config[slot] = mapped;
+    }
+    config.version = 9;
   }
 
   // Two-model → three-model setup

@@ -2,7 +2,7 @@
 
 _Bringing the arXiv into focus._
 
-A web app that turns daily arXiv scanning into a briefing — cross-paper synthesis tuned to your specific research interests. You write a profile in plain English, Aparture filters and analyzes new papers, and you get one structured read per run. Star, dismiss, or comment — the feedback loop refines your profile over time.
+Aparture exists so a researcher can stop skimming the arXiv without worrying about what they're missing. You describe your research in plain English. Each run filters the day's papers against that description, reads the strongest matches in full, and writes one briefing that connects them. Every citation is checked against the papers it was actually given before the briefing renders. When it misjudges a paper, you say so, and it proposes an edit to your profile that you accept or reject. It runs on your machine, with your API keys.
 
 ![a rendered briefing](docs/public/screenshots/briefing-hero.png)
 

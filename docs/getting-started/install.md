@@ -122,7 +122,7 @@ ACCESS_PASSWORD=pick-anything-memorable
 
 Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder, which works fine for local-only development, though you should obviously pick something real before exposing the app beyond your own machine.
 
-You'll also add your LLM API key to this same `.env.local` file on the next page. Don't start the dev server yet — it will fail without at least one API key.
+You'll also add your LLM API key to this same `.env.local` file on the next page. The dev server starts without one — there's no startup validation — but every pipeline run will fail at its first LLM call until a key is present.
 
 ## 4. Identify yourself to arXiv (optional but encouraged)
 
@@ -171,7 +171,7 @@ npm run lint                  # ESLint passes
 npm test                      # Vitest, ~400 tests, ~30s, $0 (fixture-based)
 ```
 
-If all four pass, the local setup is ready. `npm run dev` still won't work until you've added at least one API key in `.env.local`.
+If all four pass, the local setup is ready. `npm run dev` will start and serve the UI now, but pipeline runs will fail at the first LLM call until you've added at least one API key in `.env.local`.
 
 ## Common gotchas
 

@@ -50,13 +50,13 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | Stage                               | Paid Tier 1             | Free-tier alternative   |
 | ----------------------------------- | ----------------------- | ----------------------- |
 | Filter (`filterModel`)              | `gemini-3.1-flash-lite` | `gemini-2.5-flash-lite` |
-| Scoring (`scoringModel`)            | `gemini-3-flash`        | `gemini-2.5-flash`      |
-| PDF analysis (`pdfModel`)           | `gemini-3.1-pro`        | `gemini-2.5-pro`        |
+| Scoring (`scoringModel`)            | `gemini-3.5-flash`      | `gemini-2.5-flash`      |
+| PDF analysis (`pdfModel`)           | `gemini-3.5-flash`      | `gemini-2.5-pro`        |
 | Briefing (`briefingModel`)          | Same as `pdfModel`      | Same as `pdfModel`      |
 | Quick summary (`quickSummaryModel`) | `gemini-3.1-flash-lite` | `gemini-2.5-flash`      |
 | NotebookLM (`notebookLMModel`)      | Same as `pdfModel`      | Same as `pdfModel`      |
 
-The paid Tier 1 column is Aparture's out-of-the-box default. If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps than the 3.x previews, and the only paid-only slot is the Pro tier (`gemini-3.1-pro`), which has no free counterpart at all.
+The paid Tier 1 column is Aparture's out-of-the-box default. It uses only GA (non-preview) models, so a default setup can't break when Google retires a preview alias. `gemini-3.5-flash` is Google's most capable GA model as of 2026-07 and fills both the scoring and PDF/briefing slots; the registry also carries `gemini-3.1-pro` (Preview) if you want to trade stability for it. If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps, and check your per-model caps in AI Studio since coverage for newly released models can lag.
 
 ## 6. Cost estimate
 

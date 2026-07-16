@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
@@ -41,7 +42,10 @@ export default async function handler(req, res) {
   }
   // Skip the auth check in fixture mode — fixture-based tests don't need a
   // real key because callModel never actually hits the network.
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
+  if (!apiKey && callMode.mode !== 'fixture') {
     res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
     return;
   }
@@ -67,7 +71,6 @@ export default async function handler(req, res) {
     // unchanged if the caller already passed an apiId or an unknown value.
     const modelApiId = MODEL_REGISTRY[model]?.apiId ?? model;
 
-    const callMode = callModelMode ?? { mode: 'live' };
     // Disable caching in fixture mode so the fixture hash stays keyed on the
     // full rendered prompt only — the same shape the test's beforeAll seeded.
     // Also disable when APARTURE_TEST_PROMPT_OVERRIDE is set: that env flag

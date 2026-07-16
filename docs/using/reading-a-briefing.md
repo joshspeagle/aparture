@@ -29,7 +29,7 @@ From top to bottom, a briefing stacks like this:
 
 The editorial lead at the top: two to four paragraphs of serif prose. It's the densest summary of the day in the briefing and often enough on its own if you're short on time.
 
-The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 2 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of _"if you read one paper today, make it [arxivId] because…"_ — usually the clearest pointer in the whole briefing.
+The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 3 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of _"if you read one paper today, make it [arxivId] because…"_ — usually the clearest pointer in the whole briefing.
 
 ### Themes
 
@@ -49,7 +49,7 @@ Each theme contains one or more paper cards. This is where individual papers are
 | **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                                                                                                             |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
-The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 2 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
+The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 3 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
 
 ## Going deeper on a single paper
 
@@ -77,7 +77,7 @@ After synthesis, Aparture runs a second independent LLM pass that audits the bri
 | <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list. |
 | <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                            |
 
-If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (both default on), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
+If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (retry-on-YES defaults on, retry-on-MAYBE defaults off), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
 
 The flagged-claims list shows each excerpt, the paper it's about (by arXiv ID), and what the auditor's concern was. Skimming a flag usually tells you whether it's a genuine hallucination or a paraphrase the auditor was unusually strict about.
 
@@ -106,14 +106,14 @@ You rarely need this on a fresh briefing. It matters weeks later, when you come 
 The layout is designed for a few-minute read, not a completionist pass. A pattern that works:
 
 1. **Start with the executive summary.** If it surfaces a specific paper as "if you read one today, make it this", that's your primary target. If it says the day was thin, trust it and skip to theme 1's first card.
-2. **Scan theme 1.** That's where the highest-scored papers land, and any papers you pre-starred at Gate 2 have been woven into its framing. Read pitches; for anything that catches you, open the quick summary inline.
+2. **Scan theme 1.** That's where the highest-scored papers land, and any papers you pre-starred at Gate 3 have been woven into its framing. Read pitches; for anything that catches you, open the quick summary inline.
 3. **If the quick summary holds up, open the full report.** The deeper detail is usually enough to decide whether to open the PDF or move on.
 4. **Star anything interesting you won't read now.** Stars are tied to the paper by arXiv ID and persist across runs, but in practice they don't retroactively change the briefing you're reading (that's already been synthesised) and arXiv papers rarely reappear in later runs. Their real job is to accumulate as signal for the refinement flow, which is how feedback on this briefing eventually shapes future ones.
 5. **Dismiss deliberately.** A dismiss tells the system "stop bringing me these", so use it when a paper is genuinely not a fit — not when you're just out of time today.
 6. **Skip the rest.** Working through every paper isn't the intended use — triage is.
 
-::: info Feedback you give here is the same feedback you give at Gate 2
-Stars, dismisses, and comments are all keyed per paper, not per run. The same controls appear on the pre-briefing review gate (Gate 2) and on the paper cards in the briefing itself — the difference is just timing relative to synthesis. Feedback given at Gate 2 shapes the briefing that's about to be written; feedback given while reading mainly accumulates as signal for the refinement flow, which is the actual path by which today's feedback shapes tomorrow's briefings (via a refined profile). [Giving feedback](/using/giving-feedback) covers the full mechanics.
+::: info Feedback you give here is the same feedback you give at Gate 3
+Stars, dismisses, and comments are all keyed per paper, not per run. The same controls appear on the pre-briefing review gate (Gate 3) and on the paper cards in the briefing itself — the difference is just timing relative to synthesis. Feedback given at Gate 3 shapes the briefing that's about to be written; feedback given while reading mainly accumulates as signal for the refinement flow, which is the actual path by which today's feedback shapes tomorrow's briefings (via a refined profile). [Giving feedback](/using/giving-feedback) covers the full mechanics.
 :::
 
 ## Next

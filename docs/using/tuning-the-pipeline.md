@@ -23,16 +23,17 @@ Tuning comes down to: get the right papers into Stage 4, don't overspend on the 
 
 Each stage has its own model slot. Current defaults are all Google:
 
-| Slot                | Setting label                 | Default                   | What it drives                                                                                                                             |
-| ------------------- | ----------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `filterModel`       | Quick Filter Model (Stage 1)  | `gemini-3.1-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
-| `scoringModel`      | Abstract Scoring Model        | `gemini-3-flash`          | Stage 3 scoring (and the optional Stage 3.5 consistency pass)                                                                              |
-| `pdfModel`          | Deep PDF Analysis Model       | `gemini-3.1-pro`          | Stage 4 full-text read                                                                                                                     |
-| `briefingModel`     | Briefing Model                | `gemini-3.1-pro`          | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
-| `quickSummaryModel` | Quick-summary model           | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
-| `notebookLMModel`   | (set when generating podcast) | unset until first podcast | Optional NotebookLM document bundle                                                                                                        |
+| Slot                  | Setting label                        | Default                   | What it drives                                                                                                                             |
+| --------------------- | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `filterModel`         | Quick Filter Model                   | `gemini-3.1-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
+| `scoringModel`        | Abstract Scoring Model               | `gemini-3.5-flash`        | Stage 3 scoring                                                                                                                            |
+| `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.5-flash`        | Stage 3.5 consistency pass                                                                                                                 |
+| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.5-flash`        | Stage 4 full-text read                                                                                                                     |
+| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.5-flash`        | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
+| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
+| `notebookLMModel`     | (set when generating podcast)        | unset until first podcast | Optional NotebookLM document bundle                                                                                                        |
 
-The Settings panel's own stage numbering is a little different from the numbering these docs use (the UI calls the filter "Stage 1"); the labels above are what you'll literally see on screen. All slots are disabled while a run is in progress.
+The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config and defaults to the same model as the scoring slot. All slots are disabled while a run is in progress.
 
 Three rules of thumb for model selection:
 
@@ -74,16 +75,16 @@ Same Anthropic cache-warmup behavior as filter.
 
 **Parallel Review Calls** (default 3, range 1–20) controls how many `/api/rescore-abstracts` batches fire concurrently during the optional Stage 3.5 post-processing consistency pass. Only active when **Enable Post-Processing** is on.
 
-### Parallel PDF analyses
+### Parallel PDF calls
 
-**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Analyses** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side with a ~5-second spacing to respect arXiv's rate limits, but once the PDFs are in hand the LLM calls themselves run in parallel.
+**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Calls** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side with a ~5-second spacing to respect arXiv's rate limits, but once the PDFs are in hand the LLM calls themselves run in parallel.
 
 - On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing.
 - On **Google** and **OpenAI**, all workers start immediately.
 
-### Parallel quick-summaries
+### Parallel quick-summary calls
 
-**Parallel calls** under the Quick-summary model (default 5, range 1–20) sets how many `/api/analyze-pdf-quick` calls fan out at once during briefing prep. These produce the ~300-word pre-read summaries that expand inline on paper cards.
+**Parallel Quick-Summary Calls** (default 5, range 1–20), under **Briefing Options** in Advanced Options, sets how many `/api/analyze-pdf-quick` calls fan out at once during briefing prep. These produce the ~300-word pre-read summaries that expand inline on paper cards.
 
 ### Tuning guidance
 
@@ -95,12 +96,12 @@ Aparture self-heals on transient 429s: when one batch hits a rate limit, every c
 
 Each stage batches papers into API calls to avoid per-paper overhead. Bigger batches are faster but risk hitting context limits or giving each paper less careful attention.
 
-| Setting            | Default | Reasonable range | Notes                                                  |
-| ------------------ | ------- | ---------------- | ------------------------------------------------------ |
-| Filter Batch Size  | 3       | 3–10             | Short prompts; batching mostly helps throughput        |
-| Scoring Batch Size | 3       | 3–8              | Each paper carries a full abstract + justification     |
-| Review Batch Size  | 5       | 3–10             | Post-processing compares multiple papers at once       |
-| PDF analysis batch | 1       | (always 1)       | One PDF per call — see **Parallel PDF Analyses** above |
+| Setting            | Default | Reasonable range | Notes                                               |
+| ------------------ | ------- | ---------------- | --------------------------------------------------- |
+| Filter Batch Size  | 3       | 3–10             | Short prompts; batching mostly helps throughput     |
+| Scoring Batch Size | 3       | 3–8              | Each paper carries a full abstract + justification  |
+| Review Batch Size  | 5       | 3–10             | Post-processing compares multiple papers at once    |
+| PDF analysis batch | 1       | (always 1)       | One PDF per call — see **Parallel PDF Calls** above |
 
 Most users never touch these. Raising batch sizes tends to help when you're on a fast provider with generous rate limits, your abstracts are short, or you're using a long-context model. Lowering them tends to help when you're hitting rate-limit errors or noticing sloppier scoring at larger batch sizes.
 
@@ -182,7 +183,7 @@ Memory rolls off automatically after 90 days. Re-running with the same `daysBack
 
 ## A few common configurations
 
-The defaults ship tuned sensibly — all-Google models, both pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
+The defaults ship tuned sensibly — all-Google models, all three pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
 
 **Cost-sensitive.** Switch filter and scoring to the cheapest Flash-Lite or Nano tier. Drop Papers to Analyze to 10–15. Turn off post-processing. Turn off retry-on-<span class="verdict is-maybe">MAYBE</span> if it isn't already.
 

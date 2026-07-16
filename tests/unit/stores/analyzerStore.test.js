@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAnalyzerStore } from '../../../stores/analyzerStore.js';
+import { DEFAULT_MODEL_ID } from '../../../utils/models.js';
 
 beforeEach(() => {
   // Reset the store to pristine data values between tests via the
@@ -66,6 +67,23 @@ describe('analyzerStore — results slice', () => {
     useAnalyzerStore.getState().setResults((prev) => ({ ...prev, scoredPapers: [{ id: '2' }] }));
     expect(useAnalyzerStore.getState().results.scoredPapers).toHaveLength(1);
   });
+
+  it('resetResults replaces the slice and drops run-added keys', () => {
+    // setResults merges, so run-added keys (availablePapers, failedPapers,
+    // allAnalyzedPapers) can only be removed by full slice replacement.
+    useAnalyzerStore.getState().setResults({
+      allPapers: [{ id: '1' }],
+      availablePapers: [{ id: 'a' }],
+      failedPapers: [{ id: 'f' }],
+      allAnalyzedPapers: [{ id: 'x' }],
+    });
+    useAnalyzerStore.getState().resetResults();
+    const { results } = useAnalyzerStore.getState();
+    expect(results).toEqual({ allPapers: [], scoredPapers: [], finalRanking: [] });
+    expect(results.availablePapers).toBeUndefined();
+    expect(results.failedPapers).toBeUndefined();
+    expect(results.allAnalyzedPapers).toBeUndefined();
+  });
 });
 
 describe('analyzerStore — filterResults slice', () => {
@@ -107,10 +125,10 @@ describe('analyzerStore — testState slice', () => {
 });
 
 describe('analyzerStore — notebookLM slice', () => {
-  it('starts with defaults (20 minutes, gemini-3.1-pro)', () => {
+  it('starts with defaults (20 minutes, DEFAULT_MODEL_ID)', () => {
     const { notebookLM } = useAnalyzerStore.getState();
     expect(notebookLM.podcastDuration).toBe(20);
-    expect(notebookLM.notebookLMModel).toBe('gemini-3.1-pro');
+    expect(notebookLM.notebookLMModel).toBe(DEFAULT_MODEL_ID);
     expect(notebookLM.notebookLMStatus).toBe('');
     expect(notebookLM.notebookLMContent).toBeNull();
     expect(notebookLM.notebookLMGenerating).toBe(false);

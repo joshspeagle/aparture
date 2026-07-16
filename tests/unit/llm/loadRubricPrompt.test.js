@@ -3,19 +3,19 @@
 //   2. Preserves the byte-exact invariant (cachePrefix + tail === fullPrompt)
 //   3. Throws a clear error when the marker is missing
 //   4. Handles multiple substitutions per variable
-//   5. Reads from the real prompts/ directory
+//   5. Reads from the real prompts/ directory (shipped-rubric tests only)
+//
+// Scratch templates are written to a temp dir (injected via the loader's
+// baseDir param), never into the live prompts/ directory — a crashed run
+// must not leak files where prompts go live without rebuild.
 
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { loadRubricPrompt } from '../../../lib/llm/loadRubricPrompt.js';
 
-const FIXTURES_DIR = path.resolve(process.cwd(), 'prompts');
-const TEST_FILES = [
-  '__test_rubric_basic.md',
-  '__test_rubric_no_marker.md',
-  '__test_rubric_multi.md',
-];
+let FIXTURES_DIR;
 
 async function writeTestFile(name, content) {
   await fs.writeFile(path.resolve(FIXTURES_DIR, name), content, 'utf8');
@@ -23,6 +23,7 @@ async function writeTestFile(name, content) {
 
 describe('loadRubricPrompt', () => {
   beforeAll(async () => {
+    FIXTURES_DIR = await fs.mkdtemp(path.join(os.tmpdir(), 'aparture-rubric-test-'));
     await writeTestFile(
       '__test_rubric_basic.md',
       'Rubric prefix for {{profile}}.\nAnother prefix line.\n\n{{CACHE_BOUNDARY}}\n\nVariable tail with {{papers}}.\n'
@@ -35,20 +36,15 @@ describe('loadRubricPrompt', () => {
   });
 
   afterAll(async () => {
-    for (const name of TEST_FILES) {
-      try {
-        await fs.unlink(path.resolve(FIXTURES_DIR, name));
-      } catch {
-        // already gone
-      }
-    }
+    if (FIXTURES_DIR) await fs.rm(FIXTURES_DIR, { recursive: true, force: true });
   });
 
   test('splits at the marker and substitutes stable + variable vars separately', async () => {
     const { cachePrefix, variableTail, fullPrompt } = await loadRubricPrompt(
       '__test_rubric_basic.md',
       { profile: 'alice' },
-      { papers: 'paper-one' }
+      { papers: 'paper-one' },
+      FIXTURES_DIR
     );
 
     expect(cachePrefix).toBe('Rubric prefix for alice.\nAnother prefix line.');
@@ -60,7 +56,8 @@ describe('loadRubricPrompt', () => {
     const { cachePrefix, variableTail, fullPrompt } = await loadRubricPrompt(
       '__test_rubric_basic.md',
       { profile: 'profile-text\nwith\nnewlines' },
-      { papers: 'papers-text' }
+      { papers: 'papers-text' },
+      FIXTURES_DIR
     );
 
     expect(cachePrefix + variableTail).toBe(fullPrompt);
@@ -68,16 +65,17 @@ describe('loadRubricPrompt', () => {
   });
 
   test('throws a clear error when the marker is missing', async () => {
-    await expect(loadRubricPrompt('__test_rubric_no_marker.md', { profile: 'x' })).rejects.toThrow(
-      /missing \{\{CACHE_BOUNDARY\}\} marker/
-    );
+    await expect(
+      loadRubricPrompt('__test_rubric_no_marker.md', { profile: 'x' }, {}, FIXTURES_DIR)
+    ).rejects.toThrow(/missing \{\{CACHE_BOUNDARY\}\} marker/);
   });
 
   test('substitutes every occurrence of a variable on the correct side only', async () => {
     const { cachePrefix, variableTail } = await loadRubricPrompt(
       '__test_rubric_multi.md',
       { x: 'ALPHA' },
-      { y: 'BETA' }
+      { y: 'BETA' },
+      FIXTURES_DIR
     );
 
     expect(cachePrefix).toBe('First ALPHA, second ALPHA, third ALPHA.');
@@ -90,7 +88,8 @@ describe('loadRubricPrompt', () => {
     const { cachePrefix, variableTail } = await loadRubricPrompt(
       '__test_rubric_multi.md',
       { y: 'should-not-appear' },
-      { x: 'should-not-appear' }
+      { x: 'should-not-appear' },
+      FIXTURES_DIR
     );
 
     expect(cachePrefix).toContain('{{x}}');

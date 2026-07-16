@@ -4,7 +4,7 @@ layout: home
 hero:
   name: <span class="hero-name">Ap<span class="ar-highlight">ar</span>ture</span>
   text: <span class="tagline-text">Bringing the <span class="arxiv-highlight"><span class="arxiv-ar-highlight">ar</span>Xiv</span> into focus</span>
-  tagline: Multi-stage research paper discovery and analysis using LLMs
+  tagline: One briefing a day instead of the listings, with every citation checked
   actions:
     - theme: brand
       text: Get Started
@@ -14,7 +14,11 @@ hero:
       link: https://github.com/joshspeagle/aparture
 ---
 
-Aparture is a local web app for daily arXiv monitoring using LLMs. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile.
+<script setup>
+import { withBase } from 'vitepress';
+</script>
+
+Aparture is a local web app that reads the day's arXiv so you can stop skimming it. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile. Every citation in that briefing is checked against the papers it was actually given before anything renders.
 
 It's designed to be used over weeks rather than once: you star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. Those signals feed into a profile-refinement flow that proposes edits you can accept or reject individually, so the briefings gradually converge on what you actually want to see.
 
@@ -62,19 +66,19 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 
 <div class="step-cards step-cards-3">
 
-<a class="step-card" href="/aparture/getting-started/install.html">
+<a class="step-card" :href="withBase('/getting-started/install.html')">
   <span class="step-number">STEP 01</span>
   <h4>Install</h4>
   <p>Node, the repo, optional Playwright. About 5 minutes.</p>
 </a>
 
-<a class="step-card" href="/aparture/getting-started/api-keys.html">
+<a class="step-card" :href="withBase('/getting-started/api-keys.html')">
   <span class="step-number">STEP 02</span>
   <h4>API keys</h4>
   <p>Pick a provider, create a key, paste into <code>.env.local</code>.</p>
 </a>
 
-<a class="step-card" href="/aparture/getting-started/verify-setup.html">
+<a class="step-card" :href="withBase('/getting-started/verify-setup.html')">
   <span class="step-number">STEP 03</span>
   <h4>Verify setup</h4>
   <p>Dry run (free) and Minimal API Test (~$0.20–$1 on paid tiers).</p>
@@ -82,7 +86,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
 
 </div>
 
-<a class="step-card step-card-cta" href="/aparture/using/first-briefing.html">
+<a class="step-card step-card-cta" :href="withBase('/using/first-briefing.html')">
   <span class="step-number">READY TO RUN</span>
   <h4>Start using Aparture →</h4>
   <p>A narrated 10-minute walk through your first real briefing, end to end.</p>

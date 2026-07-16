@@ -5,6 +5,7 @@ import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
 import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryAfter.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -246,11 +247,12 @@ export default async function handler(req, res) {
     return res.status(authStatus).json({ error: authError });
   }
 
-  if (!apiKey && (callModelMode?.mode ?? 'live') !== 'fixture') {
+  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
+  // (see resolveCallModelMode); in production it is forced back to live.
+  const callMode = resolveCallModelMode(callModelMode);
+  if (!apiKey && callMode.mode !== 'fixture') {
     return res.status(401).json({ error: 'missing credentials' });
   }
-
-  const callMode = callModelMode ?? { mode: 'live' };
 
   const structuredOutput = {
     name: 'pdf_analysis',
@@ -329,17 +331,22 @@ export default async function handler(req, res) {
           }
 
           if (!pdfResponse.ok) {
-            throw new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
+            const httpErr = new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
+            httpErr.upstreamStatus = pdfResponse.status;
+            throw httpErr;
           }
 
           pdfBuffer = await pdfResponse.arrayBuffer();
 
-          // Check if we got HTML/reCAPTCHA instead of PDF
+          // Check if we got HTML/reCAPTCHA instead of PDF. Marked with a
+          // code so the catch below routes ONLY this case to Playwright.
           if (!isPDFResponse(pdfBuffer)) {
             console.warn(
               'Direct fetch returned HTML/reCAPTCHA page, attempting Playwright fallback...'
             );
-            throw new Error('reCAPTCHA detected');
+            const recaptchaErr = new Error('reCAPTCHA detected');
+            recaptchaErr.code = 'RECAPTCHA_INTERSTITIAL';
+            throw recaptchaErr;
           }
 
           console.log('PDF downloaded via direct fetch:', {
@@ -347,10 +354,30 @@ export default async function handler(req, res) {
             sizeKB: (pdfBuffer.byteLength / 1024).toFixed(2),
           });
         } catch (fetchError) {
-          // If direct fetch failed or got reCAPTCHA, try Playwright fallback.
-          // Playwright is an optional dependency — if it's not installed we
-          // raise a sentinel error so the handler's catch block can return a
-          // structured 422 response rather than a generic 500.
+          // Route to the Playwright fallback ONLY when the direct fetch
+          // actually indicates a reCAPTCHA/HTML interstitial (response OK
+          // but body lacks the %PDF- magic bytes). Genuine network/HTTP
+          // failures — 404, timeout, an exhausted 429 — would fail
+          // identically under Playwright; propagate them with their real
+          // message and upstream status so the client's makeRobustAPICall
+          // retry ladder handles them, instead of mislabeling them as
+          // PLAYWRIGHT_UNAVAILABLE_RECAPTCHA 422s (which short-circuit
+          // retries and read to the user as a reCAPTCHA problem).
+          if (fetchError?.code !== 'RECAPTCHA_INTERSTITIAL') {
+            // Don't double-prefix: HTTP failures from the try block already
+            // read "Failed to download PDF: HTTP <status>".
+            const message = /download/i.test(fetchError.message ?? '')
+              ? fetchError.message
+              : `PDF download failed: ${fetchError.message}`;
+            const downloadErr = new Error(message);
+            downloadErr.isPdfDownloadError = true;
+            downloadErr.upstreamStatus = fetchError.upstreamStatus;
+            throw downloadErr;
+          }
+          // reCAPTCHA path: Playwright is an optional dependency — if it's
+          // not installed we raise a sentinel error so the handler's catch
+          // block can return a structured 422 response rather than a
+          // generic 500.
           console.warn(`Direct fetch failed (${fetchError.message}), using Playwright fallback...`);
           const playwrightMod = await tryImportPlaywright();
           if (!playwrightMod?.chromium) {
@@ -478,6 +505,20 @@ export default async function handler(req, res) {
         error: PLAYWRIGHT_UNAVAILABLE_ERR,
         arxivId: req.body?.arxivId,
         title: req.body?.title,
+      });
+    }
+    // Genuine PDF-download failure (not a reCAPTCHA interstitial): forward
+    // the upstream HTTP status when we have one — a 429/503 lets the client
+    // build a RateLimitError and pause the sibling workers; a 404 surfaces
+    // as itself — otherwise 502 for network-level failures (timeout, DNS).
+    if (error?.isPdfDownloadError) {
+      const status =
+        Number.isInteger(error.upstreamStatus) && error.upstreamStatus >= 400
+          ? error.upstreamStatus
+          : 502;
+      return res.status(status).json({
+        error: 'Failed to download PDF',
+        details: error.message,
       });
     }
     console.error('Error analyzing PDF:', error);
