@@ -2,7 +2,7 @@
 
 Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts, general comments on a briefing, observations about a scoring round — build up quietly as you use the tool. Later, you can hand them to a flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile.
 
-This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. The related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
+This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. For worked examples of good and bad usage of each type, see [Feedback in practice](/using/feedback-in-practice); the related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
 
 ## The six feedback types
 
