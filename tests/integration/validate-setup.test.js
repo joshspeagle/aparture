@@ -53,6 +53,23 @@ describe('validate-setup API route', () => {
     expect(getResponse().statusCode).toBe(400);
   });
 
+  it('rejects malformed slots entries with 400, not a destructuring 500', async () => {
+    for (const badSlots of [
+      [null],
+      ['not-an-object'],
+      [{ slot: 'Filter' }], // missing model
+      [{ model: 'claude-haiku-4.5' }], // missing slot
+    ]) {
+      const { req, res, getResponse } = createMockReqRes({
+        password: 'test-pw',
+        slots: badSlots,
+      });
+      await handler(req, res);
+      expect(getResponse().statusCode).toBe(400);
+      expect(getResponse().jsonBody.error).toMatch(/invalid slots/i);
+    }
+  });
+
   it('rejects missing credentials', async () => {
     const { req, res, getResponse } = createMockReqRes({
       slots: [{ slot: 'Filter', model: 'gemini-2.5-flash' }],
