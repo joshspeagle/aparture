@@ -17,6 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
+import { BLANK_PROFILE_TEMPLATE } from '../lib/profile/starterTemplates.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
@@ -31,41 +32,14 @@ function generateSessionId() {
 
 export const DEFAULT_CONFIG = {
   version: 9,
-  selectedCategories: [
-    'cs.AI',
-    'cs.CL',
-    'cs.CV',
-    'cs.IR',
-    'cs.LG',
-    'cs.MA',
-    'cs.NE',
-    'stat.AP',
-    'stat.CO',
-    'stat.ME',
-    'stat.ML',
-    'stat.OT',
-    'stat.TH',
-    'astro-ph.CO',
-    'astro-ph.EP',
-    'astro-ph.GA',
-    'astro-ph.HE',
-    'astro-ph.IM',
-    'astro-ph.SR',
-  ],
-  scoringCriteria: `**Core Methodological Interests:**
-**Statistical Learning:** Deep learning advances, general ML methods, novel architectures and training techniques with practical applications
-**Uncertainty Quantification & Robustness:** Principled approaches to model uncertainty, calibration, conformal prediction, robustness evaluation, out-of-distribution detection, Bayesian deep learning
-**Mechanistic Interpretability:** Understanding how models work internally, feature attribution, causal discovery in neural networks—not just making them "more honest" through prompting
-**Advanced Statistical Methods:** Novel sampling/inference techniques, variational inference, hierarchical modeling, state space models, time series analysis, probabilistic programming innovations
-**AI for Scientific Discovery:** Methods specifically designed to accelerate scientific understanding, not just routine applications of existing ML to new domains. Be highly selective with LLM papers—only major architectural innovations or fundamental breakthroughs, not incremental applications or fine-tuning studies.
-
-**Astrophysics Domain Interests:**
-**Galaxy Formation & Evolution:** Observational studies of galaxy assembly, galaxy populations, high-redshift galaxies, environmental effects, chemical evolution, quenching, morphological evolution
-**Stellar Populations & Evolution:** Stellar activity, stellar populations as galactic tracers, stellar physics and evolution, star clusters, star formation processes
-**Milky Way Structure & Dynamics:** Galactic structure, stellar kinematics, dark matter distribution, Galactic archaeology, stellar streams, near-field cosmology
-**Large Survey Science:** Multi-wavelength surveys, time-domain astronomy, statistical methods for large astronomical datasets, survey strategy and design
-
-**Research Philosophy:** Values EITHER (1) fundamental methodological advances in general OR (2) significant observational/data-driven astrophysical insights. Papers excelling in ANY category above should score highly - they do NOT need to match multiple domains. A landmark ML paper should score as highly as a landmark astrophysics paper. Focus on work that advances understanding through empirical analysis rather than purely theoretical frameworks.`,
+  // Neutral first-run defaults (2026-07): fresh installs get a small starter
+  // category set and the bracketed fill-in profile template instead of a
+  // personal research profile. The old shipped profile lives on as the
+  // 'breadth-example' entry in lib/profile/starterTemplates.js. Existing
+  // users are unaffected — readInitialConfig merges their saved config over
+  // these defaults, and both keys exist in every v2+ saved config.
+  selectedCategories: ['cs.LG', 'stat.ML'],
+  scoringCriteria: BLANK_PROFILE_TEMPLATE,
   maxDeepAnalysis: 30,
   finalOutputCount: 30,
   daysBack: 1,
@@ -125,6 +99,47 @@ export const DEFAULT_CONFIG = {
   // star/dismiss papers before committing to (potentially expensive) PDF runs.
   pauseBeforeDeepAnalysis: true,
 };
+
+// Integer config fields (all edited via SettingsPanel's integerInputProps).
+// The panel allows '' while typing and clamps on blur — but the 400ms
+// debounced save can persist the in-flight '' (and blur never runs if the
+// tab closes), so numeric keys could reload as '' and break slicing math
+// (`.slice(0, '')` → empty top-N). normalizeIntegerConfigFields restores the
+// DEFAULT_CONFIG value for any non-finite entry; applied both at load
+// (readInitialConfig) and at save (debounced effect) so bad values neither
+// persist nor survive a reload.
+export const INTEGER_CONFIG_KEYS = [
+  'maxDeepAnalysis',
+  'finalOutputCount',
+  'daysBack',
+  'batchSize',
+  'maxCorrections',
+  'maxRetries',
+  'filterBatchSize',
+  'filterConcurrency',
+  'scoringBatchSize',
+  'scoringConcurrency',
+  'postProcessingCount',
+  'postProcessingBatchSize',
+  'postProcessingConcurrency',
+  'pdfAnalysisConcurrency',
+  'quickSummaryConcurrency',
+  'maxAbstractDisplay',
+  'minPapersPerSubcategory',
+  'arxivCacheTtlMinutes',
+];
+
+export function normalizeIntegerConfigFields(config) {
+  let changed = false;
+  const next = { ...config };
+  for (const key of INTEGER_CONFIG_KEYS) {
+    if (typeof next[key] !== 'number' || !Number.isFinite(next[key])) {
+      next[key] = DEFAULT_CONFIG[key];
+      changed = true;
+    }
+  }
+  return changed ? next : config;
+}
 
 // Migrate legacy config shapes in place. Returns the mutated parsed.config
 // (or null if the config should be discarded in favor of fresh defaults).
@@ -257,7 +272,9 @@ export function readInitialConfig() {
     if (merged.briefingModel === undefined || merged.briefingModel === null) {
       merged.briefingModel = merged.pdfModel ?? DEFAULT_CONFIG.briefingModel;
     }
-    return merged;
+    // Repair integer fields persisted mid-edit as '' (see
+    // normalizeIntegerConfigFields) so numeric keys never reload as ''.
+    return normalizeIntegerConfigFields(merged);
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -334,9 +351,11 @@ async function postColdSessionWithRetry({ password, coldEntry }) {
 async function fetchColdSession(sessionId, password) {
   if (!sessionId) return null;
   try {
-    const res = await fetch(
-      `/api/sessions/${encodeURIComponent(sessionId)}?password=${encodeURIComponent(password ?? '')}`
-    );
+    // Password travels in a header, not the query string (query values leak
+    // into dev-server logs and browser history).
+    const res = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { 'x-aparture-password': password ?? '' },
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {
@@ -454,7 +473,19 @@ export function useAnalyzerPersistence({
       if (timing.endTime) timing.endTime = new Date(timing.endTime);
       setProcessingTiming(timing);
     }
-    if (parsed.testState) setTestState(parsed.testState);
+    if (parsed.testState) {
+      // Revive Date fields — JSON round-trips them as ISO strings, and
+      // ControlPanel calls `.toLocaleString()` expecting real Dates (on a
+      // string that renders the raw ISO text).
+      const revivedTestState = { ...parsed.testState };
+      for (const key of ['lastDryRunTime', 'lastMinimalTestTime']) {
+        if (revivedTestState[key]) {
+          const revived = new Date(revivedTestState[key]);
+          revivedTestState[key] = Number.isNaN(revived.getTime()) ? null : revived;
+        }
+      }
+      setTestState(revivedTestState);
+    }
     if (parsed.notebookLM) {
       if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
       if (parsed.notebookLM.model) setNotebookLMModel(parsed.notebookLM.model);
@@ -557,8 +588,10 @@ export function useAnalyzerPersistence({
       const sessionId = sessionIdRef.current;
 
       // Hot tier — bounded blob, safe under localStorage quota.
+      // normalizeIntegerConfigFields: never persist an in-flight '' from the
+      // Settings panel's freeform integer inputs.
       const hotEntry = buildHotEntry({
-        config,
+        config: normalizeIntegerConfigFields(config),
         sessionId,
         finalRanking: results?.finalRanking,
         filterResults,

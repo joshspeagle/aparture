@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 function mockReqRes(body, method = 'POST') {
-  const req = { method, body, query: {} };
+  const req = { method, body, query: {}, headers: {} };
   const state = { statusCode: 200, jsonBody: undefined };
   const res = {
     status(code) {
@@ -94,8 +94,8 @@ describe('POST /api/briefings — auth + validation', () => {
   });
 });
 
-function mockReqResWithQuery(query, method = 'GET', body) {
-  const req = { method, query, body };
+function mockReqResWithQuery(query, method = 'GET', body, headers = {}) {
+  const req = { method, query, body, headers };
   const state = { statusCode: 200, jsonBody: undefined };
   const res = {
     status(code) {
@@ -122,7 +122,9 @@ describe('GET /api/briefings/[id]', () => {
     await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
     await fs.writeFile(path.join(tmpDir, 'briefings', 'seed1.json'), JSON.stringify(entry), 'utf8');
 
-    const { req, res, getResponse } = mockReqResWithQuery({ id: 'seed1', password: 'test-pw' });
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'seed1' }, 'GET', undefined, {
+      'x-aparture-password': 'test-pw',
+    });
     await idHandler(req, res);
 
     const { statusCode, jsonBody } = getResponse();
@@ -131,22 +133,39 @@ describe('GET /api/briefings/[id]', () => {
   });
 
   it('returns 404 for missing briefing', async () => {
-    const { req, res, getResponse } = mockReqResWithQuery({ id: 'missing', password: 'test-pw' });
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'missing' }, 'GET', undefined, {
+      'x-aparture-password': 'test-pw',
+    });
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(404);
   });
 
   it('rejects invalid id with 400', async () => {
-    const { req, res, getResponse } = mockReqResWithQuery({
-      id: '../etc/passwd',
-      password: 'test-pw',
-    });
+    const { req, res, getResponse } = mockReqResWithQuery(
+      { id: '../etc/passwd' },
+      'GET',
+      undefined,
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(400);
   });
 
   it('rejects wrong password with 401', async () => {
-    const { req, res, getResponse } = mockReqResWithQuery({ id: 'anything', password: 'wrong' });
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'anything' }, 'GET', undefined, {
+      'x-aparture-password': 'wrong',
+    });
+    await idHandler(req, res);
+    expect(getResponse().statusCode).toBe(401);
+  });
+
+  it('ignores a query-string password — auth must use the x-aparture-password header', async () => {
+    const { req, res, getResponse } = mockReqResWithQuery({
+      id: 'anything',
+      password: 'test-pw',
+    });
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(401);
   });
@@ -158,10 +177,9 @@ describe('DELETE /api/briefings/[id]', () => {
     await fs.mkdir(path.join(tmpDir, 'briefings'), { recursive: true });
     await fs.writeFile(path.join(tmpDir, 'briefings', 'del1.json'), JSON.stringify(entry), 'utf8');
 
-    const { req, res, getResponse } = mockReqResWithQuery(
-      { id: 'del1', password: 'test-pw' },
-      'DELETE'
-    );
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'del1' }, 'DELETE', undefined, {
+      'x-aparture-password': 'test-pw',
+    });
     await idHandler(req, res);
 
     expect(getResponse().statusCode).toBe(200);
@@ -170,20 +188,18 @@ describe('DELETE /api/briefings/[id]', () => {
   });
 
   it('returns 200 for already-missing briefing (idempotent)', async () => {
-    const { req, res, getResponse } = mockReqResWithQuery(
-      { id: 'missing', password: 'test-pw' },
-      'DELETE'
-    );
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'missing' }, 'DELETE', undefined, {
+      'x-aparture-password': 'test-pw',
+    });
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(200);
     expect(getResponse().jsonBody).toEqual({ ok: true });
   });
 
   it('rejects wrong password with 401', async () => {
-    const { req, res, getResponse } = mockReqResWithQuery(
-      { id: 'anything', password: 'wrong' },
-      'DELETE'
-    );
+    const { req, res, getResponse } = mockReqResWithQuery({ id: 'anything' }, 'DELETE', undefined, {
+      'x-aparture-password': 'wrong',
+    });
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(401);
   });
@@ -241,7 +257,7 @@ describe('GET /api/briefings', () => {
     await fs.writeFile(path.join(tmpDir, 'briefings', 'b.json'), '{}');
     await fs.writeFile(path.join(tmpDir, 'briefings', 'ignore.txt'), 'not json');
 
-    const req = { method: 'GET', query: { password: 'test-pw' } };
+    const req = { method: 'GET', query: {}, headers: { 'x-aparture-password': 'test-pw' } };
     const state = { statusCode: 200, jsonBody: undefined };
     const res = {
       status(code) {
@@ -261,7 +277,7 @@ describe('GET /api/briefings', () => {
   });
 
   it('returns [] when the dir does not exist', async () => {
-    const req = { method: 'GET', query: { password: 'test-pw' } };
+    const req = { method: 'GET', query: {}, headers: { 'x-aparture-password': 'test-pw' } };
     const state = { statusCode: 200, jsonBody: undefined };
     const res = {
       status(code) {

@@ -40,8 +40,8 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 - `lib/llm/` — provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live call + `[<provider> cache] read=N create=N` on cache hits.
 - `lib/llm/structured/` — per-provider request/response shaping (anthropic/google/openai). Each accepts optional `pdfBase64` and `cacheable`/`cachePrefix`.
 - `lib/synthesis/` — briefing schema, validator, repair, renderPrompt
-- `lib/profile/` — profile utilities (migrations, diff, feedbackCap, suggestPrompt)
-- `hooks/` — React hooks, all localStorage-backed. `useProfile.content` is read by every pipeline stage. `useBriefing` has a 90-day rolling window, ID-keyed entries. `useFeedback` has 6 event types (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`, `scoped-feedback`); star/dismiss are latest-wins, comments append-only, `scoped-feedback` is latest-wins per scope-dedupe key (scope + briefingDate) with three scopes: `bucket`, `score-review`, `run`.
+- `lib/profile/` — profile utilities (migrations, diff, feedbackCap, suggestPrompt, starterTemplates). `starterTemplates.js` owns the four first-run templates AND `BLANK_PROFILE_TEMPLATE`, which is also `DEFAULT_CONFIG.scoringCriteria` — fresh installs ship the neutral bracketed template, never a personal profile.
+- `hooks/` — React hooks, all localStorage-backed. `useProfile.content` is read by every pipeline stage; `useProfile` also owns named profiles (`aparture-profiles` map + `aparture-active-profile` pointer) — snapshots you `saveAs`/`switchTo`/`renameProfile`/`deleteProfile`, while the single working slot (`aparture-profile`) keeps its key and read path unchanged for pipeline/CLI compat. `useBriefing` has a 90-day rolling window, ID-keyed entries. `useFeedback` has 6 event types (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`, `scoped-feedback`); star/dismiss are latest-wins, comments append-only, `scoped-feedback` is latest-wins per scope-dedupe key (scope + briefingDate) with three scopes: `bucket`, `score-review`, `run`.
 - `prompts/` — editable LLM prompt templates (changes live without rebuild). The four `rubric-*.md` files contain a `{{CACHE_BOUNDARY}}` marker that `lib/llm/loadRubricPrompt.js` uses to split each into a cache-stable prefix (rubric + profile) and a variable tail (per-batch papers) for Anthropic caching.
 - `utils/models.js` — **single source of truth for model IDs/names/capabilities** (`MODEL_REGISTRY` + `AVAILABLE_MODELS` — always update together)
 - `styles/` — `tokens.css`, `shell.css`, `briefing.css` (see "Styling conventions")
@@ -56,7 +56,7 @@ Conventional Next.js layout. Directories that carry non-obvious responsibilities
 
 ### API Integration
 
-Each file in `pages/api/` owns one pipeline stage — read the file for its purpose. Two cross-cutting patterns:
+Each file in `pages/api/` owns one pipeline stage — read the file for its purpose. Exception: `validate-setup.js` is a non-LLM probe route — free pre-flight validation of keys/model IDs/request syntax via provider count-tokens (Anthropic, Google) and model-GET (OpenAI) endpoints (`lib/llm/validateSetup.js`, deliberately not routed through `callModel`). Two cross-cutting patterns:
 
 **Auth pattern.** All routes accept EITHER `apiKey` (for future BYOK flows) OR `password` validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the resolved provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). Web UI uses the password path; Phase 2 Electron will use the apiKey path from OS keychain.
 
@@ -75,7 +75,7 @@ Pipeline stages follow `docs/concepts/pipeline.md` (Stage 1 fetch → Stage 5 br
 - **Filter-override pill (Stage 2).** UI click-cycles YES/MAYBE/NO; each override becomes a `filter-override` feedback event that flows into the suggest-profile prompt as a "too narrow/broad" signal.
 - **Batch parallelism.** Stages 2/3/3.5/4 each have a concurrency knob (`filterConcurrency`, `scoringConcurrency`, `postProcessingConcurrency`, `pdfAnalysisConcurrency`, default 3, clamped 1–20), all routed through `AnalysisWorkerPool` in `lib/analyzer/rateLimit.js`. Anthropic model slots get a single-flight cache-warmup barrier (worker 0 primes the ephemeral cache entry before siblings start). Dry-run forces concurrency=1. Stage 4 also serializes arXiv downloads server-side at ~5s spacing.
 - **Score-review gate (Gate 2).** `pauseBeforeDeepAnalysis: true` (default) fires after Stage 3.5 and before Stage 4. Shows scored papers in three groups (top-N, borderline, low score); ★ guarantees PDF analysis regardless of rank, X (dismiss) excludes from PDF set. Final PDF set = `(top-N) ∪ {starred} − {excluded}`. Free-text "feedback on this scoring round" field flows into suggest-profile as a `scoped-feedback` `score-review`-scope note. A "Skip remaining gates this run" link appears on all three gates; it bypasses subsequent default-on gates for this run only without modifying settings.
-- **Review-gate placement.** All three gates render the shared `<ReviewGateBanner>` (`components/run/`) — one-line summary + Continue button + "Skip remaining gates this run" link — at the _head of their associated section_: filter → `FilterResultsList`, score → `ScoreReviewSurface`, pre-briefing → `PreBriefingGate` (`components/shell/`, mounted by `MainArea` only at stage `'pre-briefing-review'`). `ProgressTimeline` is pure status display and hosts **no** gate controls.
+- **Review-gate placement.** All three gates render the shared `<ReviewGateBanner>` (`components/run/`) — one-line summary + Continue button + "Skip remaining gates this run" link — at the _head of their associated section_: filter → `FilterResultsList`, score → `ScoreReviewSurface`, pre-briefing → `PreBriefingGate` (`components/shell/`, mounted by `MainArea` only at stage `'pre-briefing-review'`). `ProgressTimeline` is pure status display and hosts **no** gate controls. The banner also carries a muted "docs ↗" link to the review-gates docs page. While the stage ends in `-review`, `hooks/useGateTitle.js` (called once in `App.jsx`) flips `document.title` to a waiting message and restores it on resume/stop/end.
 - **Feedback opens after Stage 4**, not gated on briefing.
 - **Briefing auto-runs at end** via `lib/analyzer/briefingClient.js`. If `pauseBeforeBriefing` is on (default), pipeline stops at `'pre-briefing-review'` first. Flow: quick summaries (parallel, `quickSummaryConcurrency` default 5) → `/api/synthesize` → `/api/check-briefing` → optional one-shot retry → save via `useBriefing` → render `<BriefingView>`.
 - **Main-area layout order after a run:** Results → Download Report → Briefing → NotebookLM.
@@ -97,23 +97,25 @@ Four layers, each with a distinct job:
 
 These recur with consistent meaning across components and have no `--aparture-*` token because they are status indicators, not palette:
 
-| Value                 | Meaning                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `#22c55e`             | done / success / added / YES                                                               |
-| `#f59e0b` / `#eab308` | running / MAYBE / warning / test mode                                                      |
-| `#ef4444`             | error / stop / NO / removed                                                                |
-| `#f97316`             | filter-override feedback event; negative score adjustment (paired with `#22c55e` positive) |
-| `#6366f1`             | scoped-feedback event (bucket / score-review / run)                                        |
-| `#a855f7`             | paper-comment feedback event / score badge accent                                          |
-| `#64748b`             | dismissed / muted negative                                                                 |
-| `#3b82f6`             | informational / suggested source                                                           |
-| `rgba(0,0,0,0.5)`     | modal overlay scrim                                                                        |
+| Value             | Meaning                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `#22c55e`         | done / success / added / YES                                                               |
+| `#f59e0b`         | running / MAYBE / warning / test mode                                                      |
+| `#ef4444`         | error / stop / NO / removed                                                                |
+| `#f97316`         | filter-override feedback event; negative score adjustment (paired with `#22c55e` positive) |
+| `#6366f1`         | scoped-feedback event (bucket / score-review / run)                                        |
+| `#a855f7`         | paper-comment feedback event / score badge accent                                          |
+| `#64748b`         | dismissed / muted negative                                                                 |
+| `#3b82f6`         | informational / suggested source                                                           |
+| `rgba(0,0,0,0.5)` | modal overlay scrim                                                                        |
 
 When adding a new status color, document it here rather than introducing a token.
 
 ### Profile + Briefing Pipeline
 
 "Your Profile" is the single source of research intent. Every pipeline stage reads `profile.content` from `useProfile`. The profile is refined manually or via the LLM-assisted `SuggestDialog` flow.
+
+**First-run templates + named profiles (2026-07).** `components/profile/StarterTemplatePicker.jsx` renders at the top of the profile view only while `isUneditedProfile(profile)` (content === `BLANK_PROFILE_TEMPLATE`, no revisions) and the `aparture-template-picker-dismissed` flag is unset; choosing a template sets profile content AND `config.selectedCategories`, then dismisses permanently. `components/profile/ProfileSwitcher.jsx` (inside `YourProfile`) manages named-profile snapshots via the `useProfile` API; it is disabled while the draft is dirty so switches can't act on stale committed content. Switching between named profiles always snapshots the outgoing content back into its own entry and archives a revision — nothing is silently lost.
 
 **Suggest-improvements flow.** `/api/suggest-profile` accepts current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if feedback doesn't point to a gap. All stars/dismisses/overrides are always included in the prompt uncapped; comments are capped at most-recent N per type (default 30) with a transparent trimming notice. `scoped-feedback` and `filter-override` events are also passed through uncapped — both are latest-wins or have no natural numeric accumulation, so capping would silently discard the current state.
 
@@ -283,3 +285,5 @@ Two user-facing doc surfaces: README + VitePress docs at `docs/`.
 | `lib/llm/callModel.js`, `lib/llm/ProviderError.js`, `lib/llm/retryAfter.js`, `lib/analyzer/RateLimitError.js` | `reference/troubleshooting.md` (provider rate limits), `using/tuning-the-pipeline.md` (`maxRetries`, rate-limit barrier)                          |
 
 **Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).
+
+**Screenshots:** user-doc screenshots live in `docs/public/screenshots/` (embedded as `/screenshots/<name>.png`), captured at 1440×900 in light theme; retake when the UI changes materially.

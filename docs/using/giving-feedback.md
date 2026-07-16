@@ -2,7 +2,7 @@
 
 Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts, general comments on a briefing, observations about a scoring round — build up quietly as you use the tool. Later, you can hand them to a flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile.
 
-This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. The related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
+This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. For worked examples of good and bad usage of each type, see [Feedback in practice](/using/feedback-in-practice); the related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
 
 ## The six feedback types
 
@@ -94,6 +94,10 @@ Any paper card in Aparture has three controls: <span class="ui-action">☆ star<
 
 - **Analysis Results list** (Pipeline view). As soon as the PDF-analysis stage finishes, each card is fully interactive — you don't have to wait for the briefing to write before marking papers.
 - **Paper cards inside a briefing.** Same three controls in the rendered briefing. The briefing itself was written from whatever signals existed when synthesis ran, so marking papers here doesn't change what you're reading — the feedback feeds the refinement flow instead.
+
+![A briefing paper card with its action row along the bottom: quick summary, full report, star, dismiss, and comment controls](/screenshots/feedback-controls.png)
+
+_The action row on a briefing paper card (dry-run content). Star, dismiss, and comment are the three feedback controls; quick summary and full report expand cached material._
 
 Filter rows at Gate 1 are different: they carry the verdict buttons and a <span class="ui-action">💬 add comment</span> control, but no star or dismiss — those signals only exist from the score-review gate onward.
 

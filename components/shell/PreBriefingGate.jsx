@@ -10,6 +10,7 @@
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
 import AnalyzedExpander from './AnalyzedExpander.jsx';
+import { estimateRunCost, formatUsd } from '../../lib/analyzer/costEstimate.js';
 
 const PRE_BRIEFING_PLACEHOLDER =
   "e.g., \"Anything to flag about this lineup before we synthesize? — 'Lead with the diffusion-models cluster.' Or: 'These all look strong but I want more methodology depth in the writeup.'\"";
@@ -22,6 +23,7 @@ const PRE_BRIEFING_PLACEHOLDER =
  *   onContinueAfterReview: () => void,
  *   onSkipRemainingGates?: () => void,
  *   onAddGeneralComment?: (text: string, briefingId: string | undefined) => void,
+ *   config?: object,             // pipeline config; enables the projected-spend line
  *   children?: React.ReactNode,  // the reviewed content (AnalysisResultsList), headed by the banner
  * }} props
  */
@@ -32,8 +34,26 @@ export default function PreBriefingGate({
   onContinueAfterReview,
   onSkipRemainingGates,
   onAddGeneralComment,
+  config,
   children,
 }) {
+  // Projected spend of the stage this gate is holding back: quick summaries
+  // (quickSummaryModel) + synthesis and the hallucination check
+  // (briefingModel), over the papers currently in the final ranking. Hidden
+  // when either model has no registry pricing (never show "$null").
+  const briefingPaperCount = results.finalRanking?.length ?? 0;
+  const est =
+    config && briefingPaperCount > 0
+      ? estimateRunCost({
+          counts: { quickSummary: briefingPaperCount, briefing: briefingPaperCount },
+          config,
+        })
+      : null;
+  const costLine =
+    est && !est.hasUnknownPricing && est.total != null
+      ? `Briefing over ${briefingPaperCount} paper${briefingPaperCount === 1 ? '' : 's'} — est. ${formatUsd(est.total)}`
+      : null;
+
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
       <ReviewGateBanner
@@ -43,6 +63,17 @@ export default function PreBriefingGate({
         onContinue={onContinueAfterReview}
         onSkipRemaining={onSkipRemainingGates}
       >
+        {costLine && (
+          <div
+            style={{
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              marginBottom: 'var(--aparture-space-2, 8px)',
+            }}
+          >
+            {costLine}
+          </div>
+        )}
         {/* Per-round free-text feedback lives inside the banner, matching the
             score-review gate's scoped-feedback placement. */}
         <GeneralCommentInput

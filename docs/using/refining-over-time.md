@@ -14,6 +14,10 @@ Most of the detail below is about the review step, because that's where the deci
 
 The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same dialog. The dialog lists every new feedback event since your last profile revision with checkboxes, so you can include or exclude specific events. All are included by default.
 
+![The Suggest profile improvements dialog: a checklist of recent feedback events with checkboxes, an optional guidance text box, and Cancel and Generate suggestion buttons](/screenshots/suggest-dialog.png)
+
+_The suggestion dialog before generating: every new feedback event is listed with a checkbox, and the guidance field steers this one suggestion without being stored._
+
 When you click <span class="ui-action">Generate suggestion</span>, the model receives:
 
 - Your current profile text.

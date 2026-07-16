@@ -188,3 +188,82 @@ describe('ScoreReviewSurface', () => {
     );
   });
 });
+
+describe('ScoreReviewSurface — projected PDF spend', () => {
+  const base = {
+    starredIds: new Set(),
+    dismissedIds: new Set(),
+    onStar: () => {},
+    onDismiss: () => {},
+    onContinue: () => {},
+  };
+
+  it('shows the live-selection estimate when the PDF model has registry pricing', () => {
+    render(
+      <ScoreReviewSurface
+        {...base}
+        availablePapers={[mkPaper('a', 8), mkPaper('b', 7)]}
+        maxDeepAnalysis={1}
+        pdfModel="claude-haiku-4.5"
+      />
+    );
+    expect(
+      screen.getByText(/1 paper will be deep-read — est\. \$\d+\.\d{2} \(Claude Haiku 4\.5\)/)
+    ).toBeInTheDocument();
+  });
+
+  it('updates as stars and dismissals change the selection', () => {
+    const { rerender } = render(
+      <ScoreReviewSurface
+        {...base}
+        availablePapers={[mkPaper('a', 8), mkPaper('b', 7)]}
+        maxDeepAnalysis={1}
+        pdfModel="claude-haiku-4.5"
+      />
+    );
+    expect(screen.getByText(/1 paper will be deep-read/)).toBeInTheDocument();
+    // Starring the borderline paper grows the additive set to 2.
+    rerender(
+      <ScoreReviewSurface
+        {...base}
+        starredIds={new Set(['b'])}
+        availablePapers={[mkPaper('a', 8), mkPaper('b', 7)]}
+        maxDeepAnalysis={1}
+        pdfModel="claude-haiku-4.5"
+      />
+    );
+    expect(screen.getByText(/2 papers will be deep-read/)).toBeInTheDocument();
+    // Dismissing the top paper shrinks it back to 1.
+    rerender(
+      <ScoreReviewSurface
+        {...base}
+        starredIds={new Set(['b'])}
+        dismissedIds={new Set(['a'])}
+        availablePapers={[mkPaper('a', 8), mkPaper('b', 7)]}
+        maxDeepAnalysis={1}
+        pdfModel="claude-haiku-4.5"
+      />
+    );
+    expect(screen.getByText(/1 paper will be deep-read/)).toBeInTheDocument();
+  });
+
+  it('hides the estimate when the PDF model has no registry pricing', () => {
+    render(
+      <ScoreReviewSurface
+        {...base}
+        availablePapers={[mkPaper('a', 8)]}
+        maxDeepAnalysis={1}
+        pdfModel="mystery-model"
+      />
+    );
+    expect(screen.queryByText(/will be deep-read/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\$null/)).not.toBeInTheDocument();
+  });
+
+  it('hides the estimate when no PDF model is provided', () => {
+    render(
+      <ScoreReviewSurface {...base} availablePapers={[mkPaper('a', 8)]} maxDeepAnalysis={1} />
+    );
+    expect(screen.queryByText(/will be deep-read/)).not.toBeInTheDocument();
+  });
+});

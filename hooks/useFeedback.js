@@ -76,6 +76,42 @@ export function useFeedback() {
   const addStar = useCallback((paper) => toggleReaction('star', paper), [toggleReaction]);
   const addDismiss = useCallback((paper) => toggleReaction('dismiss', paper), [toggleReaction]);
 
+  // Non-toggling variants for the score-review gate handlers. The gate's
+  // msStarredIds Set toggles independently of the feedback log, so calling
+  // the toggling addStar there could silently REMOVE a pre-existing star
+  // event while the gate UI shows the paper as starred. ensure* is a no-op
+  // when the latest star/dismiss event for the paper already matches, and
+  // otherwise replaces the opposing reaction (latest-wins, like addStar).
+  const ensureReaction = useCallback((type, paper) => {
+    setEvents((prev) => {
+      const existing = prev.find(
+        (e) => (e.type === 'star' || e.type === 'dismiss') && e.arxivId === paper.arxivId
+      );
+      if (existing?.type === type) return prev; // already in the desired state
+      const filtered = prev.filter(
+        (e) => !((e.type === 'star' || e.type === 'dismiss') && e.arxivId === paper.arxivId)
+      );
+      const next = [
+        ...filtered,
+        {
+          id: makeId(),
+          type,
+          arxivId: paper.arxivId,
+          paperTitle: paper.paperTitle,
+          quickSummary: paper.quickSummary,
+          score: paper.score,
+          timestamp: Date.now(),
+          briefingDate: paper.briefingDate,
+        },
+      ];
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  const ensureStar = useCallback((paper) => ensureReaction('star', paper), [ensureReaction]);
+  const ensureDismiss = useCallback((paper) => ensureReaction('dismiss', paper), [ensureReaction]);
+
   const addPaperComment = useCallback((paper, text) => {
     setEvents((prev) => {
       const event = {
@@ -175,6 +211,8 @@ export function useFeedback() {
       events,
       addStar,
       addDismiss,
+      ensureStar,
+      ensureDismiss,
       addPaperComment,
       addGeneralComment,
       addFilterOverride,
@@ -185,6 +223,8 @@ export function useFeedback() {
       events,
       addStar,
       addDismiss,
+      ensureStar,
+      ensureDismiss,
       addPaperComment,
       addGeneralComment,
       addFilterOverride,

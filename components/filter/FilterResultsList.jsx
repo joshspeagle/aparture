@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { FileText, TestTube } from 'lucide-react';
 import Card from '../ui/Card.jsx';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
@@ -34,7 +34,12 @@ function VerdictButton({ option, isActive, disabled, originalVerdict, onClick })
   return (
     <button
       type="button"
-      onClick={onClick}
+      role="radio"
+      aria-checked={isActive}
+      // Re-click on the active verdict is a handler no-op (not `disabled`):
+      // the active option must stay focusable so keyboard users can land on
+      // the radiogroup and arrow/tab through it.
+      onClick={isActive ? undefined : onClick}
       title={
         isActive
           ? wasOriginal
@@ -42,7 +47,7 @@ function VerdictButton({ option, isActive, disabled, originalVerdict, onClick })
             : `Currently ${option} (overridden)`
           : `Set verdict to ${option}`
       }
-      disabled={disabled || isActive}
+      disabled={disabled}
       style={{
         padding: '2px 8px',
         fontSize: '10px',
@@ -118,20 +123,50 @@ function RowComment({ arxivId, onAddPaperComment }) {
       />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' }}>
         <button
+          type="button"
           onClick={() => setExpanded(false)}
-          style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}
+          style={COMMENT_CANCEL_BUTTON_STYLE}
         >
-          cancel
+          Cancel
         </button>
-        <button onClick={save} style={{ fontSize: 'var(--aparture-text-xs, 12px)' }}>
-          save
+        <button type="button" onClick={save} style={COMMENT_SAVE_BUTTON_STYLE}>
+          Save
         </button>
       </div>
     </div>
   );
 }
 
-function FilterResultRow({
+// Token-based comment-button styles, matching the PaperCard comment buttons
+// in components/shell/App.jsx (ghost cancel, accent save).
+export const COMMENT_CANCEL_BUTTON_STYLE = {
+  fontFamily: 'var(--aparture-font-sans)',
+  fontSize: 'var(--aparture-text-xs)',
+  padding: '2px 8px',
+  borderRadius: '4px',
+  border: '1px solid var(--aparture-hairline)',
+  background: 'transparent',
+  color: 'var(--aparture-mute)',
+  cursor: 'pointer',
+  transition: 'all 150ms ease',
+};
+
+export const COMMENT_SAVE_BUTTON_STYLE = {
+  fontFamily: 'var(--aparture-font-sans)',
+  fontSize: 'var(--aparture-text-xs)',
+  padding: '2px 8px',
+  borderRadius: '4px',
+  border: '1px solid var(--aparture-accent)',
+  background: 'var(--aparture-accent)',
+  color: '#fff',
+  fontWeight: 500,
+  cursor: 'pointer',
+  transition: 'all 150ms ease',
+};
+
+// Memoized: rows re-render only when their own props change, not on every
+// filter-batch progress tick that re-renders the surrounding list.
+const FilterResultRow = memo(function FilterResultRow({
   paper,
   verdict,
   borderColor,
@@ -230,6 +265,7 @@ function FilterResultRow({
             gap: '4px',
             alignItems: 'center',
           }}
+          role="radiogroup"
           aria-label={
             overridden
               ? `Currently ${verdict} (filter said ${paper.originalVerdict}). Click YES, MAYBE, or NO to change.`
@@ -250,7 +286,7 @@ function FilterResultRow({
       </div>
     </div>
   );
-}
+});
 
 export default function FilterResultsList({
   filterResults,
@@ -358,8 +394,14 @@ export default function FilterResultsList({
                   marginLeft: '8px',
                 }}
               >
-                (Processing batch {filterResults.currentBatch || 0} of{' '}
-                {filterResults.totalBatches || 0})
+                {/* Before batches are computed, totalBatches is 0 — say
+                    "starting…" rather than the impossible "batch 1 of 0". */}
+                {(filterResults.totalBatches || 0) > 0
+                  ? `(Processing batch ${Math.min(
+                      (filterResults.currentBatch || 0) + 1,
+                      filterResults.totalBatches
+                    )} of ${filterResults.totalBatches})`
+                  : '(starting…)'}
               </span>
             )}
           </h2>

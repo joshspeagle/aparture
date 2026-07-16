@@ -4,6 +4,10 @@ Once you've produced a briefing, the question becomes how to read one efficientl
 
 A briefing is built around a single practical question: which of the day's papers should you actually open, and which can you safely skip? The layout reflects that — an editorial lead at the top, a handful of thematic groupings below it, and per-paper cards inside each theme — all scaled so you can triage the day without reading every abstract.
 
+![The briefing reading view: a dateline header, an executive summary in serif prose, a numbered theme heading with an italic argument, and a paper card with a relevance score badge](/screenshots/briefing-view.png)
+
+_The briefing reading surface, here from a dry run — hence the TEST MODE chip and mock prose. A real briefing has the same layout with your papers._
+
 ## What's on the page
 
 From top to bottom, a briefing stacks like this:

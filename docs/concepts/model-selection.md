@@ -102,7 +102,7 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 ## Example configurations
 
-Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "100-paper run" numbers assume 100 papers fetched, ~50 passing the filter to scoring, 20 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages.
+Cost estimates below are rough — token counts vary with profile length, abstract length, and how many papers pass the filter. The "100-paper run" numbers assume 100 papers fetched, ~50 passing the filter to scoring, 20 reaching deep PDF analysis, and one briefing produced. The same scenario is used for the worked calculations on the [API keys](/getting-started/api-keys#cost-at-a-glance) pages. The app computes its own estimates from the registry's pricing fields: the score-review and pre-briefing gates show the projected spend of the next stage, and the end-of-run summary shows a per-stage cost estimated from the token counts the run actually used.
 
 Three configurations worth spelling out: the Aparture default, a free-tier-only setup, and one mix across all three providers. Any model from the registry works in any slot — these are just common starting points.
 

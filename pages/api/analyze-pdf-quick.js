@@ -95,6 +95,9 @@ export default async function handler(req, res) {
       quickSummary: response.text.trim(),
       tokensIn: response.tokensIn,
       tokensOut: response.tokensOut,
+      // Anthropic reports cache reads separately from input tokens; surfaced
+      // so client-side cost tracking can price them (0 when absent).
+      cacheReadTok: response.cacheReadTok ?? 0,
     });
   } catch (err) {
     if (sendProviderErrorResponse(res, err)) return;

@@ -29,7 +29,9 @@ function validateId(id) {
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const password = req.query.password;
+    // Auth via request header, NOT the query string — `?password=` leaks
+    // into dev-server logs and browser history. POST keeps the body field.
+    const password = req.headers?.['x-aparture-password'];
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }

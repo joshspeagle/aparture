@@ -141,4 +141,204 @@ describe('useProfile', () => {
     expect(second.result.current.profile.content).toBe('My carefully edited research profile');
     expect(second.result.current.profile.content).not.toBe('default scoring criteria');
   });
+
+  // Regression for the neutral-defaults change (2026-07): a user's saved
+  // profile must survive a DEFAULT_CONFIG.scoringCriteria change. The stored
+  // aparture-profile blob wins over whatever scoringCriteria the (new) default
+  // config passes in.
+  it('a saved profile survives a change to the shipped default scoringCriteria', () => {
+    const first = renderHook(() => useProfile({ scoringCriteria: 'old shipped default' }));
+    act(() => {
+      first.result.current.updateProfile('my personal research profile');
+    });
+    first.unmount();
+
+    const second = renderHook(() => useProfile({ scoringCriteria: 'NEW shipped default' }));
+    expect(second.result.current.profile.content).toBe('my personal research profile');
+  });
+});
+
+describe('useProfile — named profiles', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('migrates the existing profile as "Default" on first load', () => {
+    window.localStorage.setItem(
+      'aparture-profile',
+      JSON.stringify({
+        content: 'existing content',
+        updatedAt: 1700000000000,
+        lastFeedbackCutoff: 0,
+        revisions: [],
+      })
+    );
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    expect(result.current.activeProfileName).toBe('Default');
+    expect(result.current.profiles.Default.content).toBe('existing content');
+    expect(JSON.parse(window.localStorage.getItem('aparture-profiles')).Default.content).toBe(
+      'existing content'
+    );
+    expect(window.localStorage.getItem('aparture-active-profile')).toBe('Default');
+  });
+
+  it('saveAs snapshots the current content under a new name and makes it active', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('cosmology profile');
+    });
+    act(() => {
+      result.current.saveAs('Cosmology');
+    });
+    expect(result.current.activeProfileName).toBe('Cosmology');
+    expect(result.current.profiles.Cosmology.content).toBe('cosmology profile');
+    // The working slot is untouched by a snapshot save.
+    expect(result.current.profile.content).toBe('cosmology profile');
+  });
+
+  it('switchTo loads the snapshot into the working slot and snapshots the outgoing content', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('profile A');
+    });
+    act(() => {
+      result.current.saveAs('A');
+    });
+    act(() => {
+      result.current.updateProfile('profile B');
+    });
+    act(() => {
+      result.current.saveAs('B');
+    });
+    act(() => {
+      result.current.updateProfile('profile B, edited');
+    });
+    act(() => {
+      result.current.switchTo('A');
+    });
+    expect(result.current.activeProfileName).toBe('A');
+    expect(result.current.profile.content).toBe('profile A');
+    // Outgoing edits were snapshotted back into B, not lost.
+    expect(result.current.profiles.B.content).toBe('profile B, edited');
+    // Pre-switch content is also archived as a revision.
+    expect(result.current.profile.revisions[0].content).toBe('profile B, edited');
+  });
+
+  it('switchTo to a nonexistent name is a no-op', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('keep me');
+    });
+    act(() => {
+      result.current.switchTo('does-not-exist');
+    });
+    expect(result.current.profile.content).toBe('keep me');
+  });
+
+  it('deleteProfile removes a non-active snapshot without touching the working slot', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('current');
+    });
+    act(() => {
+      result.current.saveAs('Other');
+    });
+    act(() => {
+      result.current.saveAs('Active');
+    });
+    act(() => {
+      result.current.deleteProfile('Other');
+    });
+    expect(result.current.profiles.Other).toBeUndefined();
+    expect(result.current.activeProfileName).toBe('Active');
+    expect(result.current.profile.content).toBe('current');
+  });
+
+  it('deleting the active profile switches to a remaining snapshot', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('profile A');
+    });
+    act(() => {
+      result.current.saveAs('A');
+    });
+    act(() => {
+      result.current.updateProfile('profile B');
+    });
+    act(() => {
+      result.current.saveAs('B');
+    });
+    act(() => {
+      result.current.deleteProfile('B');
+    });
+    expect(result.current.profiles.B).toBeUndefined();
+    expect(result.current.activeProfileName).toBe('Default');
+    // Working slot now carries the remaining snapshot's content; the old
+    // content is recoverable from revisions.
+    expect(result.current.profile.content).toBe(result.current.profiles.Default.content);
+  });
+
+  it('deleting the last remaining profile re-seeds Default from current content', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('only content');
+    });
+    // Fresh state has only "Default"; snapshot current content first so the
+    // delete removes the last entry.
+    act(() => {
+      result.current.deleteProfile('Default');
+    });
+    expect(result.current.activeProfileName).toBe('Default');
+    expect(result.current.profiles.Default.content).toBe('only content');
+    expect(result.current.profile.content).toBe('only content');
+  });
+
+  it('renameProfile moves the snapshot and follows the active pointer', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('c');
+    });
+    act(() => {
+      result.current.saveAs('OldName');
+    });
+    act(() => {
+      result.current.renameProfile('OldName', 'NewName');
+    });
+    expect(result.current.profiles.OldName).toBeUndefined();
+    expect(result.current.profiles.NewName.content).toBe('c');
+    expect(result.current.activeProfileName).toBe('NewName');
+  });
+
+  it('renameProfile refuses to clobber an existing name', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.saveAs('A');
+    });
+    act(() => {
+      result.current.renameProfile('A', 'Default');
+    });
+    expect(result.current.profiles.A).toBeDefined();
+    expect(result.current.activeProfileName).toBe('A');
+  });
+
+  it('named profiles persist across a remount', () => {
+    const first = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      first.result.current.updateProfile('persisted content');
+    });
+    act(() => {
+      first.result.current.saveAs('Persisted');
+    });
+    first.unmount();
+
+    const second = renderHook(() => useProfile({ scoringCriteria: '' }));
+    expect(second.result.current.activeProfileName).toBe('Persisted');
+    expect(second.result.current.profiles.Persisted.content).toBe('persisted content');
+    // The pipeline read path is unchanged.
+    expect(second.result.current.profile.content).toBe('persisted content');
+  });
 });

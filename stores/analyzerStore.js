@@ -98,6 +98,17 @@ export function initialState() {
       seenPapersIndex: {},
       seenPapersReady: false,
     },
+    // --- costTracking slice ---
+    // Per-stage token usage accumulated from live API responses during a run.
+    // Keys of byStage are stage ids (filter, scoring, postProcessing, pdf,
+    // quickSummary, briefing); each value is { model, tokensIn, tokensOut,
+    // cacheReadTok, calls }. Cost is computed at render time from registry
+    // pricing (lib/analyzer/costEstimate.js). Stays empty on dry runs — mock
+    // calls report no usage — so the UI shows nothing rather than $0.00.
+    // Reset at every run start.
+    costTracking: {
+      byStage: {},
+    },
     // --- skippedDueToRecaptcha slice ---
     // Per-run aggregation of papers whose PDF download hit reCAPTCHA when
     // Playwright is unavailable. The pipeline pushes an entry here for each
@@ -196,6 +207,37 @@ export const useAnalyzerStore = create((set) => ({
   // --- reactContext slice actions ---
   setReactContext: (updater) =>
     set((state) => ({ reactContext: applyPatch(state.reactContext, updater) })),
+
+  // --- costTracking slice actions ---
+  // Accumulate one API response's token usage into a stage's running totals.
+  // The model is recorded on first write (and kept thereafter) so render-time
+  // pricing matches the model that actually ran, even if config changes later.
+  addStageUsage: (stage, model, usage) =>
+    set((state) => {
+      const prev = state.costTracking.byStage[stage] ?? {
+        model,
+        tokensIn: 0,
+        tokensOut: 0,
+        cacheReadTok: 0,
+        calls: 0,
+      };
+      return {
+        costTracking: {
+          ...state.costTracking,
+          byStage: {
+            ...state.costTracking.byStage,
+            [stage]: {
+              model: prev.model ?? model,
+              tokensIn: prev.tokensIn + (usage?.tokensIn ?? 0),
+              tokensOut: prev.tokensOut + (usage?.tokensOut ?? 0),
+              cacheReadTok: prev.cacheReadTok + (usage?.cacheReadTok ?? 0),
+              calls: prev.calls + 1,
+            },
+          },
+        },
+      };
+    }),
+  resetCostTracking: () => set({ costTracking: initialState().costTracking }),
 
   // --- skippedDueToRecaptcha slice actions ---
   addSkippedDueToRecaptcha: (paper) =>

@@ -9,7 +9,8 @@ export default function Input({ className, style: overrideStyle, ...rest }) {
     borderRadius: '4px',
     boxSizing: 'border-box',
     width: '100%',
-    outline: 'none',
+    // No `outline: 'none'` here: the global :focus-visible rule in
+    // styles/shell.css provides the keyboard-focus ring.
   };
 
   return <input style={{ ...baseStyle, ...overrideStyle }} className={className} {...rest} />;

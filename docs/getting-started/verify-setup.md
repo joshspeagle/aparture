@@ -1,6 +1,6 @@
 # Verify setup
 
-Two checkpoint tests sit between "I added my key to `.env.local`" and "I'm ready for a real run" — a fully mocked Dry Run that costs nothing, and a small Minimal API Test that exercises real provider calls on a fixed 5-paper set. Both are UI-driven and live in the Control Panel's **System Tests** section, which is collapsed by default.
+Three checkpoints sit between "I added my key to `.env.local`" and "I'm ready for a real run" — a free API Setup Check that probes each provider without sampling any tokens, a fully mocked Dry Run that costs nothing, and a small Minimal API Test that exercises real provider calls on a fixed 5-paper set. All three are UI-driven and live in the Control Panel's **System Tests** section, which is collapsed by default.
 
 You'll also get your first look at Aparture's review gates on these runs, which is useful: they're where you'll be spending most of your attention during real daily use.
 
@@ -9,7 +9,31 @@ You'll also get your first look at Aparture's review gates on these runs, which 
 1. Start the dev server: `npm run dev`
 2. Open `http://localhost:3000` in a browser.
 3. Enter the value of `ACCESS_PASSWORD` from your `.env.local`.
-4. In the Control Panel, click **System Tests** to expand the collapsed section. You'll see two cards — **Dry Run Test** and **Minimal API Test** — with a **Run Dry Test** and a **Run API Test** button (the API Test button stays disabled, reading _Run Dry Test First_, until the Dry Run completes).
+4. In the Control Panel, click **System Tests** to expand the collapsed section. You'll see three cards — **API Setup Check**, **Dry Run Test**, and **Minimal API Test** — with a **Check API Setup**, a **Run Dry Test**, and a **Run API Test** button (the API Test button stays disabled, reading _Run Dry Test First_, until the Dry Run completes).
+
+![The Pipeline view with the System Tests section expanded, showing three cards side by side: API Setup Check with a Check API Setup button, Dry Run Test with a Run Dry Test button, and Minimal API Test with a disabled Run Dry Test First button](/screenshots/system-tests.png)
+
+_The System Tests section expanded. The Minimal API Test stays locked until a Dry Run has completed._
+
+## Step 0: API Setup Check (free)
+
+The **Check API Setup** button probes each provider you've configured, without sampling a single token. It reads every configured model slot (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, NotebookLM), dedupes slots that share a model, and runs one free probe per unique provider/model pair.
+
+### What it validates
+
+- **Anthropic.** The probe sends a complete Messages request — built by the same adapter the pipeline uses, including strict tool schemas and thinking configuration — to the `count_tokens` endpoint. That endpoint returns the same 400/401/404 errors a real call would, so the key, the model ID, and the exact request syntax all get checked. Nothing is billed.
+- **Google.** The probe sends the adapter's message contents to the `countTokens` endpoint, which validates the key, the model ID, and the message syntax for free.
+- **OpenAI.** OpenAI has no count-tokens endpoint. The probe fetches the model's metadata, which verifies the key and the model ID; request shape is only exercised by the Minimal API Test below.
+
+Each slot's result row shows three checks — **Key**, **Model**, **Syntax** — with the provider's own error message on failure. A `—` means that check isn't validated by the probe (OpenAI's Syntax column, for example).
+
+### What it does not validate
+
+- **OpenAI request shape.** See above — run the Minimal API Test for that.
+- **Billing state and quota.** A key can authenticate here and still fail a real call with `429 insufficient_quota`. The Minimal API Test surfaces that.
+- **Provider latency, rate-limit behaviour, PDF downloads, or output parsing** — those need real calls.
+
+If a check fails, the fix is almost always in `.env.local` (key value) or Settings (model slot). Restart `npm run dev` after editing `.env.local`, then re-run the check.
 
 ## Dry Run
 
@@ -35,7 +59,7 @@ You'll see:
 
 - A **TEST MODE** badge (yellow) on the briefing card once the run reaches it.
 - **TEST DATA** badges on the filter results, analysis results, and Download Report cards.
-- Status messages stepping through each stage: `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, `"Synthesizing briefing"`.
+- Status messages stepping through each stage: `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, `"Generating briefing..."`.
 - Intentional failure scenarios cycling through the test data — expect to see `"Mock parse failed: Response is not an array"` followed by `"Mock correction 1/3 succeeded"` at least once. These aren't real errors; they're there to exercise the retry path.
 - A green checkmark on the test card when it finishes.
 

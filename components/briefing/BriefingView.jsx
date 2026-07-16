@@ -27,6 +27,7 @@ export default function BriefingView({
   date,
   briefingDate,
   papersScreened = 0,
+  testMode = false,
   quickSummariesById = {},
   fullReportsById = {},
   feedbackEvents,
@@ -52,12 +53,15 @@ export default function BriefingView({
         papersInFocus={briefing.papers?.length ?? 0}
         papersScreened={papersScreened}
         readingTimeMinutes={readingTimeMinutes}
+        testMode={testMode}
       />
       <ExecutiveSummary text={briefing.executiveSummary} />
 
       {(briefing.themes ?? []).map((theme, idx) => (
         <ThemeSection
-          key={theme.title}
+          // Index-keyed: theme titles are LLM output with no uniqueness
+          // guarantee, and the list is static per briefing (never reordered).
+          key={idx}
           index={idx + 1}
           title={theme.title}
           argument={theme.argument}

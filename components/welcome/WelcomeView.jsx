@@ -2,8 +2,57 @@
 // Persistent reference page explaining what Aparture is and how to get started.
 
 import Card from '../ui/Card.jsx';
+import { isUneditedProfile } from '../../lib/profile/starterTemplates.js';
 
-export default function WelcomeView() {
+// Quiet checklist row: muted check when done, hairline circle when not.
+function ChecklistItem({ done, label }) {
+  return (
+    <li
+      style={{
+        fontFamily: 'var(--aparture-font-sans)',
+        fontSize: 'var(--aparture-text-sm)',
+        lineHeight: 1.6,
+        color: done ? 'var(--aparture-mute)' : 'var(--aparture-ink)',
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: '0.5em',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          color: done ? '#22c55e' : 'var(--aparture-mute)',
+          fontSize: 'var(--aparture-text-xs)',
+          opacity: done ? 0.8 : 0.6,
+        }}
+      >
+        {done ? '✓' : '○'}
+      </span>
+      <span style={{ textDecoration: done ? 'line-through' : 'none' }}>{label}</span>
+    </li>
+  );
+}
+
+export default function WelcomeView({ profile, config, testState }) {
+  const checklist = [
+    {
+      label: 'Write your profile (or pick a starter template)',
+      done: Boolean(profile?.content?.trim()) && !isUneditedProfile(profile),
+    },
+    {
+      label: 'Choose your arXiv categories in Settings',
+      done: (config?.selectedCategories?.length ?? 0) > 0,
+    },
+    {
+      label: 'Run the Dry Run Test (free, mock data)',
+      done: Boolean(testState?.dryRunCompleted),
+    },
+    {
+      label: 'Run the Minimal API Test (5 papers, ~$1)',
+      done: Boolean(testState?.lastMinimalTestTime),
+    },
+  ];
+
   return (
     <div>
       {/* Heading */}
@@ -133,11 +182,55 @@ export default function WelcomeView() {
             >
               3.
             </span>
-            Open the <strong>Pipeline</strong> page and run each stage to see how papers flow
-            through filtering, scoring, and analysis. Once you&#8217;re comfortable, use{' '}
-            <strong>+ New Briefing</strong> to run everything end-to-end.
+            Open the <strong>Pipeline</strong> page. Run the <strong>Dry Run Test</strong> first
+            (free, mock data), then the <strong>Minimal API Test</strong> (5 papers, around $1),
+            then <strong>Start Analysis</strong> for a full run.
           </li>
         </ol>
+
+        {/* First-run checklist — live state, quiet styling */}
+        <div
+          style={{
+            marginTop: 'var(--aparture-space-4)',
+            paddingTop: 'var(--aparture-space-4)',
+            borderTop: '1px solid var(--aparture-hairline)',
+          }}
+        >
+          <ul
+            style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--aparture-space-1)',
+            }}
+          >
+            {checklist.map((item) => (
+              <ChecklistItem key={item.label} done={item.done} label={item.label} />
+            ))}
+          </ul>
+        </div>
+
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            margin: 0,
+            marginTop: 'var(--aparture-space-3)',
+          }}
+        >
+          Step-by-step walkthrough:{' '}
+          <a
+            href="https://joshspeagle.github.io/aparture/using/first-briefing"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'var(--aparture-mute)', textDecoration: 'underline' }}
+          >
+            Your first briefing ↗
+          </a>
+        </p>
       </Card>
 
       {/* Tips section */}

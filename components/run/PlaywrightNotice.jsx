@@ -5,7 +5,7 @@
 // notice users see during the run.
 //
 // Visual: amber/yellow tinted card with a warning icon and the install
-// command inline. Uses semantic status colour #eab308 (MAYBE/warning)
+// command inline. Uses semantic status colour #f59e0b (MAYBE/warning)
 // from CLAUDE.md's status table.
 
 import { AlertTriangle } from 'lucide-react';
@@ -19,7 +19,7 @@ export default function PlaywrightNotice({ arxivId, title }) {
         gap: 'var(--aparture-space-3)',
         padding: 'var(--aparture-space-3) var(--aparture-space-4)',
         background: 'rgba(234, 179, 8, 0.08)',
-        borderLeft: '3px solid #eab308',
+        borderLeft: '3px solid #f59e0b',
         borderRadius: '4px',
         fontSize: 'var(--aparture-text-sm)',
         lineHeight: 1.5,
@@ -29,7 +29,7 @@ export default function PlaywrightNotice({ arxivId, title }) {
     >
       <AlertTriangle
         className="w-4 h-4"
-        style={{ color: '#eab308', flexShrink: 0, marginTop: '2px' }}
+        style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }}
       />
       <div>
         <div style={{ fontWeight: 600 }}>{title}</div>

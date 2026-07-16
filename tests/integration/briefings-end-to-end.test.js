@@ -23,6 +23,11 @@ beforeEach(async () => {
     const query = Object.fromEntries(new URLSearchParams(queryPart ?? ''));
     const method = options.method ?? 'GET';
     const body = options.body ? JSON.parse(options.body) : undefined;
+    // Next.js lower-cases header names on req.headers; mirror that so the
+    // handlers' x-aparture-password auth reads work.
+    const headers = Object.fromEntries(
+      Object.entries(options.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v])
+    );
 
     let capturedStatus = 200;
     let capturedJson = null;
@@ -38,10 +43,10 @@ beforeEach(async () => {
     };
 
     if (pathPart === '/api/briefings') {
-      await indexHandler({ method, query, body }, res);
+      await indexHandler({ method, query, body, headers }, res);
     } else if (pathPart.startsWith('/api/briefings/')) {
       const id = pathPart.slice('/api/briefings/'.length);
-      await idHandler({ method, query: { ...query, id }, body }, res);
+      await idHandler({ method, query: { ...query, id }, body, headers }, res);
     }
 
     return {

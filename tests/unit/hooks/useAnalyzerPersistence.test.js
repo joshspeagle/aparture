@@ -74,6 +74,61 @@ describe('readInitialConfig', () => {
     );
     expect(readInitialConfig().daysBack).toBe(7);
   });
+
+  // Regression for the neutral-defaults change (2026-07): the shipped
+  // DEFAULT_CONFIG now carries a bracketed template profile and a 2-category
+  // starter set. A saved config from an older version must keep its own
+  // scoringCriteria and selectedCategories through the migration ladder —
+  // the new defaults apply to fresh installs only.
+  it('a saved profile and category list survive migration from an older config version', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: {
+          ...DEFAULT_CONFIG,
+          version: 7,
+          scoringCriteria: 'my hand-written research profile',
+          selectedCategories: ['astro-ph.GA', 'astro-ph.SR', 'stat.ME'],
+        },
+      })
+    );
+    const config = readInitialConfig();
+    expect(config.version).toBe(9);
+    expect(config.scoringCriteria).toBe('my hand-written research profile');
+    expect(config.selectedCategories).toEqual(['astro-ph.GA', 'astro-ph.SR', 'stat.ME']);
+    expect(config.scoringCriteria).not.toBe(DEFAULT_CONFIG.scoringCriteria);
+  });
+
+  it('fresh installs get the neutral bracketed template, not a personal profile', () => {
+    const config = readInitialConfig();
+    expect(config.scoringCriteria).toContain('[YOUR FIELD]');
+    expect(config.scoringCriteria).not.toContain('Astrophysics Domain Interests');
+    expect(config.selectedCategories).toEqual(['cs.LG', 'stat.ML']);
+  });
+
+  // Regression: SettingsPanel's integer inputs store '' while typing, and the
+  // 400ms debounced save can persist that mid-edit state (blur-clamp never
+  // runs if the tab closes). Numeric keys must never reload as ''.
+  it("integer fields persisted as '' reload as their defaults", () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: { ...DEFAULT_CONFIG, maxDeepAnalysis: '', daysBack: '', filterConcurrency: '' },
+      })
+    );
+    const config = readInitialConfig();
+    expect(config.maxDeepAnalysis).toBe(DEFAULT_CONFIG.maxDeepAnalysis);
+    expect(config.daysBack).toBe(DEFAULT_CONFIG.daysBack);
+    expect(config.filterConcurrency).toBe(DEFAULT_CONFIG.filterConcurrency);
+  });
+
+  it('valid integer fields pass through normalization unchanged', () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ config: { ...DEFAULT_CONFIG, maxDeepAnalysis: 12 } })
+    );
+    expect(readInitialConfig().maxDeepAnalysis).toBe(12);
+  });
 });
 
 describe('useAnalyzerPersistence — DEFAULT_CONFIG', () => {

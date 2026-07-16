@@ -18,8 +18,8 @@ afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
-function mockReqRes(body, method = 'POST', query = {}) {
-  const req = { method, body, query };
+function mockReqRes(body, method = 'POST', query = {}, headers = {}) {
+  const req = { method, body, query, headers };
   const state = { statusCode: 200, jsonBody: undefined };
   const res = {
     status(code) {
@@ -85,7 +85,14 @@ describe('POST /api/sessions', () => {
 
 describe('GET /api/sessions', () => {
   it('returns empty list when sessions dir does not exist', async () => {
-    const { req, res, getResponse } = mockReqRes(undefined, 'GET', { password: 'test-pw' });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'GET',
+      {},
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await handler(req, res);
     const { statusCode, jsonBody } = getResponse();
     expect(statusCode).toBe(200);
@@ -98,7 +105,14 @@ describe('GET /api/sessions', () => {
       const { req, res } = mockReqRes({ password: 'test-pw', entry });
       await handler(req, res);
     }
-    const { req, res, getResponse } = mockReqRes(undefined, 'GET', { password: 'test-pw' });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'GET',
+      {},
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await handler(req, res);
     expect(getResponse().jsonBody.ids).toContain(entry.id);
   });
@@ -106,10 +120,14 @@ describe('GET /api/sessions', () => {
 
 describe('GET /api/sessions/[id]', () => {
   it('returns 404 for missing session', async () => {
-    const { req, res, getResponse } = mockReqRes(undefined, 'GET', {
-      password: 'test-pw',
-      id: 'sess-missing',
-    });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'GET',
+      { id: 'sess-missing' },
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(404);
   });
@@ -120,10 +138,14 @@ describe('GET /api/sessions/[id]', () => {
       const { req, res } = mockReqRes({ password: 'test-pw', entry });
       await handler(req, res);
     }
-    const { req, res, getResponse } = mockReqRes(undefined, 'GET', {
-      password: 'test-pw',
-      id: entry.id,
-    });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'GET',
+      { id: entry.id },
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(200);
     expect(getResponse().jsonBody).toEqual(entry);
@@ -137,10 +159,14 @@ describe('DELETE /api/sessions/[id]', () => {
       const { req, res } = mockReqRes({ password: 'test-pw', entry });
       await handler(req, res);
     }
-    const { req, res, getResponse } = mockReqRes(undefined, 'DELETE', {
-      password: 'test-pw',
-      id: entry.id,
-    });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'DELETE',
+      { id: entry.id },
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(200);
 
@@ -149,10 +175,14 @@ describe('DELETE /api/sessions/[id]', () => {
   });
 
   it('is idempotent (DELETE of missing returns 200)', async () => {
-    const { req, res, getResponse } = mockReqRes(undefined, 'DELETE', {
-      password: 'test-pw',
-      id: 'sess-missing',
-    });
+    const { req, res, getResponse } = mockReqRes(
+      undefined,
+      'DELETE',
+      { id: 'sess-missing' },
+      {
+        'x-aparture-password': 'test-pw',
+      }
+    );
     await idHandler(req, res);
     expect(getResponse().statusCode).toBe(200);
   });

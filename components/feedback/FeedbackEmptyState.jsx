@@ -28,7 +28,7 @@ export default function FeedbackEmptyState() {
           margin: '0 auto',
         }}
       >
-        Click <span style={{ color: '#eab308' }}>★</span> or{' '}
+        Click <span style={{ color: '#f59e0b' }}>★</span> or{' '}
         <span style={{ color: 'var(--aparture-mute)' }}>⊘</span> on papers to record your reactions.
         Add comments to specific papers, or use <em>Add a comment</em> above for general thoughts.
         Your feedback powers the <em>Suggest improvements</em> flow in Your Profile.

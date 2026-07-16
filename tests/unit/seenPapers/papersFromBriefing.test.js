@@ -56,6 +56,17 @@ describe('papersFromBriefing', () => {
     expect(papersFromBriefing(entry).map((p) => p.id)).toEqual(['b.1']);
   });
 
+  it('returns nothing for test-mode (dry-run) briefings — they must not feed the dedupe index', () => {
+    const entry = {
+      generationMetadata: { testMode: true },
+      briefing: { papers: [{ arxivId: 'real.1' }] },
+      pipelineArchive: {
+        filterResults: { yes: [{ id: 'y.1' }], maybe: [], no: [{ id: 'n.1' }] },
+      },
+    };
+    expect(papersFromBriefing(entry)).toEqual([]);
+  });
+
   it('skips entries with no id / arxivId field', () => {
     const entry = {
       briefing: { papers: [{ arxivId: 'real.1' }, { title: 'no id here' }] },

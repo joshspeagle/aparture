@@ -16,11 +16,21 @@ Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSW
 
 The sidebar carries a list of past briefings (empty for now), a light/dark theme toggle, and three nav links — <span class="ui-action">Profile</span>, <span class="ui-action">Settings</span>, and <span class="ui-action">Pipeline</span> — that you'll cycle between during this run. Click each one now just to get a feel for the layout; there's nothing to fill in or change yet.
 
-## 2. Write a starter profile
+![The welcome view after first login: a "Welcome to Aparture" heading, a short description, and a "To get started" card with numbered setup steps and a first-run checklist](/screenshots/welcome-checklist.png)
 
-Open the <span class="ui-action">Profile</span> view. The text box at the top is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
+_The welcome view greets a fresh install with a first-run checklist; items tick off as you complete them._
 
-A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly _not_ interested in (the filter model leans heavily on negatives) is already enough to get useful output. Something like:
+## 2. Pick a starter template, or write your own
+
+Open the <span class="ui-action">Profile</span> view. On a fresh install a template picker sits at the top: four example profiles, each of which fills in the profile text and sets a matching arXiv category list in one click. Pick the one closest to your field — the focused single-subfield example is the best model for most people — or skip the picker entirely. The templates are examples, not defaults; the point is to see one full run work, then replace the text with your own research.
+
+![The Profile view on a fresh install, with the four-card starter template picker at the top and the fill-in profile template in the text box below](/screenshots/template-picker.png)
+
+_The starter template picker above the profile text box. It disappears once you save an edit or dismiss it._
+
+Below the picker, the profile text box is the single source of what Aparture thinks you care about — every stage of the pipeline reads it, so a few minutes of thought here pays off across the rest of the run.
+
+A first profile doesn't need to be polished. A couple of sentences describing your main research area, a handful of method families or application domains you actively follow, and a short list of things you're explicitly _not_ interested in (the filter model leans heavily on negatives) is already enough to get useful output. The shipped fill-in template looks like this:
 
 ```text
 I am a researcher working on [YOUR FIELD]. I care most about methodological
@@ -41,13 +51,13 @@ I'm not interested in:
 - Engineering or systems work without a research angle
 ```
 
-Edit the bracketed placeholders to match your actual work, then click <span class="ui-action">Save changes</span>. Writing a good profile is its own craft — [Writing a good profile](/using/writing-a-profile) covers it in depth when you're ready.
+Edit the bracketed placeholders to match your actual work, then click <span class="ui-action">Save changes</span>. Writing a good profile is its own craft — [Writing a good profile](/using/writing-a-profile) covers it in depth when you're ready, including the template list and how to keep several named profiles.
 
-## 3. Pick a couple of categories and leave the models alone
+## 3. Check your categories and leave the models alone
 
-Open the <span class="ui-action">Settings</span> view. Two things to set, one to leave alone, everything else to skip for now:
+Open the <span class="ui-action">Settings</span> view. Two things to check, one to leave alone, everything else to skip for now:
 
-- **ArXiv Categories** — pick two or three to start. Reasonable defaults by field: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
+- **ArXiv Categories** — if you picked a starter template, its categories are already set and you can move on. Otherwise pick two or three to start: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
 - **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summaries, Gemini 3.5 Flash for scoring, PDF analysis, and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.
@@ -99,6 +109,10 @@ A quick scan is plenty on this run. If something's obviously in the wrong bucket
 The pipeline moves through abstract scoring and an optional post-processing consistency pass, then parks at its second review gate — _"Score review"_ with a <span class="ui-action">Continue to PDF analysis →</span> button — before any PDF is read. This is the cheapest moment to adjust which papers get the expensive full-text treatment.
 
 The scored list appears in three groups: the top-N papers that will be PDF-analysed as things stand, a borderline band just below the cutoff, and everything else. Each row carries a **STAR** button (guarantees the paper gets PDF-analysed regardless of its score) and a **DISMISS** button (drops it from the PDF set for this run). A free-text _"feedback on this scoring round"_ field takes observations about the round as a whole.
+
+![The score-review gate: a banner with the deep-read count and cost estimate above the Will PDF group, where each paper row carries STAR and DISMISS buttons](/screenshots/gate-2-score-review.png)
+
+_The score-review gate. The banner estimates the cost of the PDF stage it holds back; STAR and DISMISS on each row adjust which papers get the full-text read._
 
 On this first run, a quick skim of the top group is plenty — click <span class="ui-action">Continue to PDF analysis →</span> when the list looks reasonable. [Review gates](/using/review-gates#gate-2-before-pdf-analysis-score-review) covers the selection logic when you want to steer it deliberately.
 

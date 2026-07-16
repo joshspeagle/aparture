@@ -58,6 +58,11 @@ describe('score-abstracts API route (fixture mode)', () => {
       score: 5.0,
     });
     expect(typeof jsonBody.rawResponse).toBe('string');
+    // Token usage rides along on the 200 body for per-stage cost tracking.
+    // The fixture reports 150 in / 80 out; no correction call fires.
+    expect(jsonBody.tokensIn).toBe(150);
+    expect(jsonBody.tokensOut).toBe(80);
+    expect(jsonBody.cacheReadTok).toBe(0);
   });
 
   it('rejects invalid password', async () => {

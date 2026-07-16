@@ -2,7 +2,7 @@
 // lookups in one place so FeedbackItem and SuggestDialog stay in sync.
 
 const TYPE_META = {
-  star: { icon: '★', borderColor: '#eab308', label: 'starred' },
+  star: { icon: '★', borderColor: '#f59e0b', label: 'starred' },
   dismiss: { icon: '⊘', borderColor: '#64748b', label: 'dismissed' },
   'paper-comment': { icon: '💬', borderColor: '#a855f7', label: 'comment' },
   'general-comment': { icon: '💭', borderColor: '#3b82f6', label: 'general' },

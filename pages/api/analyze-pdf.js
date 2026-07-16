@@ -56,7 +56,7 @@ function isPDFResponse(buffer) {
 // - Separate profiles prevent locking conflicts
 // - Each Playwright instance establishes its own arXiv session by visiting abstract page first
 // - No cookie sharing needed - each instance independently bypasses reCAPTCHA
-async function downloadPDFWithPlaywright(chromium, pdfUrl) {
+async function downloadPDFWithPlaywright(chromium, pdfUrl, throttle = null) {
   console.log('Attempting PDF download via Playwright (reCAPTCHA bypass)...');
 
   // Use separate profile for PDF downloads to avoid conflicts with main automation
@@ -95,6 +95,10 @@ async function downloadPDFWithPlaywright(chromium, pdfUrl) {
     const fullPdfUrl = `https://export.arxiv.org/pdf/${arxivId}.pdf`;
     console.log(`Fetching PDF via browser context: ${fullPdfUrl}`);
 
+    // The abs-page navigation above consumed the caller's throttle slot; the
+    // PDF fetch is a SECOND arXiv hit, so take its own slot rather than
+    // squeezing two requests through one 5s spacing window.
+    if (throttle) await throttle.acquire();
     const response = await context.request.get(fullPdfUrl);
 
     if (response.status() !== 200) {
@@ -218,7 +222,6 @@ export default async function handler(req, res) {
     pdfUrl,
     scoringCriteria,
     originalScore,
-    _originalJustification,
     password,
     model,
     correctionPrompt,
@@ -264,6 +267,16 @@ export default async function handler(req, res) {
     let responseText;
     let parsed;
 
+    // Token usage summed across every provider call this request makes
+    // (initial + backend auto-correction), returned on the 200 body so the
+    // client can accumulate per-stage cost.
+    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
+    const addUsage = (r) => {
+      usage.tokensIn += r?.tokensIn ?? 0;
+      usage.tokensOut += r?.tokensOut ?? 0;
+      usage.cacheReadTok += r?.cacheReadTok ?? 0;
+    };
+
     if (correctionPrompt) {
       // Client-triggered correction: text-only, no PDF, but still force schema.
       const result = await callModel(
@@ -280,6 +293,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
     } else {
       // Main PDF path
       let base64Data;
@@ -331,8 +345,19 @@ export default async function handler(req, res) {
           }
 
           if (!pdfResponse.ok) {
+            // Second consecutive 429/503 (the retry above also got throttled):
+            // extend the shared download throttle with the new Retry-After so
+            // SIBLING requests queued behind this one back off too, and carry
+            // the hint through to the client so its RateLimitError pauses the
+            // worker pool for the right duration.
+            let retryAfterMs;
+            if (pdfResponse.status === 429 || pdfResponse.status === 503) {
+              retryAfterMs = parseRetryAfterMs(pdfResponse.headers.get('retry-after')) ?? 10000;
+              downloadThrottle.rateLimited({ retryAfterMs });
+            }
             const httpErr = new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
             httpErr.upstreamStatus = pdfResponse.status;
+            if (retryAfterMs != null) httpErr.retryAfterMs = retryAfterMs;
             throw httpErr;
           }
 
@@ -372,6 +397,7 @@ export default async function handler(req, res) {
             const downloadErr = new Error(message);
             downloadErr.isPdfDownloadError = true;
             downloadErr.upstreamStatus = fetchError.upstreamStatus;
+            downloadErr.retryAfterMs = fetchError.retryAfterMs;
             throw downloadErr;
           }
           // reCAPTCHA path: Playwright is an optional dependency — if it's
@@ -388,8 +414,14 @@ export default async function handler(req, res) {
           }
           // Playwright fallback also hits arXiv — take the throttle again
           // before navigating so the browser fetch respects the same pacing.
+          // The throttle is passed through so the fallback's second request
+          // (the PDF fetch after the abs-page visit) takes its own slot too.
           await downloadThrottle.acquire();
-          pdfBuffer = await downloadPDFWithPlaywright(playwrightMod.chromium, pdfUrl);
+          pdfBuffer = await downloadPDFWithPlaywright(
+            playwrightMod.chromium,
+            pdfUrl,
+            downloadThrottle
+          );
           usedPlaywright = true;
         }
 
@@ -440,6 +472,7 @@ export default async function handler(req, res) {
       );
       responseText = result.text;
       parsed = extractParsed(result);
+      addUsage(result);
 
       // Backend auto-correction: re-submit the PDF + prompt with an error hint
       // appended, so the model has full context to re-analyze (not just the
@@ -477,6 +510,7 @@ export default async function handler(req, res) {
         );
         responseText = correctedResult.text;
         parsed = extractParsed(correctedResult);
+        addUsage(correctedResult);
       }
     }
 
@@ -494,6 +528,9 @@ export default async function handler(req, res) {
     res.status(200).json({
       analysis: parsed,
       rawResponse: responseText,
+      tokensIn: usage.tokensIn,
+      tokensOut: usage.tokensOut,
+      cacheReadTok: usage.cacheReadTok,
     });
   } catch (error) {
     // Graceful degradation: PDF requires reCAPTCHA bypass but Playwright is
@@ -519,6 +556,9 @@ export default async function handler(req, res) {
       return res.status(status).json({
         error: 'Failed to download PDF',
         details: error.message,
+        // 429/503 carry arXiv's Retry-After through to the client so
+        // parseRouteError builds a RateLimitError with the real pause.
+        ...(error.retryAfterMs != null ? { retryAfterMs: error.retryAfterMs } : {}),
       });
     }
     console.error('Error analyzing PDF:', error);

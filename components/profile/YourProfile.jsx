@@ -4,6 +4,7 @@ import Card from '../ui/Card.jsx';
 import TextArea from '../ui/TextArea.jsx';
 import MigrationNotice from './MigrationNotice.jsx';
 import HistoryDropdown from './HistoryDropdown.jsx';
+import ProfileSwitcher from './ProfileSwitcher.jsx';
 
 export default function YourProfile({
   profile,
@@ -17,6 +18,13 @@ export default function YourProfile({
   draftContent,
   setDraftContent,
   disabled = false,
+  // Named profiles (snapshots of the working slot; see hooks/useProfile.js)
+  profiles,
+  activeProfileName,
+  saveAs,
+  switchTo,
+  deleteProfile,
+  renameProfile,
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -45,9 +53,10 @@ export default function YourProfile({
       else if (e.type === 'dismiss') acc.dismisses++;
       else if (e.type === 'paper-comment' || e.type === 'general-comment') acc.comments++;
       else if (e.type === 'filter-override') acc.overrides++;
+      else if (e.type === 'scoped-feedback') acc.scopedNotes++;
       return acc;
     },
-    { stars: 0, dismisses: 0, comments: 0, overrides: 0 }
+    { stars: 0, dismisses: 0, comments: 0, overrides: 0, scopedNotes: 0 }
   );
   const totalNew = (newFeedback ?? []).length;
 
@@ -118,6 +127,21 @@ export default function YourProfile({
 
       {!collapsed && (
         <>
+          {/* Named-profile switcher. Disabled while the draft is dirty so
+              switching or snapshotting can't silently use stale committed
+              content — save or discard first, same rule as Suggest. */}
+          {profiles && Object.keys(profiles).length > 0 && (
+            <ProfileSwitcher
+              profiles={profiles}
+              activeProfileName={activeProfileName}
+              saveAs={saveAs}
+              switchTo={switchTo}
+              deleteProfile={deleteProfile}
+              renameProfile={renameProfile}
+              disabled={disabled || dirty}
+            />
+          )}
+
           {/* Updated timestamp */}
           <div
             style={{
@@ -186,7 +210,9 @@ export default function YourProfile({
                 since your last revision
                 {feedbackCounts.stars > 0 ||
                 feedbackCounts.dismisses > 0 ||
-                feedbackCounts.comments > 0
+                feedbackCounts.comments > 0 ||
+                feedbackCounts.overrides > 0 ||
+                feedbackCounts.scopedNotes > 0
                   ? ': '
                   : '.'}
                 {[
@@ -198,6 +224,8 @@ export default function YourProfile({
                     `${feedbackCounts.comments} comment${feedbackCounts.comments === 1 ? '' : 's'}`,
                   feedbackCounts.overrides > 0 &&
                     `${feedbackCounts.overrides} filter override${feedbackCounts.overrides === 1 ? '' : 's'}`,
+                  feedbackCounts.scopedNotes > 0 &&
+                    `${feedbackCounts.scopedNotes} scoped note${feedbackCounts.scopedNotes === 1 ? '' : 's'}`,
                 ]
                   .filter(Boolean)
                   .join(', ')}

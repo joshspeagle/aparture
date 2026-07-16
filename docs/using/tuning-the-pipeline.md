@@ -19,6 +19,8 @@ The pipeline is a waterfall. Each stage narrows the set of papers before the nex
 
 Tuning comes down to: get the right papers into Stage 4, don't overspend on the stages before it, and don't let the wrong papers through. The rest of this page goes through the knobs.
 
+You don't have to do this arithmetic yourself. The score-review and pre-briefing gates show the projected spend of the stage they hold back, and after a run the Download Report card shows an estimated cost per stage, computed from the token counts each stage actually used. Both use the pricing snapshot in the model registry (`utils/models.js`) — planning figures at list price, not a bill. If the registry has no price for a model, the estimate for that stage is hidden rather than guessed.
+
 ## Per-stage model slots
 
 Each stage has its own model slot. Current defaults are all Google:

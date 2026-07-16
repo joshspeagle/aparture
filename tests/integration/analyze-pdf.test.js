@@ -69,6 +69,11 @@ describe('analyze-pdf API route (fixture mode)', () => {
     expect(jsonBody.analysis.updatedScore).toBeGreaterThanOrEqual(0);
     expect(jsonBody.analysis.updatedScore).toBeLessThanOrEqual(10);
     expect(typeof jsonBody.rawResponse).toBe('string');
+    // Token usage rides along on the 200 body for per-stage cost tracking.
+    // The fixture reports 500 in / 100 out; no correction call fires.
+    expect(jsonBody.tokensIn).toBe(500);
+    expect(jsonBody.tokensOut).toBe(100);
+    expect(jsonBody.cacheReadTok).toBe(0);
   });
 
   it('returns analysis shape for the correction path', async () => {

@@ -106,6 +106,20 @@ export default function SettingsPanel({ config, setConfig, processing }) {
         >
           Configuration
         </h2>
+        <div style={{ flex: 1 }} />
+        <a
+          href="https://joshspeagle.github.io/aparture/using/tuning-the-pipeline"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            color: 'var(--aparture-mute)',
+            fontSize: 'var(--aparture-text-xs)',
+            textDecoration: 'none',
+          }}
+        >
+          docs ↗
+        </a>
       </div>
 
       {/* Pipeline overview */}

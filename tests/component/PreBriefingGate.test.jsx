@@ -73,3 +73,51 @@ describe('PreBriefingGate', () => {
     expect(screen.getByTestId('reviewed-content')).toBeInTheDocument();
   });
 });
+
+describe('PreBriefingGate — projected briefing spend', () => {
+  const pricedConfig = {
+    briefingModel: 'claude-haiku-4.5',
+    quickSummaryModel: 'claude-haiku-4.5',
+  };
+
+  it('shows the briefing estimate when the models have registry pricing', () => {
+    render(
+      <PreBriefingGate
+        {...base}
+        config={pricedConfig}
+        results={{ allAnalyzedPapers: [], finalRanking: [mkPaper('a'), mkPaper('b')] }}
+      />
+    );
+    expect(screen.getByText(/Briefing over 2 papers — est\. \$\d+\.\d{2}/)).toBeInTheDocument();
+  });
+
+  it('hides the estimate when any involved model has no registry pricing', () => {
+    render(
+      <PreBriefingGate
+        {...base}
+        config={{ briefingModel: 'claude-haiku-4.5', quickSummaryModel: 'mystery-model' }}
+        results={{ allAnalyzedPapers: [], finalRanking: [mkPaper('a')] }}
+      />
+    );
+    expect(screen.queryByText(/Briefing over/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\$null/)).not.toBeInTheDocument();
+  });
+
+  it('hides the estimate when there is no config or no papers', () => {
+    const { rerender } = render(
+      <PreBriefingGate
+        {...base}
+        results={{ allAnalyzedPapers: [], finalRanking: [mkPaper('a')] }}
+      />
+    );
+    expect(screen.queryByText(/Briefing over/)).not.toBeInTheDocument();
+    rerender(
+      <PreBriefingGate
+        {...base}
+        config={pricedConfig}
+        results={{ allAnalyzedPapers: [], finalRanking: [] }}
+      />
+    );
+    expect(screen.queryByText(/Briefing over/)).not.toBeInTheDocument();
+  });
+});

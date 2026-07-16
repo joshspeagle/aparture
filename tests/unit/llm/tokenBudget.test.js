@@ -22,6 +22,30 @@ describe('estimateTokens', () => {
     expect(n).toBeGreaterThan(80);
     expect(n).toBeLessThan(120);
   });
+
+  it('falls back to cl100k_base for unknown OpenAI model ids without throwing', () => {
+    const n = estimateTokens({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      text: 'hello world from an unknown model',
+    });
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(20);
+    // Second call exercises the memoized-alias path (throw paid only once).
+    const n2 = estimateTokens({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      text: 'hello world from an unknown model',
+    });
+    expect(n2).toBe(n);
+  });
+
+  it('returns consistent counts across repeated calls (memoized encoder)', () => {
+    const text = 'the same text every time';
+    const first = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text });
+    const second = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text });
+    expect(second).toBe(first);
+  });
 });
 
 describe('budgetPreflight', () => {

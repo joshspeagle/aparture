@@ -1,6 +1,7 @@
 // components/shell/MainArea.jsx
 // Routes activeView to the correct content panel.
 
+import { memo } from 'react';
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
@@ -17,13 +18,18 @@ import FilterResultsList from '../filter/FilterResultsList.jsx';
 import ScoreReviewSurface from '../score-review/ScoreReviewSurface.jsx';
 import ScopedCommentInput from '../feedback/ScopedCommentInput.jsx';
 import NotebookLMCard from '../notebooklm/NotebookLMCard.jsx';
+import StarterTemplatePicker from '../profile/StarterTemplatePicker.jsx';
 import YourProfile from '../profile/YourProfile.jsx';
 import SettingsPanel from '../settings/SettingsPanel.jsx';
 import WelcomeView from '../welcome/WelcomeView.jsx';
 import PreBriefingGate from './PreBriefingGate.jsx';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 
-export default function MainArea({
+// Memoized below (see `export default memo(MainArea)`): App subscribes to
+// high-frequency store slices (processing/statusLog, filterResults), so
+// anything that keeps ~70 props referentially stable across those ticks
+// lets whole subtrees skip re-rendering.
+function MainArea({
   activeView,
   // For briefing views
   selectedEntry,
@@ -49,6 +55,13 @@ export default function MainArea({
   newFeedback,
   onSuggestClick,
   disabled,
+  // Named profiles
+  profiles,
+  activeProfileName,
+  onSaveProfileAs,
+  onSwitchProfile,
+  onDeleteProfile,
+  onRenameProfile,
   // For settings view
   config,
   setConfig,
@@ -119,6 +132,14 @@ export default function MainArea({
   if (activeView === 'profile') {
     return (
       <div className="config-surface">
+        {/* First-run starter templates — renders only while the profile is
+            still the untouched shipped template and hasn't been dismissed. */}
+        <StarterTemplatePicker
+          profile={profile}
+          updateProfile={updateProfile}
+          setConfig={setConfig}
+          disabled={disabled}
+        />
         <YourProfile
           profile={profile}
           updateProfile={updateProfile}
@@ -131,6 +152,12 @@ export default function MainArea({
           draftContent={draftContent}
           setDraftContent={setDraftContent}
           disabled={disabled}
+          profiles={profiles}
+          activeProfileName={activeProfileName}
+          saveAs={onSaveProfileAs}
+          switchTo={onSwitchProfile}
+          deleteProfile={onDeleteProfile}
+          renameProfile={onRenameProfile}
         />
       </div>
     );
@@ -191,6 +218,7 @@ export default function MainArea({
             <ControlPanel
               processing={processing}
               testState={testState}
+              config={config}
               onStart={onStart}
               onPause={onPause}
               onResume={onResume}
@@ -228,6 +256,7 @@ export default function MainArea({
                 onContinue={onContinueAfterScoreReview}
                 onSkipRemaining={onSkipRemainingGates}
                 onAddPaperComment={onAddMSPaperComment}
+                pdfModel={config?.pdfModel}
                 scopedCommentInput={
                   <ScopedCommentInput
                     scope={{ kind: 'score-review' }}
@@ -253,6 +282,7 @@ export default function MainArea({
               onContinueAfterReview={onContinueAfterReview}
               onSkipRemainingGates={onSkipRemainingGates}
               onAddGeneralComment={onAddGeneralComment}
+              config={config}
             >
               {analysisResults}
             </PreBriefingGate>
@@ -293,7 +323,7 @@ export default function MainArea({
   if (activeView === 'welcome') {
     return (
       <div className="briefing-surface">
-        <WelcomeView />
+        <WelcomeView profile={profile} config={config} testState={testState} />
       </div>
     );
   }
@@ -346,6 +376,7 @@ export default function MainArea({
       <div className="briefing-surface">
         <BriefingView
           briefing={entry.briefing}
+          testMode={entry.generationMetadata?.testMode ?? false}
           // Append T00:00:00 so the YYYY-MM-DD string parses as LOCAL midnight,
           // not UTC — bare date strings render one day early in UTC-negative
           // timezones (same pattern as SidebarBriefingList.formatBriefingLabel).
@@ -355,7 +386,15 @@ export default function MainArea({
             year: 'numeric',
           })}
           briefingDate={entry.date}
-          papersScreened={results?.allPapers?.length ?? 0}
+          // Prefer the count persisted at generation time — the live results
+          // slice reflects whatever run is CURRENTLY in memory, which is
+          // wrong for archived briefings. The live fallback only applies to
+          // the just-generated current briefing (whose metadata may predate
+          // the papersScreened field).
+          papersScreened={
+            entry.generationMetadata?.papersScreened ??
+            (entry.id === currentBriefing?.id ? (results?.allPapers?.length ?? 0) : 0)
+          }
           quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
           fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
           feedbackEvents={feedbackEvents}
@@ -384,7 +423,10 @@ export default function MainArea({
             onSuggestClick={onSuggestClick}
             lastFeedbackCutoff={lastFeedbackCutoff}
             runFeedbackSavedText={runFeedbackSavedText}
-            onRunFeedback={onRunFeedback}
+            // Run-scope feedback is bound to TODAY's date; under an archived
+            // briefing it would render today's note and stamp today's date on
+            // save. Only offer it on the current briefing.
+            onRunFeedback={entry.id === currentBriefing?.id ? onRunFeedback : null}
           />
         </div>
 
@@ -415,6 +457,8 @@ export default function MainArea({
   // Fallback
   return null;
 }
+
+export default memo(MainArea);
 
 // Shared not-found UI: index entry exists but disk file is missing (404 from
 // /api/briefings/[id]). Offers to remove the orphan from the local index so

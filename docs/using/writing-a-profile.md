@@ -10,6 +10,23 @@ A profile is a description of research interests in prose. It's not a keyword li
 
 The pipeline's LLMs read it the way that collaborator would: to understand who you are, what you work on, what's adjacent to your work, and what you explicitly don't care about. You don't need to be clever about wording or anticipate how the model interprets specific words. Writing plainly is usually enough.
 
+## Starter templates
+
+On a fresh install the Profile page opens with a template picker: four example profiles, each of which sets both the profile text and a matching arXiv category list. They are examples, not defaults — pick the one closest to your field, run the pipeline once, then replace the text with your own research.
+
+![The starter template picker at the top of the Profile page: four template cards, each with a short description, a category count, and a "Use this template" button, above the profile text box](/screenshots/template-picker.png)
+
+_The template picker on a fresh install. Choosing a card fills the profile text and sets the matching arXiv categories in one click._
+
+| Template                                    | Shape                                                                                                      | Categories                            |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **Focused: Bayesian cosmology**             | A narrow single-subfield profile — the first worked example below                                          | `astro-ph.CO` + `astro-ph.IM`         |
+| **Breadth: ML + statistics + astrophysics** | A broad multi-archive profile spanning three fields; the power-user example, and the most expensive to run | 19 categories across cs/stat/astro-ph |
+| **Applied machine learning**                | Usable methods plus rigorous evaluation                                                                    | `cs.LG` + `stat.ML` + `cs.CL`         |
+| **Fill-in template**                        | Bracketed placeholders you replace with your own field and methods                                         | `cs.LG` + `stat.ML`                   |
+
+The picker only appears while your profile is still the untouched shipped template. Once you save an edit — or dismiss the picker — it never comes back; from then on the profile text box is the whole interface.
+
 ## What reads your profile
 
 It's worth knowing where your profile actually lands in the pipeline. Every stage reads it:
@@ -178,6 +195,18 @@ There's also a <span class="ui-action">Clear history</span> button for when revi
 ::: info
 Reverting is non-destructive — the current version moves into history as a new revision before the snapshot takes its place, so you can always flip back.
 :::
+
+## Named profiles
+
+You can keep several profiles and switch between them — one for your main research agenda, one for a side project, one broad "conference season" sweep. The control sits at the top of the Profile page: a dropdown showing the active profile plus <span class="ui-action">Save as…</span>, <span class="ui-action">Rename</span>, and <span class="ui-action">Delete</span>.
+
+![The Profile page with the named-profile switcher at the top: a PROFILE dropdown showing "Default" next to Save as…, Rename, and Delete buttons, above the profile text box and the Suggest improvements card](/screenshots/profile-switcher.png)
+
+_The profile switcher sits above the text box. The active profile in the dropdown is what every run reads._
+
+Named profiles are snapshots. <span class="ui-action">Save as…</span> stores the current profile text under a name; switching loads a snapshot into the editor. The active profile is what every run reads — the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one. Switching away doesn't lose anything: the outgoing text is saved back into its own snapshot, and the swap is also recorded in the revision history like any other edit.
+
+Two things named profiles are _not_: they aren't run in parallel (one run reads one profile), and they don't each carry their own feedback history — stars, dismisses, and comments accumulate in one shared stream regardless of which profile was active.
 
 ## Next
 

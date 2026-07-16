@@ -593,7 +593,10 @@ describe('useBriefing', () => {
       const { result } = renderHook(() => useBriefing({ password: 'test-pw' }));
       const loaded = await result.current.loadBriefing('known');
       expect(loaded.briefing.executiveSummary).toBe('loaded');
-      expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/briefings/known'));
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/api/briefings/known'),
+        expect.objectContaining({ headers: { 'x-aparture-password': 'test-pw' } })
+      );
     });
 
     it('returns null on 404', async () => {
@@ -633,7 +636,10 @@ describe('useBriefing', () => {
       // disk GET (mocked above to return the full 'loaded' entry).
       const loaded = await result.current.loadBriefing('known');
       expect(loaded.briefing.executiveSummary).toBe('loaded');
-      expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining('/api/briefings/known'));
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/api/briefings/known'),
+        expect.objectContaining({ headers: { 'x-aparture-password': 'test-pw' } })
+      );
     });
 
     it('still takes the fast path for a full (non-stripped) current — no disk read', async () => {

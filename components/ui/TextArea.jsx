@@ -9,7 +9,8 @@ export default function TextArea({ className, style: overrideStyle, ...rest }) {
     borderRadius: '4px',
     boxSizing: 'border-box',
     width: '100%',
-    outline: 'none',
+    // No `outline: 'none'` here: the global :focus-visible rule in
+    // styles/shell.css provides the keyboard-focus ring.
     resize: 'vertical',
     minHeight: '120px',
   };
