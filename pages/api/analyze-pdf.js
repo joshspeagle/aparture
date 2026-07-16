@@ -364,7 +364,12 @@ export default async function handler(req, res) {
           // PLAYWRIGHT_UNAVAILABLE_RECAPTCHA 422s (which short-circuit
           // retries and read to the user as a reCAPTCHA problem).
           if (fetchError?.code !== 'RECAPTCHA_INTERSTITIAL') {
-            const downloadErr = new Error(`PDF download failed: ${fetchError.message}`);
+            // Don't double-prefix: HTTP failures from the try block already
+            // read "Failed to download PDF: HTTP <status>".
+            const message = /download/i.test(fetchError.message ?? '')
+              ? fetchError.message
+              : `PDF download failed: ${fetchError.message}`;
+            const downloadErr = new Error(message);
             downloadErr.isPdfDownloadError = true;
             downloadErr.upstreamStatus = fetchError.upstreamStatus;
             throw downloadErr;
