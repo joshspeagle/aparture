@@ -21,26 +21,37 @@ export default function ProfileSwitcher({
   // mode: null | 'save-as' | 'rename'
   const [mode, setMode] = useState(null);
   const [nameInput, setNameInput] = useState('');
+  const [inputError, setInputError] = useState('');
 
   const names = Object.keys(profiles);
 
   const openInput = (nextMode) => {
     setMode(nextMode);
     setNameInput(nextMode === 'rename' ? activeProfileName : '');
+    setInputError('');
   };
 
   const confirmInput = () => {
     const name = nameInput.trim();
     if (!name) return;
+    // Mirror the hook's clobber guards (saveAs / renameProfile silently
+    // refuse to overwrite a different existing snapshot) so the refusal is
+    // visible instead of looking like a save that didn't take.
+    if (profiles[name] && name !== activeProfileName) {
+      setInputError(`A profile named "${name}" already exists.`);
+      return;
+    }
     if (mode === 'save-as') saveAs?.(name);
     if (mode === 'rename') renameProfile?.(activeProfileName, name);
     setMode(null);
     setNameInput('');
+    setInputError('');
   };
 
   const cancelInput = () => {
     setMode(null);
     setNameInput('');
+    setInputError('');
   };
 
   const smallButtonStyle = {
@@ -121,7 +132,10 @@ export default function ProfileSwitcher({
           <Input
             aria-label={mode === 'save-as' ? 'New profile name' : 'Rename profile'}
             value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
+            onChange={(e) => {
+              setNameInput(e.target.value);
+              if (inputError) setInputError('');
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') confirmInput();
               if (e.key === 'Escape') cancelInput();
@@ -136,6 +150,21 @@ export default function ProfileSwitcher({
             Cancel
           </Button>
         </div>
+      )}
+
+      {inputError && (
+        <p
+          role="alert"
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: '#ef4444',
+            margin: 0,
+            marginTop: 'var(--aparture-space-1)',
+          }}
+        >
+          {inputError}
+        </p>
       )}
 
       <p

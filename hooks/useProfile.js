@@ -6,6 +6,11 @@ const PROFILE_KEY = 'aparture-profile';
 const MIGRATION_DISMISSED_KEY = 'aparture-migration-notice-dismissed';
 const MAX_REVISIONS = 20;
 const PHASE_1_PROFILE_KEY = 'aparture-profile-md';
+// A corrupt aparture-profile blob is stashed here before the one-time repair
+// overwrites it — corruption is often partial (the user's prose plus the
+// revision history may still be readable by hand), so destroying the blob
+// without a copy would make the repair itself a data-loss event.
+const CORRUPT_BACKUP_KEY = 'aparture-profile-corrupt-backup';
 
 // Named-profile snapshots. PROFILES_KEY stores { [name]: {content, updatedAt} };
 // ACTIVE_PROFILE_KEY stores the name of the snapshot the active slot came from.
@@ -22,9 +27,13 @@ const ACTIVE_PROFILE_KEY = 'aparture-active-profile';
 // initializer are a side effect React may double-invoke under StrictMode).
 function readInitialProfiles(storage, profile) {
   let profiles = null;
+  let rawPresent = false;
   try {
     const raw = storage.getItem(PROFILES_KEY);
-    if (raw) profiles = JSON.parse(raw);
+    if (raw) {
+      rawPresent = true;
+      profiles = JSON.parse(raw);
+    }
   } catch {
     profiles = null;
   }
@@ -32,13 +41,17 @@ function readInitialProfiles(storage, profile) {
     const seeded = {
       Default: { content: profile.content, updatedAt: profile.updatedAt || Date.now() },
     };
-    return { profiles: seeded, activeProfileName: 'Default' };
+    // profilesNeedRepair: a stored-but-unusable map (corrupt JSON, non-object,
+    // empty) must be OVERWRITTEN by the mount effect — its "persist only when
+    // the key is missing" guard would otherwise see the corrupt blob as
+    // present and reseed in memory on every load without ever fixing disk.
+    return { profiles: seeded, activeProfileName: 'Default', profilesNeedRepair: rawPresent };
   }
   let active = storage.getItem(ACTIVE_PROFILE_KEY);
   if (!active || !profiles[active]) {
     active = Object.keys(profiles)[0];
   }
-  return { profiles, activeProfileName: active };
+  return { profiles, activeProfileName: active, profilesNeedRepair: false };
 }
 
 function readInitialState(config) {
@@ -47,8 +60,10 @@ function readInitialState(config) {
       profile: { content: '', updatedAt: 0, lastFeedbackCutoff: 0, revisions: [] },
       notice: null,
       needsRepair: false,
+      corruptRaw: null,
       profiles: {},
       activeProfileName: 'Default',
+      profilesNeedRepair: false,
     };
   }
 
@@ -63,20 +78,31 @@ function readInitialState(config) {
   // would otherwise see the corrupt blob as present, skip the write, and the
   // hook would re-run the Phase-1 migration on every single load forever.
   let needsRepair = false;
+  let corruptRaw = null;
   const stored = window.localStorage.getItem(PROFILE_KEY);
   if (stored) {
     try {
       const profile = JSON.parse(stored);
-      return {
-        profile,
-        notice: null,
-        needsRepair: false,
-        ...readInitialProfiles(window.localStorage, profile),
-      };
+      // Shape gate: the blob must be an object with string content. A value
+      // that parses but isn't usable ("null", a bare string, a number) would
+      // otherwise crash the initializer at profile.content with no repair
+      // path — JSON validity alone isn't enough.
+      if (profile && typeof profile === 'object' && typeof profile.content === 'string') {
+        return {
+          profile,
+          notice: null,
+          needsRepair: false,
+          corruptRaw: null,
+          ...readInitialProfiles(window.localStorage, profile),
+        };
+      }
+      needsRepair = true;
+      corruptRaw = stored;
     } catch {
       // Corrupt JSON — fall through to a fresh Phase-1 migration and flag
-      // the mount effect to replace the unparseable blob.
+      // the mount effect to back up and replace the unparseable blob.
       needsRepair = true;
+      corruptRaw = stored;
     }
   }
 
@@ -91,6 +117,7 @@ function readInitialState(config) {
     profile,
     notice: dismissed ? null : notice,
     needsRepair,
+    corruptRaw,
     ...readInitialProfiles(window.localStorage, profile),
   };
 }
@@ -114,13 +141,18 @@ export function useProfile(config = {}) {
     // initializer found a corrupt blob (needsRepair) — a corrupt-but-truthy
     // value would otherwise never be repaired and the user would silently
     // re-migrate on every load. A valid stored profile is NOT rewritten.
+    // Stash the corrupt blob BEFORE the repair overwrites it — it may still
+    // hold recoverable prose and revision history.
+    if (state.needsRepair && state.corruptRaw) {
+      safeSetItem(CORRUPT_BACKUP_KEY, state.corruptRaw);
+    }
     if (!storage.getItem(PROFILE_KEY) || state.needsRepair) {
       safeSetItem(PROFILE_KEY, JSON.stringify(state.profile));
     }
     if (storage.getItem(PHASE_1_PROFILE_KEY)) {
       storage.removeItem(PHASE_1_PROFILE_KEY);
     }
-    if (!storage.getItem(PROFILES_KEY)) {
+    if (!storage.getItem(PROFILES_KEY) || state.profilesNeedRepair) {
       safeSetItem(PROFILES_KEY, JSON.stringify(state.profiles));
     }
     if (storage.getItem(ACTIVE_PROFILE_KEY) !== state.activeProfileName) {
@@ -134,14 +166,17 @@ export function useProfile(config = {}) {
   // state updaters that call this mid-click — a raw setItem here used to crash
   // the interaction and lose the user's edit. On quota failure, log and keep
   // the in-memory state for the session (standard fallback; see safeStorage.js).
+  // Returns whether the write landed, so multi-key callers (switchTo,
+  // deleteProfile) can keep localStorage self-consistent on failure.
   const persist = useCallback((nextProfile) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return true;
     const ok = safeSetItem(PROFILE_KEY, JSON.stringify(nextProfile));
     if (!ok) {
       console.warn(
         '[useProfile] localStorage quota exceeded; profile could not be persisted (in-memory state preserved for this session)'
       );
     }
+    return ok;
   }, []);
 
   const updateProfile = useCallback(
@@ -283,6 +318,12 @@ export function useProfile(config = {}) {
       const trimmed = (name ?? '').trim();
       if (!trimmed) return;
       setState((prev) => {
+        // Refuse to clobber a DIFFERENT existing snapshot — snapshot contents
+        // are never revision-archived, so an accidental name collision would
+        // destroy that profile silently. Re-saving under the active name is
+        // legitimate ("update my snapshot") and stays allowed. Mirrors the
+        // renameProfile guard; ProfileSwitcher surfaces the refusal inline.
+        if (prev.profiles[trimmed] && trimmed !== prev.activeProfileName) return prev;
         const profiles = {
           ...prev.profiles,
           [trimmed]: { content: prev.profile.content, updatedAt: Date.now() },
@@ -313,8 +354,19 @@ export function useProfile(config = {}) {
           target.content,
           `Switched to profile "${name}"`
         );
-        persist(nextProfile);
-        persistProfiles(profiles, name);
+        // Working slot first; advance the stored map + pointer only if it
+        // landed. A half-written switch (pointer on the new name, working
+        // slot still holding the old draft) would, after a reload and one
+        // more switch, snapshot the wrong content over the new name's entry.
+        // On failure, disk stays fully pre-switch-consistent; the in-memory
+        // switch proceeds for the session (standard quota fallback).
+        if (persist(nextProfile)) {
+          persistProfiles(profiles, name);
+        } else {
+          console.warn(
+            '[useProfile] working-slot write failed; leaving stored named-profile map and pointer at their pre-switch state'
+          );
+        }
         return { ...prev, profile: nextProfile, profiles, activeProfileName: name };
       });
     },
@@ -348,8 +400,16 @@ export function useProfile(config = {}) {
           profiles[nextActive].content,
           `Deleted profile "${name}"; switched to "${nextActive}"`
         );
-        persist(nextProfile);
-        persistProfiles(profiles, nextActive);
+        // Same ordering rule as switchTo: don't delete the entry from disk
+        // unless the working slot's write landed, or a reload would show the
+        // deleted profile's content under the surviving snapshot's name.
+        if (persist(nextProfile)) {
+          persistProfiles(profiles, nextActive);
+        } else {
+          console.warn(
+            '[useProfile] working-slot write failed; leaving stored named-profile map and pointer at their pre-delete state'
+          );
+        }
         return { ...prev, profile: nextProfile, profiles, activeProfileName: nextActive };
       });
     },

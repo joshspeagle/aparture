@@ -60,6 +60,48 @@ describe('ProfileSwitcher', () => {
     expect(renameProfile).toHaveBeenCalledWith('Default', 'Daily');
   });
 
+  it('Save as… with a DIFFERENT existing name shows an error and does not call saveAs', () => {
+    const saveAs = vi.fn();
+    render(<ProfileSwitcher {...defaultProps} activeProfileName="Cosmology" saveAs={saveAs} />);
+    fireEvent.click(screen.getByRole('button', { name: /save as/i }));
+    fireEvent.change(screen.getByLabelText('New profile name'), {
+      target: { value: 'Default' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    // The hook would silently refuse the clobber; the component must make
+    // the refusal visible instead of looking like a save that didn't take.
+    expect(saveAs).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('already exists');
+    // Editing the name clears the error.
+    fireEvent.change(screen.getByLabelText('New profile name'), {
+      target: { value: 'Default 2' },
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Save as… with the ACTIVE name is allowed (updates own snapshot)', () => {
+    const saveAs = vi.fn();
+    render(<ProfileSwitcher {...defaultProps} activeProfileName="Cosmology" saveAs={saveAs} />);
+    fireEvent.click(screen.getByRole('button', { name: /save as/i }));
+    fireEvent.change(screen.getByLabelText('New profile name'), {
+      target: { value: 'Cosmology' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    expect(saveAs).toHaveBeenCalledWith('Cosmology');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Rename to a DIFFERENT existing name shows an error and does not call renameProfile', () => {
+    const renameProfile = vi.fn();
+    render(<ProfileSwitcher {...defaultProps} renameProfile={renameProfile} />);
+    fireEvent.click(screen.getByRole('button', { name: /^rename$/i }));
+    const input = screen.getByLabelText('Rename profile');
+    fireEvent.change(input, { target: { value: 'Cosmology' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /^rename$/i })[1]);
+    expect(renameProfile).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('already exists');
+  });
+
   it('Delete calls deleteProfile with the active name', () => {
     const deleteProfile = vi.fn();
     render(<ProfileSwitcher {...defaultProps} deleteProfile={deleteProfile} />);
