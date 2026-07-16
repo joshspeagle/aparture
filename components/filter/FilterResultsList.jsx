@@ -394,9 +394,14 @@ export default function FilterResultsList({
                   marginLeft: '8px',
                 }}
               >
-                (Processing batch{' '}
-                {Math.min((filterResults.currentBatch || 0) + 1, filterResults.totalBatches || 1)}{' '}
-                of {filterResults.totalBatches || 0})
+                {/* Before batches are computed, totalBatches is 0 — say
+                    "starting…" rather than the impossible "batch 1 of 0". */}
+                {(filterResults.totalBatches || 0) > 0
+                  ? `(Processing batch ${Math.min(
+                      (filterResults.currentBatch || 0) + 1,
+                      filterResults.totalBatches
+                    )} of ${filterResults.totalBatches})`
+                  : '(starting…)'}
               </span>
             )}
           </h2>

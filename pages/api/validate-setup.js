@@ -32,6 +32,16 @@ export default async function handler(req, res) {
   if (!Array.isArray(slots) || slots.length === 0) {
     return res.status(400).json({ error: 'missing required field: slots[]' });
   }
+  // Element shape check: a null/non-object entry would throw at the
+  // destructuring below and surface as a 500 on a public route.
+  const badSlot = slots.find(
+    (s) => !s || typeof s !== 'object' || typeof s.slot !== 'string' || typeof s.model !== 'string'
+  );
+  if (badSlot !== undefined) {
+    return res
+      .status(400)
+      .json({ error: 'invalid slots[] entry: each needs string `slot` and `model` fields' });
+  }
   if (!clientApiKey && !password) {
     return res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
   }
