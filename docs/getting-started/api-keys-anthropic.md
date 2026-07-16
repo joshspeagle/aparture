@@ -69,18 +69,20 @@ If you want a quality/cost step down, swap `pdfModel` to Sonnet 4.6 — that sin
 
 All Claude models bill per million tokens (MTok), separately for input and output. Input tokens are everything you send to the model (prompt, system message, PDF content, prior-paper context); output tokens are everything the model writes back, **including adaptive-thinking tokens** on Opus 4.7 (which can inflate output by 20–50% on hard prompts).
 
-Current (April 2026) list pricing for every Anthropic model in Aparture's registry:
+Current (July 2026) list pricing for every Anthropic model in Aparture's registry:
 
 | Model                                                   | Context | Input ($/MTok) | Output ($/MTok) |
 | ------------------------------------------------------- | ------- | -------------: | --------------: |
+| `claude-opus-4.8`                                       | 1M      |             $5 |             $25 |
 | `claude-opus-4.7` (recommended PDF + briefing)          | 1M      |             $5 |             $25 |
 | `claude-opus-4.6`                                       | 1M      |             $5 |             $25 |
+| `claude-sonnet-5`\*                                     | 1M      |             $3 |             $15 |
 | `claude-sonnet-4.6` (recommended scoring)               | 1M      |             $3 |             $15 |
 | `claude-haiku-4.5` (recommended filter + quick-summary) | 200k    |             $1 |              $5 |
-| `claude-opus-4.5` (legacy)                              | 200k    |             $5 |             $25 |
-| `claude-opus-4.1` (legacy)                              | 200k    |            $15 |             $75 |
-| `claude-sonnet-4.5` (legacy)                            | 200k    |             $3 |             $15 |
-| `claude-haiku-3.5` (legacy)                             | 200k    |            ~$1 |             ~$5 |
+
+\* `claude-sonnet-5` has introductory pricing of $2 / $10 per MTok through 2026-08-31, after which the $3 / $15 list price applies. It also uses a new tokenizer that produces roughly 30% more tokens for the same text than Sonnet 4.6, so per-request cost doesn't drop 1:1 with the sticker price.
+
+The retired 2026-07 registry entries (`claude-opus-4.5`, `claude-opus-4.1`, `claude-sonnet-4.5`, `claude-haiku-3.5`) are no longer selectable; existing configs that referenced them are remapped automatically to the closest current-generation model on next load.
 
 **Two discounts apply automatically to repeat runs** and aren't shown in list pricing:
 

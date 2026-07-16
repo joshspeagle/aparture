@@ -38,9 +38,13 @@ export default function FeedbackFilters({ filters, onFiltersChange }) {
         color: 'var(--aparture-ink)',
       }}
     >
+      {/* flexWrap: on narrow (mobile) viewports the segments flow onto a
+          second row instead of being clipped by overflow: hidden — all six
+          type filters must stay reachable at 390px wide. */}
       <div
         style={{
           display: 'inline-flex',
+          flexWrap: 'wrap',
           borderRadius: '4px',
           border: '1px solid var(--aparture-hairline)',
           overflow: 'hidden',
@@ -52,6 +56,8 @@ export default function FeedbackFilters({ filters, onFiltersChange }) {
             <button
               key={opt.value}
               type="button"
+              // ≥40px touch target under 768px (shell.css); inert on desktop.
+              className="touch-target"
               onClick={() => handleType(opt.value)}
               data-active={active || undefined}
               style={{

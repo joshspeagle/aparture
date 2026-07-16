@@ -3,6 +3,7 @@ import {
   buildAnthropicRequest,
   parseAnthropicResponse,
 } from '../../../../lib/llm/structured/anthropic.js';
+import { MODEL_REGISTRY } from '../../../../utils/models.js';
 
 describe('buildAnthropicRequest', () => {
   it('builds a plain text request with adaptive thinking', () => {
@@ -79,6 +80,44 @@ describe('buildAnthropicRequest', () => {
     } else {
       expect(req.body.thinking).toBeUndefined();
     }
+  });
+
+  // The thinking gate is registry-driven: MODEL_REGISTRY's
+  // supportsAdaptiveThinking flag (utils/models.js) wins over the
+  // version-parsing fallback, which applies only to unregistered apiIds.
+  it('honors the registry flag over the version regex for a registered apiId', () => {
+    // Hypothetical: an apiId the regex would gate ON (sonnet, major 9) whose
+    // registry entry says adaptive thinking is unsupported. The registry
+    // must win — this is what lets a future capability change ship as a
+    // one-line registry edit.
+    const key = '__test-sonnet-9';
+    MODEL_REGISTRY[key] = {
+      apiId: 'claude-sonnet-9-0',
+      provider: 'Anthropic',
+      supportsAdaptiveThinking: false,
+      inputPerMTok: null,
+      outputPerMTok: null,
+    };
+    try {
+      const req = buildAnthropicRequest({ model: 'claude-sonnet-9-0', prompt: 'Hi.' });
+      expect(req.body.thinking).toBeUndefined();
+    } finally {
+      delete MODEL_REGISTRY[key];
+    }
+    // Same apiId without the registry entry falls back to the regex → on.
+    const fallback = buildAnthropicRequest({ model: 'claude-sonnet-9-0', prompt: 'Hi.' });
+    expect(fallback.body.thinking).toEqual({ type: 'adaptive' });
+  });
+
+  it('falls back to the version regex for unregistered apiIds', () => {
+    // Neither id is in MODEL_REGISTRY: the 4.6 sonnet date-stamp passes the
+    // version gate, the pre-4.6 one fails it.
+    expect(MODEL_REGISTRY['claude-sonnet-4-6-20990101']).toBeUndefined();
+    expect(MODEL_REGISTRY['claude-sonnet-4-5-20250929']).toBeUndefined();
+    const modern = buildAnthropicRequest({ model: 'claude-sonnet-4-6-20990101', prompt: 'Hi.' });
+    expect(modern.body.thinking).toEqual({ type: 'adaptive' });
+    const legacy = buildAnthropicRequest({ model: 'claude-sonnet-4-5-20250929', prompt: 'Hi.' });
+    expect(legacy.body.thinking).toBeUndefined();
   });
 
   it('forces tool_choice on pre-4.6 Opus/Sonnet (thinking off)', () => {

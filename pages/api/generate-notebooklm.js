@@ -15,14 +15,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { renderBriefingMarkdown } from '../../lib/notebooklm/renderBriefingMarkdown.js';
 import { renderPaperReport } from '../../lib/notebooklm/renderPaperReport.js';
 import { buildFocusPrompt } from '../../lib/notebooklm/buildFocusPrompt.js';
 import { bundleZip } from '../../lib/notebooklm/bundleZip.js';
 import { INSTRUCTIONS_MD } from '../../lib/notebooklm/instructions.js';
-import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 const GUIDE_PROMPT_PATH = path.join(process.cwd(), 'prompts/notebooklm-discussion-guide.md');
 
@@ -65,12 +64,16 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  const callMode = resolveCallModelMode(callModelMode);
-
   // Auth gate first: validate password (if supplied) before any body
   // checks so a wrong password reliably returns 401, not 400.
-  if (password !== undefined && !checkAccessPassword(password)) {
-    return res.status(401).json({ error: 'invalid password' });
+  // `validateWhenPresent` keeps this route's strict contract: any supplied
+  // password must be valid, even alongside a client apiKey.
+  const gate = checkRoutePassword(
+    { apiKey: clientApiKey, password },
+    { validateWhenPresent: true }
+  );
+  if (!gate.ok) {
+    return res.status(gate.status).json({ error: gate.error });
   }
   if (!briefing) {
     return res.status(400).json({ error: 'briefing is required' });
@@ -88,18 +91,19 @@ export default async function handler(req, res) {
     }
     const resolvedProvider = (provider ?? modelCfg.provider ?? 'Google').toLowerCase();
 
-    // Resolve API key: accept client-supplied key, or fall back to env vars
-    // via password auth. Mirrors the pattern in pages/api/synthesize.js.
-    let apiKey = clientApiKey;
-    if (!apiKey && password) {
-      if (resolvedProvider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-      else if (resolvedProvider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-      else if (resolvedProvider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+    // Resolve API key: client-supplied key, or the env-var key for the
+    // resolved provider via password auth. Fixture mode bypasses the live
+    // API, so no key is required there (see resolveRouteAuth).
+    const auth = resolveRouteAuth({
+      apiKey: clientApiKey,
+      password,
+      provider: resolvedProvider,
+      callModelMode,
+    });
+    if (!auth.ok) {
+      return res.status(auth.status).json({ error: auth.error });
     }
-    // Fixture mode bypasses the live API, so no key is required there.
-    if (!apiKey && callMode.mode !== 'fixture') {
-      return res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
-    }
+    const { apiKey, callMode } = auth;
 
     // Resolve user-facing model ID to the provider's apiId, same as
     // synthesize.js — callModel sends the apiId to the provider.

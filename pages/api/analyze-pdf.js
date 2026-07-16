@@ -1,11 +1,11 @@
 import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
-import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
+import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
 import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryAfter.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -237,25 +237,19 @@ export default async function handler(req, res) {
   const provider = modelConfig.provider.toLowerCase();
   const modelApiId = modelConfig.apiId ?? model;
 
-  const {
-    apiKey,
-    error: authError,
-    status: authStatus,
-  } = resolveApiKey({
-    clientApiKey: req.body.apiKey,
+  // Shared route auth (password gate → env-key resolution → callMode →
+  // fixture-aware missing-credentials check); see lib/llm/resolveRouteAuth.js.
+  const auth = resolveRouteAuth({
+    apiKey: req.body.apiKey,
     password,
     provider,
+    callModelMode,
+    messages: { missingCredentials: 'missing credentials' },
   });
-  if (authError) {
-    return res.status(authStatus).json({ error: authError });
+  if (!auth.ok) {
+    return res.status(auth.status).json({ error: auth.error });
   }
-
-  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
-  // (see resolveCallModelMode); in production it is forced back to live.
-  const callMode = resolveCallModelMode(callModelMode);
-  if (!apiKey && callMode.mode !== 'fixture') {
-    return res.status(401).json({ error: 'missing credentials' });
-  }
+  const { apiKey, callMode } = auth;
 
   const structuredOutput = {
     name: 'pdf_analysis',
@@ -270,12 +264,7 @@ export default async function handler(req, res) {
     // Token usage summed across every provider call this request makes
     // (initial + backend auto-correction), returned on the 200 body so the
     // client can accumulate per-stage cost.
-    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
-    const addUsage = (r) => {
-      usage.tokensIn += r?.tokensIn ?? 0;
-      usage.tokensOut += r?.tokensOut ?? 0;
-      usage.cacheReadTok += r?.cacheReadTok ?? 0;
-    };
+    const { usage, addUsage } = createUsageAccumulator();
 
     if (correctionPrompt) {
       // Client-triggered correction: text-only, no PDF, but still force schema.

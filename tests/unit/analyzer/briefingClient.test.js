@@ -6,6 +6,7 @@ import {
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
 import { getLLMBarrier, _resetLLMBarriers } from '../../../lib/analyzer/rateLimit.js';
+import { localDateStr } from '../../../lib/dates.js';
 import { MockAPITester } from '../../../lib/analyzer/mockApi.js';
 import { validateBriefing } from '../../../lib/synthesis/validator.js';
 
@@ -361,6 +362,30 @@ describe('runBriefingGeneration — dry-run mockTester path', () => {
     expect(setters.setBriefingCheckResult).toHaveBeenLastCalledWith(
       expect.objectContaining({ verdict: 'NO' })
     );
+  });
+
+  it('stamps the briefing with the LOCAL calendar day (localDateStr), not the UTC day', async () => {
+    // In UTC+ timezones `new Date().toISOString().slice(0, 10)` is yesterday
+    // until UTC catches up — mislabeling "Today" in the sidebar and breaking
+    // the arxivId|briefingDate pairing in suggestPrompt. The saved date must
+    // match lib/dates.js localDateStr() exactly.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const setters = makeSetters();
+    const saveBriefing = vi.fn();
+
+    await runBriefingGeneration({
+      results: { finalRanking },
+      briefingModel: 'gemini-3.1-pro',
+      profile: { content: 'profile' },
+      password: 'pw',
+      saveBriefing,
+      mockTester: makeMockTester(),
+      ...setters,
+    });
+
+    expect(saveBriefing).toHaveBeenCalledTimes(1);
+    expect(saveBriefing.mock.calls[0][0]).toBe(localDateStr());
   });
 
   it('generateQuickSummaries with mockTester makes no fetch calls and skips report-less papers', async () => {

@@ -121,6 +121,46 @@ describe('pipeline — results reset at run start (P1-2)', () => {
   );
 
   test(
+    "a run that fails during Stage 1 fetch leaves the previous run's results intact",
+    { timeout: 30000 },
+    async () => {
+      // No categories selected → fetchPapers throws before any new-run data
+      // lands. resetResults must NOT have fired at run-start, or the failed
+      // run would wipe the previous run's results (in-memory AND the hot
+      // tier, via the debounced save).
+      setupStore({ selectedCategories: [] });
+
+      useAnalyzerStore.getState().setResults({
+        allPapers: [{ id: 'prev-all' }],
+        scoredPapers: [{ id: 'prev-scored' }],
+        finalRanking: [{ id: 'prev-final' }],
+        availablePapers: [{ id: 'prev-available' }],
+      });
+
+      const pipeline = createAnalysisPipeline({
+        abortControllerRef: { current: new AbortController() },
+        pauseRef: { current: false },
+        mockAPITesterRef: { current: null },
+      });
+
+      global.fetch = vi.fn(async (url) => {
+        throw new Error(`Failed fetch-stage run must not reach the network: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, false); // real Stage-1 path
+
+      const { results, processing } = useAnalyzerStore.getState();
+      // The failed run reported its error…
+      expect(processing.errors.some((e) => /Failed to fetch papers/.test(e))).toBe(true);
+      // …and the previous run's results survived, run-added keys included.
+      expect(results.finalRanking).toEqual([{ id: 'prev-final' }]);
+      expect(results.allPapers).toEqual([{ id: 'prev-all' }]);
+      expect(results.scoredPapers).toEqual([{ id: 'prev-scored' }]);
+      expect(results.availablePapers).toEqual([{ id: 'prev-available' }]);
+    }
+  );
+
+  test(
     'filterResults.inProgress is false after a run aborted mid-filter',
     { timeout: 30000 },
     async () => {

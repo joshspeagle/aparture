@@ -22,20 +22,20 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 
 ## Quick reference
 
-| Variable                                | Required                  | Read by                                                | Default                               |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------ | ------------------------------------- |
-| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                            | None — unset means every request 401s |
-| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js`    | Anthropic models unavailable if unset |
-| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js`    | OpenAI models unavailable if unset    |
-| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes · `lib/llm/resolveApiKey.js`    | Google models unavailable if unset    |
-| `PORT`                                  | No                        | Next.js CLI (not read from source)                     | `3000`                                |
-| `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)         | `development` (set by Next)           |
-| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/fetch-arxiv.js`                             | Unset — no `From` header sent         |
-| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js` | `<cwd>/reports`                       |
-| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`       | Unset                                 |
-| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                 | Unset                                 |
-| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                         | Unset                                 |
-| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                          | Unset                                 |
+| Variable                                | Required                  | Read by                                                                     | Default                               |
+| --------------------------------------- | ------------------------- | --------------------------------------------------------------------------- | ------------------------------------- |
+| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                                                 | None — unset means every request 401s |
+| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | Anthropic models unavailable if unset |
+| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | OpenAI models unavailable if unset    |
+| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | Google models unavailable if unset    |
+| `PORT`                                  | No                        | Next.js CLI (not read from source)                                          | `3000`                                |
+| `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)                              | `development` (set by Next)           |
+| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/fetch-arxiv.js`                                                  | Unset — no `From` header sent         |
+| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js`                      | `<cwd>/reports`                       |
+| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`                            | Unset                                 |
+| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                      | Unset                                 |
+| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                              | Unset                                 |
+| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                               | Unset                                 |
 
 ## Required
 

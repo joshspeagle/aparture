@@ -19,4 +19,30 @@ describe('BriefingHeader', () => {
     expect(screen.getByText(/287 screened/)).toBeInTheDocument();
     expect(screen.getByText(/~14 min/)).toBeInTheDocument();
   });
+
+  it('omits the screened segment when papersScreened is null (unrecorded archive)', () => {
+    render(
+      <BriefingHeader
+        date="April 13, 2026"
+        papersInFocus={5}
+        papersScreened={null}
+        readingTimeMinutes={14}
+      />
+    );
+    expect(screen.getByText(/5 papers in focus/)).toBeInTheDocument();
+    expect(screen.queryByText(/screened/)).not.toBeInTheDocument();
+    expect(screen.getByText(/~14 min/)).toBeInTheDocument();
+  });
+
+  it('still renders a genuine zero screened count', () => {
+    render(
+      <BriefingHeader
+        date="April 13, 2026"
+        papersInFocus={5}
+        papersScreened={0}
+        readingTimeMinutes={14}
+      />
+    );
+    expect(screen.getByText(/0 screened/)).toBeInTheDocument();
+  });
 });

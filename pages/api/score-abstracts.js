@@ -2,9 +2,9 @@ import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
+import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 // Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
 // Portable subset only; value constraints enforced in validateScoringResponse.
@@ -108,15 +108,20 @@ export default async function handler(req, res) {
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
   const modelApiId = modelConfig?.apiId ?? modelToUse;
 
-  let apiKey = clientApiKey;
-  // Validate the password BEFORE the empty-papers shortcut so a bad password
-  // never authenticates, but resolve the provider key AFTER it. App.jsx's
-  // login probe POSTs `{ papers: [], password }` with no model, so `provider`
-  // defaults to Google; resolving the Google key here would 401 a user who
-  // only has CLAUDE_API_KEY / OPENAI_API_KEY set. The empty-papers path needs
-  // no provider key at all — it never calls the model.
-  if (!apiKey && password && !checkAccessPassword(password)) {
-    return res.status(401).json({ error: 'Invalid password' });
+  const authMessages = {
+    invalidPassword: 'Invalid password',
+    missingCredentials: 'missing credentials',
+  };
+  // Phase 1: validate the password BEFORE the empty-papers shortcut so a bad
+  // password never authenticates, but resolve the provider key AFTER it (in
+  // resolveRouteAuth below). App.jsx's login probe POSTs `{ papers: [],
+  // password }` with no model, so `provider` defaults to Google; resolving
+  // the Google key here would 401 a user who only has CLAUDE_API_KEY /
+  // OPENAI_API_KEY set. The empty-papers path needs no provider key at all —
+  // it never calls the model.
+  const gate = checkRoutePassword({ apiKey: clientApiKey, password }, { messages: authMessages });
+  if (!gate.ok) {
+    return res.status(gate.status).json({ error: gate.error });
   }
 
   // Early return if no papers to score (used by App.jsx to verify password
@@ -126,20 +131,19 @@ export default async function handler(req, res) {
     return res.status(200).json({ scores: [], rawResponse: '[]' });
   }
 
-  if (!apiKey && password) {
-    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  // Phase 2: full ladder (key resolution + callMode + fixture-aware
+  // missing-credentials check).
+  const auth = resolveRouteAuth({
+    apiKey: clientApiKey,
+    password,
+    provider,
+    callModelMode,
+    messages: authMessages,
+  });
+  if (!auth.ok) {
+    return res.status(auth.status).json({ error: auth.error });
   }
-
-  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
-  // (see resolveCallModelMode); in production it is forced back to live.
-  const callMode = resolveCallModelMode(callModelMode);
-  if (!apiKey && callMode.mode !== 'fixture') {
-    return res.status(401).json({ error: 'missing credentials' });
-  }
-
-  const isFixture = callMode.mode === 'fixture';
+  const { apiKey, callMode, isFixture } = auth;
   const cacheable = provider === 'anthropic';
 
   const expectedCount = papers.length;
@@ -156,12 +160,7 @@ export default async function handler(req, res) {
     // Token usage summed across every provider call this request makes
     // (initial + backend auto-correction), returned on the 200 body so the
     // client can accumulate per-stage cost.
-    const usage = { tokensIn: 0, tokensOut: 0, cacheReadTok: 0 };
-    const addUsage = (r) => {
-      usage.tokensIn += r?.tokensIn ?? 0;
-      usage.tokensOut += r?.tokensOut ?? 0;
-      usage.cacheReadTok += r?.cacheReadTok ?? 0;
-    };
+    const { usage, addUsage } = createUsageAccumulator();
 
     if (correctionPrompt) {
       const finalPrompt = process.env.APARTURE_TEST_PROMPT_OVERRIDE ?? correctionPrompt;

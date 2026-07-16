@@ -18,7 +18,7 @@ export default function PlaywrightNotice({ arxivId, title }) {
         display: 'flex',
         gap: 'var(--aparture-space-3)',
         padding: 'var(--aparture-space-3) var(--aparture-space-4)',
-        background: 'rgba(234, 179, 8, 0.08)',
+        background: 'rgba(245, 158, 11, 0.08)',
         borderLeft: '3px solid #f59e0b',
         borderRadius: '4px',
         fontSize: 'var(--aparture-text-sm)',

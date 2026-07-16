@@ -12,7 +12,7 @@ This page assumes you've done [Install](/getting-started/install), [API keys](/g
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSWORD`. The app is a sidebar on the left plus a main area that renders whatever the sidebar selects.
+Open [http://localhost:3000](http://localhost:3000) and enter your `ACCESS_PASSWORD`. The app is a sidebar on the left plus a main area that renders whatever the sidebar selects. On a phone or any narrow window the sidebar collapses into a drawer — open it with the ☰ button in the top bar.
 
 The sidebar carries a list of past briefings (empty for now), a light/dark theme toggle, and three nav links — <span class="ui-action">Profile</span>, <span class="ui-action">Settings</span>, and <span class="ui-action">Pipeline</span> — that you'll cycle between during this run. Click each one now just to get a feel for the layout; there's nothing to fill in or change yet.
 

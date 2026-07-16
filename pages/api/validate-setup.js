@@ -11,7 +11,7 @@
 
 import { resolveApiKey } from '../../lib/llm/resolveApiKey.js';
 import { validateProviderSetup } from '../../lib/llm/validateSetup.js';
-import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
+import { checkRoutePassword } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 const PROVIDER_ENV_LABELS = {
@@ -47,8 +47,11 @@ export default async function handler(req, res) {
   }
   // Validate the password once up front so a wrong password 401s instead of
   // producing per-slot failures (resolveApiKey re-checks it per provider).
-  if (!clientApiKey && !checkAccessPassword(password)) {
-    return res.status(401).json({ error: 'invalid password' });
+  // Only phase 1 of the shared route auth applies here: this route resolves
+  // keys per (provider, model) slot below, not for a single provider.
+  const gate = checkRoutePassword({ apiKey: clientApiKey, password });
+  if (!gate.ok) {
+    return res.status(gate.status).json({ error: gate.error });
   }
 
   // Group slots by unique (provider, apiId) pair — identical pairs share one

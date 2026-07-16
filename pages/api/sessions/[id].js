@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
+import { decodePasswordHeader } from '../../../lib/auth/passwordHeader.js';
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -34,7 +35,10 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Auth via request header, NOT the query string — `?password=` leaks
     // into dev-server logs and browser history.
-    const password = req.headers?.['x-aparture-password'];
+    // Header values are percent-encoded by the client (fetch's ByteString
+    // constraint rejects non-Latin1 chars); decode before comparing.
+    // Malformed encoding decodes to null -> wrong password -> 401.
+    const password = decodePasswordHeader(req.headers?.['x-aparture-password']);
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
@@ -51,7 +55,10 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     // Auth via request header, NOT the query string — `?password=` leaks
     // into dev-server logs and browser history.
-    const password = req.headers?.['x-aparture-password'];
+    // Header values are percent-encoded by the client (fetch's ByteString
+    // constraint rejects non-Latin1 chars); decode before comparing.
+    // Malformed encoding decodes to null -> wrong password -> 401.
+    const password = decodePasswordHeader(req.headers?.['x-aparture-password']);
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }

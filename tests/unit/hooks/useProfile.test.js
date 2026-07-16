@@ -158,6 +158,93 @@ describe('useProfile', () => {
   });
 });
 
+describe('useProfile — corrupt stored profile repair (C8)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('replaces a corrupt aparture-profile blob on mount (one-time repair)', () => {
+    window.localStorage.setItem('aparture-profile', '{not-valid-json!!');
+    window.localStorage.setItem('aparture-profile-md', 'I study flows.');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+
+    // Initializer fell back to the Phase-1 migration…
+    expect(result.current.profile.content).toBe('I study flows.');
+    // …and the mount effect REPLACED the corrupt blob, so the next load
+    // parses cleanly instead of re-migrating forever.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-profile'));
+    expect(stored.content).toBe('I study flows.');
+  });
+
+  it('backs up the corrupt blob under aparture-profile-corrupt-backup before repairing', () => {
+    window.localStorage.setItem('aparture-profile', '{not-valid-json!!');
+
+    renderHook(() => useProfile({ scoringCriteria: 'seed' }));
+
+    // The unparseable original is stashed, not destroyed — corruption is
+    // often partial and the prose/revisions may be recoverable by hand.
+    expect(window.localStorage.getItem('aparture-profile-corrupt-backup')).toBe(
+      '{not-valid-json!!'
+    );
+    expect(JSON.parse(window.localStorage.getItem('aparture-profile')).content).toBe('seed');
+  });
+
+  it('treats a parseable-but-unusable blob ("null") as corrupt instead of crashing', () => {
+    // JSON.parse('null') succeeds, so the old JSON-validity check let this
+    // through to `profile.content` — a TypeError out of the useState
+    // initializer, i.e. a render crash loop with no repair path.
+    window.localStorage.setItem('aparture-profile', 'null');
+
+    let result;
+    expect(() => {
+      ({ result } = renderHook(() => useProfile({ scoringCriteria: 'seed' })));
+    }).not.toThrow();
+
+    expect(result.current.profile.content).toBe('seed');
+    expect(window.localStorage.getItem('aparture-profile-corrupt-backup')).toBe('null');
+    expect(JSON.parse(window.localStorage.getItem('aparture-profile')).content).toBe('seed');
+  });
+
+  it('repairs a corrupt aparture-profiles map on disk instead of reseeding in memory forever', () => {
+    window.localStorage.setItem(
+      'aparture-profile',
+      JSON.stringify({ content: 'working', updatedAt: 1, lastFeedbackCutoff: 0, revisions: [] })
+    );
+    window.localStorage.setItem('aparture-profiles', '{oops');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+
+    expect(result.current.activeProfileName).toBe('Default');
+    // Pre-fix, the truthy-but-corrupt blob survived on disk (the mount effect
+    // only wrote when the key was MISSING), so every load reseeded in memory.
+    expect(JSON.parse(window.localStorage.getItem('aparture-profiles')).Default.content).toBe(
+      'working'
+    );
+  });
+
+  it('does NOT rewrite a valid stored profile on mount', () => {
+    const valid = {
+      content: 'hand-written profile',
+      updatedAt: 123,
+      lastFeedbackCutoff: 0,
+      revisions: [],
+    };
+    window.localStorage.setItem('aparture-profile', JSON.stringify(valid));
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+
+    expect(result.current.profile.content).toBe('hand-written profile');
+    const profileWrites = setItemSpy.mock.calls.filter(([key]) => key === 'aparture-profile');
+    expect(profileWrites).toHaveLength(0);
+  });
+});
+
 describe('useProfile — named profiles', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -323,6 +410,86 @@ describe('useProfile — named profiles', () => {
     });
     expect(result.current.profiles.A).toBeDefined();
     expect(result.current.activeProfileName).toBe('A');
+  });
+
+  it('saveAs refuses to clobber a DIFFERENT existing profile', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('profile A');
+    });
+    act(() => {
+      result.current.saveAs('A');
+    });
+    act(() => {
+      result.current.updateProfile('something else entirely');
+    });
+    // Attempt to save the new content over the OTHER snapshot ("Default",
+    // seeded on first load). Snapshot contents are never revision-archived,
+    // so a clobber here would be silent, irreversible loss.
+    act(() => {
+      result.current.saveAs('Default');
+    });
+    expect(result.current.profiles.Default.content).toBe('');
+    expect(result.current.activeProfileName).toBe('A');
+  });
+
+  it('saveAs under the ACTIVE name updates its own snapshot (still allowed)', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.saveAs('Mine');
+    });
+    act(() => {
+      result.current.updateProfile('updated content');
+    });
+    act(() => {
+      result.current.saveAs('Mine');
+    });
+    expect(result.current.profiles.Mine.content).toBe('updated content');
+    expect(result.current.activeProfileName).toBe('Mine');
+  });
+
+  it('switchTo leaves the stored map and pointer untouched when the working-slot write fails', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('profile A');
+    });
+    act(() => {
+      result.current.saveAs('A');
+    });
+    act(() => {
+      result.current.updateProfile('profile B');
+    });
+    act(() => {
+      result.current.saveAs('B');
+    });
+
+    // Quota failure ONLY on the working-slot key; map/pointer writes go
+    // through. Pre-fix, switchTo wrote the pointer anyway, leaving disk in a
+    // pointer-ahead-of-content state: after a reload, one more switch would
+    // snapshot the stale working content over the target profile's entry.
+    const realSetItem = Storage.prototype.setItem;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === 'aparture-profile') {
+        const err = new Error('quota');
+        err.name = 'QuotaExceededError';
+        throw err;
+      }
+      return realSetItem.call(this, key, value);
+    });
+
+    act(() => {
+      result.current.switchTo('A');
+    });
+
+    // In-memory switch proceeds for the session…
+    expect(result.current.activeProfileName).toBe('A');
+    expect(result.current.profile.content).toBe('profile A');
+    // …but disk stays fully pre-switch-consistent: pointer still on B,
+    // working slot still holding B's content.
+    expect(window.localStorage.getItem('aparture-active-profile')).toBe('B');
+    expect(JSON.parse(window.localStorage.getItem('aparture-profile')).content).toBe('profile B');
+    expect(warn).toHaveBeenCalled();
   });
 
   it('named profiles persist across a remount', () => {

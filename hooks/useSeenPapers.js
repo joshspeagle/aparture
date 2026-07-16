@@ -29,6 +29,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { encodePasswordHeader } from '../lib/auth/passwordHeader.js';
 import { AnalysisWorkerPool } from '../lib/analyzer/rateLimit.js';
 import { papersFromBriefing } from '../lib/seenPapers/papersFromBriefing.js';
 
@@ -120,7 +121,7 @@ async function migrateFromBriefings({ password, signal }) {
   let listRes;
   try {
     listRes = await fetch('/api/briefings', {
-      headers: { 'x-aparture-password': password ?? '' },
+      headers: { 'x-aparture-password': encodePasswordHeader(password) },
       signal,
     });
   } catch (err) {
@@ -155,7 +156,7 @@ async function migrateFromBriefings({ password, signal }) {
   await pool.run(ids, async (id) => {
     try {
       const res = await fetch(`/api/briefings/${encodeURIComponent(id)}`, {
-        headers: { 'x-aparture-password': password ?? '' },
+        headers: { 'x-aparture-password': encodePasswordHeader(password) },
         signal,
       });
       if (!res.ok) {

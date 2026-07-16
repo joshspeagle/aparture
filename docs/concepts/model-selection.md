@@ -29,7 +29,7 @@ The registry in `utils/models.js` is the authoritative source (it now carries pe
 
 | User-facing ID      | API ID              | Context | Input / Output | Adaptive thinking |
 | ------------------- | ------------------- | ------- | -------------- | ----------------- |
-| `claude-opus-4-8`   | `claude-opus-4-8`   | 1M      | $5 / $25       | Yes               |
+| `claude-opus-4.8`   | `claude-opus-4-8`   | 1M      | $5 / $25       | Yes               |
 | `claude-opus-4.7`   | `claude-opus-4-7`   | 1M      | $5 / $25       | Yes               |
 | `claude-opus-4.6`   | `claude-opus-4-6`   | 1M      | $5 / $25       | Yes               |
 | `claude-sonnet-5`   | `claude-sonnet-5`   | 1M      | $3 / $15       | Yes               |
@@ -96,9 +96,9 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 **`postProcessingModel` — same as or stronger than `scoringModel`.** Stage 3.5 compares top papers head-to-head for calibration, so calibration matters more than throughput. Most configurations set it to the same model as `scoringModel`.
 
-**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.5-flash`, `claude-opus-4-8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-pro`.
+**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.5-flash`, `claude-opus-4.8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-pro`.
 
-**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.5-flash`, `claude-opus-4-8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-flash` works if you're willing to accept slightly less polished prose.
+**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.5-flash`, `claude-opus-4.8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-flash` works if you're willing to accept slightly less polished prose.
 
 ## Example configurations
 

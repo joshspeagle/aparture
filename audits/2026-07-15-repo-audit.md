@@ -1,5 +1,7 @@
 # Aparture Repository Audit — 2026-07-15
 
+_This is a point-in-time snapshot from the start of this effort, kept as provenance. Many of its findings — including the P0s, the Next-16.3 assumption, and "the registry has no pricing" — are resolved by later commits on this branch; read it as the before picture, not the current state._
+
 **Scope:** full-repo audit across six areas — vision & organization, backend implementation, frontend implementation, UI/UX & documentation, currency (models/APIs/dependencies), and tests & infrastructure — conducted by six parallel audit passes with independent code verification of all high-severity findings.
 
 **Method note:** a large tune-up PR (#5) merged recently, so this audit deliberately dug past surface bugs. Every finding marked _verified_ below was confirmed by reading the actual code; external-currency claims cite their sources. The full suite was run twice during the audit: **883 tests / 115 files, 0 failures, 0 flakes, ~51 s; lint and prettier clean.**

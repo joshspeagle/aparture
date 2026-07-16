@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import TextArea from '../ui/TextArea.jsx';
 import ActionPill, { ROW_TINT, SEMANTIC_COLORS } from '../ui/ActionPill.jsx';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
@@ -8,7 +8,7 @@ import { getModel } from '../../utils/models.js';
 import {
   COMMENT_CANCEL_BUTTON_STYLE,
   COMMENT_SAVE_BUTTON_STYLE,
-} from '../filter/FilterResultsList.jsx';
+} from '../ui/commentButtonStyles.js';
 
 function RowComment({ arxivId, onAddPaperComment }) {
   const [expanded, setExpanded] = useState(false);
@@ -228,18 +228,26 @@ export default function ScoreReviewSurface({
   // Projected Stage 4 spend for the LIVE selection — recomputed on every
   // star/dismiss because the selection is (top-N ∪ starred) − dismissed,
   // the same resolution startProcessing applies after the gate. Hidden when
-  // the PDF model has no registry pricing (never show "$null").
-  const pdfSet = resolveAdditiveSet({ availablePapers, maxDeepAnalysis, starredIds, dismissedIds });
-  const pdfEstimate = estimateStageCost({
-    stage: 'pdf',
-    paperCount: pdfSet.length,
-    modelId: pdfModel,
-  });
-  const costLine =
-    pdfEstimate.cost != null
+  // the PDF model has no registry pricing (never show "$null"). Memoized so
+  // unrelated re-renders (row comment expands, group toggles) don't re-walk
+  // the full paper list.
+  const costLine = useMemo(() => {
+    const pdfSet = resolveAdditiveSet({
+      availablePapers,
+      maxDeepAnalysis,
+      starredIds,
+      dismissedIds,
+    });
+    const pdfEstimate = estimateStageCost({
+      stage: 'pdf',
+      paperCount: pdfSet.length,
+      modelId: pdfModel,
+    });
+    return pdfEstimate.cost != null
       ? `${pdfSet.length} paper${pdfSet.length === 1 ? '' : 's'} will be deep-read — est. ` +
-        `${formatUsd(pdfEstimate.cost)} (${getModel(pdfModel)?.name ?? pdfModel})`
+          `${formatUsd(pdfEstimate.cost)} (${getModel(pdfModel)?.name ?? pdfModel})`
       : null;
+  }, [availablePapers, maxDeepAnalysis, starredIds, dismissedIds, pdfModel]);
 
   return (
     <section

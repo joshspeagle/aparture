@@ -2,9 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
-import { resolveCallModelMode } from '../../lib/llm/resolveCallModelMode.js';
+import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
-import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,16 +21,12 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  // Resolve API key: accept client-supplied key, or fall back to env vars via password auth
-  let apiKey = clientApiKey;
-  if (!apiKey && password) {
-    if (!checkAccessPassword(password)) {
-      res.status(401).json({ error: 'invalid password' });
-      return;
-    }
-    if (provider === 'anthropic') apiKey = process.env.CLAUDE_API_KEY;
-    else if (provider === 'google') apiKey = process.env.GOOGLE_AI_API_KEY;
-    else if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
+  // Phase 1: password gate before the body-field 400 so a wrong password is
+  // always a 401, matching this route's original check ordering.
+  const gate = checkRoutePassword({ apiKey: clientApiKey, password });
+  if (!gate.ok) {
+    res.status(gate.status).json({ error: gate.error });
+    return;
   }
 
   if (!paper?.arxivId || !fullReport || !provider || !model) {
@@ -40,15 +35,15 @@ export default async function handler(req, res) {
     });
     return;
   }
-  // Skip the auth check in fixture mode — fixture-based tests don't need a
-  // real key because callModel never actually hits the network.
-  // Client-supplied fixture mode is honored only under NODE_ENV === 'test'
-  // (see resolveCallModelMode); in production it is forced back to live.
-  const callMode = resolveCallModelMode(callModelMode);
-  if (!apiKey && callMode.mode !== 'fixture') {
-    res.status(401).json({ error: 'missing credentials: supply apiKey or password' });
+
+  // Phase 2: env-key resolution + callMode + fixture-aware credential check
+  // (fixture mode skips the missing-credentials 401; see resolveRouteAuth).
+  const auth = resolveRouteAuth({ apiKey: clientApiKey, password, provider, callModelMode });
+  if (!auth.ok) {
+    res.status(auth.status).json({ error: auth.error });
     return;
   }
+  const { apiKey, callMode } = auth;
 
   try {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'analyze-pdf-quick.md');
