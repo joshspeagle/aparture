@@ -18,7 +18,7 @@ _In the code:_ the three gates in `lib/analyzer/pipeline.js`; `components/run/Re
 
 ## 3. Spending follows relevance
 
-Cheap models read everything; capable models read only what survives. Each pipeline stage has its own model slot, and defaults follow a rule rather than a brand: the cheapest registered model that meets the slot's capability bar, re-derived whenever the registry is refreshed. Prompt caching and cross-run duplicate detection exist for the same reason — to avoid paying twice for the same reading.
+Cheap models read everything; capable models read only what survives. Each pipeline stage has its own model slot, and defaults follow the shape of the work rather than a brand: at each registry refresh they are hand-chosen from the registry's pricing and capability data, favoring cheap models for the high-volume triage slots and the most capable GA model for the reading and briefing slots. Prompt caching and cross-run duplicate detection exist for the same reason — to avoid paying twice for the same reading.
 
 _In the code:_ `utils/models.js` (registry with per-model pricing), `lib/analyzer/applyDedupe.js`, the caching paths in `lib/llm/`.
 

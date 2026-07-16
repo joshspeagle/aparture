@@ -73,7 +73,7 @@ Current (July 2026) list pricing for every Anthropic model in Aparture's registr
 
 | Model                                                   | Context | Input ($/MTok) | Output ($/MTok) |
 | ------------------------------------------------------- | ------- | -------------: | --------------: |
-| `claude-opus-4-8`                                       | 1M      |             $5 |             $25 |
+| `claude-opus-4.8`                                       | 1M      |             $5 |             $25 |
 | `claude-opus-4.7` (recommended PDF + briefing)          | 1M      |             $5 |             $25 |
 | `claude-opus-4.6`                                       | 1M      |             $5 |             $25 |
 | `claude-sonnet-5`\*                                     | 1M      |             $3 |             $15 |

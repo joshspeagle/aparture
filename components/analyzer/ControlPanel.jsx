@@ -63,8 +63,8 @@ export default function ControlPanel({
   const runSetupCheck = async () => {
     const slotDefs = [
       ['Filter', config?.filterModel],
+      // No Post-processing row: Stage 3.5 dispatches config.scoringModel, so the Scoring probe covers it.
       ['Scoring', config?.scoringModel],
-      ['Post-processing', config?.postProcessingModel],
       ['PDF analysis', config?.pdfModel],
       ['Briefing', config?.briefingModel],
       ['Quick summaries', config?.quickSummaryModel],

@@ -21,7 +21,7 @@ const MODEL_REGISTRY = {
   // User-facing ID -> Actual API model ID mapping (+ pricing)
 
   // Anthropic — current
-  'claude-opus-4-8': {
+  'claude-opus-4.8': {
     apiId: 'claude-opus-4-8',
     provider: 'Anthropic',
     supportsAdaptiveThinking: true,
@@ -165,7 +165,7 @@ const DEFAULT_MODEL_ID = 'gemini-3.5-flash';
 const AVAILABLE_MODELS = [
   // --- Anthropic: current ---
   {
-    id: 'claude-opus-4-8',
+    id: 'claude-opus-4.8',
     name: 'Claude Opus 4.8',
     provider: 'Anthropic',
     supportsPDF: true,

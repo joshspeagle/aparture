@@ -4,7 +4,7 @@
 // edits, no dismissal). Choosing a template sets both the profile content and
 // config.selectedCategories, then dismisses the picker permanently.
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 import { STARTER_TEMPLATES, isUneditedProfile } from '../../lib/profile/starterTemplates.js';
@@ -16,21 +16,30 @@ function readDismissed() {
   return window.localStorage.getItem(TEMPLATE_PICKER_DISMISSED_KEY) === 'true';
 }
 
+// The flag never changes externally, so no subscription is needed — the store
+// hook is used purely for its hydration-safe snapshot semantics.
+const emptySubscribe = () => () => {};
+
 export default function StarterTemplatePicker({
   profile,
   updateProfile,
   setConfig,
   disabled = false,
 }) {
-  const [dismissed, setDismissed] = useState(readDismissed);
+  // Hydration-safe read of the persisted flag: the server render and the
+  // hydration render both use the server snapshot ("dismissed", render
+  // nothing), then React re-reads localStorage after mount. Real users see
+  // the identical end state, without a hydration mismatch.
+  const persistedDismissed = useSyncExternalStore(emptySubscribe, readDismissed, () => true);
+  const [dismissedThisSession, setDismissedThisSession] = useState(false);
 
-  if (dismissed || !isUneditedProfile(profile)) return null;
+  if (persistedDismissed || dismissedThisSession || !isUneditedProfile(profile)) return null;
 
   const dismiss = () => {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(TEMPLATE_PICKER_DISMISSED_KEY, 'true');
     }
-    setDismissed(true);
+    setDismissedThisSession(true);
   };
 
   const applyTemplate = (template) => {

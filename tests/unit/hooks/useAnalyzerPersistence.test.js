@@ -843,9 +843,9 @@ describe('migrateLegacyConfig — v8 → v9 (removed Anthropic model remap)', ()
     expect(result.version).toBe(9);
     expect(result.filterModel).toBe('claude-haiku-4.5');
     expect(result.scoringModel).toBe('claude-sonnet-5');
-    expect(result.postProcessingModel).toBe('claude-opus-4-8');
-    expect(result.pdfModel).toBe('claude-opus-4-8');
-    expect(result.briefingModel).toBe('claude-opus-4-8');
+    expect(result.postProcessingModel).toBe('claude-opus-4.8');
+    expect(result.pdfModel).toBe('claude-opus-4.8');
+    expect(result.briefingModel).toBe('claude-opus-4.8');
     expect(result.quickSummaryModel).toBe('claude-haiku-4.5');
     expect(result.notebookLMModel).toBe('claude-sonnet-5');
   });
@@ -874,7 +874,7 @@ describe('migrateLegacyConfig — v8 → v9 (removed Anthropic model remap)', ()
     const result = migrateLegacyConfig(v7Config);
     expect(result.version).toBe(9);
     expect(result.pauseBeforeDeepAnalysis).toBe(true);
-    expect(result.pdfModel).toBe('claude-opus-4-8');
+    expect(result.pdfModel).toBe('claude-opus-4.8');
   });
 });
 
