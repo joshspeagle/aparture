@@ -41,7 +41,7 @@ Aparture's default model slots are all-Google, so adding a Claude key alone does
 
 1. Start (or restart) `npm run dev` and log in.
 2. Open the **Settings** panel.
-3. Change the `pdfModel` slot to `claude-sonnet-4.6` or `claude-opus-4.7`. This is the most expensive stage and the clearest signal that your key works.
+3. Change the `pdfModel` slot to `claude-sonnet-4.6` or `claude-opus-5`. This is the most expensive stage and the clearest signal that your key works.
 4. Back in the Control Panel, run the [Minimal API Test](/getting-started/verify-setup).
 
 Expect ~$0.50–$1 on the 5-paper test once the PDF stage is running on Claude.
@@ -56,31 +56,37 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | ----------------------------------- | ------------------- |
 | Filter (`filterModel`)              | `claude-haiku-4.5`  |
 | Scoring (`scoringModel`)            | `claude-sonnet-4.6` |
-| PDF analysis (`pdfModel`)           | `claude-opus-4.7`   |
-| Briefing (`briefingModel`)          | `claude-opus-4.7`   |
+| PDF analysis (`pdfModel`)           | `claude-opus-5`     |
+| Briefing (`briefingModel`)          | `claude-opus-5`     |
 | Quick summary (`quickSummaryModel`) | `claude-haiku-4.5`  |
-| NotebookLM doc (`notebookLMModel`)  | `claude-opus-4.7`   |
+| NotebookLM doc (`notebookLMModel`)  | `claude-opus-5`     |
 
-If you want a quality/cost step down, swap `pdfModel` to Sonnet 4.6 — that single change cuts roughly a third off a typical run, since PDF analysis dominates cost.
+Opus 5 replaced Opus 4.7 in this lineup in July 2026. It's the current Opus flagship at exactly the same $5 / $25 pricing, so the swap costs nothing — 4.7 and 4.8 remain in the registry if you'd rather pin a known-good model.
+
+If you want a quality/cost step down, swap `pdfModel` to Sonnet 4.6 — that single change cuts roughly a third off a typical run, since PDF analysis dominates cost. In the other direction, `claude-fable-5` sits above Opus at 2× the price; see the pricing note below before putting it in a per-paper slot.
 
 ## 6. Cost estimate
 
 ### Per-model pricing
 
-All Claude models bill per million tokens (MTok), separately for input and output. Input tokens are everything you send to the model (prompt, system message, PDF content, prior-paper context); output tokens are everything the model writes back, **including adaptive-thinking tokens** on Opus 4.7 (which can inflate output by 20–50% on hard prompts).
+All Claude models bill per million tokens (MTok), separately for input and output. Input tokens are everything you send to the model (prompt, system message, PDF content, prior-paper context); output tokens are everything the model writes back, **including adaptive-thinking tokens** on the Opus and Sonnet models (which can inflate output by 20–50% on hard prompts).
 
 Current (July 2026) list pricing for every Anthropic model in Aparture's registry:
 
 | Model                                                   | Context | Input ($/MTok) | Output ($/MTok) |
 | ------------------------------------------------------- | ------- | -------------: | --------------: |
+| `claude-fable-5`†                                       | 1M      |            $10 |             $50 |
+| `claude-opus-5` (recommended PDF + briefing)            | 1M      |             $5 |             $25 |
 | `claude-opus-4.8`                                       | 1M      |             $5 |             $25 |
-| `claude-opus-4.7` (recommended PDF + briefing)          | 1M      |             $5 |             $25 |
+| `claude-opus-4.7`                                       | 1M      |             $5 |             $25 |
 | `claude-opus-4.6`                                       | 1M      |             $5 |             $25 |
 | `claude-sonnet-5`\*                                     | 1M      |             $3 |             $15 |
 | `claude-sonnet-4.6` (recommended scoring)               | 1M      |             $3 |             $15 |
 | `claude-haiku-4.5` (recommended filter + quick-summary) | 200k    |             $1 |              $5 |
 
 \* `claude-sonnet-5` has introductory pricing of $2 / $10 per MTok through 2026-08-31, after which the $3 / $15 list price applies. It also uses a new tokenizer that produces roughly 30% more tokens for the same text than Sonnet 4.6, so per-request cost doesn't drop 1:1 with the sticker price.
+
+† `claude-fable-5` is the most expensive model in the registry — 2× Opus on both input and output — and its thinking is always on, so you can't trade thinking tokens away to claw the cost back. It also **requires your Anthropic organization's data retention to be set to 30 days**; under zero data retention every request fails with a 400 that looks like a malformed-payload error rather than a policy one. It shares Opus 4.7's tokenizer, so token counts are comparable to Opus 4.7/4.8 but each token costs twice as much. Worth trying in the `briefingModel` slot if editorial quality is the thing you care about most; hard to justify for `pdfModel`, where volume multiplies the premium across every paper.
 
 The retired 2026-07 registry entries (`claude-opus-4.5`, `claude-opus-4.1`, `claude-sonnet-4.5`, `claude-haiku-3.5`) are no longer selectable; existing configs that referenced them are remapped automatically to the closest current-generation model on next load.
 
@@ -97,13 +103,13 @@ Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go th
 | ------------------------ | ---------- | ------------ | ------------- | ---------------------------------- |
 | Filter (100 abstracts)   | Haiku 4.5  | ~40,000      | ~5,000        | 40k × $1 / MTok + 5k × $5 = ~$0.07 |
 | Scoring (50 abstracts)   | Sonnet 4.6 | ~40,000      | ~7,500        | 40k × $3 + 7.5k × $15 = ~$0.23     |
-| PDF analysis (20 papers) | Opus 4.7   | ~360,000     | ~40,000       | 360k × $5 + 40k × $25 = ~$2.80     |
+| PDF analysis (20 papers) | Opus 5     | ~360,000     | ~40,000       | 360k × $5 + 40k × $25 = ~$2.80     |
 | Quick summaries (20)     | Haiku 4.5  | ~30,000      | ~8,000        | 30k × $1 + 8k × $5 = ~$0.07        |
-| Briefing synthesis       | Opus 4.7   | ~10,000      | ~3,500        | 10k × $5 + 3.5k × $25 = ~$0.14     |
-| Hallucination audit      | Opus 4.7   | ~6,000       | ~800          | 6k × $5 + 0.8k × $25 = ~$0.05      |
+| Briefing synthesis       | Opus 5     | ~10,000      | ~3,500        | 10k × $5 + 3.5k × $25 = ~$0.14     |
+| Hallucination audit      | Opus 5     | ~6,000       | ~800          | 6k × $5 + 0.8k × $25 = ~$0.05      |
 | **Total, list price**    |            |              |               | **~$3.36**                         |
 
-The PDF-analysis output-token count includes adaptive-thinking tokens (Opus 4.7 uses roughly 1000–2000 output tokens per paper with thinking on). For a non-thinking model like Opus 4.6 or Sonnet 4.6, output is closer to ~20,000 tokens total and the PDF-analysis stage lands at ~$2.30 instead of ~$2.80.
+The PDF-analysis output-token count includes adaptive-thinking tokens (an Opus-tier model uses roughly 1000–2000 output tokens per paper with thinking on). Costs are unchanged from the previous Opus 4.7 lineup — Opus 5 is priced identically. Running the same stage on Haiku 4.5, which has no adaptive thinking, puts output closer to ~20,000 tokens total.
 
 With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$2.30–2.70 per run** after the first.
 

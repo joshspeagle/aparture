@@ -9,18 +9,45 @@
 // `supportsAdaptiveThinking` (Anthropic entries ONLY — non-Anthropic entries
 // omit it, the flag is meaningless for other providers): whether the API
 // model accepts `thinking: {type: 'adaptive'}`. True for Opus/Sonnet 4.6+
-// and the 5.x line; false for Haiku (live-verified 400: "adaptive thinking
-// is not supported on this model" against claude-haiku-4-5) and any pre-4.6
-// Opus/Sonnet ID that gets added (those require the older
-// `{type: 'enabled', budget_tokens}` shape and reject adaptive). The
-// Anthropic adapter consults this flag via supportsAdaptiveThinkingByApiId
-// below; keep it in sync when adding Anthropic models.
+// and the 5.x line (incl. Fable 5); false for Haiku (live-verified 400:
+// "adaptive thinking is not supported on this model" against
+// claude-haiku-4-5) and any pre-4.6 Opus/Sonnet ID that gets added (those
+// require the older `{type: 'enabled', budget_tokens}` shape and reject
+// adaptive). The Anthropic adapter consults this flag via
+// supportsAdaptiveThinkingByApiId below; keep it in sync when adding
+// Anthropic models.
+//
+// Registering a NON-Opus/Sonnet Anthropic model is load-bearing, not
+// cosmetic: the adapter's regex fallback only matches `claude-opus-*` /
+// `claude-sonnet-*`, so an unregistered `claude-fable-5` would fall through
+// to `false`, and the adapter would then force `tool_choice: {type: 'tool'}`
+// — which Fable 5 rejects, because its thinking is always on and forced
+// tool_choice is invalid whenever thinking is enabled.
 
 // Model registry with actual API model IDs
 const MODEL_REGISTRY = {
   // User-facing ID -> Actual API model ID mapping (+ pricing)
 
   // Anthropic — current
+  // Fable 5 is Anthropic's most capable widely released model (GA
+  // 2026-06-09). Thinking is ALWAYS on: `{type: 'adaptive'}` is accepted (and
+  // is what the adapter sends), but an explicit `{type: 'disabled'}` returns
+  // a 400 at any effort level. It also requires the org's data retention to
+  // be 30 days — under zero data retention every request 400s.
+  'claude-fable-5': {
+    apiId: 'claude-fable-5',
+    provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
+    inputPerMTok: 10,
+    outputPerMTok: 50,
+  },
+  'claude-opus-5': {
+    apiId: 'claude-opus-5',
+    provider: 'Anthropic',
+    supportsAdaptiveThinking: true,
+    inputPerMTok: 5,
+    outputPerMTok: 25,
+  },
   'claude-opus-4.8': {
     apiId: 'claude-opus-4-8',
     provider: 'Anthropic',
@@ -104,12 +131,24 @@ const MODEL_REGISTRY = {
     outputPerMTok: 1.25,
   },
 
-  // Google — Gemini 3.5 (GA)
+  // Google — Gemini 3.5/3.6 (GA)
+  'gemini-3.6-flash': {
+    apiId: 'gemini-3.6-flash',
+    provider: 'Google',
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+  },
   'gemini-3.5-flash': {
     apiId: 'gemini-3.5-flash',
     provider: 'Google',
     inputPerMTok: 1.5,
     outputPerMTok: 9.0,
+  },
+  'gemini-3.5-flash-lite': {
+    apiId: 'gemini-3.5-flash-lite',
+    provider: 'Google',
+    inputPerMTok: 0.3,
+    outputPerMTok: 2.5,
   },
 
   // Google — Gemini 3.x (mixed preview / GA)
@@ -165,12 +204,33 @@ const DEFAULT_MODEL_ID = 'gemini-3.5-flash';
 const AVAILABLE_MODELS = [
   // --- Anthropic: current ---
   {
+    id: 'claude-fable-5',
+    name: 'Claude Fable 5',
+    provider: 'Anthropic',
+    supportsPDF: true,
+    supportsQuickFilter: false, // Highest-priced model in the registry
+    description:
+      "Anthropic's most capable model; always-on adaptive thinking, 1M context. Priced 2x Opus, and requires 30-day data retention on your org",
+    apiKeyEnv: 'CLAUDE_API_KEY',
+  },
+  {
+    id: 'claude-opus-5',
+    name: 'Claude Opus 5',
+    provider: 'Anthropic',
+    supportsPDF: true,
+    supportsQuickFilter: false, // Too expensive for simple filtering
+    description:
+      'Current Opus flagship; step-change over 4.8 on deep reasoning and long-horizon work, adaptive thinking on by default, 1M context',
+    apiKeyEnv: 'CLAUDE_API_KEY',
+  },
+  {
     id: 'claude-opus-4.8',
     name: 'Claude Opus 4.8',
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: false, // Too expensive for simple filtering
-    description: 'Most capable model; frontier reasoning and coding, adaptive thinking, 1M context',
+    description:
+      'Previous Opus flagship; strong long-horizon agentic work and knowledge work, adaptive thinking, 1M context',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
@@ -179,8 +239,7 @@ const AVAILABLE_MODELS = [
     provider: 'Anthropic',
     supportsPDF: true,
     supportsQuickFilter: false,
-    description:
-      'Previous Opus flagship; step-change in agentic coding over 4.6, adaptive thinking, 1M context',
+    description: 'Older Opus generation; step-change in agentic coding over 4.6, 1M context',
     apiKeyEnv: 'CLAUDE_API_KEY',
   },
   {
@@ -279,14 +338,33 @@ const AVAILABLE_MODELS = [
     apiKeyEnv: 'OPENAI_API_KEY',
   },
 
-  // --- Google: Gemini 3.5 (GA) ---
+  // --- Google: Gemini 3.5 / 3.6 (GA) ---
+  {
+    id: 'gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash',
+    provider: 'Google',
+    supportsPDF: true,
+    supportsQuickFilter: true,
+    description:
+      "Google's newest GA Flash model; balances speed and intelligence on agentic and multimodal work",
+    apiKeyEnv: 'GOOGLE_AI_API_KEY',
+  },
   {
     id: 'gemini-3.5-flash',
     name: 'Gemini 3.5 Flash',
     provider: 'Google',
     supportsPDF: true,
     supportsQuickFilter: true,
-    description: "Google's most intelligent GA model; frontier performance at Flash speed",
+    description: 'Highly capable GA model; frontier performance at Flash speed',
+    apiKeyEnv: 'GOOGLE_AI_API_KEY',
+  },
+  {
+    id: 'gemini-3.5-flash-lite',
+    name: 'Gemini 3.5 Flash-Lite',
+    provider: 'Google',
+    supportsPDF: true,
+    supportsQuickFilter: true,
+    description: 'Fastest and most cost-effective 3.5-tier model; GA',
     apiKeyEnv: 'GOOGLE_AI_API_KEY',
   },
 

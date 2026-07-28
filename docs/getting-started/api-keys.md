@@ -98,7 +98,7 @@ Prompt caching (explicit on Anthropic, automatic on OpenAI, not wired for Google
 
 ## Can I run completely free?
 
-Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and their 3.x counterparts) — Google's free tier covers Flash-family models. Aparture's out-of-the-box defaults are now all Flash-family (GA `gemini-3.5-flash` plus `gemini-3.1-flash-lite`); the only registered Gemini model that requires a paid tier is Gemini 3.1 Pro (Preview). Check your per-model caps in AI Studio, since free-tier coverage for newly released models can lag.
+Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and their 3.x counterparts) — Google's free tier covers Flash-family models. Aparture's out-of-the-box defaults are now all Flash-family (GA `gemini-3.5-flash` plus `gemini-3.1-flash-lite`), as are the two GA models added in the July 2026 refresh (`gemini-3.6-flash` and `gemini-3.5-flash-lite`); the only registered Gemini model that requires a paid tier is Gemini 3.1 Pro (Preview). Check your per-model caps in AI Studio, since free-tier coverage for newly released models can lag.
 
 Two caveats worth knowing up front:
 
