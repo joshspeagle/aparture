@@ -247,4 +247,57 @@ describe('pipeline — safety-refusal policy', () => {
     ).toBe(false);
     expect(state.processing.errors.length).toBeGreaterThan(0);
   });
+
+  test(
+    'cross-provider fallback single-flights the first Anthropic call',
+    { timeout: 30000 },
+    async () => {
+      // The stage's worker pool derives cacheWarmup from the slot model
+      // (Google here), so it never warms Anthropic. Without the gate, N
+      // parallel fallbacks would each pay a cache-create instead of one
+      // create + N-1 reads.
+      const pipeline = setupStore({
+        pdfModel: 'gemini-3.6-flash',
+        refusalPolicy: 'fallback',
+        refusalFallbackModel: 'claude-opus-5',
+        pdfAnalysisConcurrency: 5,
+        maxDeepAnalysis: 5,
+      });
+
+      let anthropicInFlight = 0;
+      let peakAnthropicInFlight = 0;
+      let firstAnthropicSettled = false;
+      let overlappedBeforeWarm = false;
+
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          return buildScoredBatchResponse((body.papers ?? []).length);
+        }
+        if (typeof url === 'string' && url.includes('/api/analyze-pdf')) {
+          if (body.model === 'gemini-3.6-flash') return buildRefusalResponse();
+
+          anthropicInFlight += 1;
+          peakAnthropicInFlight = Math.max(peakAnthropicInFlight, anthropicInFlight);
+          if (!firstAnthropicSettled && anthropicInFlight > 1) overlappedBeforeWarm = true;
+          // Yield so genuinely-parallel calls would overlap here.
+          await new Promise((r) => setTimeout(r, 5));
+          anthropicInFlight -= 1;
+          firstAnthropicSettled = true;
+          return buildSuccessPDFResponse('fallback-analysed paper');
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+      const state = useAnalyzerStore.getState();
+
+      // The load-bearing assertion: nothing overlapped the warming call.
+      expect(overlappedBeforeWarm).toBe(false);
+      // But the gate opened afterwards — this isn't just serialising everything.
+      expect(peakAnthropicInFlight).toBeGreaterThan(1);
+      // And the fallbacks actually produced analyses.
+      expect(state.results.finalRanking.some((p) => p.deepAnalysis)).toBe(true);
+    }
+  );
 });

@@ -112,7 +112,7 @@ Two caveats worth knowing:
 
 - **The briefing stage can't skip.** Synthesis is a single call for the whole briefing, so there's no partial result to fall back to. A refusal there fails the briefing with an explicit message; the papers and their analyses are unaffected, and you can regenerate on a different `briefingModel`.
 - **`fallback` spends on a model you didn't choose for that slot.** That's why it isn't the default. Set `refusalFallbackModel` explicitly — leaving it empty degrades `fallback` back to `skip`.
-- **A cross-provider fallback coordinates rate limits slightly less tightly.** The fallback call waits on the fallback provider's rate-limit barrier before firing, and a 429 from it signals that provider correctly — but the stage's worker pool and its Anthropic cache-warmup barrier are still keyed to the slot model's provider. In practice this costs a little cache-warmup efficiency on a rare path, not correctness. Same-provider fallbacks are unaffected.
+- **A cross-provider fallback coordinates correctly.** The fallback call waits on the fallback provider's rate-limit barrier before firing, a 429 from it signals that provider, and if the fallback is an Anthropic model the first such call runs alone so the rest cache-read instead of each paying a cache-create — the same warmup Aparture already does for a stage's primary model.
 
 For an astronomy or ML profile, refusals are rare. They're most likely if your interests overlap cybersecurity (cs.CR) or parts of quantitative biology (q-bio), where benign research abstracts occasionally trip a classifier tuned for something else.
 
