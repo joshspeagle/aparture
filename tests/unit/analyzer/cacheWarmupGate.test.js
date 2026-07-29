@@ -87,7 +87,10 @@ describe('CacheWarmupGate', () => {
     await expect(gate.run('anthropic', async () => 'follower ran')).resolves.toBe('follower ran');
   });
 
-  it('does not strand a waiter when the run is aborted mid-warmup', async () => {
+  it('bails without issuing the call when the run is aborted mid-wait', async () => {
+    // Two properties at once: the follower must not strand behind a warmer
+    // that may never settle, AND it must not go on to issue a real, billable
+    // request after the user hit Stop.
     const gate = new CacheWarmupGate();
     const controller = new AbortController();
     let releaseWarmer;
@@ -95,17 +98,41 @@ describe('CacheWarmupGate', () => {
       releaseWarmer = r;
     });
 
+    const followerFn = vi.fn(async () => 'follower ran');
     const warmer = gate.run('anthropic', () => warmerGate);
-    const follower = gate.run('anthropic', async () => 'follower ran', controller.signal);
+    const follower = gate.run('anthropic', followerFn, controller.signal);
 
     await tick();
     controller.abort();
 
-    // The follower resolves off the abort rather than waiting on a warmer
-    // that may never settle.
-    await expect(follower).resolves.toBe('follower ran');
+    await expect(follower).rejects.toThrow('Operation aborted');
+    expect(followerFn).not.toHaveBeenCalled();
+
     releaseWarmer();
     await warmer;
+  });
+
+  it('detaches its abort listener when the warmer settles first', async () => {
+    // `once: true` only self-removes when abort actually fires. On the common
+    // path the promise wins, so without an explicit detach every gated call
+    // would leave a handler on the run's signal.
+    const gate = new CacheWarmupGate();
+    const controller = new AbortController();
+    const removeSpy = vi.spyOn(controller.signal, 'removeEventListener');
+
+    let releaseWarmer;
+    const warmerGate = new Promise((r) => {
+      releaseWarmer = r;
+    });
+    const warmer = gate.run('anthropic', () => warmerGate);
+    const follower = gate.run('anthropic', async () => 'ok', controller.signal);
+
+    await tick();
+    releaseWarmer();
+    await expect(follower).resolves.toBe('ok');
+    await warmer;
+
+    expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function));
   });
 
   it('re-warms after reset (the primed cache entry has a TTL)', async () => {
