@@ -250,6 +250,8 @@ Detection lives in the three `parse*` adapters and throws `RefusalError` (`lib/l
 
 The fallback leg passes a third `modelOverride` argument to each stage's `makeAPICall(correctionPrompt, isCorrection, modelOverride)` closure; every stage resolves `const effectiveModel = modelOverride ?? config.<slot>Model` and uses it for both the request body **and** `recordUsage`, so cost tracking bills the model that actually ran. A new LLM-calling stage should follow that shape.
 
+**Cross-provider fallback and the rate-limit barrier.** `makeRobustAPICall` acquires the fallback provider's `LLMBarrier` before re-issuing when the fallback crosses providers, and the 429 signal path was already provider-correct (it reads `apiError.provider`). What is NOT provider-aware is the stage-level `AnalysisWorkerPool` — its `barrierFor` and Anthropic `cacheWarmup` are computed once from the slot model. That's a cache-warmup efficiency gap on a rare path, not a correctness bug; making it per-attempt would mean extending the worker-pool API.
+
 Aggregation is the `refusals` store slice (`addRefusal`/`clearRefusals`, cleared at run start alongside `skippedDueToRecaptcha`), surfaced by `components/run/RefusalSummaryCard.jsx`. Under the default `'skip'` policy the card is the only signal that anything was dropped — a refusal otherwise produces a silently shorter briefing. The briefing stage can't skip (synthesis is one call for the whole briefing), so it records via the `onRefusal` callback and fails with an explicit message.
 
 ### ArXiv PDF Download Handling

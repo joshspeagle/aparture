@@ -258,4 +258,85 @@ describe('pipeline — parallel rescoring (Stage 3.5)', () => {
 
     expect(rescoreMaxInFlight).toBe(1);
   });
+
+  test(
+    'Stage 3.5 dispatches config.postProcessingModel, not scoringModel',
+    { timeout: 30000 },
+    async () => {
+      // Regression: postProcessingModel was defined in DEFAULT_CONFIG and
+      // documented as this stage's slot, but the request body sent
+      // config.scoringModel, so setting it did nothing.
+      useAnalyzerStore.setState({
+        reactContext: {
+          ...useAnalyzerStore.getState().reactContext,
+          config: {
+            ...useAnalyzerStore.getState().reactContext.config,
+            scoringModel: 'gemini-2.5-flash',
+            postProcessingModel: 'gemini-3.6-flash',
+            postProcessingConcurrency: 1,
+            postProcessingBatchSize: 1,
+            postProcessingCount: 5,
+          },
+        },
+      });
+
+      const rescoreModels = [];
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (typeof url === 'string' && url.includes('/api/rescore-abstracts')) {
+          rescoreModels.push(body.model);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              rawResponse: JSON.stringify(
+                (body.papers ?? []).map((_, i) => ({
+                  paperIndex: i + 1,
+                  adjustedScore: 7.5,
+                  adjustmentReason: 'consistent',
+                }))
+              ),
+            }),
+          };
+        }
+        if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              rawResponse: JSON.stringify(
+                (body.papers ?? []).map((_, i) => ({
+                  paperIndex: i + 1,
+                  score: 7.5,
+                  justification: 'Mock justification long enough to pass.',
+                }))
+              ),
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            analysis: {
+              summary: 'Deep analysis summary with enough characters to pass.',
+              keyFindings: 'Key findings with sufficient length to pass validation.',
+              methodology: 'Methodology content with sufficient length to pass.',
+              limitations: 'Limitations content with sufficient length to pass.',
+              relevanceAssessment: 'Relevance assessment with sufficient length.',
+              updatedScore: 8.0,
+            },
+            rawResponse: JSON.stringify({ summary: 'x', updatedScore: 8.0 }),
+          }),
+        };
+      });
+
+      await pipeline.startProcessing(false, true);
+
+      expect(rescoreModels.length).toBeGreaterThan(0);
+      for (const m of rescoreModels) {
+        expect(m).toBe('gemini-3.6-flash');
+      }
+    }
+  );
 });
