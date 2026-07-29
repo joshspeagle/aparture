@@ -250,7 +250,17 @@ Detection lives in the three `parse*` adapters and throws `RefusalError` (`lib/l
 
 The fallback leg passes a third `modelOverride` argument to each stage's `makeAPICall(correctionPrompt, isCorrection, modelOverride)` closure; every stage resolves `const effectiveModel = modelOverride ?? config.<slot>Model` and uses it for both the request body **and** `recordUsage`, so cost tracking bills the model that actually ran. A new LLM-calling stage should follow that shape.
 
-**Cross-provider fallback and the rate-limit barrier.** `makeRobustAPICall` acquires the fallback provider's `LLMBarrier` before re-issuing when the fallback crosses providers, and the 429 signal path was already provider-correct (it reads `apiError.provider`). What is NOT provider-aware is the stage-level `AnalysisWorkerPool` — its `barrierFor` and Anthropic `cacheWarmup` are computed once from the slot model. That's a cache-warmup efficiency gap on a rare path, not a correctness bug; making it per-attempt would mean extending the worker-pool API.
+**Cross-provider fallback: two coordination points, both provider-correct.** `makeRobustAPICall` acquires the fallback provider's `LLMBarrier` before re-issuing when the fallback crosses providers (the 429 _signal_ path was always correct — it reads `apiError.provider`), and it runs the fallback call through a `CacheWarmupGate` (`lib/analyzer/rateLimit.js`) so N concurrent fallbacks to Anthropic don't each pay a cache-create.
+
+The gate is **additive to**, not a replacement for, `AnalysisWorkerPool`'s `cacheWarmup`. The two cover different call shapes and neither subsumes the other:
+
+|               | Pool `cacheWarmup`                                                          | `CacheWarmupGate`                                                         |
+| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Gates         | worker _start_ (workers 1..N-1 block until worker 0's first task completes) | a single _call_                                                           |
+| Provider from | the stage's slot model, fixed at pool construction                          | the model actually being dispatched                                       |
+| Covers        | every task's first call — the hot path                                      | the refusal-fallback leg, which fires mid-task after workers are released |
+
+Pushing warmup selection into the pool per-_attempt_ is the wrong layer: the pool acquires once and then hands control to `workerFn`, so retry and fallback attempts are invisible to it by design. Attempt-level concerns belong in `makeRobustAPICall`. The gate is per-pipeline and reset at run start via `resetWarmupGate()` (the primed ephemeral entry has a ~5 min TTL, so a later run must warm again).
 
 Aggregation is the `refusals` store slice (`addRefusal`/`clearRefusals`, cleared at run start alongside `skippedDueToRecaptcha`), surfaced by `components/run/RefusalSummaryCard.jsx`. Under the default `'skip'` policy the card is the only signal that anything was dropped — a refusal otherwise produces a silently shorter briefing. The briefing stage can't skip (synthesis is one call for the whole briefing), so it records via the `onRefusal` callback and fails with an explicit message.
 
