@@ -15,6 +15,7 @@ const STAGE_LABELS = {
   scoring: 'Abstract scoring',
   postProcessing: 'Score post-processing',
   pdf: 'Deep PDF analysis',
+  quickSummary: 'Quick summary',
   briefing: 'Briefing synthesis',
 };
 
