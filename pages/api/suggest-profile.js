@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { callModel } from '../../lib/llm/callModel.js';
 import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import {
   renderSuggestPrompt,
   validateNonOverlappingChanges,
@@ -373,6 +374,7 @@ export default async function handler(req, res) {
       ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),
     });
   } catch (err) {
+    if (sendRefusalErrorResponse(res, err)) return;
     if (sendProviderErrorResponse(res, err)) return;
     res.status(500).json({ error: 'suggest-profile failed', details: String(err?.message ?? err) });
   }

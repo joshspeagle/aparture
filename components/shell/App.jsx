@@ -179,6 +179,7 @@ export default function App() {
     addStatus,
     setReactContext,
     clearSkippedDueToRecaptcha,
+    clearRefusals,
     resetCostTracking,
     msClear,
   } = useAnalyzerStore.getState();
@@ -434,6 +435,7 @@ export default function App() {
     // skip summary card, per-stage cost accumulation, MS star/dismiss
     // selections, and a stale synthesis error banner.
     clearSkippedDueToRecaptcha();
+    clearRefusals();
     resetCostTracking();
     msClear();
     setSynthesisError(null);
@@ -445,6 +447,7 @@ export default function App() {
     setProcessing,
     setProcessingTiming,
     clearSkippedDueToRecaptcha,
+    clearRefusals,
     resetCostTracking,
     msClear,
     setSynthesisError,
@@ -748,6 +751,7 @@ export default function App() {
       setQuickSummariesById,
       setFullReportsById,
       addStatus,
+      onRefusal: (entry) => useAnalyzerStore.getState().addRefusal(entry),
       // Per-stage token-usage accumulation, same sink the pipeline uses.
       onUsage: (stage, model, data) => {
         if (typeof data?.tokensIn !== 'number' && typeof data?.tokensOut !== 'number') return;

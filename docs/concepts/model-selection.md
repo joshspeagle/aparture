@@ -9,10 +9,10 @@ Aparture exposes six independent model slots plus one for the optional podcast a
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | `filterModel`         | Stage 2 quick filter (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage) | `gemini-3.1-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3.5-flash`      |
-| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3.5-flash`      |
-| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.5-flash`      |
-| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.5-flash`      |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3.6-flash`      |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3.6-flash`      |
+| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.6-flash`      |
+| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.6-flash`      |
 | `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis                                                                                 | `gemini-3.1-flash-lite` |
 
 A separate `notebookLMModel` slot drives the podcast-bundle generator in [the podcast add-on](/add-ons/podcast) — no default, you pick it per generation. The related `quickSummaryConcurrency` knob (default 5, clamped 1–20) controls how many quick-summary calls fire in parallel before synthesis.
@@ -71,7 +71,7 @@ OpenAI caches automatically when prompt prefixes repeat, so the cached-input col
 
 ### Google (Gemini)
 
-Gemini 3.5 Flash is Aparture's shipped default for the scoring, post-processing, PDF, and briefing slots. Two further GA models joined the registry in the July 2026 refresh: **Gemini 3.6 Flash**, Google's newest Flash model, and **Gemini 3.5 Flash-Lite**.
+Gemini 3.6 Flash is Aparture's shipped default for the scoring, post-processing, PDF, and briefing slots. It and **Gemini 3.5 Flash-Lite** joined the registry in the July 2026 refresh; 3.6 Flash took over the default slots from 3.5 Flash at the same time.
 
 | User-facing ID          | API ID                  | Input / Output |
 | ----------------------- | ----------------------- | -------------- |
@@ -79,7 +79,7 @@ Gemini 3.5 Flash is Aparture's shipped default for the scoring, post-processing,
 | `gemini-3.5-flash`      | `gemini-3.5-flash`      | $1.50 / $9.00  |
 | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` | $0.30 / $2.50  |
 
-`gemini-3.6-flash` matches 3.5 Flash on input price and undercuts it on output ($7.50 vs $9.00), so it's a straight cost reduction anywhere output volume matters — PDF analysis and briefing synthesis most of all. Aparture's defaults still point at 3.5 Flash; 3.6 is the first thing to try if you want to trim the default configuration's bill.
+`gemini-3.6-flash` matches 3.5 Flash on input price and undercuts it on output ($7.50 vs $9.00), so it's a straight cost reduction anywhere output volume matters — PDF analysis and briefing synthesis most of all. That's why it's now the default for those slots. **Existing installs are not migrated**: a saved config keeps whatever you already selected, since `gemini-3.5-flash` still works fine and silently rewriting a deliberate choice would be worse than leaving a few cents on the table. Switch it in Settings if you want the cheaper output price.
 
 `gemini-3.5-flash-lite` is a more capable Lite model, **not a cheaper one** — at $0.30 / $2.50 it costs more than `gemini-3.1-flash-lite` ($0.25 / $1.50). If you're picking a Lite model purely on price, 3.1 Flash-Lite is still the floor of the 3.x tier and stays the default for the filter and quick-summary slots.
 
@@ -130,13 +130,13 @@ All-Google, GA models only. What `DEFAULT_CONFIG` sets.
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
 | `filterModel`         | `gemini-3.1-flash-lite` |
-| `scoringModel`        | `gemini-3.5-flash`      |
-| `postProcessingModel` | `gemini-3.5-flash`      |
-| `pdfModel`            | `gemini-3.5-flash`      |
-| `briefingModel`       | `gemini-3.5-flash`      |
+| `scoringModel`        | `gemini-3.6-flash`      |
+| `postProcessingModel` | `gemini-3.6-flash`      |
+| `pdfModel`            | `gemini-3.6-flash`      |
+| `briefingModel`       | `gemini-3.6-flash`      |
 | `quickSummaryModel`   | `gemini-3.1-flash-lite` |
 
-Ballpark cost for a 100-paper run: roughly $1.00–2.00 at Gemini 3.5 Flash's $1.50 / $9.00 list pricing — in the same band as the previous all-3.x-preview default (roughly $1.00–2.50), since 3.5 Flash undercuts the Gemini 3.1 Pro that used to hold the PDF and briefing slots.
+Ballpark cost for a 100-paper run: roughly $1.00–1.90 at Gemini 3.6 Flash's $1.50 / $7.50 list pricing — in the same band as the previous all-3.x-preview default (roughly $1.00–2.50), since 3.5 Flash undercuts the Gemini 3.1 Pro that used to hold the PDF and briefing slots.
 
 ### Free tier (Gemini 2.5 throughout)
 

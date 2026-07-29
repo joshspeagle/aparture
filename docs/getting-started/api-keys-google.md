@@ -50,13 +50,13 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | Stage                               | Paid Tier 1             | Free-tier alternative   |
 | ----------------------------------- | ----------------------- | ----------------------- |
 | Filter (`filterModel`)              | `gemini-3.1-flash-lite` | `gemini-2.5-flash-lite` |
-| Scoring (`scoringModel`)            | `gemini-3.5-flash`      | `gemini-2.5-flash`      |
-| PDF analysis (`pdfModel`)           | `gemini-3.5-flash`      | `gemini-2.5-pro`        |
+| Scoring (`scoringModel`)            | `gemini-3.6-flash`      | `gemini-2.5-flash`      |
+| PDF analysis (`pdfModel`)           | `gemini-3.6-flash`      | `gemini-2.5-pro`        |
 | Briefing (`briefingModel`)          | Same as `pdfModel`      | Same as `pdfModel`      |
 | Quick summary (`quickSummaryModel`) | `gemini-3.1-flash-lite` | `gemini-2.5-flash`      |
 | NotebookLM (`notebookLMModel`)      | Same as `pdfModel`      | Same as `pdfModel`      |
 
-The paid Tier 1 column is Aparture's out-of-the-box default. It uses only GA (non-preview) models, so a default setup can't break when Google retires a preview alias. `gemini-3.5-flash` fills both the scoring and PDF/briefing slots; the registry also carries `gemini-3.6-flash` (newer, GA, cheaper on output — see the pricing table below) and `gemini-3.1-pro` (Preview, if you want to trade stability for capability). If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps, and check your per-model caps in AI Studio since coverage for newly released models can lag.
+The paid Tier 1 column is Aparture's out-of-the-box default. It uses only GA (non-preview) models, so a default setup can't break when Google retires a preview alias. `gemini-3.6-flash` fills both the scoring and PDF/briefing slots — it matches `gemini-3.5-flash` on input price and undercuts it on output. The registry also carries `gemini-3.5-flash` (the previous default, still fully supported) and `gemini-3.1-pro` (Preview, if you want to trade stability for capability). If you're staying on Google's free tier (no billing), switch the right-hand column in everywhere — the 2.5-stable family has higher free-tier daily request caps, and check your per-model caps in AI Studio since coverage for newly released models can lag.
 
 ## 6. Cost estimate
 
@@ -68,8 +68,8 @@ List pricing (paid tier) for every Gemini model in Aparture's registry:
 
 | Model                                                        | Context | Input ($/MTok) | Output ($/MTok) |
 | ------------------------------------------------------------ | ------- | -------------: | --------------: |
-| `gemini-3.6-flash` (GA)                                      | 1M      |          $1.50 |           $7.50 |
-| `gemini-3.5-flash` (GA; recommended PDF + briefing)          | 1M      |          $1.50 |           $9.00 |
+| `gemini-3.6-flash` (GA; recommended PDF + briefing)          | 1M      |          $1.50 |           $7.50 |
+| `gemini-3.5-flash` (GA)                                      | 1M      |          $1.50 |           $9.00 |
 | `gemini-3.5-flash-lite` (GA)                                 | 1M      |          $0.30 |           $2.50 |
 | `gemini-3.1-pro` (preview)                                   | 1M      |          $2.00 |          $12.00 |
 | `gemini-3-flash` (preview)                                   | 1M      |          $0.50 |           $3.00 |
@@ -80,7 +80,7 @@ List pricing (paid tier) for every Gemini model in Aparture's registry:
 
 Two models joined the registry in the July 2026 refresh, both GA:
 
-- **`gemini-3.6-flash`** is Google's newest Flash model. It's the same input price as 3.5 Flash with cheaper output ($7.50 vs $9.00), which makes it a straight cost improvement for output-heavy slots — PDF analysis and briefing synthesis especially. It isn't the shipped default yet (the defaults change only after a release has been out long enough to trust), but it's the first model to try if you want to trim the default configuration's bill.
+- **`gemini-3.6-flash`** is Google's newest Flash model and, as of the July 2026 refresh, Aparture's default for the scoring, post-processing, PDF, and briefing slots. Same input price as 3.5 Flash with cheaper output ($7.50 vs $9.00) — a straight improvement for output-heavy stages. Existing installs keep whatever they already had; only fresh installs pick up the new default.
 - **`gemini-3.5-flash-lite`** sits between the Flash and Flash-Lite tiers. Note it is **not** cheaper than `gemini-3.1-flash-lite` ($0.30/$2.50 vs $0.25/$1.50) — it's a more capable Lite model, not a budget one. `gemini-3.1-flash-lite` remains the cheapest 3.x option and stays the default for the filter and quick-summary slots.
 
 **Free-tier eligibility** (at reduced RPM/RPD caps):

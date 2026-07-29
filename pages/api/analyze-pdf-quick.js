@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
@@ -95,6 +96,7 @@ export default async function handler(req, res) {
       cacheReadTok: response.cacheReadTok ?? 0,
     });
   } catch (err) {
+    if (sendRefusalErrorResponse(res, err)) return;
     if (sendProviderErrorResponse(res, err)) return;
     res.status(500).json({ error: 'quick summary failed', details: String(err?.message ?? err) });
   }

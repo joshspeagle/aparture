@@ -5,6 +5,7 @@ import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
 import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryAfter.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
@@ -551,6 +552,7 @@ export default async function handler(req, res) {
       });
     }
     console.error('Error analyzing PDF:', error);
+    if (sendRefusalErrorResponse(res, error)) return;
     if (sendProviderErrorResponse(res, error)) return;
     res.status(500).json({
       error: 'Failed to analyze PDF',

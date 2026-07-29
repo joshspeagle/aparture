@@ -11,6 +11,7 @@ import Button from '../ui/Button.jsx';
 import ControlPanel from '../analyzer/ControlPanel.jsx';
 import ProgressTimeline from '../run/ProgressTimeline.jsx';
 import ReCaptchaSummaryCard from '../run/ReCaptchaSummaryCard.jsx';
+import RefusalSummaryCard from '../run/RefusalSummaryCard.jsx';
 import AnalysisResultsList from '../results/AnalysisResultsList.jsx';
 import DownloadReportCard from '../results/DownloadReportCard.jsx';
 import FeedbackPanel from '../feedback/FeedbackPanel.jsx';
@@ -127,6 +128,7 @@ function MainArea({
   // Read once so the pipeline view can render ReCaptchaSummaryCard below
   // DownloadReportCard.
   const skippedDueToRecaptcha = useAnalyzerStore((s) => s.skippedDueToRecaptcha);
+  const refusals = useAnalyzerStore((s) => s.refusals);
 
   // Profile view
   if (activeView === 'profile') {
@@ -303,6 +305,7 @@ function MainArea({
           {/* End-of-run summary for papers skipped when Playwright is
               unavailable. Returns null when empty. */}
           <ReCaptchaSummaryCard skipped={skippedDueToRecaptcha} />
+          <RefusalSummaryCard refusals={refusals} />
 
           <BriefingCard
             results={results}

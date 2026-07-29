@@ -117,6 +117,18 @@ export function initialState() {
     // new run-start. Consumed by PlaywrightNotice (per-paper in the
     // ProgressTimeline) and ReCaptchaSummaryCard (end-of-run summary).
     skippedDueToRecaptcha: [],
+    // --- refusals slice ---
+    // Per-run aggregation of calls a provider's safety classifier declined
+    // (HTTP 422 + CONTENT_REFUSAL). Same shape of contract as
+    // skippedDueToRecaptcha: the pipeline records an entry and continues
+    // under the default 'skip' policy, so an unattended run isn't killed by
+    // one declined paper. Cleared at every run start. Consumed by
+    // RefusalSummaryCard (end-of-run) and ProgressTimeline (per-stage).
+    //
+    // `stage` is the pipeline stage id (filter/scoring/postProcessing/pdf/
+    // briefing) and `scope` describes what was lost — a paper title, or a
+    // batch label when the refusal took out a whole batch.
+    refusals: [],
   };
 }
 
@@ -252,6 +264,23 @@ export const useAnalyzerStore = create((set) => ({
       ],
     })),
   clearSkippedDueToRecaptcha: () => set({ skippedDueToRecaptcha: [] }),
+
+  // --- refusals slice actions ---
+  addRefusal: (entry) =>
+    set((state) => ({
+      refusals: [
+        ...state.refusals,
+        {
+          stage: entry.stage ?? 'unknown',
+          scope: entry.scope ?? '',
+          provider: entry.provider ?? 'llm',
+          model: entry.model ?? null,
+          category: entry.category ?? 'unknown',
+          raw: entry.raw ?? null,
+        },
+      ],
+    })),
+  clearRefusals: () => set({ refusals: [] }),
 
   // --- MS (manuscript-review / score-review gate) slices ---
   // msStarredIds: papers the user explicitly wants included in Stage 4 PDF

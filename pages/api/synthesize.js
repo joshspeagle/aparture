@@ -3,6 +3,7 @@ import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
@@ -174,6 +175,7 @@ export default async function handler(req, res) {
       originalValidationErrors: validation.errors,
     });
   } catch (err) {
+    if (sendRefusalErrorResponse(res, err)) return;
     if (sendProviderErrorResponse(res, err)) return;
     res.status(500).json({ error: 'synthesis failed', details: String(err?.message ?? err) });
   }

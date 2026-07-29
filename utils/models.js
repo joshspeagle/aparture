@@ -198,7 +198,7 @@ const MODEL_REGISTRY = {
 // Default model ID for app-level fallbacks (store defaults, briefing-model
 // fallback chains). A GA Google model: broadly capable, free-tier friendly,
 // and not subject to preview-alias shutdown churn.
-const DEFAULT_MODEL_ID = 'gemini-3.5-flash';
+const DEFAULT_MODEL_ID = 'gemini-3.6-flash';
 
 // Model metadata for UI and capabilities
 const AVAILABLE_MODELS = [
