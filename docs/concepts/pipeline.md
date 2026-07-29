@@ -72,7 +72,7 @@ After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs a
 
 You can override any verdict at the review gate. Overrides are recorded as `filter-override` feedback events and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
 
-**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.1-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
+**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.5-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
 
 **Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only the verdicts listed in `categoriesToScore` advance to Stage 3.
 

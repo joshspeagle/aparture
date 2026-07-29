@@ -27,12 +27,12 @@ Each stage has its own model slot. Current defaults are all Google:
 
 | Slot                  | Setting label                        | Default                   | What it drives                                                                                                                             |
 | --------------------- | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `filterModel`         | Quick Filter Model                   | `gemini-3.1-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
+| `filterModel`         | Quick Filter Model                   | `gemini-3.5-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
 | `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`        | Stage 3 scoring                                                                                                                            |
 | `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.6-flash`        | Stage 3.5 consistency pass                                                                                                                 |
 | `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.6-flash`        | Stage 4 full-text read                                                                                                                     |
 | `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.6-flash`        | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
-| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
+| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
 | `notebookLMModel`     | (set when generating podcast)        | unset until first podcast | Optional NotebookLM document bundle                                                                                                        |
 
 The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config and defaults to the same model as the scoring slot. All slots are disabled while a run is in progress.
@@ -47,7 +47,7 @@ Synthesis reads all the final-round papers plus your profile. It benefits from a
 
 ### Don't spend on what filters
 
-The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` all work well.
+The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." `gemini-3.5-flash-lite` (the default), `gemini-3.1-flash-lite` (cheaper), `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` all work well.
 
 Scoring is similar: dozens to hundreds of abstracts, and most of what the model is doing is ranking within them. A mid-tier model is usually enough. `gemini-3-flash` or `claude-sonnet-4.6` are good picks.
 

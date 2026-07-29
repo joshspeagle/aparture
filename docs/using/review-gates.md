@@ -33,7 +33,7 @@ Gates 2 and 3 also show the projected spend of the stage they hold back. The sco
 
 ### What it does
 
-The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.1-flash-lite`) runs <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
+The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.5-flash-lite`) runs <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
 
 When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. A review banner — _"Filter complete — review verdicts before scoring"_ with a <span class="ui-action">Continue to scoring →</span> button — appears at the head of the filter results, which fill in below it grouped into three buckets.
 

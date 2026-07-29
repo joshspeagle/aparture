@@ -890,5 +890,10 @@ describe('DEFAULT_CONFIG', () => {
     expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.6-flash');
     expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.6-flash');
     expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.6-flash');
+    // The Lite slots were previously unpinned, so a silent change here would
+    // not have failed anything — which is exactly the rot this test exists
+    // to catch.
+    expect(DEFAULT_CONFIG.filterModel).toBe('gemini-3.5-flash-lite');
+    expect(DEFAULT_CONFIG.quickSummaryModel).toBe('gemini-3.5-flash-lite');
   });
 });

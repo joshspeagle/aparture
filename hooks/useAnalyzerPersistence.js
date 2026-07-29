@@ -81,7 +81,7 @@ export const DEFAULT_CONFIG = {
   // the fallback leg, degrading 'fallback' to 'skip'.
   refusalFallbackModel: '',
   useQuickFilter: true,
-  filterModel: 'gemini-3.1-flash-lite',
+  filterModel: 'gemini-3.5-flash-lite',
   filterBatchSize: 3,
   // Number of filter batches fired in parallel. Clamped 1–20 in pipeline.js.
   filterConcurrency: 3,
@@ -106,7 +106,7 @@ export const DEFAULT_CONFIG = {
   // Small/cheap text-only model is appropriate (input is the text of the full
   // report, not the PDF). Flash-Lite by default; fall back to briefingModel if
   // this slot is unset in a legacy config.
-  quickSummaryModel: 'gemini-3.1-flash-lite',
+  quickSummaryModel: 'gemini-3.5-flash-lite',
   // Number of quick-summary calls fired in parallel during briefing prep.
   // Provider rate limits are the practical ceiling; default 5 is conservative.
   quickSummaryConcurrency: 5,
