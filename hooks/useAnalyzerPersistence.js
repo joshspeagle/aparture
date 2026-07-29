@@ -64,33 +64,49 @@ export const DEFAULT_CONFIG = {
   // makeRobustAPICall covers a ~31s quota dip — well within Gemini's 60s
   // RPM reset window. Tunable via Settings.
   maxRetries: 4,
+  // What to do when a provider's safety classifier declines a call
+  // (HTTP 422 CONTENT_REFUSAL — see lib/llm/RefusalError.js). Refusals are
+  // deterministic, so they never enter the maxRetries ladder above.
+  //   'skip'     — record it, drop the affected paper/batch, keep the run
+  //                going. Default: an unattended overnight run shouldn't die
+  //                because one paper tripped a classifier.
+  //   'fallback' — re-issue once against refusalFallbackModel, then skip if
+  //                that refuses too. Costs a call on a model the user didn't
+  //                pick for the slot, which is why it isn't the default.
+  //   'fail'     — halt the run on the first refusal.
+  refusalPolicy: 'skip',
+  // Only consulted when refusalPolicy === 'fallback'. Any registry model id;
+  // may be a different provider than the slot it's covering (the route
+  // resolves provider and key from the model id it receives). Empty disables
+  // the fallback leg, degrading 'fallback' to 'skip'.
+  refusalFallbackModel: '',
   useQuickFilter: true,
-  filterModel: 'gemini-3.1-flash-lite',
+  filterModel: 'gemini-3.5-flash-lite',
   filterBatchSize: 3,
   // Number of filter batches fired in parallel. Clamped 1–20 in pipeline.js.
   filterConcurrency: 3,
   categoriesToScore: ['YES', 'MAYBE'],
-  scoringModel: 'gemini-3.5-flash',
+  scoringModel: 'gemini-3.6-flash',
   scoringBatchSize: 3,
   // Number of scoring batches fired in parallel. Clamped 1–20 in pipeline.js.
   scoringConcurrency: 3,
   enableScorePostProcessing: true,
   postProcessingCount: 50,
   postProcessingBatchSize: 5,
-  postProcessingModel: 'gemini-3.5-flash',
+  postProcessingModel: 'gemini-3.6-flash',
   // Number of post-processing (Stage 3.5) batches fired in parallel. Clamped 1–20.
   postProcessingConcurrency: 3,
-  pdfModel: 'gemini-3.5-flash',
+  pdfModel: 'gemini-3.6-flash',
   // Stage 3 parallel analysis width. Default 3 is safe across provider tiers
   // (Anthropic Tier 1 with cache warmup; Google/OpenAI have headroom). Clamped
   // 1–20 in pipeline.js.
   pdfAnalysisConcurrency: 3,
-  briefingModel: 'gemini-3.5-flash',
+  briefingModel: 'gemini-3.6-flash',
   // Quick summaries compress each full PDF analysis into a ~300-word pre-read.
   // Small/cheap text-only model is appropriate (input is the text of the full
   // report, not the PDF). Flash-Lite by default; fall back to briefingModel if
   // this slot is unset in a legacy config.
-  quickSummaryModel: 'gemini-3.1-flash-lite',
+  quickSummaryModel: 'gemini-3.5-flash-lite',
   // Number of quick-summary calls fired in parallel during briefing prep.
   // Provider rate limits are the practical ceiling; default 5 is conservative.
   quickSummaryConcurrency: 5,

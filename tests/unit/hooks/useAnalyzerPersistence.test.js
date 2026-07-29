@@ -7,6 +7,7 @@ import {
   migrateLegacyConfig,
 } from '../../../hooks/useAnalyzerPersistence.js';
 import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
+import { DEFAULT_MODEL_ID } from '../../../utils/models.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 
@@ -378,7 +379,7 @@ describe('useAnalyzerPersistence — load effect notebookLM model repair (C4)', 
     const props = makeProps();
     renderHook(() => useAnalyzerPersistence(props));
     await waitFor(() => {
-      expect(props.setNotebookLMModel).toHaveBeenCalledWith('gemini-3.5-flash');
+      expect(props.setNotebookLMModel).toHaveBeenCalledWith(DEFAULT_MODEL_ID);
     });
   });
 
@@ -885,9 +886,14 @@ describe('DEFAULT_CONFIG', () => {
 
   it('defaults model slots to GA models (no preview-only heavy slots)', () => {
     expect(DEFAULT_CONFIG.version).toBe(9);
-    expect(DEFAULT_CONFIG.scoringModel).toBe('gemini-3.5-flash');
-    expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.5-flash');
-    expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.5-flash');
-    expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.5-flash');
+    expect(DEFAULT_CONFIG.scoringModel).toBe('gemini-3.6-flash');
+    expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.6-flash');
+    expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.6-flash');
+    expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.6-flash');
+    // The Lite slots were previously unpinned, so a silent change here would
+    // not have failed anything — which is exactly the rot this test exists
+    // to catch.
+    expect(DEFAULT_CONFIG.filterModel).toBe('gemini-3.5-flash-lite');
+    expect(DEFAULT_CONFIG.quickSummaryModel).toBe('gemini-3.5-flash-lite');
   });
 });

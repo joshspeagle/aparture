@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import { renderBriefingMarkdown } from '../../lib/notebooklm/renderBriefingMarkdown.js';
@@ -174,6 +175,7 @@ export default async function handler(req, res) {
     return res.status(200).send(zipBuf);
   } catch (err) {
     console.error('[notebooklm] generation failed:', err);
+    if (sendRefusalErrorResponse(res, err)) return;
     if (sendProviderErrorResponse(res, err)) return;
     return res.status(500).json({ error: err.message ?? 'generation failed' });
   }

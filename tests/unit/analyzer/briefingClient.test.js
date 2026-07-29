@@ -194,6 +194,54 @@ describe('generateQuickSummaries — retry, barrier, and failure surfacing (P1-7
     expect(addStatus).not.toHaveBeenCalled();
   });
 
+  it('does not retry a safety refusal, and records it via onRefusal', async () => {
+    // The generic failure path above retries once. A refusal must not take
+    // that path: the same classifier gets the same prompt and returns the
+    // same no, billing input tokens for nothing.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let callCount = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async () => {
+      callCount += 1;
+      return {
+        ok: false,
+        status: 422,
+        json: async () => ({
+          code: 'CONTENT_REFUSAL',
+          error: 'google declined this request (safety)',
+          provider: 'google',
+          model: 'gemini-3.6-flash',
+          category: 'safety',
+          raw: 'SAFETY',
+        }),
+      };
+    });
+
+    const addStatus = vi.fn();
+    const onRefusal = vi.fn();
+    const quickById = await generateQuickSummaries({
+      papers: twoPapers,
+      provider: 'google',
+      modelId: 'gemini-3.6-flash',
+      password: 'pw',
+      concurrency: 2,
+      abortSignal: null,
+      addStatus,
+      onRefusal,
+    });
+
+    // Exactly one call per paper — no retry amplification.
+    expect(callCount).toBe(twoPapers.length);
+    expect(onRefusal).toHaveBeenCalledTimes(twoPapers.length);
+    expect(onRefusal.mock.calls[0][0]).toMatchObject({
+      stage: 'quickSummary',
+      provider: 'google',
+      category: 'safety',
+    });
+    // Still non-fatal: the briefing proceeds with a reduced corpus.
+    expect(quickById).toEqual({});
+    expect(addStatus).toHaveBeenCalledWith(expect.stringContaining('quick summaries failed'));
+  });
+
   it('surfaces an "N/M quick summaries failed" status when retries are exhausted', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(global, 'fetch').mockResolvedValue({

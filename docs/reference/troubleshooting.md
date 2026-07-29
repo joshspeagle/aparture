@@ -370,6 +370,27 @@ Free-tier OpenAI accounts (approximately 3 RPM on GPT-5.4-class models) will 429
 
 **429 during briefing prep (quick-summary fan-out).** The briefing stage fans out quick-summary calls with default concurrency 5 (`quickSummaryConcurrency`). If 429s land there, drop Settings → Parallel calls in the Briefing section.
 
+### A provider declined the content (safety refusal)
+
+```
+anthropic declined this request (cyber)
+google blocked the prompt (SAFETY)
+```
+
+A safety classifier refused the call. This is a content-policy decision by the provider — not a bug, not a malformed request, and not something a retry will fix (the same prompt to the same classifier gets the same answer, which is exactly why Aparture doesn't retry it).
+
+What happens next depends on **Settings → Query Options → On Safety Refusal** (`refusalPolicy`, default `skip`): the affected paper or batch is dropped, recorded, and the run continues. At the end of the run a summary card lists what was declined, at which stage, and under which category. See [Tuning the pipeline](/using/tuning-the-pipeline#when-a-provider-declines-on-content-grounds) for the full policy table.
+
+If it keeps happening:
+
+- **Switch the model for the affected stage.** Classifier sensitivity varies a lot between providers and between model tiers within a provider.
+- **Set `refusalPolicy` to `fallback`** and pick a `refusalFallbackModel` — the call is re-issued once on that model, which may be a different provider.
+- **Expect it if your profile overlaps cs.CR or q-bio.** Benign research abstracts in cybersecurity and parts of quantitative biology are the most likely to trip a classifier tuned for something else. Astronomy and mainstream ML profiles rarely see this at all.
+
+Note the briefing stage can't skip: synthesis is a single call for the whole briefing, so a refusal there fails the briefing with an explicit message. Your papers and their analyses are unaffected — regenerate on a different `briefingModel`.
+
+**A Fable 5 request that always 400s is a different problem.** `claude-fable-5` requires your Anthropic organization's data retention to be set to 30 days; under zero data retention every request fails with a 400 that looks like a malformed payload. Check the org setting before debugging the request.
+
 ### Context overflow
 
 ```

@@ -74,7 +74,7 @@ Sonnet 5 and Opus 4.8 share list pricing with the Sonnet 4.6 / Opus 4.7 generati
 
 ### Google
 
-Aparture's shipped defaults now use GA `gemini-3.5-flash` for scoring, PDFs, and briefing, priced at $1.50 / $9.00 per MTok (input/output) as of 2026-07. The worked table below keeps the previous Gemini 3.x preview lineup for scale.
+Aparture's shipped defaults now use GA `gemini-3.6-flash` for scoring, PDFs, and briefing, priced at $1.50 / $7.50 per MTok (input/output) as of 2026-07. The worked table below keeps the previous Gemini 3.x preview lineup for scale.
 
 | Stage                   | Model                 | 100 papers in | 250 papers in |
 | ----------------------- | --------------------- | ------------: | ------------: |
@@ -98,7 +98,7 @@ Prompt caching (explicit on Anthropic, automatic on OpenAI, not wired for Google
 
 ## Can I run completely free?
 
-Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and their 3.x counterparts) — Google's free tier covers Flash-family models. Aparture's out-of-the-box defaults are now all Flash-family (GA `gemini-3.5-flash` plus `gemini-3.1-flash-lite`); the only registered Gemini model that requires a paid tier is Gemini 3.1 Pro (Preview). Check your per-model caps in AI Studio, since free-tier coverage for newly released models can lag.
+Yes, if you configure Aparture's slots to stay within the Gemini Flash family (Flash, Flash-Lite, and their 3.x counterparts) — Google's free tier covers Flash-family models. Aparture's out-of-the-box defaults are now all Flash-family GA models (`gemini-3.6-flash` plus `gemini-3.5-flash-lite`); the only registered Gemini model that requires a paid tier is Gemini 3.1 Pro (Preview). Check your per-model caps in AI Studio, since free-tier coverage for newly released models can lag.
 
 Two caveats worth knowing up front:
 

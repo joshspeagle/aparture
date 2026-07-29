@@ -120,6 +120,38 @@ describe('buildAnthropicRequest', () => {
     expect(legacy.body.thinking).toBeUndefined();
   });
 
+  // Fable 5 is the first registered Anthropic model outside the
+  // claude-opus-* / claude-sonnet-* naming convention the regex fallback
+  // recognises. Its registry entry is what keeps it on the thinking path:
+  // unregistered, it would fall through to thinking-off + forced
+  // tool_choice, which the API rejects (Fable 5's thinking is always on, and
+  // forced tool_choice is invalid whenever thinking is enabled).
+  it('keeps Fable 5 on adaptive thinking + tool_choice auto via its registry entry', () => {
+    const req = buildAnthropicRequest({
+      model: 'claude-fable-5',
+      prompt: 'Summarize.',
+      structuredOutput: {
+        name: 'summary',
+        schema: { type: 'object', properties: { headline: { type: 'string' } } },
+      },
+    });
+    expect(req.body.thinking).toEqual({ type: 'adaptive' });
+    expect(req.body.tool_choice).toEqual({ type: 'auto' });
+  });
+
+  it('would gate Fable 5 off without its registry entry (regex does not match it)', () => {
+    // Guards the reason the entry exists: the fallback is Opus/Sonnet-only,
+    // so a same-shaped unregistered id gets the wrong request shape.
+    expect(MODEL_REGISTRY['claude-fable-9']).toBeUndefined();
+    const req = buildAnthropicRequest({ model: 'claude-fable-9', prompt: 'Hi.' });
+    expect(req.body.thinking).toBeUndefined();
+  });
+
+  it('sends adaptive thinking for Opus 5', () => {
+    const req = buildAnthropicRequest({ model: 'claude-opus-5', prompt: 'Hi.' });
+    expect(req.body.thinking).toEqual({ type: 'adaptive' });
+  });
+
   it('forces tool_choice on pre-4.6 Opus/Sonnet (thinking off)', () => {
     const req = buildAnthropicRequest({
       model: 'claude-opus-4-5',

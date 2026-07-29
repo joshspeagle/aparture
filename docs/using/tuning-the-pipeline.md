@@ -27,12 +27,12 @@ Each stage has its own model slot. Current defaults are all Google:
 
 | Slot                  | Setting label                        | Default                   | What it drives                                                                                                                             |
 | --------------------- | ------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `filterModel`         | Quick Filter Model                   | `gemini-3.1-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
-| `scoringModel`        | Abstract Scoring Model               | `gemini-3.5-flash`        | Stage 3 scoring                                                                                                                            |
-| `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.5-flash`        | Stage 3.5 consistency pass                                                                                                                 |
-| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.5-flash`        | Stage 4 full-text read                                                                                                                     |
-| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.5-flash`        | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
-| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.1-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
+| `filterModel`         | Quick Filter Model                   | `gemini-3.5-flash-lite`   | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
+| `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`        | Stage 3 scoring                                                                                                                            |
+| `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.6-flash`        | Stage 3.5 consistency pass                                                                                                                 |
+| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.6-flash`        | Stage 4 full-text read                                                                                                                     |
+| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.6-flash`        | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
+| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite`   | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
 | `notebookLMModel`     | (set when generating podcast)        | unset until first podcast | Optional NotebookLM document bundle                                                                                                        |
 
 The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config and defaults to the same model as the scoring slot. All slots are disabled while a run is in progress.
@@ -47,7 +47,7 @@ Synthesis reads all the final-round papers plus your profile. It benefits from a
 
 ### Don't spend on what filters
 
-The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` all work well.
+The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." `gemini-3.5-flash-lite` (the default), `gemini-3.1-flash-lite` (cheaper), `gemini-2.5-flash-lite`, `claude-haiku-4.5`, or `gpt-5.4-nano` all work well.
 
 Scoring is similar: dozens to hundreds of abstracts, and most of what the model is doing is ranking within them. A mid-tier model is usually enough. `gemini-3-flash` or `claude-sonnet-4.6` are good picks.
 
@@ -93,6 +93,28 @@ Same Anthropic cache-warmup behavior as filter.
 Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google has aggressive RPM caps on Flash-Lite, so start at 2–3 if you're relying on the free tier for filtering.
 
 Aparture self-heals on transient 429s: when one batch hits a rate limit, every concurrent worker for the same provider pauses for the `Retry-After` window (or up to 60 s if the provider doesn't tell us), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If your filter model is a free-tier Gemini Flash-Lite slot and your concurrency × batch count is likely to exceed 60 RPM, Aparture also emits a pre-flight warning before the stage starts.
+
+### When a provider declines on content grounds
+
+Rate limits are one kind of failure; a **safety-classifier refusal** is a different one, and Aparture handles it separately. All three providers can return a successful HTTP response that contains no answer because a classifier declined the content — Anthropic as `stop_reason: "refusal"`, OpenAI as `content_filter` or a `refusal` field, Google as a `blockReason` or a safety `finishReason`.
+
+The important property is that a refusal is **deterministic**: the same prompt to the same classifier gets the same answer every time. So refusals never enter the retry ladder above — retrying would burn `maxRetries` attempts, and bill the input tokens for each, to be told no five times. Instead they go straight to the policy you pick in **Settings → Query Options → On Safety Refusal**:
+
+| Policy                      | `refusalPolicy` | What happens                                                                                                                                                      |
+| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Skip and continue**       | `skip`          | Default. The affected paper (or batch) is dropped, recorded, and the run carries on. An unattended overnight run isn't killed by one paper tripping a classifier. |
+| **Retry on fallback model** | `fallback`      | Re-issue the call once against `refusalFallbackModel`, then skip if that model refuses too. The fallback may be a different provider.                             |
+| **Stop the run**            | `fail`          | Halt on the first refusal.                                                                                                                                        |
+
+Under any policy, refusals are surfaced rather than silently swallowed: a summary card at the end of the run lists what was declined, at which stage, and under which category. This matters most under the default `skip` policy — without it you'd see a shorter briefing with no explanation for the gap.
+
+Two caveats worth knowing:
+
+- **The briefing stage can't skip.** Synthesis is a single call for the whole briefing, so there's no partial result to fall back to. A refusal there fails the briefing with an explicit message; the papers and their analyses are unaffected, and you can regenerate on a different `briefingModel`.
+- **`fallback` spends on a model you didn't choose for that slot.** That's why it isn't the default. Set `refusalFallbackModel` explicitly — leaving it empty degrades `fallback` back to `skip`.
+- **A cross-provider fallback coordinates rate limits slightly less tightly.** The fallback call waits on the fallback provider's rate-limit barrier before firing, and a 429 from it signals that provider correctly — but the stage's worker pool and its Anthropic cache-warmup barrier are still keyed to the slot model's provider. In practice this costs a little cache-warmup efficiency on a rare path, not correctness. Same-provider fallbacks are unaffected.
+
+For an astronomy or ML profile, refusals are rare. They're most likely if your interests overlap cybersecurity (cs.CR) or parts of quantitative biology (q-bio), where benign research abstracts occasionally trip a classifier tuned for something else.
 
 ## Batch sizes
 

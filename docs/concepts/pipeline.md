@@ -72,7 +72,7 @@ After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs a
 
 You can override any verdict at the review gate. Overrides are recorded as `filter-override` feedback events and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
 
-**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.1-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
+**Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.5-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
 
 **Output.** Papers bucketed into `yes` / `maybe` / `no` with filter summaries. Only the verdicts listed in `categoriesToScore` advance to Stage 3.
 
@@ -114,7 +114,7 @@ The prompt explicitly calibrates the Quality dimension strictly: most competent 
 
 This rubric lives in `prompts/rubric-scoring.md` — an editable template file that's re-read on every call, so changes take effect on the next run without a rebuild. See [Reference: prompts](/reference/prompts) for how to edit it if your field benefits from a different calibration — for instance, if you mostly read applied work that shouldn't cap at 6 on quality.
 
-**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3.5-flash`), `scoringBatchSize` (default 3), `scoringConcurrency` (default 3).
+**Inputs.** Papers from Stage 2, `profile.content`, `scoringModel` (default `gemini-3.6-flash`), `scoringBatchSize` (default 3), `scoringConcurrency` (default 3).
 
 **Output.** `scoredPapers` with `relevanceScore`, `scoreJustification`, and `initialScore` (preserved for post-processing). Papers that failed to score are kept separately in `failedPapers` and don't advance.
 
@@ -128,7 +128,7 @@ This rubric lives in `prompts/rubric-scoring.md` — an editable template file t
 
 **Why it matters.** Stage 3 scores each paper independently, which can let different batches drift in calibration — early batches may score stricter than late ones, or vice versa. The post-processing pass normalises the ranking without changing which papers advance.
 
-**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3.5-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5), `postProcessingConcurrency` (default 3).
+**Inputs.** Top N papers from Stage 3, `profile.content`, `postProcessingModel` (default `gemini-3.6-flash`), `postProcessingCount` (default 50), `postProcessingBatchSize` (default 5), `postProcessingConcurrency` (default 3).
 
 **Output.** `scoredPapers` updated with `adjustedScore`, `adjustmentReason`, and a `scoreAdjustment` trail.
 
@@ -146,7 +146,7 @@ On **Anthropic** providers, the pool applies a cache-warmup barrier: the first w
 
 Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's RPM cap — Gemini's free-tier 60 RPM in particular.
 
-**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.5-flash`), `pdfAnalysisConcurrency` (default 3).
+**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.6-flash`), `pdfAnalysisConcurrency` (default 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
@@ -160,7 +160,7 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
 2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.5-flash`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.6-flash`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
 4. **Call `/api/check-briefing`** to audit the briefing against the source corpus — a second, independent LLM pass looks for claims that aren't supported by the papers' abstracts, quick summaries, or full reports.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
 6. **Save** the briefing + generation metadata to the app's local storage (browser-side, 90-day rolling window).

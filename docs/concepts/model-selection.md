@@ -8,27 +8,29 @@ Aparture exposes six independent model slots plus one for the optional podcast a
 
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `filterModel`         | Stage 2 quick filter (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage) | `gemini-3.1-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3.5-flash`      |
-| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3.5-flash`      |
-| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.5-flash`      |
-| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.5-flash`      |
-| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis                                                                                 | `gemini-3.1-flash-lite` |
+| `filterModel`         | Stage 2 quick filter (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage) | `gemini-3.5-flash-lite` |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3.6-flash`      |
+| `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3.6-flash`      |
+| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.6-flash`      |
+| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.6-flash`      |
+| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis                                                                                 | `gemini-3.5-flash-lite` |
 
 A separate `notebookLMModel` slot drives the podcast-bundle generator in [the podcast add-on](/add-ons/podcast) — no default, you pick it per generation. The related `quickSummaryConcurrency` knob (default 5, clamped 1–20) controls how many quick-summary calls fire in parallel before synthesis.
 
-The `quickSummaryModel` default is a small Flash-Lite model because the work is text compression (the input is already the text of each deep-analysis report, not the original PDF). If you're running single-provider and don't want a Google key alongside your main one, swap this slot to a small model in your chosen provider. Quick-summary failures are non-fatal in practice — a missing key quietly drops the inline-expansion feature but doesn't break the briefing.
+The `quickSummaryModel` default is a Flash-Lite model because the work is text compression (the input is already the text of each deep-analysis report, not the original PDF). If you're running single-provider and don't want a Google key alongside your main one, swap this slot to a small model in your chosen provider. Quick-summary failures are non-fatal in practice — a missing key quietly drops the inline-expansion feature but doesn't break the briefing.
 
 The scoring rubric itself lives in the pipeline documentation — see [Stage 3 scoring](/concepts/pipeline#stage-3-score-abstracts) for what the `scoringModel` is actually asked to do.
 
 ## Current lineup
 
-The registry in `utils/models.js` is the authoritative source (it now carries per-model pricing fields too). As of July 2026 it holds 19 models across three providers. Prices below are per million tokens, list price, snapshot 2026-07.
+The registry in `utils/models.js` is the authoritative source (it now carries per-model pricing fields too). As of July 2026 it holds 23 models across three providers. Prices below are per million tokens, list price, snapshot 2026-07.
 
 ### Anthropic (Claude)
 
 | User-facing ID      | API ID              | Context | Input / Output | Adaptive thinking |
 | ------------------- | ------------------- | ------- | -------------- | ----------------- |
+| `claude-fable-5`    | `claude-fable-5`    | 1M      | $10 / $50      | Always on         |
+| `claude-opus-5`     | `claude-opus-5`     | 1M      | $5 / $25       | Yes               |
 | `claude-opus-4.8`   | `claude-opus-4-8`   | 1M      | $5 / $25       | Yes               |
 | `claude-opus-4.7`   | `claude-opus-4-7`   | 1M      | $5 / $25       | Yes               |
 | `claude-opus-4.6`   | `claude-opus-4-6`   | 1M      | $5 / $25       | Yes               |
@@ -36,7 +38,16 @@ The registry in `utils/models.js` is the authoritative source (it now carries pe
 | `claude-sonnet-4.6` | `claude-sonnet-4-6` | 1M      | $3 / $15       | Yes               |
 | `claude-haiku-4.5`  | `claude-haiku-4-5`  | 200k    | $1 / $5        | No                |
 
-Opus 4.8 is the current flagship; Sonnet 5 launched with introductory pricing ($2 / $10 through 2026-08-31, then $3 / $15 — the table above shows the post-intro list price). The pre-4.6 legacy entries (Opus 4.5/4.1, Sonnet 4.5, Haiku 3.5) were removed from the registry in July 2026: Haiku 3.5's API ID was retired upstream (selecting it returned a live 404), Opus 4.1 retires 2026-08-05, and the others predate adaptive thinking. Saved configs pointing at any of them are migrated automatically to the closest current-generation equivalent.
+**Opus 5** is the current Opus flagship (registered July 2026), at the same $5 / $25 as the 4.x Opus line — a free upgrade from Opus 4.8 for any slot. **Fable 5** sits above it as Anthropic's most capable widely released model, at double the price; see the caveats below before reaching for it. Sonnet 5 launched with introductory pricing ($2 / $10 through 2026-08-31, then $3 / $15 — the table shows the post-intro list price).
+
+Two things to know about `claude-fable-5` specifically:
+
+- **Its thinking can't be turned off.** Aparture sends `thinking: {type: "adaptive"}` on every Anthropic call, which Fable 5 accepts — but unlike the Opus and Sonnet models, there's no way to trade thinking tokens away for a cheaper run. At $50 / MTok output, thinking tokens are the expensive kind.
+- **It requires 30-day data retention on your Anthropic organization.** Under zero data retention, every Fable 5 request fails with a 400 that reads like a malformed payload rather than a policy rejection — so if Fable 5 is the one model that 400s for you and the others work, check your org's retention setting before debugging the request.
+
+Anthropic also ships **Claude Mythos 5**, which shares Fable 5's specs and pricing, but it's invitation-only through Project Glasswing with no self-serve signup, so it isn't in the registry. If you have access, adding it is a two-line change in `utils/models.js` (copy the `claude-fable-5` entry, change the ID).
+
+The pre-4.6 legacy entries (Opus 4.5/4.1, Sonnet 4.5, Haiku 3.5) were removed from the registry in July 2026: Haiku 3.5's API ID was retired upstream (selecting it returned a live 404), Opus 4.1 retires 2026-08-05, and the others predate adaptive thinking. Saved configs pointing at any of them are migrated automatically to the closest current-generation equivalent.
 
 ### OpenAI (GPT)
 
@@ -60,11 +71,19 @@ OpenAI caches automatically when prompt prefixes repeat, so the cached-input col
 
 ### Google (Gemini)
 
-Gemini 3.5 Flash reached GA and is Google's current top model — it is also Aparture's shipped default for the scoring, post-processing, PDF, and briefing slots. Its list pricing is $1.50 / $9.00 per million tokens (input/output), verified against Google's pricing page in the 2026-07 snapshot.
+Both models added in the July 2026 refresh became defaults: **Gemini 3.6 Flash** for the scoring, post-processing, PDF, and briefing slots, and **Gemini 3.5 Flash-Lite** for the filter and quick-summary slots.
 
-| User-facing ID     | API ID             | Input / Output |
-| ------------------ | ------------------ | -------------- |
-| `gemini-3.5-flash` | `gemini-3.5-flash` | $1.50 / $9.00  |
+| User-facing ID          | API ID                  | Input / Output |
+| ----------------------- | ----------------------- | -------------- |
+| `gemini-3.6-flash`      | `gemini-3.6-flash`      | $1.50 / $7.50  |
+| `gemini-3.5-flash`      | `gemini-3.5-flash`      | $1.50 / $9.00  |
+| `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` | $0.30 / $2.50  |
+
+`gemini-3.6-flash` matches 3.5 Flash on input price and undercuts it on output ($7.50 vs $9.00), so it's a straight cost reduction anywhere output volume matters — PDF analysis and briefing synthesis most of all. That's why it's now the default for those slots. **Existing installs are not migrated**: a saved config keeps whatever you already selected, since `gemini-3.5-flash` still works fine and silently rewriting a deliberate choice would be worse than leaving a few cents on the table. Switch it in Settings if you want the cheaper output price.
+
+`gemini-3.5-flash-lite` is a more capable Lite model, and it is **not** the cheapest one — at $0.30 / $2.50 it lists above `gemini-3.1-flash-lite` ($0.25 / $1.50). It is nonetheless the default for the filter and quick-summary slots, because the percentage gap is misleading at this scale: both slots are input-dominated and tiny in absolute terms, so on the reference 100-paper run the upgrade costs about **1.7¢ — roughly 1% of total run cost**. Paying that for a better model on the stage that decides what the rest of the pipeline even looks at is a good trade.
+
+`gemini-3.1-flash-lite` is still registered and still the cheapest 3.x option. Switch the Lite slots back to it if you're optimising the last cent, or running high enough volume that the filter stage stops being rounding error.
 
 Gemini 3.x tier. Pro and Flash are still preview-only upstream (Google has already shut down sibling previews, so treat these as churn-prone); Flash-Lite reached GA in May 2026. The user-facing IDs stay stable when Google graduates the remaining previews — only the API IDs change.
 
@@ -84,21 +103,21 @@ Stable tier (Gemini 2.5):
 
 Google also offers a free tier with daily request caps on most of these models. For someone running a couple of briefings per day on a modest profile, the free tier often covers the whole workflow.
 
-All 19 models support PDF content blocks, so any of them can technically drive the `pdfModel` slot. Speed, quality, and price are the real differentiators.
+All 23 models support PDF content blocks, so any of them can technically drive the `pdfModel` slot. Speed, quality, and price are the real differentiators.
 
 ## Per-stage recommendations
 
 Each stage puts different pressure on the model. Matching the model to the pressure tends to be the cleanest way to keep quality up and costs down.
 
-**`filterModel` — fast, cheap, directional.** Stage 2 produces three-bucket triage with a short summary. The prompt is 50–150 tokens per paper and you'll call it on everything fetched, so throughput and cost matter more than nuance. Good picks: `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `claude-haiku-4.5`, `gpt-5.6-luna`, `gpt-5.4-nano`. Anything pricier than Haiku is usually overkill at this stage.
+**`filterModel` — fast, cheap, directional.** Stage 2 produces three-bucket triage with a short summary. The prompt is 50–150 tokens per paper and you'll call it on everything fetched, so throughput and cost matter more than nuance. Good picks: `gemini-3.5-flash-lite` (the default), `gemini-3.1-flash-lite` (cheapest 3.x), `gemini-2.5-flash-lite`, `claude-haiku-4.5`, `gpt-5.6-luna`, `gpt-5.4-nano`. Anything pricier than Haiku is usually overkill at this stage.
 
-**`scoringModel` — careful, calibrated, still batch-friendly.** Stage 3 assigns a 0–10 score with a justification from the abstract, and downstream stages use those scores to pick what gets deep-analysed. Calibration matters more than at the filter stage, but it's still a per-abstract task that benefits from throughput. Good picks: `gemini-3.5-flash`, `claude-sonnet-5`, `gpt-5.4-mini`. Haiku 4.5 or a Flash-Lite model can work if your profile is very clear-cut.
+**`scoringModel` — careful, calibrated, still batch-friendly.** Stage 3 assigns a 0–10 score with a justification from the abstract, and downstream stages use those scores to pick what gets deep-analysed. Calibration matters more than at the filter stage, but it's still a per-abstract task that benefits from throughput. Good picks: `gemini-3.6-flash`, `gemini-3.5-flash`, `claude-sonnet-5`, `gpt-5.4-mini`. Haiku 4.5 or a Flash-Lite model can work if your profile is very clear-cut.
 
 **`postProcessingModel` — same as or stronger than `scoringModel`.** Stage 3.5 compares top papers head-to-head for calibration, so calibration matters more than throughput. Most configurations set it to the same model as `scoringModel`.
 
-**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.5-flash`, `claude-opus-4.8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-pro`.
+**`pdfModel` — quality-sensitive, the most expensive slot.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the structured deep analysis that feeds the briefing. Spending more here usually pays off in what lands in front of you. Good picks: `gemini-3.6-flash` (cheapest output of the frontier Flash models), `gemini-3.5-flash`, `claude-opus-5`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-pro`. `claude-fable-5` will work here, but this slot runs once per paper, so its 2× premium multiplies across the whole deep-analysis set — it's the least cost-effective place to spend it.
 
-**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.5-flash`, `claude-opus-4.8`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-flash` works if you're willing to accept slightly less polished prose.
+**`briefingModel` — editorial judgment and long context.** Stage 5 writes the executive summary, themes, and paper cards. It holds your profile, the day's quick summaries and deep analyses, and recent briefing history in one context, so quality here correlates strongly with what you actually read. Good picks: `gemini-3.6-flash`, `gemini-3.5-flash`, `claude-opus-5`, `claude-sonnet-5`, `gpt-5.6-sol`. Cheaper fallback: `gemini-2.5-flash` works if you're willing to accept slightly less polished prose. This is the one slot where `claude-fable-5` is arguably worth its price: it runs once per briefing rather than once per paper, so the premium is bounded, and editorial judgment is exactly what it's strongest at.
 
 ## Example configurations
 
@@ -112,14 +131,14 @@ All-Google, GA models only. What `DEFAULT_CONFIG` sets.
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
-| `filterModel`         | `gemini-3.1-flash-lite` |
-| `scoringModel`        | `gemini-3.5-flash`      |
-| `postProcessingModel` | `gemini-3.5-flash`      |
-| `pdfModel`            | `gemini-3.5-flash`      |
-| `briefingModel`       | `gemini-3.5-flash`      |
-| `quickSummaryModel`   | `gemini-3.1-flash-lite` |
+| `filterModel`         | `gemini-3.5-flash-lite` |
+| `scoringModel`        | `gemini-3.6-flash`      |
+| `postProcessingModel` | `gemini-3.6-flash`      |
+| `pdfModel`            | `gemini-3.6-flash`      |
+| `briefingModel`       | `gemini-3.6-flash`      |
+| `quickSummaryModel`   | `gemini-3.5-flash-lite` |
 
-Ballpark cost for a 100-paper run: roughly $1.00–2.00 at Gemini 3.5 Flash's $1.50 / $9.00 list pricing — in the same band as the previous all-3.x-preview default (roughly $1.00–2.50), since 3.5 Flash undercuts the Gemini 3.1 Pro that used to hold the PDF and briefing slots.
+Ballpark cost for a 100-paper run: roughly $1.00–1.90 at Gemini 3.6 Flash's $1.50 / $7.50 list pricing — in the same band as the previous all-3.x-preview default (roughly $1.00–2.50), since 3.5 Flash undercuts the Gemini 3.1 Pro that used to hold the PDF and briefing slots.
 
 ### Free tier (Gemini 2.5 throughout)
 
@@ -138,15 +157,15 @@ Ballpark cost for a 100-paper run: effectively $0 within Google's free-tier caps
 
 ### Mixed providers
 
-One way to spread work across all three providers: Gemini Flash-Lite on the high-volume filter, Claude Sonnet for careful abstract scoring, GPT-5.6 Terra on deep PDF analysis, Gemini 3.5 Flash for briefing synthesis, and Claude Haiku compressing quick summaries. Requires keys for all three.
+One way to spread work across all three providers: Gemini Flash-Lite on the high-volume filter, Claude Sonnet for careful abstract scoring, GPT-5.6 Terra on deep PDF analysis, Gemini 3.6 Flash for briefing synthesis, and Claude Haiku compressing quick summaries. Requires keys for all three.
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
-| `filterModel`         | `gemini-3.1-flash-lite` |
+| `filterModel`         | `gemini-3.5-flash-lite` |
 | `scoringModel`        | `claude-sonnet-5`       |
 | `postProcessingModel` | `claude-sonnet-5`       |
 | `pdfModel`            | `gpt-5.6-terra`         |
-| `briefingModel`       | `gemini-3.5-flash`      |
+| `briefingModel`       | `gemini-3.6-flash`      |
 | `quickSummaryModel`   | `claude-haiku-4.5`      |
 
 Ballpark cost for a 100-paper run: roughly $1.75–3.00. Anthropic prompt caching trims scoring and quick-summary cost on repeat runs with the same profile.
@@ -155,7 +174,9 @@ This is one mix among many. Providers are interchangeable per slot, and the pipe
 
 ## Adaptive thinking on Anthropic
 
-Claude Opus and Sonnet models from 4.6 onward (including Opus 4.8 and Sonnet 5) support adaptive thinking: the model allocates more internal reasoning tokens for harder tasks and fewer for straightforward ones. Aparture passes `thinking: {type: "adaptive"}` automatically on those models, and omits it on Haiku (which rejects it).
+Claude Opus and Sonnet models from 4.6 onward — plus Opus 5 and Fable 5 — support adaptive thinking: the model allocates more internal reasoning tokens for harder tasks and fewer for straightforward ones. Aparture passes `thinking: {type: "adaptive"}` automatically on those models, and omits it on Haiku (which rejects it).
+
+Which models get the parameter is driven by a `supportsAdaptiveThinking` flag on each Anthropic entry in `utils/models.js`, not by parsing the model name. That matters for Fable 5: the adapter's name-based fallback only recognises `claude-opus-*` and `claude-sonnet-*`, so an unregistered `claude-fable-5` would be treated as a non-thinking model, and the adapter would force `tool_choice` — which Fable 5 rejects outright, because its thinking is always on and forced tool choice is invalid whenever thinking is enabled. Any future Anthropic model outside the Opus/Sonnet naming convention needs a registry entry for the same reason.
 
 In practice, this matters most for `briefingModel` and `pdfModel`, where the model is asked for editorial judgment or structured deep analysis. Filter and scoring decisions are mechanical enough that thinking tokens don't buy much. Thinking tokens count against the output-token bill — usually worth it for the briefing, often not worth it for the filter.
 
@@ -171,7 +192,7 @@ Gemini 3.x Pro and Flash are still marked `-preview` in their API IDs; Flash-Lit
 
 ---
 
-**Snapshot taken 2026-07-15.** Model lineup and pricing from `utils/models.js` (pricing fields `inputPerMTok`/`outputPerMTok`, snapshot 2026-07). Pricing verified against the provider pricing pages below. Check these for current prices before making high-volume decisions:
+**Snapshot taken 2026-07-28.** Model lineup and pricing from `utils/models.js` (pricing fields `inputPerMTok`/`outputPerMTok`, snapshot 2026-07). Pricing verified against the provider pricing pages below. Check these for current prices before making high-volume decisions:
 
 - Anthropic: [platform.claude.com/docs/en/docs/about-claude/models](https://platform.claude.com/docs/en/docs/about-claude/models)
 - OpenAI: [developers.openai.com/api/docs/models](https://developers.openai.com/api/docs/models)

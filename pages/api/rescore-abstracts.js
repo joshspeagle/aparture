@@ -2,6 +2,7 @@ import { callModel } from '../../lib/llm/callModel.js';
 import { extractJsonFromLlmOutput } from '../../utils/json.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
+import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
@@ -262,6 +263,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('Error rescoring abstracts:', error);
+    if (sendRefusalErrorResponse(res, error)) return;
     if (sendProviderErrorResponse(res, error)) return;
     res.status(500).json({
       error: 'Failed to rescore abstracts',
