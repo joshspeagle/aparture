@@ -1,4 +1,15 @@
+import { useEffect, useRef } from 'react';
 import Button from '../ui/Button.jsx';
+
+// Visually hidden but read by screen readers.
+const srOnly = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+};
 
 /**
  * Shared header banner for the three pipeline review gates (filter, score,
@@ -14,8 +25,24 @@ export default function ReviewGateBanner({
   onSkipRemaining,
   children,
 }) {
+  // A gate appears below everything the run has produced so far, often
+  // thousands of pixels down. Bring it into view once, when it appears, and
+  // announce it, so the pause is noticed instead of looking like a stall.
+  const rootRef = useRef(null);
+  // Screen readers announce changes to a live region, not its initial
+  // content, so the message is written after the region is in the page.
+  const liveRef = useRef(null);
+  useEffect(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    rootRef.current?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    if (liveRef.current) liveRef.current.textContent = 'The run is paused for your review.';
+  }, []);
+
   return (
     <div
+      ref={rootRef}
+      role="region"
+      aria-label={typeof title === 'string' ? title : 'Review gate'}
       style={{
         background: 'var(--aparture-surface-2)',
         color: 'var(--aparture-ink)',
@@ -24,6 +51,7 @@ export default function ReviewGateBanner({
         padding: 'var(--aparture-space-4)',
       }}
     >
+      <span ref={liveRef} role="status" style={srOnly} />
       {description && (
         <div
           style={{

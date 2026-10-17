@@ -11,7 +11,17 @@ import PlaywrightNotice from './PlaywrightNotice.jsx';
 // Pipeline stages: idle → fetching → Filtering → initial-scoring → selecting → deep-analysis → synthesizing → complete
 const STAGE_ORDER = ['fetch', 'filter', 'score', 'postprocess', 'analyze', 'synthesize'];
 
+// While the pipeline waits at a review gate, the stage before the gate is
+// done and the stage after it has not started: it is waiting on the reader,
+// not running. Map each gate to the stage it holds back.
+const REVIEW_HOLDS = {
+  'filter-review': 2, // score
+  'score-review': 4, // analyze
+  'pre-briefing-review': 5, // synthesize
+};
+
 function resolveStageIndex(pipelineStage) {
+  if (pipelineStage in REVIEW_HOLDS) return REVIEW_HOLDS[pipelineStage];
   const map = {
     idle: -1,
     fetching: 0,
@@ -29,8 +39,9 @@ function resolveStageIndex(pipelineStage) {
   return map[pipelineStage] ?? -1;
 }
 
-function stageStatus(stageIndex, currentIndex, isRunning) {
+function stageStatus(stageIndex, currentIndex, isRunning, isReview) {
   if (stageIndex < currentIndex) return 'done';
+  if (stageIndex === currentIndex && isReview) return 'waiting';
   if (stageIndex === currentIndex && isRunning) return 'running';
   return 'pending';
 }
@@ -47,6 +58,11 @@ function StageIcon({ status }) {
       fontSize: 'var(--aparture-text-lg)',
       lineHeight: 1,
     },
+    waiting: {
+      color: '#f59e0b', // amber: needs the reader's attention
+      fontSize: 'var(--aparture-text-lg)',
+      lineHeight: 1,
+    },
     pending: {
       color: 'var(--aparture-mute)',
       fontSize: 'var(--aparture-text-lg)',
@@ -57,6 +73,7 @@ function StageIcon({ status }) {
   const icons = {
     done: '\u2713',
     running: '\u25cf',
+    waiting: '\u25d0',
     pending: '\u25cb',
   };
 
@@ -120,8 +137,15 @@ function buildStageLabel(stageKey, status, progress, filterResults, results) {
     },
   };
 
+  if (status === 'waiting') return WAITING_LABELS[stageKey] ?? 'Waiting for your review below';
   return labels[stageKey]?.[status] ?? stageKey;
 }
+
+const WAITING_LABELS = {
+  score: 'Waiting for you: review the filter results below',
+  analyze: 'Waiting for you: review the scores below',
+  synthesize: 'Waiting for you: continue below to write the briefing',
+};
 
 export default function ProgressTimeline({ children }) {
   const processing = useAnalyzerStore((s) => s.processing);
@@ -131,6 +155,7 @@ export default function ProgressTimeline({ children }) {
 
   const currentIndex = resolveStageIndex(processing.stage);
   const isRunning = processing.isRunning;
+  const isReview = processing.stage in REVIEW_HOLDS;
 
   const timelineStyle = {
     display: 'flex',
@@ -166,10 +191,10 @@ export default function ProgressTimeline({ children }) {
     color:
       status === 'done'
         ? 'var(--aparture-ink)'
-        : status === 'running'
+        : status === 'running' || status === 'waiting'
           ? '#f59e0b'
           : 'var(--aparture-mute)',
-    fontWeight: status === 'running' ? 600 : 400,
+    fontWeight: status === 'running' || status === 'waiting' ? 600 : 400,
     padding: 'var(--aparture-space-1) 0',
     lineHeight: 1.5,
   });
@@ -188,7 +213,7 @@ export default function ProgressTimeline({ children }) {
       <Card>
         <div style={timelineStyle}>
           {STAGE_ORDER.map((stageKey, idx) => {
-            const status = stageStatus(idx, currentIndex, isRunning);
+            const status = stageStatus(idx, currentIndex, isRunning, isReview);
             const label = buildStageLabel(
               stageKey,
               status,
@@ -235,8 +260,8 @@ export default function ProgressTimeline({ children }) {
           })}
         </div>
 
-        {/* Progress bar when actively running */}
-        {isRunning && processing.progress.total > 0 && (
+        {/* Progress bar when actively running (not while waiting at a gate) */}
+        {isRunning && !isReview && processing.progress.total > 0 && (
           <div style={{ marginTop: 'var(--aparture-space-4)' }}>
             <div
               style={{
