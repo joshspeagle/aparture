@@ -1,7 +1,7 @@
 // cli/test-server.js
 // Quick test script for ServerManager
 
-const { ServerManager } = require('./server-manager');
+const { ServerManager } = require('../server-manager');
 
 async function testServerManager() {
   console.log('Testing ServerManager...\n');

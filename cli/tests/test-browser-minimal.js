@@ -15,18 +15,18 @@
  * NOTE: This test uses real API calls and will incur small costs!
  */
 
-const BrowserAutomation = require('./browser-automation');
-const { ServerManager } = require('./server-manager');
+const BrowserAutomation = require('../browser-automation');
+const { ServerManager } = require('../server-manager');
 const path = require('path');
 const fs = require('fs').promises;
 
 // Test configuration
 const TEST_CONFIG = {
   serverPort: 3000,
-  screenshotDir: path.join(__dirname, '../reports/test-screenshots'),
-  downloadDir: path.join(__dirname, '../reports'),
+  screenshotDir: path.join(__dirname, '../../reports/test-screenshots'),
+  downloadDir: path.join(__dirname, '../../reports'),
   headless: false, // Set to false for visibility during testing
-  envFile: path.join(__dirname, '../.env.local'),
+  envFile: path.join(__dirname, '../../.env.local'),
   minimalTestTimeout: 600000, // 10 minutes (real API calls take time)
 };
 

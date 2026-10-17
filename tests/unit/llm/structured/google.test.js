@@ -9,7 +9,9 @@ describe('buildGoogleRequest', () => {
       apiKey: 'test-key',
     });
     expect(req.url).toContain('gemini-2.5-flash');
-    expect(req.url).toContain('key=test-key');
+    // The key rides in a header, never in the URL (URLs end up in logs).
+    expect(req.url).not.toContain('test-key');
+    expect(req.headers['x-goog-api-key']).toBe('test-key');
     expect(req.body.contents[0].parts[0].text).toBe('Say hi.');
     expect(req.body.generationConfig?.responseSchema).toBeUndefined();
   });
@@ -146,4 +148,28 @@ describe('parseGoogleResponse', () => {
     expect(out.tokensIn).toBe(0);
     expect(out.tokensOut).toBe(0);
   });
+});
+
+describe('parseGoogleResponse token accounting and truncation', () => {
+  it('counts thinking tokens as output (Google bills them at the output rate)', () => {
+    const out = parseGoogleResponse({
+      candidates: [{ content: { parts: [{ text: 'ok' }] }, finishReason: 'STOP' }],
+      usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 20, thoughtsTokenCount: 300 },
+    });
+    expect(out.tokensIn).toBe(100);
+    expect(out.tokensOut).toBe(320);
+  });
+
+  it.each(['MAX_TOKENS', 'CONTINUATION'])(
+    'names a %s cut-off instead of failing on half a JSON object',
+    (finishReason) => {
+      const response = {
+        candidates: [{ content: { parts: [{ text: '{"a":' }] }, finishReason }],
+        usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 },
+      };
+      expect(() => parseGoogleResponse(response, { expectStructured: true })).toThrow(
+        new RegExp(`cut off \\(finishReason: ${finishReason}\\)`)
+      );
+    }
+  );
 });

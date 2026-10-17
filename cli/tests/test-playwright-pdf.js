@@ -13,7 +13,7 @@ async function testPlaywrightPdfDownload() {
 
   // Launch with persistent context to maintain cookies/session
   // This will open a browser with persistent session data
-  const userDataDir = path.join(__dirname, '..', 'temp', 'playwright-profile');
+  const userDataDir = path.join(__dirname, '..', '..', 'temp', 'playwright-profile');
 
   console.log('Launching browser with persistent session...');
   console.log('If you see reCAPTCHA, solve it and the session will be saved.\n');
@@ -53,10 +53,10 @@ async function testPlaywrightPdfDownload() {
     console.log(`Captured PDF data: ${pdfBuffer.length} bytes`);
 
     // Save to temporary location
-    const downloadPath = path.join(__dirname, '..', 'temp', `${arxivId}.pdf`);
+    const downloadPath = path.join(__dirname, '..', '..', 'temp', `${arxivId}.pdf`);
 
     // Ensure temp directory exists
-    const tempDir = path.join(__dirname, '..', 'temp');
+    const tempDir = path.join(__dirname, '..', '..', 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }

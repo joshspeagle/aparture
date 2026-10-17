@@ -15,6 +15,11 @@ const EXCLUDED_DIRS = ['reports', 'temp', 'docs', 'cli', 'tests', '.next', '.ver
 const nextConfig = {
   reactStrictMode: true,
 
+  // The app renders no next/image components, so turn off the on-demand
+  // image optimizer (/_next/image) rather than leave an unused endpoint,
+  // historically a frequent source of Next.js security advisories, exposed.
+  images: { unoptimized: true },
+
   // Anchor Turbopack to the repo root explicitly. Without this Next walks
   // up looking for a workspace lockfile and may pick the wrong ancestor
   // (the warning we saw when /mnt/c/Users/joshs/package.json was present).

@@ -22,6 +22,8 @@ export default [
       'docs/.vitepress/dist/**',
       'docs/.vitepress/.temp/**',
       'docs/node_modules/**',
+      // Claude Code agent worktrees (each a full checkout of the repo)
+      '.claude/worktrees/**',
     ],
   },
 

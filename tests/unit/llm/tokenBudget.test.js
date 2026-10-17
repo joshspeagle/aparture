@@ -2,49 +2,23 @@ import { describe, it, expect } from 'vitest';
 import { estimateTokens, budgetPreflight } from '../../../lib/llm/tokenBudget.js';
 
 describe('estimateTokens', () => {
-  it('uses tiktoken for OpenAI', () => {
-    const n = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text: 'hello world' });
-    expect(n).toBeGreaterThan(0);
-    expect(n).toBeLessThan(10);
-  });
-
-  it('uses char-based heuristic for Anthropic', () => {
+  it('uses a ~4 chars/token heuristic for every provider', () => {
     const text = 'a'.repeat(400);
-    const n = estimateTokens({ provider: 'anthropic', model: 'claude-opus-4-6', text });
-    // ~4 chars per token heuristic
-    expect(n).toBeGreaterThan(80);
-    expect(n).toBeLessThan(120);
+    for (const [provider, model] of [
+      ['anthropic', 'claude-sonnet-5.5'],
+      ['google', 'gemini-3.8-flash'],
+      ['openai', 'gpt-6.1-sol'],
+    ]) {
+      expect(estimateTokens({ provider, model, text })).toBe(100);
+    }
   });
 
-  it('uses char-based heuristic for Google', () => {
-    const text = 'a'.repeat(400);
-    const n = estimateTokens({ provider: 'google', model: 'gemini-2.5-flash', text });
-    expect(n).toBeGreaterThan(80);
-    expect(n).toBeLessThan(120);
+  it('rounds up partial tokens', () => {
+    expect(estimateTokens({ provider: 'openai', model: 'gpt-6-luna', text: 'hello' })).toBe(2);
   });
 
-  it('falls back to cl100k_base for unknown OpenAI model ids without throwing', () => {
-    const n = estimateTokens({
-      provider: 'openai',
-      model: 'gpt-5.6-sol',
-      text: 'hello world from an unknown model',
-    });
-    expect(n).toBeGreaterThan(0);
-    expect(n).toBeLessThan(20);
-    // Second call exercises the memoized-alias path (throw paid only once).
-    const n2 = estimateTokens({
-      provider: 'openai',
-      model: 'gpt-5.6-sol',
-      text: 'hello world from an unknown model',
-    });
-    expect(n2).toBe(n);
-  });
-
-  it('returns consistent counts across repeated calls (memoized encoder)', () => {
-    const text = 'the same text every time';
-    const first = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text });
-    const second = estimateTokens({ provider: 'openai', model: 'gpt-5.4', text });
-    expect(second).toBe(first);
+  it('treats missing text as zero tokens', () => {
+    expect(estimateTokens({ provider: 'anthropic', model: 'claude-haiku-5.5' })).toBe(0);
   });
 });
 

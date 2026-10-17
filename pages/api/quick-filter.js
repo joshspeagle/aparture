@@ -5,7 +5,7 @@ import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
-import { MODEL_REGISTRY } from '../../utils/models.js';
+import { DEFAULT_MODEL_ID, MODEL_REGISTRY } from '../../utils/models.js';
 
 // Object-rooted schema (OpenAI strict json_schema rejects top-level arrays).
 // Portable subset only: type/properties/required/items/enum + additionalProperties
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  const modelToUse = model || 'gemini-3-flash';
+  const modelToUse = model || DEFAULT_MODEL_ID;
   const modelConfig = MODEL_REGISTRY[modelToUse];
   const provider = (modelConfig?.provider ?? 'Google').toLowerCase();
   const modelApiId = modelConfig?.apiId ?? modelToUse;

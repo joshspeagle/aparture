@@ -1,7 +1,7 @@
 // cli/test-config.js
 // Quick test script for ConfigManager
 
-const { ConfigManager } = require('./config-manager');
+const { ConfigManager } = require('../config-manager');
 
 async function testConfigManager() {
   console.log('Testing ConfigManager...\n');

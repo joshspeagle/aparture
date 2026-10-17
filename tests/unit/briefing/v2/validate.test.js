@@ -158,3 +158,15 @@ describe('applyProposalEdit', () => {
     expect(applyProposalEdit(text, { type: 'replace', anchor: 'Z', content: 'y' })).toBeNull();
   });
 });
+
+describe('looseTitle', () => {
+  it('matches TeX-marked and accented arXiv titles against their plain forms', async () => {
+    const { looseTitle } = await import('../../../../lib/briefing/v2/validate.js');
+    expect(looseTitle('$\\texttt{NFDiag}$: High-dimensional MCMC')).toBe(
+      looseTitle('NFDiag: High-dimensional MCMC')
+    );
+    expect(looseTitle('Activity$-$Rotation')).toBe(looseTitle('Activity–Rotation'));
+    expect(looseTitle('J. M\\"uller-Horn')).toBe(looseTitle('J. Müller-Horn'));
+    expect(looseTitle('Paper A')).not.toBe(looseTitle('Paper B'));
+  });
+});

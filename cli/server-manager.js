@@ -12,11 +12,12 @@ class ServerManager {
   }
 
   /**
-   * Ensure fetch is loaded (dynamic import for ES module)
+   * Node 20+ ships fetch as a global; kept as a method so callers and tests
+   * can still swap in their own implementation via `this.fetch`.
    */
   async ensureFetch() {
     if (!this.fetch) {
-      this.fetch = (await import('node-fetch')).default;
+      this.fetch = globalThis.fetch;
     }
     return this.fetch;
   }
