@@ -247,6 +247,51 @@ describe('AnalysisWorkerPool', () => {
     expect(completed.sort()).toEqual([1, 3, 4]);
   });
 
+  it('a fatal task error halts the pool and run() rejects with it', async () => {
+    // refusalPolicy 'fail' relies on this channel: before it existed the pool
+    // logged the fatal error like any other, and the stage carried on.
+    const pool = new AnalysisWorkerPool({ concurrency: 1 });
+    const started = [];
+    const fatal = Object.assign(new Error('halt the run'), { fatal: true });
+    await expect(
+      pool.run([1, 2, 3, 4], async (task) => {
+        started.push(task);
+        if (task === 2) throw fatal;
+      })
+    ).rejects.toBe(fatal);
+    // No task was dispatched after the fatal one.
+    expect(started).toEqual([1, 2]);
+  });
+
+  it('a fatal error lets in-flight siblings finish, then rejects with the first fatal', async () => {
+    const pool = new AnalysisWorkerPool({ concurrency: 3 });
+    const finished = [];
+    const first = Object.assign(new Error('first'), { fatal: true });
+    const second = Object.assign(new Error('second'), { fatal: true });
+    await expect(
+      pool.run([1, 2, 3, 4, 5, 6], async (task) => {
+        if (task === 1) throw first;
+        await new Promise((r) => setTimeout(r, 10));
+        if (task === 2) throw second;
+        finished.push(task);
+      })
+    ).rejects.toBe(first);
+    // Tasks 2 and 3 were already in flight; nothing past them was claimed.
+    expect(finished).toEqual([3]);
+  });
+
+  it('an abort error thrown by a task halts the pool and rejects run()', async () => {
+    const pool = new AnalysisWorkerPool({ concurrency: 1 });
+    const started = [];
+    await expect(
+      pool.run([1, 2, 3], async (task) => {
+        started.push(task);
+        if (task === 1) throw new Error('Operation aborted');
+      })
+    ).rejects.toThrow('Operation aborted');
+    expect(started).toEqual([1]);
+  });
+
   it('cache warmup releases even when no tasks (edge case)', async () => {
     const pool = new AnalysisWorkerPool({ concurrency: 3, cacheWarmup: true });
     const workerFn = vi.fn(async () => {});
