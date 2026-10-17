@@ -69,7 +69,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | NotebookLM doc (`notebookLMModel`)  | `gpt-6.1-sol` |
 
 ::: warning Post-processing stays on Google unless you change it
-Stage 3.5 runs on `postProcessingModel`, which has no Settings control and defaults to `gemini-3.6-flash`. With no Google key, turn off **Enable Post-Processing** in Settings, or every Stage 3.5 batch fails after its retries and the run keeps the Stage 3 scores.
+Stage 3.5 runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and doesn't follow your other choices. With no Google key, pick a GPT model as the **Review Model** under **Enable Post-Processing** in Settings, or turn post-processing off; otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.
 :::
 
 Two changes worth considering:

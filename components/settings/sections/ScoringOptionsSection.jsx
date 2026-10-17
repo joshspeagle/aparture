@@ -1,5 +1,7 @@
 import Checkbox from '../../ui/Checkbox.jsx';
 import Input from '../../ui/Input.jsx';
+import Select from '../../ui/Select.jsx';
+import { AVAILABLE_MODELS } from '../../../utils/models.js';
 import { integerInputPropsFor, FIELD_LABEL_STYLE, HELP_TEXT_STYLE } from '../shared.js';
 
 export default function ScoringOptionsSection({ config, setConfig, processing }) {
@@ -89,6 +91,31 @@ export default function ScoringOptionsSection({ config, setConfig, processing })
           </>
         )}
       </div>
+      {config.enableScorePostProcessing && (
+        // Stage 3.5 has its own slot, which doesn't follow scoringModel: a
+        // setup without the default's provider key must pick one here.
+        <div style={{ marginTop: 'var(--aparture-space-3)' }}>
+          <label htmlFor="setting-postProcessingModel" style={FIELD_LABEL_STYLE}>
+            Review Model
+          </label>
+          <Select
+            id="setting-postProcessingModel"
+            value={config.postProcessingModel ?? config.scoringModel}
+            onChange={(e) => {
+              const postProcessingModel = e.target.value;
+              setConfig((prev) => ({ ...prev, postProcessingModel }));
+            }}
+            disabled={processing.isRunning}
+          >
+            {AVAILABLE_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </Select>
+          <p style={HELP_TEXT_STYLE}>Runs the consistency review; pick one your API keys cover</p>
+        </div>
+      )}
       {config.enableScorePostProcessing && (
         <div
           style={{

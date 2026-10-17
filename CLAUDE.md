@@ -74,7 +74,7 @@ To add a stage: export `create<Stage>(deps)` from `lib/analyzer/stages/<stage>.j
 
 ### Model slots
 
-Config keys: `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, `briefingModel` (synthesize, check-briefing, editor-questions, suggest-profile), `quickSummaryModel`, `refusalFallbackModel`. `notebookLMModel` lives in the store's `notebookLM` slice. Defaults live only in `DEFAULT_CONFIG`. `postProcessingModel` has no Settings control and doesn't follow `scoringModel`.
+Config keys: `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, `briefingModel` (synthesize, check-briefing, editor-questions, suggest-profile), `quickSummaryModel`, `refusalFallbackModel`. `notebookLMModel` lives in the store's `notebookLM` slice. Defaults live only in `DEFAULT_CONFIG`. `postProcessingModel` is the Review Model under Enable Post-Processing (Scoring options) and doesn't follow `scoringModel`.
 
 ### Auth pattern
 

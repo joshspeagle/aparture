@@ -4,7 +4,7 @@ Each pipeline stage reads from its own model slot, and picking the model for eac
 
 ## The model slots
 
-Aparture has six model slots for the pipeline plus one for the optional podcast add-on. Every slot ships with a default, and any slot can be changed between runs without restarting the server. Five have drop-downs in the Settings panel. `postProcessingModel` has no Settings control and lives only in the saved config; `notebookLMModel` is picked on the NotebookLM card in the briefing view.
+Aparture has six model slots for the pipeline plus one for the optional podcast add-on. Every slot ships with a default, and any slot can be changed between runs without restarting the server. Six have drop-downs in the Settings panel; the post-processing one appears when **Enable Post-Processing** is on. `notebookLMModel` is picked on the NotebookLM card in the briefing view.
 
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -102,7 +102,7 @@ Each stage puts different pressure on the model. Matching the model to the press
 
 **`scoringModel`: careful and calibrated, still batch-friendly.** Stage 3 scores each surviving abstract from 0 to 10, and those scores decide what gets read in full. Good picks: `gemini-3.6-flash` (the default), `gemini-3.8-flash`, `claude-sonnet-5.5`, `gpt-6.1-sol`. `claude-haiku-5.5` or `gpt-6-luna` can work if your profile is clear-cut.
 
-**`postProcessingModel`: no Settings control.** Stage 3.5 compares top papers against each other for consistency. The slot defaults to `gemini-3.6-flash` and doesn't follow `scoringModel` when you change it. A setup with no Google key should turn off **Enable Post-Processing** in Settings, or every Stage 3.5 batch fails after its retries and the run keeps the Stage 3 scores.
+**`postProcessingModel`: the Review Model.** Stage 3.5 compares top papers against each other for consistency. Its **Review Model** drop-down sits under **Enable Post-Processing** in Settings. The slot defaults to `gemini-3.6-flash` and doesn't follow `scoringModel` when you change it, so a setup with no Google key should pick a model its keys cover there, or turn post-processing off. Otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.
 
 **`pdfModel`: the slot where quality shows most.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the deep analysis the briefing is built from. It is also the most expensive slot, because it runs once per paper on tens of thousands of tokens. Good picks: `gemini-3.8-flash` (the default), `gemini-4-argon`, `claude-opus-5.5`, `claude-sonnet-5.5`, `gpt-6.1-sol`. A Fable model or `gpt-6-astra` works here, but its premium multiplies across every paper read.
 

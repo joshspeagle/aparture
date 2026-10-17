@@ -62,7 +62,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | NotebookLM doc (`notebookLMModel`)  | `claude-opus-5.5`   |
 
 ::: warning Post-processing stays on Google unless you change it
-Stage 3.5 runs on `postProcessingModel`, which has no Settings control and defaults to `gemini-3.6-flash`. With no Google key, turn off **Enable Post-Processing** in Settings, or every Stage 3.5 batch fails after its retries and the run keeps the Stage 3 scores.
+Stage 3.5 runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and doesn't follow your other choices. With no Google key, pick a Claude model as the **Review Model** under **Enable Post-Processing** in Settings, or turn post-processing off; otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.
 :::
 
 For a quality/cost step down, put `claude-sonnet-5.5` on `pdfModel`; that halves the most expensive stage, and the reference run below drops from about $3.93 to $2.43. For a step up on the briefing, `claude-fable-5.1` costs 2.5 times as much as Opus 5.5 (about $4.87 for the reference run); see the notes below before putting it in a per-paper slot.

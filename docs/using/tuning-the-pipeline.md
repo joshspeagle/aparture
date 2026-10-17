@@ -29,13 +29,13 @@ Each stage has its own model slot. Current defaults are all Google:
 | --------------------- | ------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `filterModel`         | Quick Filter Model                   | `gemini-3.5-flash-lite` | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
 | `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`      | Stage 3 scoring                                                                                                                            |
-| `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.6-flash`      | Stage 3.5 consistency pass                                                                                                                 |
+| `postProcessingModel` | Review Model (under post-processing) | `gemini-3.6-flash`      | Stage 3.5 consistency pass                                                                                                                 |
 | `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.8-flash`      | Stage 4 full-text read                                                                                                                     |
 | `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.8-flash`      | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
 | `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite` | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
 | `notebookLMModel`     | (chosen on the NotebookLM card)      | `gemini-3.8-flash`      | Optional NotebookLM document bundle                                                                                                        |
 
-The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config, and it stays on `gemini-3.6-flash` when you change the scoring slot. Without a Google key, turn off **Enable Post-Processing**. `notebookLMModel` is picked on the NotebookLM card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
+The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` (**Review Model**) appears only while **Enable Post-Processing** is on, and it stays on `gemini-3.6-flash` when you change the scoring slot: without a Google key, change it too or turn the pass off. `notebookLMModel` is picked on the NotebookLM card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
 
 Three rules of thumb for model selection:
 
@@ -155,7 +155,7 @@ Aparture doesn't currently expose a "minimum score to advance" setting — the c
 
 The reason it exists: Stage 3 scores each paper independently, which sometimes produces inconsistencies — two papers of similar quality can land a point apart just because they were in different batches. The post-processing pass irons that out.
 
-The pass runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and has no Settings control. With no Google key, every batch fails after its retries and the run keeps the Stage 3 scores, so turn the pass off.
+The pass runs on `postProcessingModel` (**Review Model**, right under the checkbox), which defaults to `gemini-3.6-flash`. With no Google key, pick a model your key covers or turn the pass off; otherwise every batch fails and the run keeps the Stage 3 scores.
 
 Turn it off as well if run-time matters more than ranking quality, or if you're rapidly iterating on profile changes and want faster feedback. Leave it on for most production runs.
 

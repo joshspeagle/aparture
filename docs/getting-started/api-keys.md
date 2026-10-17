@@ -98,7 +98,7 @@ Those are list prices. Through 2026-12-31 Google sells 3.6 Flash and 3.8 Flash a
 | Quick summaries  | GPT-6 Luna         |         $0.01 |         $0.01 |
 | **Total / run**  |                    |    **~$2.11** |    **~$3.26** |
 
-\* Post-processing runs on `postProcessingModel`, which has no Settings control and stays on its Google default whichever provider you pick for the other slots. Without a Google key, turn off **Enable Post-Processing** in Settings and leave that row out.
+\* Post-processing runs on `postProcessingModel`, which stays on its Google default whichever provider you pick for the other slots. Without a Google key, change its **Review Model** drop-down (under **Enable Post-Processing** in Settings) to a model your key covers, or turn post-processing off and leave that row out.
 
 Prompt caching takes something off repeat calls with the same profile. Aparture marks the rubric and your profile as cacheable on Anthropic; OpenAI caches repeated prefixes on its own, and so does Google above a minimum prompt size. The abstracts and PDFs differ from call to call, so the saving applies only to the rubric-and-profile part of each prompt.
 
