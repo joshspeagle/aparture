@@ -161,15 +161,16 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events; feedback from test runs is left out of real runs).
 2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. They're for the reader only; synthesis doesn't receive them. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
 3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, scoring justification, full report, and any stars, dismissals, or comments). Notes you left at Gate 3 go along as editorial instructions. The `briefingModel` (default `gemini-3.8-flash`) gets the main synthesis prompt. The output then goes through deterministic checks: titles and scores are corrected from the input, and missing, duplicate, or unthemed papers and unknown arXiv IDs fail the briefing. A failed briefing gets one LLM repair call, and if that fails too, Aparture repairs it in code. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
-4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract and full report, untruncated.
+4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract and full report, untruncated. A check that fails to run is tried once more; if it still fails, the briefing is saved unaudited and says so.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
-6. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk and kept there until you delete it. The browser's localStorage keeps the current briefing and the sidebar's search index, which is trimmed to a size budget: the oldest test runs leave the list first, then the oldest real briefings, and their files stay on disk.
+6. **Ask the editor's questions** (when `editorQuestions` is on): one small call on the `briefingModel` via `/api/editor-questions` may add up to two tap-to-answer questions about gaps in your profile. A failure only means no questions that day.
+7. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk and kept there until you delete it. The browser's localStorage keeps the current briefing and the sidebar's search index, which is trimmed to a size budget: the oldest test runs leave the list first, then the oldest real briefings, and their files stay on disk.
 
 Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model, which gets no cache markers, and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
 
-**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events, and the day's Gate 3 notes.
+**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis, hallucination check, editor's questions), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events, and the day's Gate 3 notes.
 
-**Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports. Each paper card links the paper's arXiv abstract, PDF, HTML rendering, and alphaXiv page.
+**Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + any editor's questions + cached quick summaries and full reports. Each paper card links the paper's arXiv abstract, PDF, HTML rendering, and alphaXiv page.
 
 **Cost.** A few cents per briefing on typical setups:
 
@@ -177,6 +178,7 @@ Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply 
 - Synthesis: tens of thousands of input tokens at the default 30 papers, because every full report goes into one call.
 - Hallucination check: a similar amount, since it reads the same abstracts and full reports.
 - Retry, if triggered: roughly doubles the synthesis + check cost.
+- Editor's questions: one short call over the cards' titles and pitches, small next to the synthesis.
 
 **Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after Stage 4 finishes, giving you a chance to star, dismiss, or comment on papers, and to leave the writer a note, before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
 

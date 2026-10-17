@@ -72,6 +72,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops            | [Cost spike mid-run](#cost-spike-mid-run)                                       |
 | Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab      | [Stuck stage](#stuck-stage)                                                     |
 | `Briefing generation failed: repair failed: …`                       | The briefing failed its checks, and repair and salvage failed too      | [Briefing schema-validation failure](#briefing-schema-validation-failure)       |
+| Header says `claims check did not run`                               | The audit call failed twice; the briefing is unaudited                 | [Hallucination-retry loop](#hallucination-retry-loop)                           |
 | Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged                   | [Hallucination-retry loop](#hallucination-retry-loop)                           |
 | Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                             | [Hallucination-retry loop](#hallucination-retry-loop)                           |
 
@@ -476,7 +477,9 @@ What to check:
 
 ### Hallucination-retry loop
 
-After synthesis, Aparture runs a separate LLM call that audits the briefing against the source papers. Each briefing displays a hallucination badge in the Generation details expandable section: `NO` (clean), `MAYBE` (uncertain), or `YES` (flagged).
+After synthesis, Aparture runs a separate LLM call that audits the briefing against the source papers. Each briefing displays a hallucination badge in the Generation details expandable section: `NO` (clean), `MAYBE` (uncertain), or `YES` (flagged). The header of the reading view repeats the outcome as _claims checked_, _claims check flagged N claims_, or _claims check did not run_.
+
+**`claims check did not run`.** The audit call failed, and so did its one retry, so the briefing was saved unaudited. Generation details gives the reason, which is usually a provider error or a rate limit on the briefing model. Regenerate the briefing once the provider recovers, or switch `briefingModel`.
 
 When retry fires: in Settings → Review & confirmation, `briefingRetryOnYes` (on by default) and `briefingRetryOnMaybe` (off by default) control whether a flagged verdict triggers a second synthesis pass with a retry hint. When retry happens, the badge shows "(after retry)" — you're reading the second attempt, and the audit ran again on it.
 

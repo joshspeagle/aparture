@@ -14,6 +14,8 @@ From top to bottom, a briefing stacks like this:
 
 ```
   ┌────────────────────────────────────┐
+  │  Header                            │  date, counts, claims-check status
+  ├────────────────────────────────────┤
   │  Executive summary                 │  200-400 word editorial lead
   ├────────────────────────────────────┤
   │  Theme 1                           │
@@ -22,12 +24,18 @@ From top to bottom, a briefing stacks like this:
   │     ├─ Paper card                  │
   │     └─ Paper card                  │
   ├────────────────────────────────────┤
-  │  Theme 2 … 5                       │
+  │  Theme 2 … 5, Other papers         │
+  ├────────────────────────────────────┤
+  │  Notes from the editor             │  up to two questions, some days
   ├────────────────────────────────────┤
   │  Hallucination audit               │  verdict + flagged claims
   │  Generation details ▸              │  how this briefing was made
   └────────────────────────────────────┘
 ```
+
+### Header
+
+Under the date, one line counts the papers in focus and the papers screened, estimates the reading time, and gives the claims-check status: _claims checked_, _claims check flagged N claims_, or _claims check did not run_. The last two show in amber, so a flagged or unaudited briefing is visible before you read it.
 
 ### Executive summary
 
@@ -60,6 +68,12 @@ The "why it matters" paragraph is where your feedback shapes the output most vis
 
 The title and score on a card always come from the pipeline, not from the briefing model: Aparture replaces whatever the model wrote with the paper's real title and score. Two markers mean Aparture repaired the briefing in code because the model's own repair failed: a card whose pitch reads _"Added by Aparture: the briefing model left this paper out"_, and the text _[unverified arXiv ID removed]_ where the prose cited an ID that isn't one of the day's papers. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
 
+### Notes from the editor
+
+Some briefings end with up to two short questions under **Notes from the editor**. They appear only when the day's papers exposed something your profile doesn't settle: a strong paper in an area the profile never mentions, say, or several papers ranked down for a reason the profile is silent about. Each question names what prompted it and offers two to four answers. Tap one to answer; tap it again to take the answer back.
+
+Answers are feedback. They go into the next [profile suggestion](/using/refining-over-time) as evidence, and you still accept or reject the edits it proposes. Later questions see your earlier answers, so nothing is asked twice. Most days there are no questions, and that's normal. To turn them off, clear **Ask me up to two questions after each briefing…** in **Settings → Review & confirmation**.
+
 ## Going deeper on a single paper
 
 Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.
@@ -85,6 +99,8 @@ After synthesis, Aparture makes a second LLM call, on the same briefing model, t
 | <span class="verdict is-yes">NO</span>      | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                    |
 | <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list. |
 | <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                            |
+
+If the audit call fails, Aparture tries it once more. If it still can't run, the briefing is saved unaudited: the header reads _claims check did not run_, and Generation details gives the reason. An unaudited briefing never shows as checked.
 
 If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (retry-on-YES defaults on, retry-on-MAYBE defaults off), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
 

@@ -165,15 +165,16 @@ Whether Stage 2 runs at all is governed by the `useQuickFilter` config flag (def
 
 ## Review & confirmation
 
-Five checkboxes under **Review & confirmation** govern when the pipeline pauses and when it retries.
+Six checkboxes under **Review & confirmation** govern when the pipeline pauses, when it retries, and whether the editor asks questions.
 
-| Checkbox                                                                                       | Default | What it does                                                                                                                                                                         |
-| ---------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Pause after filter to review overrides                                                         | on      | Stops at Gate 1 so you can move papers between <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> buckets |
-| Pause before deep analysis                                                                     | on      | Stops at Gate 2 (after scoring, before PDF reads) so you can star borderline papers into the PDF set or exclude obvious duds from it                                                 |
-| Pause before briefing to review scores and add feedback                                        | on      | Stops at Gate 3 so you can star, dismiss, or comment before synthesis runs                                                                                                           |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>      | on      | Reruns synthesis once with a retry hint when the audit flags claims                                                                                                                  |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span> | off     | Same, but for the more ambiguous verdict                                                                                                                                             |
+| Checkbox                                                                                        | Default | What it does                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pause after filter to review overrides                                                          | on      | Stops at Gate 1 so you can move papers between <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> buckets                    |
+| Pause before deep analysis                                                                      | on      | Stops at Gate 2 (after scoring, before PDF reads) so you can star borderline papers into the PDF set or exclude obvious duds from it                                                                    |
+| Pause before briefing to review scores and add feedback                                         | on      | Stops at Gate 3 so you can star, dismiss, or comment before synthesis runs                                                                                                                              |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>       | on      | Reruns synthesis once with a retry hint when the audit flags claims                                                                                                                                     |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span>  | off     | Same, but for the more ambiguous verdict                                                                                                                                                                |
+| Ask me up to two questions after each briefing when the day's papers expose a gap in my profile | on      | After each briefing, one small call on the briefing model may add up to two tap-to-answer questions under **Notes from the editor** (`editorQuestions`). A failed call just means no questions that day |
 
 ### pauseBeforeDeepAnalysis
 

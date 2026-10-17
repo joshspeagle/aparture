@@ -8,7 +8,7 @@ This page is the **system view** of the briefing: what produces each part and wh
 
 ## Three sections, nothing more
 
-Despite the visual density of a finished briefing, the synthesis LLM only produces three things: an executive summary, a list of themes, and one card per paper. Everything else on the page — the quick-summary expansion, the full-report side panel, the "Generation details" disclosure — is rendered from data generated elsewhere in the pipeline, not from the synthesis call.
+Despite the visual density of a finished briefing, the synthesis LLM only produces three things: an executive summary, a list of themes, and one card per paper. Everything else on the page — the quick-summary expansion, the full-report side panel, the editor's questions, the "Generation details" disclosure — is rendered from data generated elsewhere in the pipeline, not from the synthesis call.
 
 Keeping the synthesis contract narrow keeps the LLM's job narrow: produce editorial prose against a small, well-defined shape, and stop.
 
@@ -85,6 +85,10 @@ Three features look like they're part of the briefing but come from elsewhere in
 
 The deep-analysis text produced by Stage 4 (PDF analysis). Render as a right-side panel triggered by the full-report button on any paper card. The panel renders the report's Markdown (headings, lists, bold, italic, code) through a small renderer that builds elements directly and never injects HTML, so model output can't add markup. Full reports are inputs to the briefing, not checked outputs: the audit uses them as evidence.
 
+### Notes from the editor
+
+Up to two tap-to-answer questions at the end of the briefing, from a separate small call on the briefing model (`/api/editor-questions`, `prompts/editor-questions.md`) after the claims check. The model is shown the profile, the cards, the highest-scored papers left out, and recent feedback, including earlier answers. `lib/editorQuestions/questions.js` keeps a question only if it ends in a question mark, offers two to four short answers, and cites an arXiv ID the model was shown. Most days produce none. Saved with the briefing as `editorQuestions`; each tap becomes an `answer` feedback event.
+
 ### Generation metadata
 
 Everything you see in the expandable "Generation details" section below the briefing:
@@ -140,7 +144,7 @@ Every briefing passes through deterministic checks in `lib/synthesis/validator.j
 
 The terminal logs each salvage. If even the salvaged briefing fails the checks, synthesis fails and reports the repair's errors.
 
-**The audit.** After the checks, a second LLM call on the same model reads the briefing against each paper's abstract and full report, untruncated, and flags the factual claims it can't find in them. Quick summaries aren't part of its evidence, because the writer never saw them. The audit's verdict can trigger one retry of synthesis (see [the pipeline](/concepts/pipeline#the-hallucination-retry-loop)).
+**The audit.** After the checks, a second LLM call on the same model reads the briefing against each paper's abstract and full report, untruncated, and flags the factual claims it can't find in them. Quick summaries aren't part of its evidence, because the writer never saw them. The audit's verdict can trigger one retry of synthesis (see [the pipeline](/concepts/pipeline#the-hallucination-retry-loop)). If the audit call fails, it runs once more; if it still fails, the briefing is saved unaudited, its reason goes into `generationMetadata.hallucinationCheckError`, and the reading view's header says _claims check did not run_.
 
 ## Where to tune what
 

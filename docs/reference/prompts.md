@@ -12,7 +12,7 @@ Template variables in the Markdown files use double-curly-brace syntax (the lite
 
 ## Hot-reloadable prompts (`prompts/*.md`)
 
-Nine files. Each renders its template variables at dispatch time from values the route passes in.
+Ten files. Each renders its template variables at dispatch time from values the route passes in.
 
 ### `prompts/synthesis.md`
 
@@ -33,6 +33,12 @@ The route can append two sections after the rendered template: the reader's note
 Hallucination audit — flags unsupported claims in a generated briefing. Fires after synthesis via `/api/check-briefing`.
 
 **Variables:** `briefing`, `papers`
+
+### `prompts/editor-questions.md`
+
+The editor's questions: up to two tap-to-answer questions after a briefing, asked only when the day's papers expose something the profile doesn't settle. Fires once per briefing, after the claims check, via `/api/editor-questions` on the briefing model, when the `editorQuestions` setting is on. `lib/editorQuestions/questions.js` keeps a question only if it ends in a question mark, offers two to four short answers, and cites an arXiv ID the model was shown; it reports what it dropped. Zero questions is a normal result.
+
+**Variables:** `profile`, `feedback`, `papers`, `nearMisses`
 
 ### `prompts/suggest-profile.md`
 
@@ -80,8 +86,9 @@ Variables are rendered as simple string substitution. A few are worth noting:
 
 - `profile` is the exact profile text stored in `scoringCriteria` in your config. It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
 - `papers` in `synthesis.md` is a JSON-serialised list of the final-round papers: arXiv ID, title, abstract, score, the scoring justification, the full report, and an `engagement` object when you starred, dismissed, or commented on the paper. Quick summaries are not part of it.
-- `papers` in `check-briefing.md` is rendered text, one block per paper (`lib/synthesis/checkCorpus.js`): title, abstract, and the full report, untruncated. Quick summaries are left out because the writer never sees them. `briefing` is a text rendering of the executive summary, themes, and paper cards.
-- `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups the pending events you ticked by type. It ends with a `PREVIOUSLY REJECTED SUGGESTIONS` section when you've turned changes down before (the 10 most recent). The rationales the model writes matter beyond the dialog: Aparture marks feedback as incorporated only when an accepted change's rationale cites it by arXiv ID or quotes it.
+- `papers` in `check-briefing.md` is rendered text, one block per paper (`lib/synthesis/checkCorpus.js`), holding what the writer saw: title, relevance score, your engagement, abstract, scoring justification, and the full report, untruncated. Quick summaries are left out because the writer never sees them. `briefing` is a text rendering of the executive summary, themes, and paper cards.
+- `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups the pending events you ticked by type. It includes an `ANSWERS TO THE EDITOR'S QUESTIONS` section when you've answered any, and ends with a `PREVIOUSLY REJECTED SUGGESTIONS` section when you've turned changes down before (the 10 most recent). The rationales the model writes matter beyond the dialog: Aparture marks feedback as incorporated only when an accepted change's rationale cites it by arXiv ID or quotes it.
+- In `editor-questions.md`, `papers` lists the briefing's cards (ID, title, score, pitch) and `nearMisses` the highest-scored papers left out of it. `feedback` is your recent stars, dismissals, comments, and earlier answers, so the model doesn't repeat a question you've answered.
 - `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
 
 ### The cache-boundary marker
@@ -123,6 +130,8 @@ Match the symptom to a file.
 **The hallucination audit fires too often or misses genuine issues.** Edit `prompts/check-briefing.md`. The prompt separates factual claims about a paper (held to its sources) from editorial synthesis across papers (allowed unless it contradicts them), then lists explicit <span class="verdict is-no">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-yes">NO</span> categories (YES = hallucinations detected, NO = clean); adjusting those boundaries shifts sensitivity. The "Sourcing discipline" section of `prompts/synthesis.md` uses the same split, so change the two together. Pair with the `briefingRetryOnYes` and `briefingRetryOnMaybe` checkboxes in Settings, which control what the pipeline does after the audit returns.
 
 **The refinement flow proposes changes that feel off-target or too aggressive.** Edit `prompts/suggest-profile.md`. This is where the weighting across stars, dismisses, comments, and filter overrides is described, along with the "return no changes if signal is thin" guidance.
+
+**The editor asks questions that miss, or asks too often.** Edit `prompts/editor-questions.md`. Its list of good reasons to ask is what keeps the questions rare; the validator in `lib/editorQuestions/questions.js` enforces the format.
 
 **Podcasts drift off-topic or cover too many papers shallowly.** Edit `prompts/notebooklm-discussion-guide.md` for the outline itself, or `lib/notebooklm/buildFocusPrompt.js` for the per-duration budget table NotebookLM receives in `focus-prompt.txt`.
 

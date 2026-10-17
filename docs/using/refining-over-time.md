@@ -26,6 +26,7 @@ When you click <span class="ui-action">Generate suggestion</span>, the model rec
 - Your most recent **paper comments** — capped at the most recent 30. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
 - Your most recent **general comments** — same 30-item cap. Each one is paired with the briefing it was written against (executive summary, theme titles and arguments, and per-paper pitches), so the model can interpret reactions like _"this one leaned too heavily on interpretability"_ with the right context.
 - **Scoped feedback** (bucket-level, score-review, and run-level observations), grouped by `briefingDate`. These appear as three labelled sections in the prompt — `BUCKET-LEVEL OBSERVATIONS`, `SCORE-REVIEW NOTES`, and `RUN-LEVEL OBSERVATIONS` — so the model knows which scope each note belongs to and can weight run-level patterns accordingly. Filter-override events and scoped-feedback events are passed through uncapped (both are latest-wins or have no natural numeric accumulation).
+- Your **answers to the editor's questions**, uncapped, in a section of their own (`ANSWERS TO THE EDITOR'S QUESTIONS`), each with the question and the papers that prompted it. An answer is you settling an ambiguity the day's papers exposed, which makes it one of the most direct signals the flow sees.
 - The changes you **rejected** in earlier rounds, the 10 most recent, in a section that tells the model not to propose them again unless the new feedback gives a reason.
 - Any **per-call guidance** you type in (see below).
 
@@ -86,7 +87,7 @@ The Suggest improvements card on the Profile page keeps a running tally: _"Sugge
 
 ## Which feedback counts as used
 
-After you apply or reject, Aparture marks as incorporated only the feedback behind the changes you accepted. It works this out from each accepted change's rationale: a star, dismiss, paper comment, or filter override counts when the rationale names its paper by arXiv ID or full title, and a general comment or note counts when the rationale quotes it. A note the rationales don't quote still counts if you accepted at least one change, unless a rejected change quoted it.
+After you apply or reject, Aparture marks as incorporated only the feedback behind the changes you accepted. It works this out from each accepted change's rationale: a star, dismiss, paper comment, or filter override counts when the rationale names its paper by arXiv ID or full title, and a general comment or note counts when the rationale quotes it. A note the rationales don't quote still counts if you accepted at least one change, unless a rejected change quoted it. An answer to one of the editor's questions counts as used whenever you accept at least one change.
 
 Everything else stays pending: events you unticked before generating, events behind the changes you rejected, and all of them after a _"no change"_ result. Pending feedback is offered again the next time you run the flow, where it can add up to a pattern.
 

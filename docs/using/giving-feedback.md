@@ -2,9 +2,9 @@
 
 Feedback is how Aparture learns what you actually care about. Small signals — stars, dismisses, short notes on papers, corrections on filter verdicts, general comments on a briefing, observations about a scoring round — build up quietly as you use the tool. Later, you can hand them to a flow that proposes edits to your profile: it reads everything you've marked and suggests specific changes, which you accept or reject per change. None of this is required for usable briefings on day one, but it's the main way the system evolves past your starter profile.
 
-This page walks through the six feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. For worked examples of good and bad usage of each type, see [Feedback in practice](/using/feedback-in-practice); the related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
+This page walks through the seven feedback types, where each one appears in the interface, when they take effect relative to the briefing, and how much feedback you typically need before the refinement flow is worth running. For worked examples of good and bad usage of each type, see [Feedback in practice](/using/feedback-in-practice); the related page on [refining over time](/using/refining-over-time) covers the refinement step itself.
 
-## The six feedback types
+## The seven feedback types
 
 <div class="landing-cards">
 
@@ -83,9 +83,20 @@ Each scope has a distinct dedupe key (scope + briefing date). If you leave two s
 
 </div>
 
+<div class="landing-card">
+
+### ✓ Answer
+
+Your reply to one of the editor's questions at the end of a briefing (see [Reading a briefing → Notes from the editor](/using/reading-a-briefing#notes-from-the-editor)).
+
+- One tap records it. Tapping a different answer replaces it, and tapping the chosen answer again takes it back.
+- It reaches the refinement flow as evidence in its own section, next to the papers that prompted the question.
+
 </div>
 
-All six feed the same local feedback store. When you run the refinement flow, it reads everything in the store when deciding what to propose.
+</div>
+
+All seven feed the same local feedback store. When you run the refinement flow, it reads everything in the store when deciding what to propose.
 
 ## Where each one appears
 
@@ -125,6 +136,8 @@ General comments are distinctive: they go to the refinement flow as profile-leve
 Stars, dismisses, and filter overrides are togglable: only the most recent state matters. If you star a paper, unstar it, then star it again, the refinement flow sees that it's currently starred. Intermediate states are kept in history but don't count as signal on their own.
 
 Paper comments and general comments are different — each one is a separate entry. A second comment doesn't replace the first. If you leave _"interesting method"_ on Monday and _"but the evaluation is thin"_ on Tuesday, the flow sees both, in order.
+
+Answers are latest-wins per question and day: only your current answer counts.
 
 Scoped feedback (bucket / score-review / run) uses latest-wins per scope-dedupe key. If you leave two "score-review" notes for the same run, the second one replaces the first. This is intentional — scoped notes are meant to represent your current assessment of that scope, not accumulate indefinitely.
 
@@ -168,7 +181,7 @@ Three controls for narrowing the timeline below:
 
 A chronological list of every feedback event, most recent first, in up to three groups: **Not yet incorporated**, **Incorporated into your profile**, and **From test runs (N) · not used for suggestions**. The test-run group is collapsed; <span class="ui-action">Show</span> expands it and <span class="ui-action">Clear test feedback</span> deletes it all in one go.
 
-Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄, 📋), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
+Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄, 📋, ✓), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
 
 Every entry has a <span class="ui-action">delete</span> link, which asks once before it removes the event. Comments and notes also have an <span class="ui-action">edit</span> link. An edited entry shows _· edited_ and becomes pending again, because no suggestion has seen the new wording.
 
@@ -176,7 +189,7 @@ The timeline is useful for two things: reminding yourself what you've been marki
 
 ## How much feedback is enough?
 
-The refinement flow works from the aggregate of everything you've given it — all six types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
+The refinement flow works from the aggregate of everything you've given it — all seven types — so what matters is how much total signal the store holds, not how long you've been using Aparture. A rough guide:
 
 | Aggregate volume                    | What to expect from the refinement flow                                                                |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |

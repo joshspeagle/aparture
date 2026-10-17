@@ -133,7 +133,7 @@ These variables exist so the Vitest integration suite can produce deterministic 
 
 When set, replaces the variable tail of each LLM prompt with this literal string before hashing. Makes fixture keys deterministic regardless of paper content. Also disables Anthropic prompt caching (the `cachePrefix` / `cacheable` fields are omitted from the request), so fixture behaviour doesn't depend on cache state.
 
-Read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, and `generate-notebooklm.js`, and by `lib/llm/loadRubricPrompt.js` when it builds a validation-retry prompt. Used via `beforeEach` in the integration tests at `tests/integration/`.
+Read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, `generate-notebooklm.js`, and `editor-questions.js`, and by `lib/llm/loadRubricPrompt.js` when it builds a validation-retry prompt. Used via `beforeEach` in the integration tests at `tests/integration/`.
 
 ### `APARTURE_TEST_PDF_OVERRIDE`
 
