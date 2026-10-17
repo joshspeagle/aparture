@@ -184,3 +184,31 @@ describe('parseOpenAIResponsesResponse', () => {
     );
   });
 });
+
+describe('parseOpenAIResponsesResponse message selection', () => {
+  it('reads the final-answer message, not an earlier commentary message', async () => {
+    const { parseOpenAIResponsesResponse } = await import(
+      '../../../../lib/llm/structured/openai.js'
+    );
+    const out = parseOpenAIResponsesResponse(
+      {
+        output: [
+          { type: 'reasoning', summary: [] },
+          {
+            type: 'message',
+            phase: 'commentary',
+            content: [{ type: 'output_text', text: 'Reading the paper now.' }],
+          },
+          {
+            type: 'message',
+            phase: 'final_answer',
+            content: [{ type: 'output_text', text: '{"score":7}' }],
+          },
+        ],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      },
+      { expectStructured: true }
+    );
+    expect(out.structured).toEqual({ score: 7 });
+  });
+});
