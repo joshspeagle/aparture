@@ -74,6 +74,34 @@ describe('PreBriefingGate', () => {
   });
 });
 
+describe('PreBriefingGate — the note is addressed to the briefing writer (P1-7)', () => {
+  it('saves the note tagged origin pre-briefing and echoes what will be sent', () => {
+    const onAddGeneralComment = vi.fn();
+    render(
+      <PreBriefingGate
+        {...base}
+        onAddGeneralComment={onAddGeneralComment}
+        results={{ allAnalyzedPapers: [], finalRanking: [] }}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /add a comment/i }));
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: '  Lead with the diffusion-models cluster.  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(onAddGeneralComment).toHaveBeenCalledWith(
+      'Lead with the diffusion-models cluster.',
+      undefined,
+      { origin: 'pre-briefing' }
+    );
+    // Pre-fix the input collapsed back to "+ Add a comment" with no trace.
+    expect(screen.getByTestId('pre-briefing-saved-notes')).toHaveTextContent(
+      /Sent to the briefing writer with this run:.*Lead with the diffusion-models cluster\./
+    );
+  });
+});
+
 describe('PreBriefingGate — projected briefing spend', () => {
   const pricedConfig = {
     briefingModel: 'claude-haiku-4.5',

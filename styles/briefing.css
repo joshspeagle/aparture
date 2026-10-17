@@ -209,6 +209,46 @@
   margin-right: var(--aparture-space-2);
 }
 
+/* Full-report side panel: Markdown rendered by components/briefing/
+ * MarkdownLite.jsx. Tailwind's preflight strips heading sizes and list
+ * markers, so restore them for the report's sections and lists. */
+.briefing-prose .report-markdown h3 {
+  font-size: var(--aparture-text-lg);
+  margin: var(--aparture-space-6) 0 var(--aparture-space-2) 0;
+}
+
+.briefing-prose .report-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.briefing-prose .report-markdown h4 {
+  font-size: var(--aparture-text-base);
+  margin: var(--aparture-space-4) 0 var(--aparture-space-2) 0;
+}
+
+.briefing-prose .report-markdown ul,
+.briefing-prose .report-markdown ol {
+  margin: 0 0 var(--aparture-space-4) 0;
+  padding-left: var(--aparture-space-6);
+}
+
+.briefing-prose .report-markdown ul {
+  list-style: disc;
+}
+
+.briefing-prose .report-markdown ol {
+  list-style: decimal;
+}
+
+.briefing-prose .report-markdown li {
+  margin-bottom: var(--aparture-space-1);
+}
+
+.briefing-prose .report-markdown code {
+  font-family: var(--aparture-font-mono);
+  font-size: 0.9em;
+}
+
 /* Mobile reading pass (< 768px). The surrounding .briefing-surface
  * (shell.css) owns the horizontal gutters on small screens, so the prose
  * block drops its own; paper cards tighten, and action-row links/buttons

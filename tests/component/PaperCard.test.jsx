@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import PaperCard from '../../components/briefing/PaperCard.jsx';
+import PaperCard, {
+  briefingPaperSummary,
+  paperLinks,
+} from '../../components/briefing/PaperCard.jsx';
 
 describe('PaperCard', () => {
   const basePaper = {
@@ -27,6 +30,28 @@ describe('PaperCard', () => {
     expect(screen.getByText(/circuit-level analysis/i)).toBeInTheDocument();
     expect(screen.getByText(/9\.2/)).toBeInTheDocument();
     expect(screen.getByText(/2504\.01234/)).toBeInTheDocument();
+  });
+
+  it('links to the abstract, PDF, HTML and alphaXiv pages in new tabs (P1-11)', () => {
+    render(<PaperCard {...defaultProps} />);
+    const expected = {
+      abstract: 'https://arxiv.org/abs/2504.01234',
+      PDF: 'https://arxiv.org/pdf/2504.01234',
+      HTML: 'https://arxiv.org/html/2504.01234',
+      alphaXiv: 'https://www.alphaxiv.org/abs/2504.01234',
+    };
+    for (const [label, href] of Object.entries(expected)) {
+      const link = screen.getByRole('link', { name: new RegExp(`^${label} for`) });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(link).toHaveTextContent(label);
+    }
+  });
+
+  it('paperLinks keeps old-style ids intact and returns nothing without an id', () => {
+    expect(paperLinks('astro-ph/0601001')[1].href).toBe('https://arxiv.org/pdf/astro-ph/0601001');
+    expect(paperLinks(undefined)).toEqual([]);
   });
 
   it('renders ☆ outline when starred is false', () => {
@@ -63,6 +88,37 @@ describe('PaperCard', () => {
       score: 9.2,
       briefingDate: '2026-04-14',
     });
+  });
+
+  it('a reaction on a synthesized paper carries its pitch and why-it-matters, not a bare title (P1-9)', () => {
+    // Synthesized briefing papers have no quickSummary field (it lives in
+    // quickSummariesById), so this used to send quickSummary: ''.
+    const { quickSummary: _omit, ...synthesized } = basePaper;
+    const onStar = vi.fn();
+    const onDismiss = vi.fn();
+    render(
+      <PaperCard {...defaultProps} paper={synthesized} onStar={onStar} onDismiss={onDismiss} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /star/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    const expected =
+      'A mechanistic account of attention-head composition. Directly grounded in your stated interest in mech interp.';
+    expect(onStar.mock.calls[0][0].quickSummary).toBe(expected);
+    expect(onDismiss.mock.calls[0][0].quickSummary).toBe(expected);
+  });
+
+  it('tags reactions as test feedback on a TEST MODE briefing', () => {
+    const onStar = vi.fn();
+    render(<PaperCard {...defaultProps} onStar={onStar} testMode />);
+    fireEvent.click(screen.getByRole('button', { name: /star/i }));
+    expect(onStar.mock.calls[0][0].testMode).toBe(true);
+  });
+
+  it('briefingPaperSummary prefers a carried quick summary and caps the length', () => {
+    expect(briefingPaperSummary({ quickSummary: ' qs ', onelinePitch: 'p' })).toBe('qs');
+    expect(briefingPaperSummary({ onelinePitch: 'p', whyMatters: '' })).toBe('p');
+    expect(briefingPaperSummary({})).toBe('');
+    expect(briefingPaperSummary({ whyMatters: 'w'.repeat(2000) }).length).toBeLessThan(900);
   });
 
   it('calls onDismiss with full paper metadata when dismiss clicked', () => {

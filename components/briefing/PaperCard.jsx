@@ -8,6 +8,50 @@ import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 // call and trigger spurious re-renders.
 const EMPTY_SEEN_INDEX = Object.freeze({});
 
+const MAX_EVENT_SUMMARY_CHARS = 800;
+
+// Anchors inherit colour with no underline app-wide (styles/globals.css), so
+// these need an underline to read as links inside the muted meta line.
+const PAPER_LINK_STYLE = {
+  color: 'var(--aparture-mute)',
+  textDecoration: 'underline',
+  textUnderlineOffset: '2px',
+};
+
+// Where to read the paper: the arXiv abstract page, the PDF, arXiv's HTML
+// rendering (easier to read on screen, when the paper has one), and
+// alphaXiv's discussion overlay. Exported for tests.
+export function paperLinks(arxivId) {
+  if (!arxivId) return [];
+  const id = encodeURI(String(arxivId));
+  return [
+    { label: 'abstract', href: `https://arxiv.org/abs/${id}` },
+    { label: 'PDF', href: `https://arxiv.org/pdf/${id}` },
+    { label: 'HTML', href: `https://arxiv.org/html/${id}` },
+    { label: 'alphaXiv', href: `https://www.alphaxiv.org/abs/${id}` },
+  ];
+}
+
+// What a star / dismiss / comment made on a briefing card tells the Suggest
+// prompt about the paper (it renders this as "Summary: …"). Synthesized
+// briefing papers carry no quickSummary — that lives in quickSummariesById —
+// so these events used to reach suggest-profile as a bare title. Use the
+// card's own pitch and why-it-matters instead, unless the paper object does
+// carry a quick summary (older shapes). Shared with App's card-comment
+// handler.
+export function briefingPaperSummary(paper) {
+  const quick = typeof paper?.quickSummary === 'string' ? paper.quickSummary.trim() : '';
+  const text =
+    quick ||
+    [paper?.onelinePitch, paper?.whyMatters]
+      .map((s) => (typeof s === 'string' ? s.trim() : ''))
+      .filter(Boolean)
+      .join(' ');
+  return text.length > MAX_EVENT_SUMMARY_CHARS
+    ? `${text.slice(0, MAX_EVENT_SUMMARY_CHARS)}…`
+    : text;
+}
+
 export default function PaperCard({
   paper,
   starred = false,
@@ -19,6 +63,10 @@ export default function PaperCard({
   onAddComment,
   onOpenQuickSummary,
   onOpenFullReport,
+  // True when the card belongs to a TEST MODE (dry-run) briefing: reactions
+  // are then tagged as test feedback and kept out of suggestions. Forwarded
+  // from BriefingView's own testMode prop.
+  testMode = false,
 }) {
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -38,9 +86,10 @@ export default function PaperCard({
   const buildMeta = () => ({
     arxivId: paper.arxivId,
     paperTitle: paper.title,
-    quickSummary: paper.quickSummary ?? '',
+    quickSummary: briefingPaperSummary(paper),
     score: paper.score,
     briefingDate,
+    ...(testMode ? { testMode: true } : {}),
   });
 
   const handleStar = () => onStar?.(buildMeta());
@@ -75,6 +124,22 @@ export default function PaperCard({
         <a href={`https://arxiv.org/abs/${paper.arxivId}`} target="_blank" rel="noreferrer">
           {paper.arxivId}
         </a>
+        <span data-testid="paper-links">
+          {paperLinks(paper.arxivId).map((link) => (
+            <span key={link.label}>
+              {' · '}
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${link.label} for ${paper.title ?? paper.arxivId} (opens in a new tab)`}
+                style={PAPER_LINK_STYLE}
+              >
+                {link.label}
+              </a>
+            </span>
+          ))}
+        </span>
       </div>
       <hr className="hairline" />
       <p className="italic-pitch">{paper.onelinePitch}</p>

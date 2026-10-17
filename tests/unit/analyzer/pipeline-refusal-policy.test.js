@@ -223,15 +223,17 @@ describe('pipeline — safety-refusal policy', () => {
     }
   );
 
-  test('fail policy: does not silently skip the paper', { timeout: 30000 }, async () => {
-    const pipeline = setupStore({ refusalPolicy: 'fail' });
+  test('fail policy: halts the run at the refused paper', { timeout: 30000 }, async () => {
+    const pipeline = setupStore({ refusalPolicy: 'fail', pdfAnalysisConcurrency: 1 });
+    const urls = [];
 
     global.fetch = vi.fn(async (url, options) => {
+      urls.push(url);
       const body = options?.body ? JSON.parse(options.body) : {};
       if (typeof url === 'string' && url.includes('/api/score-abstracts')) {
         return buildScoredBatchResponse((body.papers ?? []).length);
       }
-      if (typeof url === 'string' && url.includes('/api/analyze-pdf')) {
+      if (typeof url === 'string' && url === '/api/analyze-pdf') {
         return buildRefusalResponse();
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
@@ -240,13 +242,151 @@ describe('pipeline — safety-refusal policy', () => {
     await pipeline.startProcessing(false, true);
     const state = useAnalyzerStore.getState();
 
-    // Under 'fail' the paper must NOT be quietly marked as a skip — the
-    // whole point of the policy is that refusals surface as errors.
+    // The run HALTED: the pool stopped dispatching after the first refused
+    // paper (concurrency 1), and nothing downstream ran — no quick
+    // summaries, no synthesis. (Before the fix the pool swallowed the error,
+    // every paper was attempted, and the run went on to the briefing stage.)
+    expect(urls.filter((u) => u === '/api/analyze-pdf')).toHaveLength(1);
+    expect(urls.some((u) => u === '/api/analyze-pdf-quick' || u === '/api/synthesize')).toBe(false);
+    // The refusal is recorded for the RefusalSummaryCard…
+    const recorded = state.refusals.filter((r) => r.stage === 'pdf');
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ provider: 'anthropic', category: 'cyber' });
+    // …and the run error says what happened and which policy did it, instead
+    // of the generic "Failed to analyze paper … after all retries".
+    expect(state.processing.errors).toHaveLength(1);
+    expect(state.processing.errors[0]).toMatch(/Run halted: anthropic declined PDF analysis/);
+    expect(state.processing.errors[0]).toMatch(/refusalPolicy is 'fail'/);
+    // Under 'fail' the paper must NOT be quietly marked as a skip.
     expect(
       state.results.finalRanking.some((p) => p.pdfAnalysisSkipReason === 'content-refusal')
     ).toBe(false);
-    expect(state.processing.errors.length).toBeGreaterThan(0);
+    expect(state.processing.isRunning).toBe(false);
   });
+
+  test(
+    'fail policy in the filter stage halts instead of silently dropping the batch',
+    { timeout: 30000 },
+    async () => {
+      // The auditor's probe: batch 1 refused under 'fail' made its 2 papers
+      // vanish from every bucket with processing.errors EMPTY, and the run
+      // still saved a briefing.
+      const pipeline = setupStore({
+        refusalPolicy: 'fail',
+        useQuickFilter: true,
+        filterBatchSize: 2,
+        filterConcurrency: 1,
+      });
+      const urls = [];
+      let filterCall = 0;
+      global.fetch = vi.fn(async (url, options) => {
+        urls.push(url);
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (url === '/api/quick-filter') {
+          filterCall += 1;
+          if (filterCall === 1) return buildRefusalResponse();
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              verdicts: body.papers.map((_, i) => ({
+                paperIndex: i + 1,
+                verdict: 'YES',
+                summary: 's',
+                justification: 'j',
+              })),
+            }),
+          };
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+      const state = useAnalyzerStore.getState();
+
+      expect(filterCall).toBe(1);
+      expect(urls.some((u) => u !== '/api/quick-filter')).toBe(false);
+      expect(state.refusals).toEqual([
+        expect.objectContaining({ stage: 'filter', scope: 'batch 1 (2 papers)' }),
+      ]);
+      expect(state.processing.errors).toHaveLength(1);
+      expect(state.processing.errors[0]).toMatch(/Run halted: anthropic declined filter/);
+    }
+  );
+
+  test(
+    'fail policy in the scoring stage halts before PDF analysis',
+    { timeout: 30000 },
+    async () => {
+      const pipeline = setupStore({
+        refusalPolicy: 'fail',
+        scoringBatchSize: 2,
+        scoringConcurrency: 1,
+      });
+      const urls = [];
+      global.fetch = vi.fn(async (url) => {
+        urls.push(url);
+        if (url === '/api/score-abstracts') return buildRefusalResponse();
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+      const state = useAnalyzerStore.getState();
+
+      expect(urls.filter((u) => u === '/api/score-abstracts')).toHaveLength(1);
+      expect(urls.some((u) => u === '/api/analyze-pdf')).toBe(false);
+      expect(state.refusals.map((r) => r.stage)).toEqual(['scoring']);
+      expect(state.processing.errors).toHaveLength(1);
+      expect(state.processing.errors[0]).toMatch(/Run halted: anthropic declined scoring/);
+      // Not the misleading "Check your API configuration" message.
+      expect(state.processing.errors[0]).not.toMatch(/API configuration/);
+    }
+  );
+
+  test(
+    'skip policy in the filter stage records the refusal and keeps the batch as MAYBE',
+    { timeout: 30000 },
+    async () => {
+      const pipeline = setupStore({
+        refusalPolicy: 'skip',
+        useQuickFilter: true,
+        filterBatchSize: 2,
+        filterConcurrency: 1,
+      });
+      let filterCall = 0;
+      global.fetch = vi.fn(async (url, options) => {
+        const body = options?.body ? JSON.parse(options.body) : {};
+        if (url === '/api/quick-filter') {
+          filterCall += 1;
+          if (filterCall === 1) return buildRefusalResponse();
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              verdicts: body.papers.map((_, i) => ({
+                paperIndex: i + 1,
+                verdict: 'NO',
+                summary: 's',
+                justification: 'j',
+              })),
+            }),
+          };
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      await pipeline.startProcessing(false, true);
+      const state = useAnalyzerStore.getState();
+
+      // All 3 batches were attempted (skip keeps the run alive)…
+      expect(filterCall).toBe(3);
+      // …the refusal is recorded…
+      expect(state.refusals).toEqual([expect.objectContaining({ stage: 'filter' })]);
+      // …and the refused batch's 2 papers survive as MAYBE rather than vanishing.
+      expect(state.filterResults.maybe).toHaveLength(2);
+      expect(state.filterResults.no).toHaveLength(3);
+    }
+  );
 
   test(
     'cross-provider fallback single-flights the first Anthropic call',

@@ -24,6 +24,7 @@ import MobileTopBar from './MobileTopBar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
 import RankedPaperCard from '../results/RankedPaperCard.jsx';
+import { briefingPaperSummary } from '../briefing/PaperCard.jsx';
 
 // Local-timezone "today" — shared convention with SidebarBriefingList's
 // "Today" label detection (see lib/dates.js for the UTC-drift rationale).
@@ -54,7 +55,7 @@ export default function App() {
   const {
     profile,
     updateProfile,
-    saveSuggested,
+    recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
     migrationNotice,
@@ -79,6 +80,17 @@ export default function App() {
   } = useBriefing({ password });
   const feedback = useFeedback();
   const seenPapers = useSeenPapers({ password });
+
+  // Reverting to a revision undoes every change made at or after it, so the
+  // feedback those changes incorporated is pending again.
+  const reopenIncorporatedSince = feedback.reopenIncorporatedSince;
+  const handleRevertToRevision = useCallback(
+    (createdAt) => {
+      revertToRevision(createdAt);
+      reopenIncorporatedSince(createdAt);
+    },
+    [revertToRevision, reopenIncorporatedSince]
+  );
 
   // Resolve the active briefing entry. Current briefing returns synchronously
   // via loadBriefing's fast path; archived briefings trigger an async fetch
@@ -460,10 +472,34 @@ export default function App() {
   }, [config]);
 
   // --- Filter verdict cycling ---
+  // Each click is also recorded as a filter-override feedback event right
+  // away (latest-wins per paper; moving a paper back to the filter's verdict
+  // removes it). Overrides used to be diffed out of the buckets only when
+  // scoring started, so every click made after a run was silently dropped.
+  const recordFilterOverride = feedback.recordFilterOverride;
   const setFilterVerdict = useCallback(
     (paperId, currentVerdict, nextVerdict) => {
       if (currentVerdict === nextVerdict) return;
       const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
+      const live = useAnalyzerStore.getState();
+      const livePaper = live.filterResults[BUCKET_BY_VERDICT[currentVerdict]]?.find(
+        (p) => p.id === paperId
+      );
+      if (livePaper) {
+        recordFilterOverride({
+          arxivId: livePaper.arxivId ?? livePaper.id,
+          paperTitle: livePaper.title,
+          summary: livePaper.filterSummary ?? '',
+          justification: livePaper.filterJustification ?? '',
+          originalVerdict: livePaper.originalVerdict,
+          newVerdict: nextVerdict,
+          briefingDate: todayStr(),
+          // The buckets always belong to the current run; after a dry run
+          // has ended they still hold its mock verdicts. (During a test run
+          // useFeedback tags the event on its own.)
+          testMode: Boolean(live.results?.fromDryRun),
+        });
+      }
       setFilterResults((prev) => {
         const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
         const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
@@ -478,16 +514,24 @@ export default function App() {
         };
       });
     },
-    [setFilterResults]
+    [setFilterResults, recordFilterOverride]
   );
 
   // Shared filter pass: all scoped-feedback events for today. Three derived
   // memos (bucketFeedbackByBucket, runFeedbackSavedText, scoreReviewFeedbackSavedText)
   // source from this single array so feedback.events is only iterated once.
+  // Test-run notes and real notes are kept apart (useFeedback never lets one
+  // replace the other), so show the ones matching the current run's mode.
+  const testRunActive = Boolean(testState?.dryRunInProgress || testState?.minimalTestInProgress);
   const todayScopedEvents = useMemo(() => {
     const today = todayStr();
-    return feedback.events.filter((e) => e.type === 'scoped-feedback' && e.briefingDate === today);
-  }, [feedback.events]);
+    return feedback.events.filter(
+      (e) =>
+        e.type === 'scoped-feedback' &&
+        e.briefingDate === today &&
+        Boolean(e.testMode) === testRunActive
+    );
+  }, [feedback.events, testRunActive]);
 
   // --- Bucket feedback ---
   const bucketFeedbackByBucket = useMemo(
@@ -721,6 +765,7 @@ export default function App() {
       filterResults: liveFilterResults,
       papersScreened: liveResults?.allPapers?.length ?? 0,
       testMode: fromDryRun,
+      minimalTest: !!liveResults?.fromTestPapers,
     });
 
     // Fresh AbortController so Stop (and any future cancel affordance) can
@@ -884,9 +929,13 @@ export default function App() {
         {
           arxivId,
           paperTitle: paper.title,
-          quickSummary: paper.quickSummary ?? '',
+          // Synthesized papers have no quickSummary; use the card's pitch +
+          // why-it-matters so Suggest sees more than a bare title.
+          quickSummary: briefingPaperSummary(paper),
           score: paper.score,
           briefingDate: entry.date ?? todayStr(),
+          // A comment on a TEST MODE (dry-run) briefing is test feedback.
+          testMode: Boolean(entry.generationMetadata?.testMode),
         },
         text
       );
@@ -894,9 +943,11 @@ export default function App() {
     [activeView, currentBriefing, selectedEntry, briefingHistory, feedback]
   );
 
+  // `options` carries e.g. { origin: 'pre-briefing' } from the Gate 3 note,
+  // which briefingClient forwards to the briefing writer.
   const handleAddGeneralComment = useCallback(
-    (text, briefingId) => {
-      feedback.addGeneralComment(text, todayStr(), briefingId);
+    (text, briefingId, options) => {
+      feedback.addGeneralComment(text, todayStr(), briefingId, options);
     },
     [feedback]
   );
@@ -1102,7 +1153,7 @@ export default function App() {
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
-          revertToRevision={revertToRevision}
+          revertToRevision={handleRevertToRevision}
           clearHistory={clearHistory}
           migrationNotice={migrationNotice}
           dismissMigrationNotice={dismissMigrationNotice}
@@ -1192,8 +1243,13 @@ export default function App() {
           MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
         ).toLowerCase()}
         password={password}
-        onAccept={(revisedProfile, rationale, newCutoff) => {
-          saveSuggested(revisedProfile, newCutoff, rationale);
+        rejectedSuggestions={profile?.rejectedSuggestions ?? []}
+        onAccept={(outcome) => {
+          // Profile side: content + revision for accepted changes. Feedback
+          // side: only the events behind accepted changes become
+          // incorporated, stamped with the same appliedAt as the revision.
+          recordSuggestionOutcome(outcome);
+          feedback.markIncorporated(outcome.incorporatedEventIds, outcome.appliedAt);
           setShowSuggestDialog(false);
         }}
       />

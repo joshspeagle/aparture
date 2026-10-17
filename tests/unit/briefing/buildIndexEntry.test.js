@@ -54,6 +54,22 @@ describe('buildIndexEntry', () => {
     );
   });
 
+  it('marks dry-run and minimal-test briefings as test runs, and keeps the flag on re-derive', () => {
+    const base = { id: 'c', date: '2026-04-21', timestamp: 0, archived: false, briefing: {} };
+    const dry = buildIndexEntry({ ...base, generationMetadata: { testMode: true } });
+    const minimal = buildIndexEntry({
+      ...base,
+      generationMetadata: { testMode: false, minimalTest: true },
+    });
+    const real = buildIndexEntry({ ...base, generationMetadata: { testMode: false } });
+    expect(dry.testRun).toBe(true);
+    expect(minimal.testRun).toBe(true);
+    expect(real.testRun).toBeUndefined();
+    // readStoredHistory re-runs buildIndexEntry on index entries, which carry
+    // no generationMetadata — the flag must survive that.
+    expect(buildIndexEntry(dry).testRun).toBe(true);
+  });
+
   it('tolerates missing papers array', () => {
     const full = {
       id: 'b',

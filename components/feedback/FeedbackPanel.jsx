@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useAnalyzerStore } from '../../stores/analyzerStore.js';
+import { isPendingFeedback, isTestFeedback } from '../../lib/profile/feedbackStatus.js';
 import FeedbackHeader from './FeedbackHeader.jsx';
 import GeneralCommentInput from './GeneralCommentInput.jsx';
 import ScopedCommentInput from './ScopedCommentInput.jsx';
@@ -21,6 +23,9 @@ export default function FeedbackPanel({
   lastFeedbackCutoff,
   runFeedbackSavedText,
   onRunFeedback,
+  onClearTestEvents,
+  onRemoveEvent,
+  onUpdateEventText,
 }) {
   const [filters, setFilters] = useState({
     type: 'all',
@@ -28,13 +33,24 @@ export default function FeedbackPanel({
     dateRange: 'all',
   });
 
-  const counts = useMemo(
-    () => ({
-      newCount: events.filter((e) => e.timestamp > cutoff).length,
-      totalCount: events.length,
-    }),
-    [events, cutoff]
-  );
+  // Housekeeping actions fall back to the feedback hook App publishes into
+  // the store's reactContext, so they work without threading new props
+  // through MainArea. (The selected methods are stable useCallbacks.)
+  const storeClearTestEvents = useAnalyzerStore((s) => s.reactContext?.feedback?.clearTestEvents);
+  const storeRemoveEvent = useAnalyzerStore((s) => s.reactContext?.feedback?.removeEvent);
+  const storeUpdateEventText = useAnalyzerStore((s) => s.reactContext?.feedback?.updateEventText);
+  const clearTestEvents = onClearTestEvents ?? storeClearTestEvents;
+  const removeEvent = onRemoveEvent ?? storeRemoveEvent;
+  const updateEventText = onUpdateEventText ?? storeUpdateEventText;
+
+  const counts = useMemo(() => {
+    const testCount = events.filter(isTestFeedback).length;
+    return {
+      newCount: events.filter((e) => isPendingFeedback(e, cutoff)).length,
+      totalCount: events.length - testCount,
+      testCount,
+    };
+  }, [events, cutoff]);
 
   const hasEvents = events.length > 0;
 
@@ -51,6 +67,7 @@ export default function FeedbackPanel({
       <FeedbackHeader
         newCount={counts.newCount}
         totalCount={counts.totalCount}
+        testCount={counts.testCount}
         onSuggestClick={onSuggestClick}
         lastFeedbackCutoff={lastFeedbackCutoff}
       />
@@ -82,7 +99,14 @@ export default function FeedbackPanel({
       </div>
 
       {hasEvents ? (
-        <FeedbackTimeline events={events} filters={filters} cutoff={cutoff} />
+        <FeedbackTimeline
+          events={events}
+          filters={filters}
+          cutoff={cutoff}
+          onClearTestEvents={clearTestEvents}
+          onRemoveEvent={removeEvent}
+          onUpdateEventText={updateEventText}
+        />
       ) : (
         <FeedbackEmptyState />
       )}

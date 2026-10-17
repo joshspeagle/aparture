@@ -70,7 +70,9 @@ class ServerManager {
    * Extract port from server output
    */
   extractPortFromOutput(output) {
-    const match = output.match(/localhost:(\d+)/);
+    // `npm run dev` binds 127.0.0.1 (not 0.0.0.0), so Next prints
+    // "Local: http://127.0.0.1:<port>" rather than "localhost:<port>".
+    const match = output.match(/(?:localhost|127\.0\.0\.1):(\d+)/);
     return match ? parseInt(match[1]) : null;
   }
 

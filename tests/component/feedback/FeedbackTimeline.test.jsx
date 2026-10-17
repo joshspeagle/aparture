@@ -157,7 +157,7 @@ describe('FeedbackTimeline', () => {
     const { container } = render(
       <FeedbackTimeline events={events} filters={defaultFilters} cutoff={0} />
     );
-    expect(screen.queryByText(/already incorporated/i)).toBeNull();
+    expect(screen.queryByText(/incorporated into your profile/i)).toBeNull();
     // Two star feedback items rendered
     expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(2);
   });
@@ -165,8 +165,8 @@ describe('FeedbackTimeline', () => {
   it('renders both sections when cutoff splits the events', () => {
     const events = [makeStar('s-old', 'pA', NOW - 1000), makeStar('s-new', 'pB', NOW + 1000)];
     render(<FeedbackTimeline events={events} filters={defaultFilters} cutoff={NOW} />);
-    expect(screen.getByText(/new since last revision/i)).toBeInTheDocument();
-    expect(screen.getByText(/already incorporated/i)).toBeInTheDocument();
+    expect(screen.getByText(/not yet incorporated/i)).toBeInTheDocument();
+    expect(screen.getByText(/incorporated into your profile/i)).toBeInTheDocument();
   });
 
   it('applies type filter to the rendered events', () => {
