@@ -38,7 +38,7 @@ Both are stored as `star` events. The timing determines whether the star is a _"
 
 A short note about one specific paper.
 
-- **Before a briefing writes** — gets quoted or paraphrased in that paper's _why it matters_ paragraph.
+- **Before a briefing writes** — the briefing writer reads it with that paper and works it into the paper's _why it matters_ paragraph.
 - **After the briefing's rendered** — feeds the refinement flow, where paper-grounded reactions are among the strongest signals it sees.
 - **At Gate 1 (filter review)** — you can leave a comment on a filter row without changing its verdict. Click the 💬 button to open the text box; the paper stays in whatever bucket the filter assigned it.
 
@@ -52,6 +52,7 @@ A profile-level note tied to the briefing you were reading. Lives in the Feedbac
 
 - Works as direct intent: _"I'm shifting focus to Bayesian methods"_, _"stop recommending vision-only papers"_.
 - Also works as a reaction to a briefing: the refinement flow sees the comment alongside what was in the briefing at the time.
+- **At Gate 3 (pre-briefing)** — a note left there goes to the briefing writer as an instruction for that run (_"Lead with the diffusion-models cluster"_). It is saved as a general comment too, so the refinement flow sees it later.
 
 </div>
 
@@ -59,7 +60,7 @@ A profile-level note tied to the briefing you were reading. Lives in the Feedbac
 
 ### ⇄ Filter override
 
-A correction on the filter's verdict for a specific paper. Only available at Gate 1, the pause after the filter runs.
+A correction on the filter's verdict for a specific paper, made on the filter results: at Gate 1, the pause after the filter runs, or any time after the run ends.
 
 - <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span>: profile might be too narrow on that kind of work.
 - <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span>: profile might be too broad there.
@@ -99,7 +100,9 @@ Any paper card in Aparture has three controls: <span class="ui-action">☆ star<
 
 _The action row on a briefing paper card (dry-run content). Star, dismiss, and comment are the three feedback controls; quick summary and full report expand cached material._
 
-Filter rows at Gate 1 are different: they carry the verdict buttons and a <span class="ui-action">💬 add comment</span> control, but no star or dismiss — those signals only exist from the score-review gate onward.
+Briefing paper cards also carry a row of links under the title: **abstract · PDF · HTML · alphaXiv**. They open the arXiv abstract page, the PDF, arXiv's HTML rendering of the paper (when it has one), and the paper's alphaXiv page.
+
+Filter rows are different: they carry the verdict buttons and a <span class="ui-action">💬 add comment</span> control, but no star or dismiss — those signals only exist from the score-review gate onward.
 
 Clicking a star toggles it between empty and filled: <span class="ui-action">☆ star</span> → <span class="ui-action">★ starred</span>. Click again to remove. Dismiss works the same way. The comment button opens a small text box labelled _"Your thoughts on this paper…"_ with Save and Cancel; saving attaches the note to that paper.
 
@@ -109,7 +112,7 @@ When the pipeline pauses at Gate 1, each paper in the filter results has three c
 
 Each override is recorded as a scope signal. Moving a paper <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> tells the refinement flow your profile is probably too narrow in that area; <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span> suggests it's too broad. <span class="verdict is-maybe">MAYBE</span> overrides tell it where the line is ambiguous.
 
-Overrides only work at this stage. Once you continue to scoring, the buttons deactivate.
+Each click replaces your earlier override for that paper, and moving a paper back to the filter's own verdict removes the override. While the run is past this gate the buttons are disabled. Once the run ends they work again: a change made then is saved straight away as feedback for your profile, and a note above the list says it won't re-run the briefing.
 
 ### The Feedback panel carries the general-comment input
 
@@ -129,15 +132,23 @@ Scoped feedback (bucket / score-review / run) uses latest-wins per scope-dedupe 
 Toggle stars and dismisses freely; only the current state counts, so there's no cost to changing your mind. Leave comments a little more deliberately — they accumulate, so their effect on the profile over time is longer-lasting.
 :::
 
+### Feedback from test runs
+
+Anything you mark while a Dry Run or Minimal API Test is running, and anything you mark on a test-mode briefing, is tagged as test feedback. It reacts to mock output or to the fixed test papers, so it never reaches a real briefing or the refinement flow. The Feedback panel keeps it in a group of its own, described below.
+
+### Pending and incorporated
+
+Every event is either **pending** (not yet reflected in your profile) or **incorporated**. An event becomes incorporated only when the refinement flow proposes a change that cites it and you accept that change. Events you untick, events behind changes you reject, and everything from a _"no change"_ result stay pending, so the flow sees them again next time. Reverting to an earlier profile revision makes the feedback incorporated since then pending again. [Refining over time](/using/refining-over-time#which-feedback-counts-as-used) has the details.
+
 ## Reviewing your feedback: the Feedback panel
 
 The Feedback panel sits at the bottom of every briefing view, and it's the central place to review everything you've marked across runs. It has four parts.
 
 ### Counts and the Suggest button
 
-The top of the panel shows two counts: _new_ events since the last time you ran the refinement flow, and _total_ events ever recorded. _New_ grows as you feed back and resets when you run the flow. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
+The top of the panel counts the events _not yet incorporated_ into your profile, the _total_, and, when there are any, the events _from test runs_. Next to the counts is a <span class="ui-action">Suggest improvements →</span> button that opens the refinement dialog.
 
-When you have new events that haven't been incorporated into a profile revision yet, the button label gains a suffix: **Suggest improvements → (N new)**. This is a staleness reminder — the number tells you how much signal is sitting unprocessed. The suffix is hidden on first-time users who haven't run the refinement flow yet, because there's no prior profile revision to be "behind."
+When some feedback is pending, the button label carries the count: **Suggest improvements (N new) →**. The number tells you how much signal is sitting unprocessed.
 
 The same button (with the same suffix logic) appears on the Profile page in its own card, right next to your profile text. Either trigger opens the same flow.
 
@@ -150,12 +161,16 @@ The <span class="ui-action">+ Add a comment</span> button expands a larger text 
 Three controls for narrowing the timeline below:
 
 - A **Type** menu: all types, stars, dismisses, comments, overrides, or notes (the bucket, scoring-round, and run notes).
-- A **New since last revision** toggle: show only events since the last time you ran the refinement flow.
+- A **Not yet incorporated** toggle: show only pending events.
 - A **Date range** menu: all time, or the past 7, 14, or 30 days.
 
 ### The timeline
 
-A chronological list of every feedback event, most recent first. Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄, 📋), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
+A chronological list of every feedback event, most recent first, in up to three groups: **Not yet incorporated**, **Incorporated into your profile**, and **From test runs (N) · not used for suggestions**. The test-run group is collapsed; <span class="ui-action">Show</span> expands it and <span class="ui-action">Clear test feedback</span> deletes it all in one go.
+
+Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄, 📋), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
+
+Every entry has a <span class="ui-action">delete</span> link, which asks once before it removes the event. Comments and notes also have an <span class="ui-action">edit</span> link. An edited entry shows _· edited_ and becomes pending again, because no suggestion has seen the new wording.
 
 The timeline is useful for two things: reminding yourself what you've been marking, and spotting patterns you hadn't noticed. _"I keep dismissing interpretability papers"_ is often a hint the profile is a little off in that area.
 

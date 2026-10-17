@@ -113,7 +113,7 @@ Cost: ~$0.20–$1 on paid tiers depending on your model choices, since the PDF a
 You'll see:
 
 - Status messages: `"Starting minimal test with real API calls"`, `"Filter batch 1/1"`, `"initial-scoring"`, `"pdf-analysis"`, `"synthesizing"`, and finally `"Minimal test completed successfully"`.
-- No TEST MODE badges — the run uses real data and produces a real briefing.
+- No TEST MODE badges — the run makes real API calls on a fixed set of five papers. Aparture still files the briefing as a test run, and any feedback you give during it is tagged as test feedback, so it never reaches your profile suggestions.
 - A timestamp on the test card showing when it last completed.
 
 Open the terminal where `npm run dev` is running to watch the real-time log:
@@ -133,7 +133,7 @@ The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the orig
 When the pipeline pauses at the filter-review gate:
 
 1. Look at the three buckets. If <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span> together are empty or sparse, you'll need to intervene.
-2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
+2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event. During a test run the event is tagged as test feedback and kept out of profile suggestions; in daily runs the same event tells the refinement flow what your profile got wrong.
 3. Aim for **at least 2–3 papers in <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so the rest of the pipeline has something to chew on.
 4. Click **Continue to scoring →** once you're happy with the buckets.
 

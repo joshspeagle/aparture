@@ -53,7 +53,7 @@ If the filter got something right, do nothing. Most verdicts will be fine — th
 
 When the filter gets something wrong, click a verdict to override. Moving a paper from <span class="verdict is-no">NO</span> to <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span> brings it into scoring — do this when you think the filter missed something relevant. Moving a paper from <span class="verdict is-yes">YES</span> to <span class="verdict is-no">NO</span> excludes it from scoring, which saves you tokens on something you already know isn't a fit.
 
-Every override is logged as a `filter-override` feedback event. These events act as scope signals downstream: a pattern of <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> overrides suggests your profile is too narrow in that area; the reverse suggests it's too broad. The refinement flow sees them. See [Giving feedback → The filter-review gate](/using/giving-feedback#the-filter-review-gate-carries-override-buttons) for the full mechanics.
+Every override is logged as a `filter-override` feedback event the moment you click. The verdict pills stay usable after the run ends, so you can still correct a verdict later; a change then is saved as feedback and doesn't re-run anything. These events act as scope signals downstream: a pattern of <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> overrides suggests your profile is too narrow in that area; the reverse suggests it's too broad. The refinement flow sees them. See [Giving feedback → The filter-review gate](/using/giving-feedback#the-filter-review-gate-carries-override-buttons) for the full mechanics.
 
 ### In practice
 
@@ -129,11 +129,17 @@ _Gate 3 on a dry run. Stars, dismisses, and comments given on the results below 
 
 Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest _"why it matters"_ treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
 
+To steer the briefing as a whole, use <span class="ui-action">+ Add a comment</span> in the gate's banner. The note goes to the briefing writer as an editorial instruction for this run: _"Lead with the diffusion-models cluster"_, or _"I want more methodology depth in the writeup"_. After you save it, the banner lists it under _"Sent to the briefing writer with this run"_. The note can't override the briefing's sourcing rules, and it's saved as a general comment, so the refinement flow sees it later too.
+
 Stars given here have a different meaning than stars given at Gate 2. A star at Gate 2 says _"analyse this paper's PDF"_; a star at Gate 3 (or on a rendered briefing) says _"I liked this paper"_. Both are stored as `star` events — the meaning is contextual based on when you gave it.
 
 The difference between Gate 3 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
 
 Click <span class="ui-action">Continue to briefing →</span> when you're done. Synthesis runs, then the hallucination audit runs, then the briefing renders on its own page. The results list stays interactive while synthesis is in flight.
+
+## Stopping a run
+
+<span class="ui-action">Stop</span> ends the run at its next checkpoint and frees the controls at once, so you can start a new run straight away. Calls already sent to a provider still finish, and the provider bills them. The stopped run's late results are discarded instead of overwriting the new run's state, and a stopped run never saves a briefing.
 
 ## Progression: from on by default to off
 

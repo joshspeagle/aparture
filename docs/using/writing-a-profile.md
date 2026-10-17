@@ -187,13 +187,13 @@ To review or restore an older version:
 
 1. Open <span class="ui-action">Profile</span> in the sidebar.
 2. Expand the <span class="ui-action">History</span> control beneath the profile text box.
-3. Pick a timestamped snapshot to see the full profile content at that revision. Suggested revisions also show the rationale that was accepted.
+3. Pick a timestamped snapshot to see the full profile content at that revision. Suggested revisions also show how many proposed changes you accepted and the accepted rationales.
 4. Click <span class="ui-action">Revert</span> on the snapshot to restore it.
 
 There's also a <span class="ui-action">Clear history</span> button for when revisions have accumulated beyond what's useful. It wipes the history list but leaves your current profile intact.
 
 ::: info
-Reverting is non-destructive — the current version moves into history as a new revision before the snapshot takes its place, so you can always flip back.
+Reverting is non-destructive — the current version moves into history as a new revision before the snapshot takes its place, so you can always flip back. It also returns the feedback those later revisions had incorporated to pending, so the refinement flow can use it again.
 :::
 
 ## Named profiles
@@ -204,7 +204,11 @@ You can keep several profiles and switch between them — one for your main rese
 
 _The profile switcher sits above the text box. The active profile in the dropdown is what every run reads._
 
-Named profiles are snapshots. <span class="ui-action">Save as…</span> stores the current profile text under a name; switching loads a snapshot into the editor. The active profile is what every run reads — the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one. Switching away doesn't lose anything: the outgoing text is saved back into its own snapshot, and the swap is also recorded in the revision history like any other edit.
+Named profiles are snapshots, and the active one is what every run reads: the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one.
+
+- <span class="ui-action">Save changes</span> writes your edit into the active profile. So does an accepted suggestion or a revert.
+- <span class="ui-action">Save as…</span> copies the current text under a new name and makes the copy active. The profile you were on keeps its own text. A name that another profile already uses is refused rather than overwritten.
+- Switching loads another profile into the editor. Nothing is lost: the outgoing text stays in its own snapshot, and the swap is recorded in the revision history like any other edit.
 
 Two things named profiles are _not_: they aren't run in parallel (one run reads one profile), and they don't each carry their own feedback history — stars, dismisses, and comments accumulate in one shared stream regardless of which profile was active.
 
