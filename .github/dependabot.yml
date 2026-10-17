@@ -10,6 +10,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # eslint-plugin-react 7.37 declares peer eslint ^9.7, so `npm ci`
+      # fails on ESLint 10. Drop this once the plugin supports 10.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
   - package-ecosystem: npm
     directory: /docs
     schedule:
