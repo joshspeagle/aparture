@@ -4,7 +4,7 @@ Aparture is a Next.js app that runs locally. This page walks through installing 
 
 ## Prerequisites
 
-- **Node.js 20.9 or newer**, the minimum for Next.js 16. Node 20 reached end of life on 2026-04-30, so use Node 22 LTS; the examples below do.
+- **Node.js 22 or newer.** `package.json` requires it, and CI tests Node 22 and 24. The examples below use Node 22.
 - **Git** for cloning the repository.
 - **~1 GB of disk.** `node_modules` is about 500 MB. Another 300 MB if you install Playwright for the reCAPTCHA fallback (optional, see §3).
 - **A shell you're comfortable in.** Bash or zsh on macOS and Linux, PowerShell or WSL2 on Windows. WSL2 is Microsoft's Linux-on-Windows environment; it tends to be faster than native PowerShell for Node-based dev work.

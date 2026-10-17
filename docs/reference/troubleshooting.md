@@ -77,7 +77,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 
 ### Node version too old
 
-Aparture runs on Next.js 16, which needs Node 20.9 or newer (the `engines` field in `package.json`). Node 20 reached end of life on 2026-04-30, so use Node 22 LTS.
+Aparture requires Node 22 or newer (the `engines` field in `package.json`), and CI tests Node 22 and 24. Node 20 reached end of life on 2026-04-30. Use Node 22 LTS unless you have a reason not to.
 
 ```bash
 node -v   # should print v22.x.x
@@ -190,7 +190,7 @@ Quick diagnostic — does the file actually parse?
 node --env-file=.env.local -e "console.log(process.env.CLAUDE_API_KEY?.slice(0, 10))"
 ```
 
-`--env-file` is built into Node 20.6 and later, so this needs no extra package. If it prints the first 10 characters of your key, the file is readable. If it prints `undefined`, the file is in the wrong place, misnamed, or doesn't contain the variable.
+`--env-file` is built into Node, so this needs no extra package. If it prints the first 10 characters of your key, the file is readable. If it prints `undefined`, the file is in the wrong place, misnamed, or doesn't contain the variable.
 
 ### ACCESS_PASSWORD mismatch
 
@@ -443,7 +443,7 @@ What to check:
    - `required field missing` — the model returned a partial object. Retry usually works.
    - `model did not return structured output` — the provider silently fell back to plain text. Seen occasionally with Google on complex schemas. Switch to Anthropic or OpenAI for `briefingModel`.
 
-**Token budget block.** Occasionally you'll see `synthesis prompt exceeds token budget` (400). The estimated token count is above the configured threshold. Shorten your profile, reduce `maxDeepAnalysis`, or pass `allowOverBudget: true` (not currently exposed in the UI — requires editing the request).
+**Token budget block.** Occasionally you'll see `synthesis prompt exceeds token budget` (400). The route estimates the prompt's size at about four characters per token, for every provider, and the estimate is above the block threshold (500,000 tokens by default). Shorten your profile, reduce `maxDeepAnalysis`, or pass `allowOverBudget: true` (not currently exposed in the UI — requires editing the request).
 
 ### Hallucination-retry loop
 
