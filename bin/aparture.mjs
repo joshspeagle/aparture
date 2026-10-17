@@ -83,9 +83,8 @@ export function paperLinks(id) {
 // --- fetch -----------------------------------------------------------------
 
 async function cmdFetch(flags) {
-  const { ensureDomParser, headlessPassword, createArxivFetch } = await import(
-    '../lib/headless/runtime.js'
-  );
+  const { ensureDomParser, headlessPassword, createArxivFetch } =
+    await import('../lib/headless/runtime.js');
   const { buildHarvestWindow } = await import('../lib/arxiv/window.js');
   const { harvest } = await import('../lib/arxiv/ingest.js');
   const { harvestOai } = await import('../lib/arxiv/harvestOai.js');
@@ -484,9 +483,8 @@ async function cmdRender(flags) {
   }
   const candidates = readJson(path.join(runDir, 'candidates.json'), { papers: [] });
   const selection = readJson(path.join(runDir, 'selection.json'), {});
-  const { readAuditRounds, summarizeAuditRounds } = await import(
-    '../lib/briefing/v2/auditSummary.js'
-  );
+  const { readAuditRounds, summarizeAuditRounds } =
+    await import('../lib/briefing/v2/auditSummary.js');
   const auditSummary = summarizeAuditRounds(readAuditRounds(runDir));
   const config = readJson(path.join(stateDir, 'config.json'), {});
   const papersDir = path.join(runDir, 'papers');
