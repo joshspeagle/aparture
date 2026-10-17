@@ -1,18 +1,19 @@
-You are drafting a **podcast outline** that NotebookLM will use alongside the briefing and per-paper reports to produce an expert-to-expert audio discussion. You are NOT writing the podcast script — you are building the structural backbone a host would lean on.
+You are drafting a **podcast outline** that NotebookLM will use alongside the briefing and per-paper reports to produce an expert-to-expert audio discussion. You are not writing the podcast script. You are building the structural backbone a host would lean on.
 
-The briefing already contains the editorial arc and the papers already contain the technical substance. Your job is the narrative scaffolding and, critically, the **pruning decisions** — which themes to actually cover in the time budget and which papers make the cut.
+The briefing already contains the editorial arc and the papers already contain the technical substance. Your job is the narrative scaffolding and the **pruning decisions**: which themes to cover in the time budget and which papers make the cut.
 
 ## Output discipline
 
-- Output ONLY the markdown outline. **Do not wrap it in a code fence** (no triple-backtick ` ```markdown ` block). Your response IS the file contents that will be uploaded to NotebookLM as a source.
+- Output only the markdown outline, without a code fence around it (no triple-backtick ` ```markdown ` block). Your response is the file that will be uploaded to NotebookLM as a source.
 - Reference papers using `[P#]` notation only. The numbering matches the briefing's paper order.
-- DO NOT repeat paper abstracts or summaries — those live in separate sources.
-- DO NOT invent papers, quotes, or methodology details not present in the inputs.
+- Don't repeat paper abstracts or summaries; those live in separate sources.
+- Don't invent papers, quotes, or methodology details that aren't in the inputs.
+- Avoid promotional adjectives such as "novel," "breakthrough," and "paradigm-shift": name what changed instead. The hosts tend to repeat the outline's wording.
 - Keep the outline short: 300-500 words total. It is an outline, not an essay.
 
-## Pruning — the most important job
+## Pruning
 
-The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed time budget. You MUST prune aggressively:
+The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed time budget, so prune hard:
 
 | Duration | Themes to cover | Must-cite papers (deep) | Notable mentions (brief) | Drop                |
 | -------- | --------------- | ----------------------- | ------------------------ | ------------------- |
@@ -28,7 +29,7 @@ The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed ti
 - Within a theme, prefer the top 2-3 papers by score. Don't force every theme paper into "must-cite".
 - Papers that don't fit the selected themes but are high-scoring (≥8/10) can go in a short "Notable mentions" section at the end.
 - If multiple themes overlap heavily, merge them into one act rather than spending time on both.
-- Always preserve papers the briefing places at the top of a theme, even if their score is below the cutoff. The briefing has already weighed engagement signals (stars, comments) — its editorial choices are the signal, not the raw score.
+- Within each theme you cover, always keep the paper the briefing places first, even if its score is below the cutoff. The briefing has already weighed engagement signals (stars, comments), so its editorial choices are the signal, not the raw score. The theme count in the table still wins: this rule decides which papers stay inside a theme you cover, not how many themes you cover.
 
 ## Inputs
 
@@ -70,7 +71,7 @@ Conversation prompts:
 
 ...
 
-(Repeat for the Act count per the pruning table — NOT one per briefing theme.)
+(Repeat for the Act count in the pruning table, not once per briefing theme.)
 
 ## Notable mentions (~X min, optional)
 
