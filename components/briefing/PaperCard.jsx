@@ -10,6 +10,28 @@ const EMPTY_SEEN_INDEX = Object.freeze({});
 
 const MAX_EVENT_SUMMARY_CHARS = 800;
 
+// Anchors inherit colour with no underline app-wide (styles/globals.css), so
+// these need an underline to read as links inside the muted meta line.
+const PAPER_LINK_STYLE = {
+  color: 'var(--aparture-mute)',
+  textDecoration: 'underline',
+  textUnderlineOffset: '2px',
+};
+
+// Where to read the paper: the arXiv abstract page, the PDF, arXiv's HTML
+// rendering (easier to read on screen, when the paper has one), and
+// alphaXiv's discussion overlay. Exported for tests.
+export function paperLinks(arxivId) {
+  if (!arxivId) return [];
+  const id = encodeURI(String(arxivId));
+  return [
+    { label: 'abstract', href: `https://arxiv.org/abs/${id}` },
+    { label: 'PDF', href: `https://arxiv.org/pdf/${id}` },
+    { label: 'HTML', href: `https://arxiv.org/html/${id}` },
+    { label: 'alphaXiv', href: `https://www.alphaxiv.org/abs/${id}` },
+  ];
+}
+
 // What a star / dismiss / comment made on a briefing card tells the Suggest
 // prompt about the paper (it renders this as "Summary: …"). Synthesized
 // briefing papers carry no quickSummary — that lives in quickSummariesById —
@@ -102,6 +124,22 @@ export default function PaperCard({
         <a href={`https://arxiv.org/abs/${paper.arxivId}`} target="_blank" rel="noreferrer">
           {paper.arxivId}
         </a>
+        <span data-testid="paper-links">
+          {paperLinks(paper.arxivId).map((link) => (
+            <span key={link.label}>
+              {' · '}
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${link.label} for ${paper.title ?? paper.arxivId} (opens in a new tab)`}
+                style={PAPER_LINK_STYLE}
+              >
+                {link.label}
+              </a>
+            </span>
+          ))}
+        </span>
       </div>
       <hr className="hairline" />
       <p className="italic-pitch">{paper.onelinePitch}</p>

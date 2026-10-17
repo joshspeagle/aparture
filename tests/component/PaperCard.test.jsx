@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import PaperCard, { briefingPaperSummary } from '../../components/briefing/PaperCard.jsx';
+import PaperCard, {
+  briefingPaperSummary,
+  paperLinks,
+} from '../../components/briefing/PaperCard.jsx';
 
 describe('PaperCard', () => {
   const basePaper = {
@@ -27,6 +30,28 @@ describe('PaperCard', () => {
     expect(screen.getByText(/circuit-level analysis/i)).toBeInTheDocument();
     expect(screen.getByText(/9\.2/)).toBeInTheDocument();
     expect(screen.getByText(/2504\.01234/)).toBeInTheDocument();
+  });
+
+  it('links to the abstract, PDF, HTML and alphaXiv pages in new tabs (P1-11)', () => {
+    render(<PaperCard {...defaultProps} />);
+    const expected = {
+      abstract: 'https://arxiv.org/abs/2504.01234',
+      PDF: 'https://arxiv.org/pdf/2504.01234',
+      HTML: 'https://arxiv.org/html/2504.01234',
+      alphaXiv: 'https://www.alphaxiv.org/abs/2504.01234',
+    };
+    for (const [label, href] of Object.entries(expected)) {
+      const link = screen.getByRole('link', { name: new RegExp(`^${label} for`) });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(link).toHaveTextContent(label);
+    }
+  });
+
+  it('paperLinks keeps old-style ids intact and returns nothing without an id', () => {
+    expect(paperLinks('astro-ph/0601001')[1].href).toBe('https://arxiv.org/pdf/astro-ph/0601001');
+    expect(paperLinks(undefined)).toEqual([]);
   });
 
   it('renders ☆ outline when starred is false', () => {
