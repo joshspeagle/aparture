@@ -793,3 +793,41 @@ describe('recordFilterOverride — click-time, latest-wins, validated (P0-2 / P1
     expect(result.current.events[0].newVerdict).toBe('YES');
   });
 });
+
+describe("recordAnswer — answers to the editor's questions", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useAnalyzerStore.setState(initialState());
+  });
+
+  const answer = (value) => ({
+    questionId: 'q1',
+    question: 'Should methods papers need a real-data test?',
+    answer: value,
+    evidence: ['2610.17146'],
+    briefingDate: '2026-10-17',
+  });
+
+  it('keeps the latest answer per question and day, and a repeat tap takes it back', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer(answer('Yes, require one')));
+    act(() => result.current.recordAnswer(answer('No, benchmarks are enough')));
+    let answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers).toHaveLength(1);
+    expect(answers[0]).toMatchObject({
+      questionId: 'q1',
+      answer: 'No, benchmarks are enough',
+      evidence: ['2610.17146'],
+    });
+
+    act(() => result.current.recordAnswer(answer('No, benchmarks are enough')));
+    answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers).toHaveLength(0);
+  });
+
+  it('tags an answer given on a test-mode briefing', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer({ ...answer('Yes'), testMode: true }));
+    expect(result.current.events.at(-1).testMode).toBe(true);
+  });
+});

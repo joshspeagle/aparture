@@ -75,6 +75,12 @@ export default function ReviewConfirmationSection({ config, setConfig, processin
           }
           disabled={processing.isRunning}
         />
+        <Checkbox
+          label="Ask me up to two questions after each briefing when the day's papers expose a gap in my profile"
+          checked={config.editorQuestions ?? true}
+          onChange={(e) => setConfig((prev) => ({ ...prev, editorQuestions: e.target.checked }))}
+          disabled={processing.isRunning}
+        />
       </div>
     </div>
   );

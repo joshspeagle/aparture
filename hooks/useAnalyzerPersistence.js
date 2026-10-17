@@ -149,6 +149,10 @@ export const DEFAULT_CONFIG = {
   pauseBeforeBriefing: true,
   briefingRetryOnYes: true,
   briefingRetryOnMaybe: false,
+  // One small call on the briefing model after each briefing: up to two
+  // tap-to-answer questions when the day's papers expose a gap in the
+  // profile (pages/api/editor-questions.js). Answers feed suggest-profile.
+  editorQuestions: true,
   maxAbstractDisplay: 500,
   arxivIngestion: 'auto',
   minPapersPerSubcategory: 5,

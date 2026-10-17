@@ -287,6 +287,47 @@ export function useFeedback() {
     });
   }, []);
 
+  // Answer to one of the editor's questions at the end of a briefing.
+  // Latest-wins per (briefingDate, questionId); tapping the chosen answer
+  // again takes it back. The answer reaches suggest-profile as evidence.
+  const recordAnswer = useCallback(
+    ({ questionId, question, answer, evidence = [], briefingDate, testMode: explicit }) => {
+      if (!questionId || !answer) return;
+      const testMode = resolveTestMode(explicit);
+      setEvents((prev) => {
+        const same = (e) =>
+          e.type === 'answer' &&
+          e.questionId === questionId &&
+          e.briefingDate === briefingDate &&
+          samePartition(e, testMode);
+        const existing = prev.find(same);
+        const filtered = prev.filter((e) => !same(e));
+        const next =
+          existing?.answer === answer
+            ? filtered
+            : [
+                ...filtered,
+                withTestFlag(
+                  {
+                    id: makeId(),
+                    type: 'answer',
+                    questionId,
+                    question,
+                    answer,
+                    evidence,
+                    timestamp: Date.now(),
+                    briefingDate,
+                  },
+                  testMode
+                ),
+              ];
+        persist(next);
+        return next;
+      });
+    },
+    []
+  );
+
   // Delete one event (Feedback panel). For a star or dismiss this is the same
   // as toggling it off; for a comment or note it is the only way to take back
   // a typo or a mistake, which would otherwise be pre-ticked in every Suggest.
@@ -392,6 +433,7 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      recordAnswer,
       removeEvent,
       updateEventText,
       clearTestEvents,
@@ -409,6 +451,7 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      recordAnswer,
       removeEvent,
       updateEventText,
       clearTestEvents,

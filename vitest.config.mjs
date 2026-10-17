@@ -35,6 +35,7 @@ const NODE_PROJECT_INCLUDE = [
   'tests/unit/arxiv/**/*.test.{js,jsx}',
   'tests/unit/auth/**/*.test.{js,jsx}',
   'tests/unit/briefing/**/*.test.{js,jsx}',
+  'tests/unit/editorQuestions/**/*.test.{js,jsx}',
   'tests/unit/llm/**/*.test.{js,jsx}',
   'tests/unit/notebooklm/**/*.test.{js,jsx}',
   'tests/unit/persistence/**/*.test.{js,jsx}',

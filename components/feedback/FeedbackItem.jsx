@@ -135,6 +135,9 @@ function labelFor(event) {
   if (event.type === 'scoped-feedback') {
     return `${icon} ${scopeKindLabel(event.scope).toLowerCase()}`;
   }
+  if (event.type === 'answer') {
+    return `${icon} answered "${event.question}" with "${event.answer}"`;
+  }
   if (event.type === 'filter-override') {
     return `${icon} filter override on ${event.paperTitle || event.arxivId} (${event.originalVerdict} → ${event.newVerdict})`;
   }
@@ -167,6 +170,7 @@ export default function FeedbackItem({ event, onRemove, onUpdateText }) {
   const isPaperComment = event.type === 'paper-comment';
   const isFilterOverride = event.type === 'filter-override';
   const isScopedFeedback = event.type === 'scoped-feedback';
+  const isAnswer = event.type === 'answer';
 
   return (
     <article
@@ -180,7 +184,27 @@ export default function FeedbackItem({ event, onRemove, onUpdateText }) {
         borderRadius: '0 4px 4px 0',
       }}
     >
-      {isScopedFeedback ? (
+      {isAnswer ? (
+        <div>
+          <p style={{ fontSize: 'var(--aparture-text-xs)', color: 'var(--aparture-mute)' }}>
+            <span style={{ marginRight: '4px' }} aria-hidden>
+              {icon}
+            </span>
+            {event.question}
+          </p>
+          <p
+            style={{
+              marginTop: '4px',
+              fontSize: 'var(--aparture-text-sm)',
+              fontWeight: 600,
+              color: 'var(--aparture-ink)',
+            }}
+          >
+            {event.answer}
+          </p>
+          <MetaLine event={event} date={date} />
+        </div>
+      ) : isScopedFeedback ? (
         <div>
           <p style={{ fontSize: 'var(--aparture-text-sm)', color: 'var(--aparture-ink)' }}>
             <span style={{ marginRight: '4px' }} aria-hidden>

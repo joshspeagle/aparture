@@ -609,6 +609,20 @@ function routeFetch({ checkResponses = null } = {}) {
         }),
       };
     }
+    if (url === '/api/editor-questions') {
+      bodies.questions = [...(bodies.questions ?? []), body];
+      const first = body.papers[0]?.arxivId;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          questions: [
+            { id: 'q1', text: 'Want more like this?', options: ['Yes', 'No'], evidence: [first] },
+          ],
+          dropped: [],
+        }),
+      };
+    }
     if (url === '/api/check-briefing') {
       bodies.check.push(body);
       if (pendingChecks && pendingChecks.length > 0) return pendingChecks.shift();
@@ -835,5 +849,23 @@ describe('runBriefingGeneration — a claims check that does not run is reported
     const { bodies } = await runLive({ checkResponses: [failed], addStatus });
     expect(bodies.check).toHaveLength(2);
     expect(addStatus).not.toHaveBeenCalledWith(expect.stringContaining('did not run'));
+  });
+});
+
+describe("runBriefingGeneration — the editor's questions are saved with the briefing", () => {
+  it('asks once, with the briefing papers, and saves the questions', async () => {
+    const { bodies, saveBriefing } = await runLive();
+    expect(bodies.questions).toHaveLength(1);
+    expect(bodies.questions[0].papers.map((p) => p.arxivId)).toEqual(['2605.0001', '2605.0002']);
+    const extras = saveBriefing.mock.calls[0][3];
+    expect(extras.editorQuestions).toEqual([
+      { id: 'q1', text: 'Want more like this?', options: ['Yes', 'No'], evidence: ['2605.0001'] },
+    ]);
+  });
+
+  it('skips the call when the setting is off', async () => {
+    const { bodies, saveBriefing } = await runLive({ editorQuestionsEnabled: false });
+    expect(bodies.questions).toBeUndefined();
+    expect(saveBriefing.mock.calls[0][3]).not.toHaveProperty('editorQuestions');
   });
 });

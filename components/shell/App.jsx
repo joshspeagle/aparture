@@ -781,6 +781,7 @@ export default function App() {
       quickSummaryConcurrency: config?.quickSummaryConcurrency,
       briefingRetryOnYes: config.briefingRetryOnYes ?? true,
       briefingRetryOnMaybe: config.briefingRetryOnMaybe ?? false,
+      editorQuestionsEnabled: config.editorQuestions ?? true,
       profile,
       password,
       // Engagement (stars/dismisses/comments) and the pipeline archive must
@@ -1150,6 +1151,7 @@ export default function App() {
           onStar={feedback.addStar}
           onDismiss={feedback.addDismiss}
           onAddComment={handleBriefingAddComment}
+          onAnswer={feedback.recordAnswer}
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
