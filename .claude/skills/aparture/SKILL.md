@@ -1,7 +1,7 @@
 ---
 name: aparture
 description: Run Aparture's daily arXiv briefing. Harvest the day's papers for the reader's categories, triage them against their research profile, deep-read the strongest matches, and write one validated, editorial briefing published as a private artifact page with feedback controls; then fold the reader's feedback back into the profile as proposed edits. Use this whenever someone asks for their arXiv briefing, today's papers, "what's new on the arXiv", to run Aparture, to set up or tune their research profile, to review feedback on a briefing, or when a scheduled routine fires with an Aparture prompt, even if they don't name Aparture.
-compatibility: Runs inside the aparture repository (uses node bin/aparture.mjs and prompts/). Needs Node 20+, `npm ci` once, network access to arxiv.org, and the Agent tool for parallel workers. The Artifact tool is optional (falls back to a local HTML file).
+compatibility: Runs inside the aparture repository (uses node bin/aparture.mjs and prompts/). Needs Node 22+, `npm ci` once, network access to arxiv.org, and the Agent tool for parallel workers. The Artifact tool is optional (falls back to a local HTML file).
 ---
 
 # Aparture: the daily arXiv briefing

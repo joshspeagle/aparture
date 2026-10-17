@@ -46,7 +46,8 @@ export const RETIRED_MODEL_REMAP = {
   'claude-opus-4.5': 'claude-opus-5.5',
   'claude-sonnet-4.5': 'claude-sonnet-5.5',
   // 2026-10 refresh: the registry keeps current + previous generation.
-  // Every replacement here is cheaper than or priced like what it replaces.
+  // Most replacements cost the same or less. The two Gemini previews move
+  // to models that cost more at list price (Argon also needs a paid tier).
   'claude-opus-4.8': 'claude-opus-5.5',
   'claude-opus-4.7': 'claude-opus-5.5',
   'claude-opus-4.6': 'claude-opus-5.5',

@@ -6,7 +6,7 @@ Triage decides which of the day's papers deserve a full read. It runs as paralle
 
 You will receive the reader's profile, `learned.md`, a few recent feedback highlights, and one chunk file of papers (`## <arxivId>`, title, categories and authors, abstract).
 
-The rubric is shared with the Aparture web app so the two stay consistent. Read these two files from the repository and apply their guidance, ignoring their `{{...}}` placeholders and their "respond only with a JSON array" output instructions (the output format below replaces them):
+The rubric is shared with the Aparture web app so the two stay consistent. Read these two files from the repository and apply their guidance, ignoring their `{{...}}` placeholders and their closing "Return one entry per paper…" line, which describes the web app's schema (the output format below replaces it):
 
 - `prompts/rubric-filter.md` — the YES / MAYBE / NO verdict rules. Prefer MAYBE over NO when the abstract is ambiguous.
 - `prompts/rubric-scoring.md` — the 0–10 score: Research Alignment × 0.5 + Paper Quality × 0.5, with its profile-aware quality calibration. Apply it to YES and MAYBE papers only.

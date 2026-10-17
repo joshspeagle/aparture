@@ -119,7 +119,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 
 ### Headless runner and agent skill (prototype)
 
-`bin/aparture.mjs` runs a briefing's mechanical steps from Node without the web app: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest` (`node bin/aparture.mjs help`). It makes no LLM calls. The skill in `.claude/skills/aparture/` does the reading and writing and calls the runner between steps; `.agents/skills/aparture/` is a byte-for-byte copy, so edit both. No user docs yet.
+`bin/aparture.mjs` runs a briefing's mechanical steps from Node without the web app: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest` (`node bin/aparture.mjs help`). It makes no LLM calls. The skill in `.claude/skills/aparture/` does the reading and writing and calls the runner between steps; `.agents/skills/aparture` is a symlink to it, for agents that look there; edit the files under `.claude/`. No user docs yet.
 
 - stdout is JSON only: the runner sends `console.log` to stderr because route handlers log. Keep new output off stdout.
 - It calls the arXiv proxy handlers in-process (`lib/headless/inProcessRoute.js`), installs jsdom's `DOMParser` (a devDependency, so it needs a full `npm ci`), and sets a random `ACCESS_PASSWORD` when none is set.
