@@ -16,8 +16,8 @@ import fs from 'fs';
 // Module-level throttle for arXiv PDF downloads. Serializes fetches across
 // all concurrent /api/analyze-pdf requests served by this Node process so a
 // client-side parallel fan-out (introduced with `pdfAnalysisConcurrency`)
-// doesn't blow past arXiv's 1-req/3s cap. Spacing defaults to 5s per
-// docs/superpowers/specs/2026-04-17-pdf-parallelism-design.md §2.2.
+// doesn't outpace arXiv. Spacing defaults to 15 s — arxiv.org/robots.txt's
+// `Crawl-delay: 15` for /pdf (ARXIV_DOWNLOAD_DELAY_MS in rateLimit.js).
 //
 // Single-process assumption: Aparture is a local dev-server (npm run dev),
 // so module state is shared across all requests. If this ever moves to a
@@ -100,7 +100,7 @@ async function downloadPDFWithPlaywright(chromium, pdfUrl, throttle = null) {
 
     // The abs-page navigation above consumed the caller's throttle slot; the
     // PDF fetch is a SECOND arXiv hit, so take its own slot rather than
-    // squeezing two requests through one 5s spacing window.
+    // squeezing two requests through one 15 s spacing window.
     if (throttle) await throttle.acquire();
     const response = await context.request.get(fullPdfUrl);
 
@@ -325,7 +325,8 @@ export default async function handler(req, res) {
 
         try {
           // Throttle arXiv direct-fetch: serialized across concurrent
-          // requests, min 5s spacing, honors Retry-After. See spec §2.2.
+          // requests, min 15 s spacing (robots.txt Crawl-delay), honors
+          // Retry-After.
           await downloadThrottle.acquire();
           let pdfResponse = await fetch(pdfUrl, {
             headers: {

@@ -70,6 +70,7 @@ describe('analyze-pdf — download error routing', () => {
     global.fetch = originalFetch;
     process.env.NODE_ENV = originalNodeEnv;
     vi.doUnmock('playwright');
+    vi.doUnmock('../../../lib/arxiv/spacing.js');
     vi.resetModules();
     vi.restoreAllMocks();
   });
@@ -161,6 +162,12 @@ describe('analyze-pdf — download error routing', () => {
         ok: false,
         status: 429,
         headers: { get: () => '0' },
+      }));
+      // The retry takes a second throttle slot; shrink the 15 s production
+      // spacing (robots.txt Crawl-delay) so the test doesn't wait it out.
+      vi.doMock('../../../lib/arxiv/spacing.js', async (importOriginal) => ({
+        ...(await importOriginal()),
+        ARXIV_PAGE_DELAY_MS: 20,
       }));
 
       const { default: handler } = await import('../../../pages/api/analyze-pdf.js');

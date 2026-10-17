@@ -10,8 +10,10 @@ import {
   sleep,
   ArxivDownloadThrottle,
   AnalysisWorkerPool,
+  ARXIV_DOWNLOAD_DELAY_MS,
   ARXIV_MAX_RETRY_AFTER_MS,
 } from '../../../lib/analyzer/rateLimit.js';
+import { ARXIV_PAGE_DELAY_MS } from '../../../lib/arxiv/spacing.js';
 
 describe('sleep', () => {
   beforeEach(() => {
@@ -41,6 +43,22 @@ describe('ArxivDownloadThrottle', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("defaults to arXiv's robots.txt Crawl-delay of 15 s between PDF downloads", async () => {
+    expect(ARXIV_PAGE_DELAY_MS).toBe(15_000);
+    expect(ARXIV_DOWNLOAD_DELAY_MS).toBe(ARXIV_PAGE_DELAY_MS);
+    const t = new ArxivDownloadThrottle();
+    expect(t.minSpacingMs).toBe(15_000);
+    await t.acquire();
+    let done = false;
+    t.acquire().then(() => {
+      done = true;
+    });
+    await vi.advanceTimersByTimeAsync(14_900);
+    expect(done).toBe(false); // the old 5 s spacing would have released here
+    await vi.advanceTimersByTimeAsync(200);
+    expect(done).toBe(true);
   });
 
   it('first acquire resolves immediately', async () => {
