@@ -26,7 +26,16 @@ The "Window semantics" toggle controls how we treat that difference:
 - **Submitted only (default).** Filters OAI results to papers whose original submission date falls in the window. Matches Atom's behavior; reproducible briefings.
 - **Include updates.** Keeps updated-but-not-newly-submitted papers. v2's of older papers show up as research news.
 
-If you upgrade Aparture and notice you're suddenly seeing old papers in your briefings, the toggle is set to "Include updates" — flip it back.
+If you upgrade Aparture and notice you're suddenly seeing old papers in your briefings, the toggle is set to "Include updates". Flip it back.
+
+## How many days a run covers
+
+`daysBack` (default 1) counts days of submissions, not calendar days. arXiv announces each day's submissions the following evening, and weekends and holidays stretch the gap, so the most recent calendar day is often empty when a run starts.
+
+- **Submitted only.** Aparture asks OAI-PMH for a window that starts 7 days earlier than your target, to absorb that lag. It then finds the most recent v1 submission date among the papers in your categories (the _anchor_) and keeps the papers whose v1 date falls in the `daysBack` days ending on the anchor. A run never comes back empty just because yesterday had no announcements.
+- **Include updates.** No widening and no anchor. The OAI window is the last `daysBack` days, and everything in it passes through, including new versions of older papers.
+
+The Atom fallback filters on submission date at arXiv's end, so it skips the widening and fetches the target window directly.
 
 ## Fill-ups
 
@@ -35,13 +44,13 @@ If a niche subcategory returns very few papers from the broad fetch, the pipelin
 - **Min papers per subcategory.** Threshold below which fill-ups trigger. Default 5. Set to 0 to disable.
 - **Fill-up lookback (days).** Cumulative extra-day extensions, e.g. `3, 7, 14` means: if the threshold isn't met from the initial fetch, fetch the slice covering days `-3` through original-from; if still not met, fetch days `-7` through `-4`; if still not met, days `-14` through `-8`. Stops as soon as the threshold is met. Empty disables fill-ups entirely.
 
-Each step fetches only the _new outer slice_, so we don't re-download data we already have.
+Each step fetches only the _new outer slice_, so we don't re-download data we already have. The steps count back from the anchored window above, not from the calendar date of the run.
 
 ## Cache
 
 Successful fetches are cached in your browser's localStorage so re-runs within the TTL skip arXiv entirely. Default TTL is 60 minutes. Setting it to 0 disables caching.
 
-The cache key includes the ingestion mode, so OAI-only and Atom-only runs maintain separate cache namespaces. To clear the cache manually:
+Entries are keyed by set (or category), date range, and ingestion mode, so OAI-only and Atom-only runs keep separate entries. Fill-up entries also key on window semantics, because their records are filtered by it. To clear the cache manually:
 
 ```js
 localStorage.removeItem('aparture-arxiv-cache');
@@ -49,10 +58,10 @@ localStorage.removeItem('aparture-arxiv-cache');
 
 ## Troubleshooting
 
-If the pipeline reports `arXiv: auto-atom` and the run is much slower than usual, OAI-PMH likely failed for your run. Check the dev console for the specific error. Common causes:
+The run-summary status line names the path that was used: `arXiv: auto-oai`, `auto-mixed` (some groups fell back), or `auto-atom` (all of them did). If it reports `auto-atom` and the run is much slower than usual, OAI-PMH likely failed for your run. Check the browser console for the specific error. Common causes:
 
 - **Rate-limited.** arXiv's enforcement on `/api/query` (the Atom path that's now your fallback) is more aggressive than OAI-PMH's. Wait 30-60 minutes before re-running.
-- **Network error.** Check `npm run dev` terminal logs for `harvest-arxiv proxy unreachable`.
+- **Network error.** `harvest-arxiv proxy unreachable` in the browser console means the page couldn't reach the local `/api/harvest-arxiv` route. `OAI proxy network error` in the `npm run dev` terminal means the route couldn't reach arXiv.
 - **Parse error.** Rare; usually a transient OAI response issue. Re-run.
 
 You can force OAI-only mode to confirm OAI is healthy, or Atom-only mode to skip the new path entirely.

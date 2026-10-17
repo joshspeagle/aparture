@@ -4,7 +4,7 @@ A tour of Aparture's paper-to-briefing pipeline — what each stage does, what i
 
 ## The stages at a glance
 
-Every run passes through the same waterfall. Each stage reads the output of the previous one, does less work than the previous one (because papers have been filtered out along the way), and uses a more capable model as the stakes go up.
+Every run passes through the same stages in order. Each stage reads the output of the one before it and handles fewer papers, because earlier stages have filtered some out. Each stage also has its own model slot, so a cheap model can triage hundreds of abstracts while a stronger one reads the few papers that reach the PDF stage.
 
 ```
 ┌──────────────────┐
@@ -46,15 +46,15 @@ Every run passes through the same waterfall. Each stage reads the output of the 
 └──────────────────┘  ~a few cents per briefing
 ```
 
-Three optional pause gates let you steer the run before expensive work happens. All three are on by default and can be toggled in Settings → Review & confirmation.
+Three optional pause gates let you review a stage's output and change what the next stage works on. All three are on by default and can be toggled in Settings → Review & confirmation.
 
 Wall-clock duration varies widely with provider latency, paper volume, and which models are in which slots, so this page doesn't quote seconds. Briefings usually land within a few minutes on a hundred-paper day at the default concurrency; the longest stretch tends to be Stage 4 because it reads full PDFs.
 
 ## Stage 1: fetch papers
 
-**What it does.** Queries the arXiv API for every paper in your selected categories, within a configurable date window (default: last 24 hours). If the window returns too few papers, Aparture widens it automatically — trying 3, 7, and then 14 days back before giving up. Cross-listed papers are deduplicated and the list is sorted chronologically.
+**What it does.** Harvests the new papers in your selected categories from arXiv's OAI-PMH feed, falling back to the Atom API if OAI fails. `daysBack` (default 1) counts days of submissions, not calendar days: Aparture finds the most recent day with new submissions in your categories and keeps that day plus the `daysBack − 1` days before it, so weekends and arXiv's announcement lag don't produce an empty run. If a category comes back with fewer than `minPapersPerSubcategory` papers (default 5), Aparture looks further back for that category alone: 3 extra days, then up to 7, then up to 14, stopping once the category reaches the minimum. A paper cross-listed in several of your categories appears once, and the list is sorted newest first.
 
-**Inputs.** `selectedCategories`, `daysBack`.
+**Inputs.** `selectedCategories`, `daysBack`, `arxivWindowSemantics`, `arxivIngestion`, `minPapersPerSubcategory`, `lookbackExtensions`.
 
 **Output.** A list of raw papers with title, abstract, authors, and PDF URL.
 
@@ -62,7 +62,7 @@ Wall-clock duration varies widely with provider latency, paper volume, and which
 
 **Pause gates.** None.
 
-See [arXiv ingestion](./arxiv-ingestion.md) for the two-path architecture (OAI-PMH primary, Atom fallback) and the configurable knobs (mode, window semantics, fill-ups, cache).
+See [arXiv ingestion](./arxiv-ingestion.md) for the two paths (OAI-PMH primary, Atom fallback), how the day window is anchored, and the configurable knobs (mode, window semantics, fill-ups, cache).
 
 After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs against a 90-day rolling index of arxivIds seen in past runs. In Remove mode (default) duplicates are dropped before the LLM filter; in Flag mode they're kept but tagged for the UI. The index is maintained client-side from your saved briefings — aborted runs (no briefing produced) don't add anything, so restarting a stopped run won't blank itself out. See [Tuning the pipeline](../using/tuning-the-pipeline.md#duplicate-detection) for the user-facing toggle.
 
@@ -152,7 +152,7 @@ Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Apa
 
 **Cost.** A few cents per paper. This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens substantially, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
 
-**Pause gates.** `pauseBeforeDeepAnalysis` (default: on) fires _before_ Stage 4 starts, immediately after Stage 3.5 completes. It shows the scored list in three groups — the automatic top-N selection, a borderline band, and low-score papers — and lets you star papers into the PDF set or exclude them from it. See [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review) for the full affordances. `pauseBeforeBriefing` (default: on) fires after Stage 4 completes.
+**Pause gates.** `pauseBeforeDeepAnalysis` (default: on) fires _before_ Stage 4 starts, immediately after Stage 3.5 completes. It shows the scored list in three groups — the automatic top-N selection, a borderline band, and low-score papers — and lets you star papers into the PDF set or dismiss them from it. See [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review) for the full affordances. `pauseBeforeBriefing` (default: on) fires after Stage 4 completes.
 
 ## Stage 5: briefing synthesis
 
@@ -160,10 +160,10 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
 2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile + papers + recent briefing history. The `briefingModel` (default `gemini-3.6-flash`) gets the main synthesis prompt. Output is validated against a zod schema; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
-4. **Call `/api/check-briefing`** to audit the briefing against the source corpus — a second, independent LLM pass looks for claims that aren't supported by the papers' abstracts, quick summaries, or full reports.
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, full report, and any stars, dismissals, or comments). The `briefingModel` (default `gemini-3.6-flash`) gets the main synthesis prompt. Output is validated against a zod schema and the input paper IDs; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
+4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract, quick summary, and full report.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
-6. **Save** the briefing + generation metadata to the app's local storage (browser-side, 90-day rolling window).
+6. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk; the browser's localStorage keeps the current briefing and a search index for the sidebar.
 
 Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model (no caching), and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
 
@@ -174,8 +174,8 @@ Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply 
 **Cost.** A few cents per briefing on typical setups:
 
 - Quick summaries: a small amount per paper (short model, one-page compression).
-- Synthesis: a few thousand input tokens.
-- Hallucination check: another few thousand tokens.
+- Synthesis: tens of thousands of input tokens at the default 30 papers, because every full report goes into one call.
+- Hallucination check: a similar amount, since it reads the same reports (each cut at 4,000 characters) plus the quick summaries.
 - Retry, if triggered: roughly doubles the synthesis + check cost.
 
 **Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after Stage 4 finishes, giving you a chance to star, dismiss, or comment on papers before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
@@ -238,7 +238,7 @@ The **briefing** is the editorial product: synthesis LLM output with an executiv
 
 The **Download Report** is a flat markdown export compiled by `lib/analyzer/exportReport.js` from Stage 4's per-paper deep-analysis outputs. It has no editorial framing, no theme grouping, no profile-shaped "why it matters" — just the raw technical write-ups stitched together, one after another, with scores and metadata. No LLM call happens at export time; it's a deterministic compile of cached outputs. The card surfaces as soon as Stage 4 finishes, which means **it's visible during the pre-briefing pause** — you can export the technical detail without waiting on or running briefing synthesis at all.
 
-Neither depends on the other existing. In day-to-day use, the briefing is what you read; the report is mostly useful for archival or for handing someone a self-contained file. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (unattended runs, archival pipelines), disable briefing synthesis or stop the run at Gate 3, the pre-briefing pause.
+Neither depends on the other existing. In day-to-day use, the briefing is what you read; the report is mostly useful for archival or for handing someone a self-contained file. If you want both, Stage 5 produces the briefing and the Download card keeps working in parallel. If you only want the report (archival pipelines, for example), stop the run at Gate 3, the pre-briefing pause, and download the report there.
 
 ## Reading this alongside the UI
 
