@@ -17,7 +17,11 @@ const pillStyle = (selected) => ({
 
 function chosenAnswer(feedbackEvents, question, briefingDate) {
   return feedbackEvents?.findLast?.(
-    (e) => e.type === 'answer' && e.questionId === question.id && e.briefingDate === briefingDate
+    (e) =>
+      e.type === 'answer' &&
+      e.questionId === question.id &&
+      e.question === question.text &&
+      e.briefingDate === briefingDate
   )?.answer;
 }
 

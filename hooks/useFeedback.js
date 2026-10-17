@@ -295,9 +295,12 @@ export function useFeedback() {
       if (!questionId || !answer) return;
       const testMode = resolveTestMode(explicit);
       setEvents((prev) => {
+        // Question ids are only q1/q2, so the text is part of the key: two
+        // briefings on one day each ask their own q1.
         const same = (e) =>
           e.type === 'answer' &&
           e.questionId === questionId &&
+          e.question === question &&
           e.briefingDate === briefingDate &&
           samePartition(e, testMode);
         const existing = prev.find(same);

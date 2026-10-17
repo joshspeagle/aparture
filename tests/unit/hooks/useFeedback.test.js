@@ -825,6 +825,20 @@ describe("recordAnswer — answers to the editor's questions", () => {
     expect(answers).toHaveLength(0);
   });
 
+  it('keeps answers to different questions apart when two briefings share a day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer(answer('Yes, require one')));
+    // A second briefing the same day asks its own q1.
+    act(() =>
+      result.current.recordAnswer({
+        ...answer('Rank them lower'),
+        question: 'Theory-only papers keep scoring high. Rank them lower?',
+      })
+    );
+    const answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers.map((e) => e.answer)).toEqual(['Yes, require one', 'Rank them lower']);
+  });
+
   it('tags an answer given on a test-mode briefing', () => {
     const { result } = renderHook(() => useFeedback());
     act(() => result.current.recordAnswer({ ...answer('Yes'), testMode: true }));

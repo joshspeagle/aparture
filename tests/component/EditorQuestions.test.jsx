@@ -45,12 +45,22 @@ describe('EditorQuestions', () => {
           {
             type: 'answer',
             questionId: 'q1',
+            question: question.text,
             answer: 'No, rank by score alone',
             briefingDate: '2026-10-16',
+          },
+          // Another briefing the same day, whose q1 asked something else.
+          {
+            type: 'answer',
+            questionId: 'q1',
+            question: 'Theory-only papers keep scoring high. Rank them lower?',
+            answer: 'No, rank by score alone',
+            briefingDate: '2026-10-17',
           },
           {
             type: 'answer',
             questionId: 'q1',
+            question: question.text,
             answer: 'Yes, reserve a slot',
             briefingDate: '2026-10-17',
           },
