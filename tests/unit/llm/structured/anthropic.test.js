@@ -8,18 +8,18 @@ import { MODEL_REGISTRY } from '../../../../utils/models.js';
 describe('buildAnthropicRequest', () => {
   it('builds a plain text request with adaptive thinking', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Say hi.',
     });
-    expect(req.body.model).toBe('claude-opus-4-7');
+    expect(req.body.model).toBe('claude-opus-5-5');
     expect(req.body.messages).toEqual([{ role: 'user', content: 'Say hi.' }]);
     expect(req.body.thinking).toEqual({ type: 'adaptive' });
     expect(req.body.tools).toBeUndefined();
   });
 
-  it('uses tool_choice auto with structured output on Opus (thinking enabled)', () => {
+  it('sends structured output as output_config.format with no tools (thinking enabled)', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Summarize.',
       structuredOutput: {
         name: 'summary',
@@ -27,20 +27,20 @@ describe('buildAnthropicRequest', () => {
         schema: { type: 'object', properties: { headline: { type: 'string' } } },
       },
     });
-    expect(req.body.tools).toHaveLength(1);
-    expect(req.body.tools[0].name).toBe('summary');
-    // strict: true enables grammar-constrained sampling so tool inputs
-    // exactly match the schema (no `"2"` vs `2` type drift).
-    expect(req.body.tools[0].strict).toBe(true);
-    expect(req.body.tools[0].input_schema).toEqual({
-      type: 'object',
-      properties: { headline: { type: 'string' } },
+    expect(req.body.thinking).toEqual({ type: 'adaptive' });
+    expect(req.body.output_config).toEqual({
+      format: {
+        type: 'json_schema',
+        schema: { type: 'object', properties: { headline: { type: 'string' } } },
+      },
     });
-    // Thinking requires tool_choice "auto" — "tool" is not supported
-    expect(req.body.tool_choice).toEqual({ type: 'auto' });
+    // Opus 5.5 / Sonnet 5.5 / Fable 5.1 400 on forced tool_choice; the
+    // structured-output path needs no tool at all.
+    expect(req.body.tools).toBeUndefined();
+    expect(req.body.tool_choice).toBeUndefined();
   });
 
-  it('disables thinking and forces tool_choice on Haiku (thinking unsupported)', () => {
+  it('uses the same schema path on Haiku 4.5, without thinking', () => {
     const req = buildAnthropicRequest({
       model: 'claude-haiku-4-5',
       prompt: 'Summarize.',
@@ -49,29 +49,42 @@ describe('buildAnthropicRequest', () => {
         schema: { type: 'object', properties: { headline: { type: 'string' } } },
       },
     });
-    // No thinking block — Haiku models reject adaptive thinking.
+    // No thinking block — Haiku 4.5 rejects adaptive thinking.
     expect(req.body.thinking).toBeUndefined();
-    // With thinking off, forced tool_choice is allowed and used for
-    // guaranteed structured output.
-    expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
+    expect(req.body.output_config.format.type).toBe('json_schema');
+    expect(req.body.tool_choice).toBeUndefined();
+  });
+
+  it('passes effort through only for models with adaptive thinking', () => {
+    const opus = buildAnthropicRequest({ model: 'claude-opus-5-5', prompt: 'Hi.', effort: 'low' });
+    expect(opus.body.output_config).toEqual({ effort: 'low' });
+    const haiku45 = buildAnthropicRequest({
+      model: 'claude-haiku-4-5',
+      prompt: 'Hi.',
+      effort: 'low',
+    });
+    expect(haiku45.body.output_config).toBeUndefined();
   });
 
   // Adaptive thinking is version-gated: only 4.6+ Opus/Sonnet (and the 5.x
   // line) get `thinking: {type: 'adaptive'}`. Pre-4.6 Opus/Sonnet require
   // the older `{type: 'enabled', budget_tokens}` shape and 400 on adaptive.
   it.each([
-    ['claude-opus-4-8', true],
-    ['claude-opus-4-7', true],
+    ['claude-opus-5-5', true],
+    ['claude-sonnet-5-5', true],
+    ['claude-haiku-5-5', true],
+    ['claude-fable-5-1', true],
+    ['claude-opus-4-8', true], // unregistered now; regex fallback
     ['claude-opus-4-6', true],
-    ['claude-sonnet-5', true],
     ['claude-sonnet-4-6', true],
     ['claude-opus-4.7', true], // dotted user-facing form
     ['claude-opus-4-5', false], // pre-4.6 legacy — adaptive would 400
     ['claude-opus-4-1', false],
     ['claude-sonnet-4-5', false],
     ['claude-sonnet-4-5-20250929', false], // date-stamped legacy apiId
-    ['claude-haiku-4-5', false], // Haiku never supports adaptive thinking
-    ['claude-haiku-5', false],
+    ['claude-haiku-4-5', false], // Haiku 4.5 rejects adaptive thinking
+    ['claude-haiku-6-0', true], // unregistered future Haiku: regex fallback
+    ['claude-mythos-5-1', true], // unregistered Mythos: thinking always on
     ['claude-3-5-sonnet-20241022', false], // old date-first naming
   ])('adaptive thinking gate: %s → %s', (model, expected) => {
     const req = buildAnthropicRequest({ model, prompt: 'Hi.' });
@@ -120,15 +133,9 @@ describe('buildAnthropicRequest', () => {
     expect(legacy.body.thinking).toBeUndefined();
   });
 
-  // Fable 5 is the first registered Anthropic model outside the
-  // claude-opus-* / claude-sonnet-* naming convention the regex fallback
-  // recognises. Its registry entry is what keeps it on the thinking path:
-  // unregistered, it would fall through to thinking-off + forced
-  // tool_choice, which the API rejects (Fable 5's thinking is always on, and
-  // forced tool_choice is invalid whenever thinking is enabled).
-  it('keeps Fable 5 on adaptive thinking + tool_choice auto via its registry entry', () => {
+  it('keeps Fable 5.1 on adaptive thinking via its registry entry', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-fable-5',
+      model: 'claude-fable-5-1',
       prompt: 'Summarize.',
       structuredOutput: {
         name: 'summary',
@@ -136,15 +143,7 @@ describe('buildAnthropicRequest', () => {
       },
     });
     expect(req.body.thinking).toEqual({ type: 'adaptive' });
-    expect(req.body.tool_choice).toEqual({ type: 'auto' });
-  });
-
-  it('would gate Fable 5 off without its registry entry (regex does not match it)', () => {
-    // Guards the reason the entry exists: the fallback is Opus/Sonnet-only,
-    // so a same-shaped unregistered id gets the wrong request shape.
-    expect(MODEL_REGISTRY['claude-fable-9']).toBeUndefined();
-    const req = buildAnthropicRequest({ model: 'claude-fable-9', prompt: 'Hi.' });
-    expect(req.body.thinking).toBeUndefined();
+    expect(req.body.tool_choice).toBeUndefined();
   });
 
   it('sends adaptive thinking for Opus 5', () => {
@@ -152,22 +151,9 @@ describe('buildAnthropicRequest', () => {
     expect(req.body.thinking).toEqual({ type: 'adaptive' });
   });
 
-  it('forces tool_choice on pre-4.6 Opus/Sonnet (thinking off)', () => {
-    const req = buildAnthropicRequest({
-      model: 'claude-opus-4-5',
-      prompt: 'Summarize.',
-      structuredOutput: {
-        name: 'summary',
-        schema: { type: 'object', properties: { headline: { type: 'string' } } },
-      },
-    });
-    expect(req.body.thinking).toBeUndefined();
-    expect(req.body.tool_choice).toEqual({ type: 'tool', name: 'summary' });
-  });
-
   it('defaults max_tokens to 16000 for thinking overhead', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Hi.',
     });
     expect(req.body.max_tokens).toBe(16000);
@@ -175,7 +161,7 @@ describe('buildAnthropicRequest', () => {
 
   it('respects a custom maxTokens override', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Hi.',
       maxTokens: 1024,
     });
@@ -184,7 +170,7 @@ describe('buildAnthropicRequest', () => {
 
   it('produces a plain-string content field when cacheable is omitted (backward compat)', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Hello world',
     });
     expect(req.body.messages).toEqual([{ role: 'user', content: 'Hello world' }]);
@@ -192,7 +178,7 @@ describe('buildAnthropicRequest', () => {
 
   it('produces a two-block content array with cache_control on the prefix block when cacheable is true', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-7',
+      model: 'claude-opus-5-5',
       prompt: 'Variable tail',
       cacheable: true,
       cachePrefix: 'Static prefix text',
@@ -210,7 +196,7 @@ describe('buildAnthropicRequest', () => {
 
   it('produces a two-block content array with document block when pdfBase64 is provided', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-5-5',
       prompt: 'Analyze this paper.',
       pdfBase64: 'AAAA',
     });
@@ -225,7 +211,7 @@ describe('buildAnthropicRequest', () => {
 
   it('produces a three-block content array with cache_control then document then text when cacheable + pdfBase64', () => {
     const req = buildAnthropicRequest({
-      model: 'claude-opus-4-6',
+      model: 'claude-opus-5-5',
       prompt: 'Analyze this paper.',
       pdfBase64: 'AAAA',
       cacheable: true,
@@ -259,7 +245,43 @@ describe('parseAnthropicResponse', () => {
     expect(result.structured).toBeUndefined();
   });
 
-  it('extracts structured tool_use payload', () => {
+  it('parses the output_config text block into structured when asked', () => {
+    const response = {
+      content: [
+        { type: 'thinking', thinking: '', signature: 'sig' },
+        { type: 'text', text: '{"headline":"Big news"}' },
+      ],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 20, output_tokens: 8 },
+    };
+    const result = parseAnthropicResponse(response, { expectStructured: true });
+    expect(result.structured).toEqual({ headline: 'Big news' });
+    expect(result.text).toBe('{"headline":"Big news"}');
+  });
+
+  it('names truncation at max_tokens instead of failing on half a JSON object', () => {
+    const response = {
+      content: [{ type: 'text', text: '{"headline":"Big ne' }],
+      stop_reason: 'max_tokens',
+      usage: { input_tokens: 20, output_tokens: 16000 },
+    };
+    expect(() => parseAnthropicResponse(response, { expectStructured: true })).toThrow(
+      /cut off at max_tokens/
+    );
+  });
+
+  it('reports a malformed structured reply with the parse error', () => {
+    const response = {
+      content: [{ type: 'text', text: 'Here is your summary.' }],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 20, output_tokens: 8 },
+    };
+    expect(() => parseAnthropicResponse(response, { expectStructured: true })).toThrow(
+      /failed to parse Anthropic structured response/
+    );
+  });
+
+  it('still reads a tool_use payload (responses from the earlier strict-tool path)', () => {
     const response = {
       content: [{ type: 'tool_use', name: 'summary', input: { headline: 'Big news' } }],
       usage: { input_tokens: 20, output_tokens: 8 },

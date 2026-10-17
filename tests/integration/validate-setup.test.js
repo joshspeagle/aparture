@@ -95,7 +95,7 @@ describe('validate-setup API route', () => {
       slots: [
         { slot: 'Filter', model: 'gemini-2.5-flash' },
         { slot: 'Scoring', model: 'gemini-2.5-flash' },
-        { slot: 'Briefing', model: 'claude-sonnet-4.6' },
+        { slot: 'Briefing', model: 'claude-sonnet-5.5' },
       ],
     });
     await handler(req, res);
@@ -109,7 +109,7 @@ describe('validate-setup API route', () => {
     expect(validateProviderSetup).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5-5',
         apiKey: 'sk-ant-env',
       })
     );

@@ -43,7 +43,7 @@ describe('validateAnthropic', () => {
 
   it('sends the adapter-shaped request to count_tokens (no max_tokens)', async () => {
     const fetchImpl = mockFetch(200, { input_tokens: 42 });
-    await validateAnthropic({ model: 'claude-opus-4-8', apiKey: 'sk-ant-test', fetchImpl });
+    await validateAnthropic({ model: 'claude-opus-5-5', apiKey: 'sk-ant-test', fetchImpl });
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, init] = fetchImpl.mock.calls[0];
@@ -53,24 +53,27 @@ describe('validateAnthropic', () => {
     expect(init.headers['anthropic-version']).toBe('2023-06-01');
 
     const body = JSON.parse(init.body);
-    // Reuses the production adapter: adaptive thinking on Opus 4.8, strict
-    // tool, tool_choice auto (forced tool_choice is rejected with thinking).
-    expect(body.model).toBe('claude-opus-4-8');
+    // Reuses the production adapter: adaptive thinking on Opus 5.5 and the
+    // structured-output schema in output_config.format, with no tools or
+    // tool_choice (Opus 5.5 rejects forced tool_choice).
+    expect(body.model).toBe('claude-opus-5-5');
     expect(body.messages).toHaveLength(1);
     expect(body.thinking).toEqual({ type: 'adaptive' });
-    expect(body.tools).toHaveLength(1);
-    expect(body.tools[0].strict).toBe(true);
-    expect(body.tool_choice).toEqual({ type: 'auto' });
+    expect(body.output_config.format.type).toBe('json_schema');
+    expect(body.output_config.format.schema.type).toBe('object');
+    expect(body.tools).toBeUndefined();
+    expect(body.tool_choice).toBeUndefined();
     // count_tokens does not accept max_tokens — it must be stripped.
     expect(body.max_tokens).toBeUndefined();
   });
 
-  it('mirrors the adapter thinking gate for Haiku (no thinking, forced tool)', async () => {
+  it('mirrors the adapter thinking gate for Haiku 4.5 (no thinking, schema still sent)', async () => {
     const fetchImpl = mockFetch(200, { input_tokens: 42 });
     await validateAnthropic({ model: 'claude-haiku-4-5', apiKey: 'sk-ant-test', fetchImpl });
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body.thinking).toBeUndefined();
-    expect(body.tool_choice).toEqual({ type: 'tool', name: 'setup_check' });
+    expect(body.output_config.format.type).toBe('json_schema');
+    expect(body.tool_choice).toBeUndefined();
   });
 
   it('classifies 401 as a key failure', async () => {
@@ -159,14 +162,15 @@ describe('validateGoogle', () => {
     expect(result.checks).toEqual({ key: true, model: true, requestShape: true });
   });
 
-  it('posts adapter contents to :countTokens with query-param auth', async () => {
+  it('posts adapter contents to :countTokens with header auth', async () => {
     const fetchImpl = mockFetch(200, { totalTokens: 12 });
     await validateGoogle({ model: 'gemini-2.5-flash', apiKey: 'AIza-test', fetchImpl });
 
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:countTokens?key=AIza-test'
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:countTokens'
     );
+    expect(init.headers['x-goog-api-key']).toBe('AIza-test');
     const body = JSON.parse(init.body);
     expect(body.contents).toEqual([{ role: 'user', parts: [{ text: expect.any(String) }] }]);
     // countTokens accepts contents only — generationConfig must not leak in.

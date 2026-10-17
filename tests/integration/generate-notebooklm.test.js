@@ -57,7 +57,7 @@ describe('generate-notebooklm API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       password: 'test-pw',
       podcastDuration: 20,
-      notebookLMModel: 'gemini-3.1-pro',
+      notebookLMModel: 'gemini-4-argon',
       provider: 'google',
       briefing: {
         executiveSummary: 'Short.',
@@ -130,7 +130,7 @@ describe('generate-notebooklm API route (fixture mode)', () => {
     const { req, res, getResponse } = createMockReqRes({
       password: 'test-pw',
       papers: [{ arxivId: 'x', title: 'y', finalScore: 1 }],
-      notebookLMModel: 'gemini-3.1-pro',
+      notebookLMModel: 'gemini-4-argon',
       callModelMode: { mode: 'fixture', fixturesDir },
     });
     await handler(req, res);

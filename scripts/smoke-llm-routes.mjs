@@ -14,17 +14,17 @@
 //   --briefing-model-<provider>=<id>  override only the briefing model for <provider>
 //
 // Model overrides accept user-facing IDs from utils/models.js MODEL_REGISTRY
-// (e.g. 'claude-opus-4.7', 'gemini-3-flash', 'gpt-5.4'). The smoke script
+// (e.g. 'claude-opus-5.5', 'gemini-3.8-flash', 'gpt-6.1-sol'). The smoke script
 // passes them through to the API routes; each route's handler resolves the
 // apiId via MODEL_REGISTRY before calling the provider.
 //
 // Examples:
 //   # test only Anthropic with Sonnet (has adaptive thinking) instead of
 //   # the default Haiku
-//   node scripts/smoke-llm-routes.mjs --providers=anthropic --model-anthropic=claude-sonnet-4.6
+//   node scripts/smoke-llm-routes.mjs --providers=anthropic --model-anthropic=claude-sonnet-5.5
 //
 //   # test a specific route on one provider with a specific model
-//   node scripts/smoke-llm-routes.mjs --only=synthesize --providers=google --model-google=gemini-3.1-pro
+//   node scripts/smoke-llm-routes.mjs --only=synthesize --providers=google --model-google=gemini-4-argon
 //
 // Loads .env.local, calls each handler in-process with callModelMode: 'live',
 // and reports PASS/FAIL per (route, provider). Uses minimum-viable payloads
@@ -100,23 +100,23 @@ const PROVIDERS = [
   {
     name: 'anthropic',
     envKey: 'CLAUDE_API_KEY',
-    batchModel: resolveModel('anthropic', 'batch', 'claude-haiku-4.5'),
+    batchModel: resolveModel('anthropic', 'batch', 'claude-haiku-5.5'),
     briefingProvider: 'anthropic',
-    briefingModel: resolveModel('anthropic', 'briefing', 'claude-haiku-4.5'),
+    briefingModel: resolveModel('anthropic', 'briefing', 'claude-haiku-5.5'),
   },
   {
     name: 'google',
     envKey: 'GOOGLE_AI_API_KEY',
-    batchModel: resolveModel('google', 'batch', 'gemini-3.1-flash-lite'),
+    batchModel: resolveModel('google', 'batch', 'gemini-3.5-flash-lite'),
     briefingProvider: 'google',
-    briefingModel: resolveModel('google', 'briefing', 'gemini-3.1-flash-lite'),
+    briefingModel: resolveModel('google', 'briefing', 'gemini-3.5-flash-lite'),
   },
   {
     name: 'openai',
     envKey: 'OPENAI_API_KEY',
-    batchModel: resolveModel('openai', 'batch', 'gpt-5.4-nano'),
+    batchModel: resolveModel('openai', 'batch', 'gpt-6-luna'),
     briefingProvider: 'openai',
-    briefingModel: resolveModel('openai', 'briefing', 'gpt-5.4-nano'),
+    briefingModel: resolveModel('openai', 'briefing', 'gpt-6-luna'),
   },
 ];
 
