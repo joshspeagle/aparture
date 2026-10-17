@@ -24,7 +24,9 @@ export default function QueryOptionsSection({ config, setConfig, processing }) {
           {/* defaultVal must track DEFAULT_CONFIG.daysBack in
                         hooks/useAnalyzerPersistence.js */}
           <Input {...integerInputProps('daysBack', 1, 1, 30)} />
-          <p style={HELP_TEXT_STYLE}>ArXiv search range</p>
+          <p style={HELP_TEXT_STYLE}>
+            Days of new submissions, ending on the newest day with papers
+          </p>
         </div>
         <div style={{ flex: 1 }}>
           <label htmlFor="setting-maxCorrections" style={FIELD_LABEL_STYLE}>

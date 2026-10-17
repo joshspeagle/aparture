@@ -30,7 +30,8 @@ export default function ReviewConfirmationSection({ config, setConfig, processin
           marginBottom: 'var(--aparture-space-4)',
         }}
       >
-        Training wheels — turn these off as you build trust in your pipeline setup.
+        Each pause is where you steer the run: correct filter verdicts, pick which papers get a full
+        read, and leave notes for the briefing.
       </p>
       <div
         style={{

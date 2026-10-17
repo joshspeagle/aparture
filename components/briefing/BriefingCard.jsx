@@ -3,6 +3,14 @@ import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import TestModeBadge from '../ui/TestModeBadge.jsx';
 
+// The audit's verdict answers "did it find a hallucination?", so a bare
+// "NO" read as a failure. Say what the verdict means instead.
+const CHECK_LABELS = {
+  NO: 'Claims check: passed',
+  MAYBE: 'Claims check: some claims unclear',
+  YES: 'Claims check: found unsupported claims',
+};
+
 export default function BriefingCard({
   results,
   testState,
@@ -74,7 +82,8 @@ export default function BriefingCard({
               ...verdictStyle(briefingCheckResult.verdict),
             }}
           >
-            Hallucination check: {briefingCheckResult.verdict}
+            {CHECK_LABELS[briefingCheckResult.verdict] ??
+              `Claims check: ${briefingCheckResult.verdict}`}
             {briefingCheckResult.retried && ' (after retry)'}
           </span>
         )}
