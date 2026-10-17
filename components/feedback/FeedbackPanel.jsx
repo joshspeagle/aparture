@@ -24,6 +24,8 @@ export default function FeedbackPanel({
   runFeedbackSavedText,
   onRunFeedback,
   onClearTestEvents,
+  onRemoveEvent,
+  onUpdateEventText,
 }) {
   const [filters, setFilters] = useState({
     type: 'all',
@@ -33,9 +35,13 @@ export default function FeedbackPanel({
 
   // Housekeeping actions fall back to the feedback hook App publishes into
   // the store's reactContext, so they work without threading new props
-  // through MainArea.
+  // through MainArea. (The selected methods are stable useCallbacks.)
   const storeClearTestEvents = useAnalyzerStore((s) => s.reactContext?.feedback?.clearTestEvents);
+  const storeRemoveEvent = useAnalyzerStore((s) => s.reactContext?.feedback?.removeEvent);
+  const storeUpdateEventText = useAnalyzerStore((s) => s.reactContext?.feedback?.updateEventText);
   const clearTestEvents = onClearTestEvents ?? storeClearTestEvents;
+  const removeEvent = onRemoveEvent ?? storeRemoveEvent;
+  const updateEventText = onUpdateEventText ?? storeUpdateEventText;
 
   const counts = useMemo(() => {
     const testCount = events.filter(isTestFeedback).length;
@@ -98,6 +104,8 @@ export default function FeedbackPanel({
           filters={filters}
           cutoff={cutoff}
           onClearTestEvents={clearTestEvents}
+          onRemoveEvent={removeEvent}
+          onUpdateEventText={updateEventText}
         />
       ) : (
         <FeedbackEmptyState />

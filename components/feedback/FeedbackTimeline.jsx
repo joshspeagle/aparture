@@ -67,11 +67,16 @@ const LINK_BUTTON_STYLE = {
   textDecoration: 'underline',
 };
 
-function renderGroups(groups) {
+function renderGroups(groups, actions = {}) {
   return groups.map((group) => (
     <div key={group.key}>
       {group.events.map((e) => (
-        <FeedbackItem key={e.id} event={e} />
+        <FeedbackItem
+          key={e.id}
+          event={e}
+          onRemove={actions.onRemoveEvent}
+          onUpdateText={actions.onUpdateEventText}
+        />
       ))}
     </div>
   ));
@@ -80,7 +85,7 @@ function renderGroups(groups) {
 // Feedback recorded during a Dry Run / Minimal Test (or legacy dry-run junk
 // such as "filter said 123" overrides). Never sent to suggestions, so it is
 // collapsed by default and can be cleared in one click.
-function TestFeedbackGroup({ events, onClear }) {
+function TestFeedbackGroup({ events, onClear, actions }) {
   const [open, setOpen] = useState(false);
   return (
     <div
@@ -119,12 +124,22 @@ function TestFeedbackGroup({ events, onClear }) {
           )}
         </div>
       </div>
-      {open && <div style={{ marginTop: '4px' }}>{renderGroups(groupByPaper(events))}</div>}
+      {open && (
+        <div style={{ marginTop: '4px' }}>{renderGroups(groupByPaper(events), actions)}</div>
+      )}
     </div>
   );
 }
 
-export default function FeedbackTimeline({ events, filters, cutoff, onClearTestEvents }) {
+export default function FeedbackTimeline({
+  events,
+  filters,
+  cutoff,
+  onClearTestEvents,
+  onRemoveEvent,
+  onUpdateEventText,
+}) {
+  const actions = { onRemoveEvent, onUpdateEventText };
   const filtered = useMemo(
     () => filterEvents(events, filters, { cutoff }),
     [events, filters, cutoff]
@@ -152,7 +167,7 @@ export default function FeedbackTimeline({ events, filters, cutoff, onClearTestE
           {(oldGroups.length > 0 || byStatus.test.length > 0) && (
             <p style={GROUP_LABEL_STYLE}>Not yet incorporated</p>
           )}
-          {renderGroups(newGroups)}
+          {renderGroups(newGroups, actions)}
         </div>
       )}
       {oldGroups.length > 0 && (
@@ -165,11 +180,11 @@ export default function FeedbackTimeline({ events, filters, cutoff, onClearTestE
           }}
         >
           <p style={GROUP_LABEL_STYLE}>Incorporated into your profile</p>
-          {renderGroups(oldGroups)}
+          {renderGroups(oldGroups, actions)}
         </div>
       )}
       {byStatus.test.length > 0 && (
-        <TestFeedbackGroup events={byStatus.test} onClear={onClearTestEvents} />
+        <TestFeedbackGroup events={byStatus.test} onClear={onClearTestEvents} actions={actions} />
       )}
     </div>
   );

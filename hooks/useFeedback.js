@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import {
+  isEditableFeedback,
   isFilterVerdict,
   isPendingFeedback,
   isTestFeedback,
@@ -286,6 +287,38 @@ export function useFeedback() {
     });
   }, []);
 
+  // Delete one event (Feedback panel). For a star or dismiss this is the same
+  // as toggling it off; for a comment or note it is the only way to take back
+  // a typo or a mistake, which would otherwise be pre-ticked in every Suggest.
+  const removeEvent = useCallback((id) => {
+    setEvents((prev) => {
+      if (!prev.some((e) => e.id === id)) return prev;
+      const next = prev.filter((e) => e.id !== id);
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  // Edit the text of a comment or note. The new wording hasn't been
+  // considered by any suggestion, so an edited event is pending again
+  // (editedAt; incorporatedAt cleared — see feedbackStatus). Empty text is
+  // refused: delete the event instead.
+  const updateEventText = useCallback((id, text) => {
+    const trimmed = typeof text === 'string' ? text.trim() : '';
+    if (!trimmed) return;
+    setEvents((prev) => {
+      const target = prev.find((e) => e.id === id);
+      if (!isEditableFeedback(target) || target.text === trimmed) return prev;
+      const next = prev.map((e) => {
+        if (e.id !== id) return e;
+        const { incorporatedAt: _reconsider, ...rest } = e;
+        return { ...rest, text: trimmed, editedAt: Date.now() };
+      });
+      persist(next);
+      return next;
+    });
+  }, []);
+
   // Remove every test-run event (and legacy dry-run junk such as
   // "filter said 123" overrides) in one go — the Feedback panel's
   // "Clear test feedback" action.
@@ -359,6 +392,8 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      removeEvent,
+      updateEventText,
       clearTestEvents,
       markIncorporated,
       reopenIncorporatedSince,
@@ -374,6 +409,8 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      removeEvent,
+      updateEventText,
       clearTestEvents,
       markIncorporated,
       reopenIncorporatedSince,

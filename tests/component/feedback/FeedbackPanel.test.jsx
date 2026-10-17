@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import FeedbackPanel from '../../../components/feedback/FeedbackPanel.jsx';
+import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
 
 describe('FeedbackPanel', () => {
   const makeStar = (id, arxivId, timestamp) => ({
@@ -101,6 +102,28 @@ describe('FeedbackPanel', () => {
     it('renders the + feedback on this run trigger', () => {
       render(<FeedbackPanel {...defaultProps} runFeedbackSavedText="" onRunFeedback={() => {}} />);
       expect(screen.getByText('+ feedback on this run')).toBeInTheDocument();
+    });
+  });
+
+  describe('edit / delete wiring (P1-10)', () => {
+    afterEach(() => {
+      useAnalyzerStore.setState(initialState());
+    });
+
+    it("falls back to the feedback hook's methods published in the store", () => {
+      // MainArea passes no housekeeping props; App publishes the hook into
+      // reactContext, and the panel reads the methods from there.
+      const removeEvent = vi.fn();
+      useAnalyzerStore.setState({
+        reactContext: {
+          ...useAnalyzerStore.getState().reactContext,
+          feedback: { removeEvent, updateEventText: vi.fn(), clearTestEvents: vi.fn() },
+        },
+      });
+      render(<FeedbackPanel {...defaultProps} events={[makeStar('s1', 'p1', 1000)]} />);
+      fireEvent.click(screen.getByRole('button', { name: /delete this feedback/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+      expect(removeEvent).toHaveBeenCalledWith('s1');
     });
   });
 

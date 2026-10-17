@@ -335,6 +335,70 @@ describe('per-event incorporation (P1-4)', () => {
   });
 });
 
+describe('removeEvent / updateEventText (P1-10)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const seed = (events) =>
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events }));
+
+  it('removeEvent deletes exactly one event and persists', () => {
+    seed([
+      { id: 'a', type: 'star', arxivId: 'p1', timestamp: 1 },
+      { id: 'b', type: 'paper-comment', arxivId: 'p1', text: 'typo', timestamp: 2 },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.removeEvent('b');
+    });
+    expect(result.current.events.map((e) => e.id)).toEqual(['a']);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toHaveLength(1);
+    const before = result.current.events;
+    act(() => {
+      result.current.removeEvent('missing');
+    });
+    expect(result.current.events).toBe(before);
+  });
+
+  it('updateEventText rewrites a comment and makes it pending again', () => {
+    seed([
+      {
+        id: 'c',
+        type: 'general-comment',
+        text: 'too much theroy',
+        timestamp: 10,
+        incorporatedAt: 50,
+      },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    expect(result.current.getNewSince(0)).toEqual([]); // incorporated
+    act(() => {
+      result.current.updateEventText('c', '  too much theory  ');
+    });
+    const [edited] = result.current.events;
+    expect(edited.text).toBe('too much theory');
+    expect(edited.incorporatedAt).toBeUndefined();
+    expect(edited.editedAt).toEqual(expect.any(Number));
+    // Even an event before the legacy cutoff is pending once edited.
+    expect(result.current.getNewSince(20).map((e) => e.id)).toEqual(['c']);
+  });
+
+  it('updateEventText refuses empty text and non-text event types', () => {
+    seed([
+      { id: 'c', type: 'paper-comment', arxivId: 'p1', text: 'keep', timestamp: 1 },
+      { id: 's', type: 'star', arxivId: 'p2', timestamp: 2 },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.updateEventText('c', '   ');
+      result.current.updateEventText('s', 'stars have no text');
+    });
+    expect(result.current.events.find((e) => e.id === 'c').text).toBe('keep');
+    expect(result.current.events.find((e) => e.id === 's').text).toBeUndefined();
+  });
+});
+
 describe('ensureStar / ensureDismiss (non-toggling, gate handlers)', () => {
   beforeEach(() => {
     window.localStorage.clear();
