@@ -7,7 +7,7 @@
 // it in as `children` so the banner heads it rather than trailing below it.
 // The cut-papers expander trails after the list.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import ReviewGateBanner from '../run/ReviewGateBanner.jsx';
 import GeneralCommentInput from '../feedback/GeneralCommentInput.jsx';
 import AnalyzedExpander from './AnalyzedExpander.jsx';
@@ -23,7 +23,7 @@ const PRE_BRIEFING_PLACEHOLDER =
  *   onPromotePaper?: (paper: object) => void,
  *   onContinueAfterReview: () => void,
  *   onSkipRemainingGates?: () => void,
- *   onAddGeneralComment?: (text: string, briefingId: string | undefined) => void,
+ *   onAddGeneralComment?: (text: string, briefingId: string | undefined, options?: {origin: string}) => void,
  *   config?: object,             // pipeline config; enables the projected-spend line
  *   children?: React.ReactNode,  // the reviewed content (AnalysisResultsList), headed by the banner
  * }} props
@@ -58,6 +58,16 @@ export default function PreBriefingGate({
       : null;
   }, [briefingPaperCount, config]);
 
+  // Notes saved at this gate, echoed back so the user can see what the
+  // briefing writer will receive (the input itself collapses on save).
+  const [savedNotes, setSavedNotes] = useState([]);
+  const handleSaveNote = (text) => {
+    const trimmed = (text ?? '').trim();
+    if (!trimmed) return;
+    onAddGeneralComment?.(trimmed, undefined, { origin: 'pre-briefing' });
+    setSavedNotes((prev) => [...prev, trimmed]);
+  };
+
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
       <ReviewGateBanner
@@ -79,11 +89,32 @@ export default function PreBriefingGate({
           </div>
         )}
         {/* Per-round free-text feedback lives inside the banner, matching the
-            score-review gate's scoped-feedback placement. */}
-        <GeneralCommentInput
-          onSave={(text) => onAddGeneralComment?.(text, undefined)}
-          placeholder={PRE_BRIEFING_PLACEHOLDER}
-        />
+            score-review gate's scoped-feedback placement. The note is tagged
+            origin 'pre-briefing': briefingClient sends today's notes to the
+            briefing writer as editorial instructions (it used to be saved as
+            a plain general comment the synthesizer never saw), and they
+            still feed Suggest like any general comment. */}
+        <GeneralCommentInput onSave={handleSaveNote} placeholder={PRE_BRIEFING_PLACEHOLDER} />
+        {savedNotes.length > 0 && (
+          <div
+            data-testid="pre-briefing-saved-notes"
+            role="status"
+            style={{
+              marginTop: 'var(--aparture-space-2, 8px)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+            }}
+          >
+            <div>Sent to the briefing writer with this run:</div>
+            <ul style={{ margin: '4px 0 0 0', paddingLeft: '18px' }}>
+              {savedNotes.map((note, i) => (
+                <li key={i} style={{ fontStyle: 'italic' }}>
+                  &ldquo;{note}&rdquo;
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </ReviewGateBanner>
       {children}
       {results.allAnalyzedPapers && (

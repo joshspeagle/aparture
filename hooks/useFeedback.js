@@ -171,6 +171,9 @@ export function useFeedback() {
     });
   }, []);
 
+  // options.origin: where the comment was written. 'pre-briefing' marks the
+  // Gate 3 note, which briefingClient also sends to the briefing writer as an
+  // editorial instruction for that day's briefing.
   const addGeneralComment = useCallback((text, briefingDate, briefingId, options = {}) => {
     const testMode = resolveTestMode(options?.testMode);
     setEvents((prev) => {
@@ -182,6 +185,7 @@ export function useFeedback() {
           timestamp: Date.now(),
           briefingDate,
           ...(briefingId ? { briefingId } : {}),
+          ...(typeof options?.origin === 'string' ? { origin: options.origin } : {}),
         },
         testMode
       );

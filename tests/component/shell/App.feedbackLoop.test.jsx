@@ -178,6 +178,25 @@ describe('App — filter overrides are recorded at click time (P1-6)', () => {
   });
 });
 
+describe('App — the Gate 3 note keeps its origin (P1-7)', () => {
+  it("forwards the note's options so the stored comment is tagged pre-briefing", () => {
+    seedStore();
+    render(<App />);
+    act(() => {
+      captured.mainArea.onAddGeneralComment('Lead with the flows cluster.', undefined, {
+        origin: 'pre-briefing',
+      });
+    });
+    const [event] = storedEvents();
+    expect(event).toMatchObject({
+      type: 'general-comment',
+      text: 'Lead with the flows cluster.',
+      origin: 'pre-briefing',
+      briefingDate: localDateStr(),
+    });
+  });
+});
+
 describe('App — Suggest outcome and revert keep feedback status honest (P1-4)', () => {
   const storedProfile = () => JSON.parse(window.localStorage.getItem('aparture-profile'));
   const star = (id, timestamp) => ({

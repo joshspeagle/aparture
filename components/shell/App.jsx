@@ -937,9 +937,11 @@ export default function App() {
     [activeView, currentBriefing, selectedEntry, briefingHistory, feedback]
   );
 
+  // `options` carries e.g. { origin: 'pre-briefing' } from the Gate 3 note,
+  // which briefingClient forwards to the briefing writer.
   const handleAddGeneralComment = useCallback(
-    (text, briefingId) => {
-      feedback.addGeneralComment(text, todayStr(), briefingId);
+    (text, briefingId, options) => {
+      feedback.addGeneralComment(text, todayStr(), briefingId, options);
     },
     [feedback]
   );

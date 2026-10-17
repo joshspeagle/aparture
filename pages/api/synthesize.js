@@ -5,6 +5,7 @@ import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
+import { renderReaderNotesSection } from '../../lib/synthesis/readerNotes.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { validateBriefing } from '../../lib/synthesis/validator.js';
 import { repairBriefing } from '../../lib/synthesis/repair.js';
@@ -28,6 +29,7 @@ export default async function handler(req, res) {
     allowOverBudget = false,
     callModelMode,
     retryHint,
+    readerNotes,
   } = req.body ?? {};
 
   if (!profile || !Array.isArray(papers) || !provider || !model) {
@@ -80,6 +82,9 @@ export default async function handler(req, res) {
     // check + retry flow. Appended to the prompt so the model knows this is
     // a second attempt and needs to ground claims more carefully.
     const hintSuffix = retryHint ? `\n\n# Retry hint from validator\n\n${retryHint}` : '';
+    // The reader's pre-briefing notes ("Lead with …"), if any. Appended after
+    // the rendered prompt like the retry hint, so cachePrefix is unchanged.
+    const notesSuffix = renderReaderNotesSection(readerNotes);
 
     // APARTURE_TEST_PROMPT_OVERRIDE replaces the variable tail for fixture-based
     // tests. When active (or when running in fixture mode), disable caching so
@@ -87,7 +92,7 @@ export default async function handler(req, res) {
     // predictable, stable value.
     const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
     const isFixture = callMode.mode === 'fixture';
-    const finalPrompt = promptOverride ?? fullPrompt + hintSuffix;
+    const finalPrompt = promptOverride ?? fullPrompt + notesSuffix + hintSuffix;
     // Defensive prefix check (mirrors suggest-profile): the computed
     // cachePrefix must be a byte-for-byte prefix of the full rendered prompt,
     // or the cache split would corrupt the prompt. On mismatch, fall back to
@@ -98,7 +103,7 @@ export default async function handler(req, res) {
       !promptOverride &&
       fullPrompt.startsWith(cachePrefix);
     const variableTail = useCaching
-      ? fullPrompt.slice(cachePrefix.length) + hintSuffix
+      ? fullPrompt.slice(cachePrefix.length) + notesSuffix + hintSuffix
       : finalPrompt;
 
     // Token budget pre-flight (estimate against the full prompt string)

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   callCheckBriefing,
   callSynthesize,
+  collectReaderNotes,
   generateQuickSummaries,
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
@@ -623,6 +624,48 @@ describe('runBriefingGeneration — paper comments reach the synthesizer (P0-1)'
       comments: ['This is the key paper today — lead the briefing with it.', 'Compare to SBI.'],
     });
     expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: false });
+  });
+});
+
+describe('runBriefingGeneration — the Gate 3 note reaches the briefing writer (P1-7)', () => {
+  const today = localDateStr();
+  const note = (id, text, extra = {}) => ({
+    id,
+    type: 'general-comment',
+    origin: 'pre-briefing',
+    text,
+    briefingDate: today,
+    timestamp: Number(id.replace(/\D/g, '')) || 1,
+    ...extra,
+  });
+
+  it("collectReaderNotes keeps only today's pre-briefing notes, oldest first", () => {
+    const events = [
+      note('n2', 'More methodology depth.'),
+      note('n1', 'Lead with the diffusion-models cluster.'),
+      note('n3', 'From yesterday.', { briefingDate: '2000-01-01' }),
+      note('n4', 'Said during a dry run.', { testMode: true }),
+      { id: 'g5', type: 'general-comment', text: 'A plain general comment.', briefingDate: today },
+      note('n6', '   '),
+    ];
+    expect(collectReaderNotes(events, today)).toEqual([
+      'Lead with the diffusion-models cluster.',
+      'More methodology depth.',
+    ]);
+    expect(collectReaderNotes(events, today, { includeTestFeedback: true })).toContain(
+      'Said during a dry run.'
+    );
+  });
+
+  it('posts readerNotes with the synthesis request (and omits the field when there are none)', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [note('n1', 'Lead with the diffusion-models cluster.')],
+    });
+    expect(bodies.synthesize[0].readerNotes).toEqual(['Lead with the diffusion-models cluster.']);
+
+    vi.restoreAllMocks();
+    const { bodies: plain } = await runLive({ feedbackEvents: [] });
+    expect(plain.synthesize[0]).not.toHaveProperty('readerNotes');
   });
 });
 
