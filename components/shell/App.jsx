@@ -24,6 +24,7 @@ import MobileTopBar from './MobileTopBar.jsx';
 import MainArea from './MainArea.jsx';
 import SuggestDialog from '../profile/SuggestDialog.jsx';
 import RankedPaperCard from '../results/RankedPaperCard.jsx';
+import { briefingPaperSummary } from '../briefing/PaperCard.jsx';
 
 // Local-timezone "today" — shared convention with SidebarBriefingList's
 // "Today" label detection (see lib/dates.js for the UTC-drift rationale).
@@ -927,9 +928,13 @@ export default function App() {
         {
           arxivId,
           paperTitle: paper.title,
-          quickSummary: paper.quickSummary ?? '',
+          // Synthesized papers have no quickSummary; use the card's pitch +
+          // why-it-matters so Suggest sees more than a bare title.
+          quickSummary: briefingPaperSummary(paper),
           score: paper.score,
           briefingDate: entry.date ?? todayStr(),
+          // A comment on a TEST MODE (dry-run) briefing is test feedback.
+          testMode: Boolean(entry.generationMetadata?.testMode),
         },
         text
       );

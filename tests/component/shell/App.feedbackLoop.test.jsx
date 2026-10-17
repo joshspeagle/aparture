@@ -178,6 +178,63 @@ describe('App — filter overrides are recorded at click time (P1-6)', () => {
   });
 });
 
+describe('App — comments on briefing cards (P1-9)', () => {
+  function seedCurrentBriefing({ testMode }) {
+    window.localStorage.setItem(
+      'aparture-briefing-current',
+      JSON.stringify({
+        id: 'b1',
+        date: '2026-10-17',
+        timestamp: 1,
+        archived: false,
+        briefing: {
+          executiveSummary: 's',
+          themes: [],
+          papers: [
+            {
+              arxivId: '2610.00042',
+              title: 'Flows for spectra',
+              score: 8.1,
+              onelinePitch: 'Flow matching fits stellar spectra in one pass.',
+              whyMatters: 'You work on spectral emulators.',
+            },
+          ],
+        },
+        generationMetadata: { testMode },
+      })
+    );
+  }
+
+  it("records the card's pitch and why-it-matters with the comment", () => {
+    seedCurrentBriefing({ testMode: false });
+    seedStore();
+    render(<App />);
+    act(() => {
+      captured.mainArea.onAddComment('2610.00042', 'Compare with the 2024 emulator.');
+    });
+    const [event] = storedEvents();
+    expect(event).toMatchObject({
+      type: 'paper-comment',
+      arxivId: '2610.00042',
+      text: 'Compare with the 2024 emulator.',
+      quickSummary:
+        'Flow matching fits stellar spectra in one pass. You work on spectral emulators.',
+      briefingDate: '2026-10-17',
+    });
+    expect(event.testMode).toBeUndefined();
+  });
+
+  it('tags a comment on a TEST MODE briefing as test feedback', () => {
+    seedCurrentBriefing({ testMode: true });
+    seedStore();
+    render(<App />);
+    act(() => {
+      captured.mainArea.onAddComment('2610.00042', 'trying the dry run');
+    });
+    expect(storedEvents()[0].testMode).toBe(true);
+  });
+});
+
 describe('App — the Gate 3 note keeps its origin (P1-7)', () => {
   it("forwards the note's options so the stored comment is tagged pre-briefing", () => {
     seedStore();

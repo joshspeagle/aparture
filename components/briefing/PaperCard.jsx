@@ -8,6 +8,28 @@ import DuplicateBadge from '../ui/DuplicateBadge.jsx';
 // call and trigger spurious re-renders.
 const EMPTY_SEEN_INDEX = Object.freeze({});
 
+const MAX_EVENT_SUMMARY_CHARS = 800;
+
+// What a star / dismiss / comment made on a briefing card tells the Suggest
+// prompt about the paper (it renders this as "Summary: …"). Synthesized
+// briefing papers carry no quickSummary — that lives in quickSummariesById —
+// so these events used to reach suggest-profile as a bare title. Use the
+// card's own pitch and why-it-matters instead, unless the paper object does
+// carry a quick summary (older shapes). Shared with App's card-comment
+// handler.
+export function briefingPaperSummary(paper) {
+  const quick = typeof paper?.quickSummary === 'string' ? paper.quickSummary.trim() : '';
+  const text =
+    quick ||
+    [paper?.onelinePitch, paper?.whyMatters]
+      .map((s) => (typeof s === 'string' ? s.trim() : ''))
+      .filter(Boolean)
+      .join(' ');
+  return text.length > MAX_EVENT_SUMMARY_CHARS
+    ? `${text.slice(0, MAX_EVENT_SUMMARY_CHARS)}…`
+    : text;
+}
+
 export default function PaperCard({
   paper,
   starred = false,
@@ -19,6 +41,10 @@ export default function PaperCard({
   onAddComment,
   onOpenQuickSummary,
   onOpenFullReport,
+  // True when the card belongs to a TEST MODE (dry-run) briefing: reactions
+  // are then tagged as test feedback and kept out of suggestions. BriefingView
+  // knows this (its own testMode prop) and should forward it.
+  testMode = false,
 }) {
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -38,9 +64,10 @@ export default function PaperCard({
   const buildMeta = () => ({
     arxivId: paper.arxivId,
     paperTitle: paper.title,
-    quickSummary: paper.quickSummary ?? '',
+    quickSummary: briefingPaperSummary(paper),
     score: paper.score,
     briefingDate,
+    ...(testMode ? { testMode: true } : {}),
   });
 
   const handleStar = () => onStar?.(buildMeta());

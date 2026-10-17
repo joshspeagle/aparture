@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import PaperCard from '../../components/briefing/PaperCard.jsx';
+import PaperCard, { briefingPaperSummary } from '../../components/briefing/PaperCard.jsx';
 
 describe('PaperCard', () => {
   const basePaper = {
@@ -63,6 +63,37 @@ describe('PaperCard', () => {
       score: 9.2,
       briefingDate: '2026-04-14',
     });
+  });
+
+  it('a reaction on a synthesized paper carries its pitch and why-it-matters, not a bare title (P1-9)', () => {
+    // Synthesized briefing papers have no quickSummary field (it lives in
+    // quickSummariesById), so this used to send quickSummary: ''.
+    const { quickSummary: _omit, ...synthesized } = basePaper;
+    const onStar = vi.fn();
+    const onDismiss = vi.fn();
+    render(
+      <PaperCard {...defaultProps} paper={synthesized} onStar={onStar} onDismiss={onDismiss} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /star/i }));
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    const expected =
+      'A mechanistic account of attention-head composition. Directly grounded in your stated interest in mech interp.';
+    expect(onStar.mock.calls[0][0].quickSummary).toBe(expected);
+    expect(onDismiss.mock.calls[0][0].quickSummary).toBe(expected);
+  });
+
+  it('tags reactions as test feedback on a TEST MODE briefing', () => {
+    const onStar = vi.fn();
+    render(<PaperCard {...defaultProps} onStar={onStar} testMode />);
+    fireEvent.click(screen.getByRole('button', { name: /star/i }));
+    expect(onStar.mock.calls[0][0].testMode).toBe(true);
+  });
+
+  it('briefingPaperSummary prefers a carried quick summary and caps the length', () => {
+    expect(briefingPaperSummary({ quickSummary: ' qs ', onelinePitch: 'p' })).toBe('qs');
+    expect(briefingPaperSummary({ onelinePitch: 'p', whyMatters: '' })).toBe('p');
+    expect(briefingPaperSummary({})).toBe('');
+    expect(briefingPaperSummary({ whyMatters: 'w'.repeat(2000) }).length).toBeLessThan(900);
   });
 
   it('calls onDismiss with full paper metadata when dismiss clicked', () => {
