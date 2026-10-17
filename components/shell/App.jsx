@@ -376,10 +376,12 @@ export default function App() {
     startProcessing(false, false);
   }, [startProcessing]);
 
-  // Sidebar "+ New Briefing": also dismiss the mobile drawer so the run's
-  // progress view isn't hidden behind it.
+  // Sidebar "+ New Briefing": show the pipeline view (the run's progress and
+  // gates live there; from Welcome or a briefing the click used to look like
+  // it did nothing) and dismiss the mobile drawer so it isn't hidden.
   const handleNewBriefing = useCallback(() => {
     setMobileSidebarOpen(false);
+    setActiveView('pipeline');
     handleStart();
   }, [handleStart]);
 

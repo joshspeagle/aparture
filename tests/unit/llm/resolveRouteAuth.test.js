@@ -83,8 +83,17 @@ describe('resolveRouteAuth (phase 2)', () => {
     expect(auth).toEqual({ ok: false, status: 401, error: 'invalid password' });
   });
 
-  it('401s with the default missing-credentials message when no key resolves', () => {
+  it('names the env var to set when the password is valid but no key is configured', () => {
     const auth = resolveRouteAuth({ password: 'test-pw', provider: 'anthropic' });
+    expect(auth).toEqual({
+      ok: false,
+      status: 401,
+      error: 'no API key for anthropic: set CLAUDE_API_KEY in .env.local and restart the server',
+    });
+  });
+
+  it('401s with the default missing-credentials message when nothing is supplied', () => {
+    const auth = resolveRouteAuth({ provider: 'anthropic' });
     expect(auth).toEqual({
       ok: false,
       status: 401,
@@ -100,9 +109,7 @@ describe('resolveRouteAuth (phase 2)', () => {
     expect(resolveRouteAuth({ password: 'wrong', provider: 'google', messages }).error).toBe(
       'Invalid password'
     );
-    expect(resolveRouteAuth({ password: 'test-pw', provider: 'google', messages }).error).toBe(
-      'missing credentials'
-    );
+    expect(resolveRouteAuth({ provider: 'google', messages }).error).toBe('missing credentials');
   });
 
   it('skips the missing-credentials 401 in fixture mode', () => {
