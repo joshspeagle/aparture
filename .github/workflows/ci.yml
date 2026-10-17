@@ -14,10 +14,14 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Lint, test, build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -48,12 +52,22 @@ jobs:
       - name: Test
         run: npm test
 
+      # A briefing day is a local calendar day. Under UTC the local and UTC
+      # dates always agree, so a date bug passes; at UTC+14 they disagree
+      # for most of the day.
+      - name: Test at UTC+14
+        if: matrix.node-version == 22
+        run: npm test
+        env:
+          TZ: Pacific/Kiritimati
+
       - name: Build
         run: npm run build
 
   docs:
     name: Docs build (VitePress)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
