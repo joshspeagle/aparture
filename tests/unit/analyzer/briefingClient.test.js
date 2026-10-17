@@ -3,6 +3,7 @@ import {
   callCheckBriefing,
   callSynthesize,
   collectReaderNotes,
+  formatAuthorsForPrompt,
   generateQuickSummaries,
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
@@ -666,6 +667,34 @@ describe('runBriefingGeneration — the Gate 3 note reaches the briefing writer 
     vi.restoreAllMocks();
     const { bodies: plain } = await runLive({ feedbackEvents: [] });
     expect(plain.synthesize[0]).not.toHaveProperty('readerNotes');
+  });
+});
+
+describe('runBriefingGeneration — quick summaries and authors (P1-8)', () => {
+  it('sends each paper its quick summary in the synthesis payload', async () => {
+    const { bodies } = await runLive();
+    expect(bodies.quick).toHaveLength(2);
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    // Pre-fix, summaries were generated (and blocked synthesis) but dropped.
+    expect(byId['2605.0001'].quickSummary).toBe('quick summary of 2605.0001');
+    expect(byId['2605.0002'].quickSummary).toBe('quick summary of 2605.0002');
+  });
+
+  it("fills the quick-summary request's authors (the {{authors}} slot was always empty)", async () => {
+    const { bodies } = await runLive();
+    const byId = Object.fromEntries(bodies.quick.map((b) => [b.paper.arxivId, b.paper]));
+    expect(byId['2605.0001'].authors).toEqual(['A. Author', 'B. Author']);
+    expect(byId['2605.0002'].authors).toEqual(['C. Author']);
+  });
+
+  it('formatAuthorsForPrompt trims, tolerates strings, and cuts large collaborations', () => {
+    expect(formatAuthorsForPrompt([' A ', '', 'B'])).toEqual(['A', 'B']);
+    expect(formatAuthorsForPrompt('Single Author')).toEqual(['Single Author']);
+    expect(formatAuthorsForPrompt(undefined)).toEqual([]);
+    const big = Array.from({ length: 57 }, (_, i) => `Author ${i}`);
+    const out = formatAuthorsForPrompt(big);
+    expect(out).toHaveLength(11);
+    expect(out[10]).toBe('et al. (57 authors)');
   });
 });
 
