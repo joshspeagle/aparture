@@ -721,6 +721,7 @@ export default function App() {
       filterResults: liveFilterResults,
       papersScreened: liveResults?.allPapers?.length ?? 0,
       testMode: fromDryRun,
+      minimalTest: !!liveResults?.fromTestPapers,
     });
 
     // Fresh AbortController so Stop (and any future cancel affordance) can
