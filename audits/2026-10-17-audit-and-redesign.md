@@ -33,7 +33,7 @@ For audio:
 
 **Persistence: put state in files and add a scheduler, not a desktop shell.** The clunk is architectural. The pipeline runs in the browser and its state lives in localStorage, so unattended runs need `cli/` to drive a visible Chromium through the UI. A headless core over plain files serves both the skill and the web app. Electron adds a release-and-signing treadmill and fixes none of that.
 
-**On this branch (§6–7):** all 8 P0 findings and 16 of 17 P1s are fixed, with 1,471 tests passing.
+**On this branch (§6–7):** all 8 P0 findings and all 17 P1s are fixed, with 1,471 tests passing.
 
 **Decisions for you are in §8.** The first one: start the side-by-side trial. It needs a private state repo and a scheduled routine, both of which I left for you to approve.
 
@@ -354,7 +354,7 @@ Tauri needs a static Next.js export plus a Node sidecar. A PWA can't fetch OAI-P
 
 _Four code-audit passes (backend **be**, tests and infrastructure **ti**, docs and CLAUDE.md **ds**, frontend and UX **fu**) and the briefing-product pass produced 55 deduplicated findings against `1a35da8`. A tag like [be P1-1] cites a report and item; evidence lines are at `1a35da8`. Status is as of this branch's last commit._
 
-**All 8 P0s are fixed, and 16 of 17 P1s; the one left, the old browser CLI, is the owner's call. Of the 30 P2 and P3 findings, 14 are fixed and 4 partly.**
+**All 8 P0s and all 17 P1s are fixed. Of the 30 P2 and P3 findings, 14 are fixed and 4 partly.**
 
 <!-- prettier-ignore -->
 | ID | P | Area | Finding | Evidence (at `1a35da8`) | Fix | Status |
@@ -371,7 +371,7 @@ _Four code-audit passes (backend **be**, tests and infrastructure **ti**, docs a
 | B5 | P1 | LLM | **No structured-output guarantee on thinking models.** On Anthropic thinking models (all current Opus, Sonnet and Fable), a text-only repair 500s and a text-only check becomes `null`. Unregistered `claude-fable-5-1`/`claude-haiku-5-5` got a forced `tool_choice` (400). | `anthropic.js:13-36,104-129`; `repair.js:32-33` [be P1-3, P2-3; ti §6] | `output_config.format` json_schema | fixed (`504fb65`) |
 | B6 | P1 | briefing | **The validator only checks that cited IDs are inputs.** Prose IDs go unchecked, and title/score come from the LLM, so a valid link can carry another paper's title. Dropped, starred and unthemed papers pass. Docs say "validation rejects… repair pass runs". | `validator.js:15-36`; `BriefingView.jsx:71-73`; `briefing-anatomy.md:102`; `reading-a-briefing.md:40` [be P1-4; ds C-P1-2] | Overwrite title/score; check prose IDs and coverage; salvage, not 500 | fixed (`5018a50`) |
 | B7 | P1 | briefing | **Audit failures are silent.** A non-OK or non-JSON claims check becomes `null`, and the briefing saves with `hallucinationCheck:null` and no status line. | `briefingClient.js:295-306,476,510` [be P2-7] | Status line, a "not audited" badge, one retry | fixed (`b1178b3`) |
-| T3 | P1 | cli | **The documented verification path is broken.** `cli/` (5,363 lines) can't finish a run, yet `CLAUDE.md:19-20` and `cli/README.md:3` name `test:dryrun`/`test:minimal` as the way to verify. Login clicks "Access Analyzer" (now "Unlock"), other selectors are stale, and gates are unhandled. | `cli/browser-automation.js:300,554-610`; `App.jsx:1012` [ti P1-2; ds A1-1, C-P1-3; be §6] | Delete `cli/` and its 7 scripts; document `npm test` | open, owner's call: delete `cli/` (`0926dfc` fixed its requires; `bin/aparture.mjs` covers unattended runs) |
+| T3 | P1 | cli | **The documented verification path is broken.** `cli/` (5,363 lines) can't finish a run, yet `CLAUDE.md:19-20` and `cli/README.md:3` name `test:dryrun`/`test:minimal` as the way to verify. Login clicks "Access Analyzer" (now "Unlock"), other selectors are stale, and gates are unhandled. | `cli/browser-automation.js:300,554-610`; `App.jsx:1012` [ti P1-2; ds A1-1, C-P1-3; be §6] | Delete `cli/` and its 7 scripts; document `npm test` | fixed (`c860609`): `cli/` removed; `bin/aparture.mjs` and the skill cover unattended runs |
 | T4 | P1 | CI | **No scheduled CI or dependency monitoring**, so both P0s arrived with zero commits. Node 20 (EOL) was still in the matrix. | `ci.yml:8-10,19`; no `dependabot.yml` [ti P1-1, P2-4] | Cron; prod audit gate; Node 22/24; Dependabot | fixed, gap left (`0926dfc`, `4e25269`): no coverage floor; actions still @v4 |
 | T5 | P1 | tests | **Tests can't see the App shell or the clock.** Deleting `recordRun` (`App.jsx:231`), dropping `seenPapersIndex` (`:254`) or parsing local time (`:230`) all pass 1177/1177. The TZ tests can't fail in UTC CI. | Mutations M1-M3, M11; `briefingClient.test.js:415`; MainArea and RefusalSummaryCard at 0% [ti P1-3, P1-4] | App-level dedupe tests; per-file `TZ`; coverage floor | fixed (`4e25269`): App-level dedupe tests and a UTC+14 CI pass; no coverage floor |
 | D1 | P1 | CLAUDE.md | **Nine claims lead an agent to a wrong action** (listed below the table). | ds A1 rows 1-9 | Fix them; add the Vitest, hooks and CI facts | fixed (`a12e721`) |
@@ -504,10 +504,14 @@ _Four code-audit passes (backend **be**, tests and infrastructure **ti**, docs a
 
 ## 7. What changed on this branch
 
-69 commits on `claude/aparture-audit-redesign-r4i5i0` change 266 files (15,589 lines added, 3,849 removed). The test suite grew from 1,177 to 1,471 tests, all passing; lint, the build and the docs build pass too. Nothing went to `main`, and no pull request is open. The list is first-parent, newest first; the merges carry the three worker branches.
+The branch carries about 75 commits. Removing the old CLI accounts for most of the deleted lines. The test suite grew from 1,177 to 1,471 tests, all passing; lint, the build and the docs build pass too. The list is first-parent, newest first; the merges carry the three worker branches.
 
 | Commit    | Change                                                                                                                                                | Addresses               |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `c860609` | Remove the old browser CLI (about 5,400 lines), its seven npm scripts and the rules that existed only for it                                          | T3                      |
+| `84a1345` | This report lists the doc facts no live page confirmed                                                                                                | report                  |
+| `21a7eb4` | The skill's triage note, its Node version, and two comments catch up with the prompt cleanup                                                          | §4                      |
+| `9dc9ef9` | This report, kept in `audits/` beside the July audit                                                                                                  | report                  |
 | `d1ecda6` | Settings gets a Review Model picker for Stage 3.5, which had no control and stayed on Gemini                                                          | new bug                 |
 | `8c6f34e` | The claims-check badge says what it found; Settings stops calling the gates training wheels                                                           | D6, D10                 |
 | `013c25e` | Phone layouts: pill rows stack under titles, and the full report opens as a full-screen sheet                                                         | F9                      |
@@ -536,22 +540,17 @@ _Four code-audit passes (backend **be**, tests and infrastructure **ti**, docs a
 
 ---
 
-## 8. Decisions for you
+## 8. Decisions
 
-1. **Start the side-by-side trial?** It needs three things from you:
-   - **A private repo** for state (`aparture-data`), so routine runs have durable memory.
-   - **A scheduled routine,** for example weekdays at 06:47 Toronto time.
-   - **A cloud environment set to Custom network access,** with `arxiv.org`, `export.arxiv.org` and `oaipmh.arxiv.org` allowed.
+The owner's answers, on 2026-10-17:
 
-   I created none of these. The repo and routine are outward-facing, and the network setting is yours to change.
-
-2. **Which plan are you on?** It decides how many deep reads a daily run should do. I can tune the defaults (triage model, read count) once I know.
-3. **Verify the model refresh live, for free.** Every model ID and request shape changed (§7). Fixture tests and docs verify them, but no live calls were made, because they would bill your keys. Run Settings → "Validate setup" (free count-tokens probes) once, and `node scripts/smoke-llm-routes.mjs` if you're willing to spend a few cents. Six facts in the docs couldn't be checked against a live page: Anthropic prices (taken from a 2026-10-06 table), the format of Google's newer keys, the Gemini 2.5 shutdown date, the 60 RPM free-tier figure, OpenAI's minimum purchase, and Anthropic's starter credit.
-4. **Node 22 or later is now required** (Node 20 reached end of life in April 2026). Revert `engines` if you need 20 for a while.
-5. **Build the grounded podcast now, or after the trial?** It is about two weeks of work and about $0.30 an episode on your Google key.
-6. **Delete `cli/`?** The old browser-automation CLI (5,363 lines) can't finish a run against today's interface (T3). `bin/aparture.mjs` and the skill cover unattended runs. I'd delete it with its seven npm scripts.
-7. **Keep Dependabot?** Once this merges, it opens at most one grouped update a week for the app, the docs and the CI actions. Delete `.github/dependabot.yml` if you'd rather not.
-8. **Pull request.** None was opened. Ask when you want one.
+1. **Side-by-side trial of the skill and the app:** not now. The plan question that went with it is moot.
+2. **Live verification of the model refresh:** deferred. Settings → Validate setup is free whenever it's wanted, and `node scripts/smoke-llm-routes.mjs` costs a few cents. Six facts in the docs couldn't be checked against a live page: Anthropic prices (taken from a 2026-10-06 table), the format of Google's newer keys, the Gemini 2.5 shutdown date, the 60 RPM free-tier figure, OpenAI's minimum purchase, and Anthropic's starter credit.
+3. **Node 22 or later:** accepted.
+4. **Grounded podcast:** under discussion, together with proposed profile edits, `learned.md` and figures in the app, and how the skill keeps pace with the app.
+5. **Delete `cli/`:** done (`c860609`).
+6. **Dependabot:** kept.
+7. **Pull request:** opened to merge this branch into `main`.
 
 ---
 
