@@ -7,6 +7,8 @@ import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryA
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
+import { isPlausibleApiKey } from '../../lib/auth/apiKeyShape.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -237,6 +239,25 @@ export default async function handler(req, res) {
   }
   const provider = modelConfig.provider.toLowerCase();
   const modelApiId = modelConfig.apiId ?? model;
+
+  // Authenticate BEFORE any arXiv download or headless-Chromium launch. The
+  // shared route auth below lets any non-empty apiKey skip the password (the
+  // BYOK path); a bogus key would only be rejected by the provider AFTER this
+  // route had already pulled the PDF through the shared arXiv throttle and
+  // possibly started Chromium — so anyone who can reach the server could
+  // drive both. Require the valid ACCESS_PASSWORD, or a client key with the
+  // resolved provider's published shape (lib/auth/apiKeyShape.js).
+  const clientApiKey = req.body.apiKey;
+  const passwordOk =
+    typeof password === 'string' && password !== '' && checkAccessPassword(password);
+  if (!passwordOk && !isPlausibleApiKey(provider, clientApiKey)) {
+    const error = password
+      ? 'invalid password'
+      : clientApiKey
+        ? `apiKey is not a valid ${provider} key`
+        : 'missing credentials';
+    return res.status(401).json({ error });
+  }
 
   // Shared route auth (password gate → env-key resolution → callMode →
   // fixture-aware missing-credentials check); see lib/llm/resolveRouteAuth.js.
