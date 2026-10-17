@@ -58,6 +58,16 @@ describe('DiffPreview (per-hunk)', () => {
     expect(screen.getByRole('button', { name: /apply/i })).toBeDisabled();
   });
 
+  test('with nothing selected, Reject all reports an empty accepted set and the unchanged text', () => {
+    const onApply = vi.fn();
+    render(<DiffPreview currentProfile={baseProfile} changes={changes} onApply={onApply} />);
+    // Not offered while something is still selected.
+    expect(screen.queryByRole('button', { name: /reject all/i })).toBeNull();
+    fireEvent.click(screen.getByText(/select none/i));
+    fireEvent.click(screen.getByRole('button', { name: /reject all 2 changes/i }));
+    expect(onApply).toHaveBeenCalledWith({ acceptedIds: [], resultText: baseProfile });
+  });
+
   test('select none clears all and select all restores', () => {
     render(<DiffPreview currentProfile={baseProfile} changes={changes} onApply={() => {}} />);
     fireEvent.click(screen.getByText(/select none/i));

@@ -197,6 +197,14 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
     onApply({ acceptedIds: orderedIds, resultText: cumulative });
   };
 
+  // Turning every change down is a decision too: it is recorded (the
+  // rejected changes are remembered for the next suggestion), unlike Cancel,
+  // which closes without deciding anything.
+  const handleRejectAll = () => {
+    if (!onApply) return;
+    onApply({ acceptedIds: [], resultText: currentProfile ?? '' });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-3)' }}>
       <div
@@ -206,8 +214,8 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
           color: 'var(--aparture-mute)',
         }}
       >
-        Pick which suggested changes to apply. Each change is atomic; untick the ones you want to
-        skip.
+        Pick which suggested changes to apply. Each change is atomic. Unticked changes are saved as
+        rejected and listed in the next suggestion request. Feedback behind them stays pending.
       </div>
 
       <div
@@ -312,6 +320,11 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
           {onCancel && (
             <Button variant="secondary" onClick={onCancel}>
               Cancel
+            </Button>
+          )}
+          {count === 0 && total > 0 && (
+            <Button variant="secondary" onClick={handleRejectAll}>
+              Reject all {total} {total === 1 ? 'change' : 'changes'}
             </Button>
           )}
           <Button variant="primary" onClick={handleApply} disabled={!canApply}>

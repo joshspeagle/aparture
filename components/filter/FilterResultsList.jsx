@@ -376,6 +376,22 @@ export default function FilterResultsList({
           </h2>
           {testState?.dryRunInProgress && <TestModeBadge label="TEST DATA" />}
         </div>
+        {/* After the run the pills re-enable. A click is recorded as feedback
+            at once (App.setFilterVerdict), but nothing re-scores, so say so. */}
+        {hasAny && !(processing?.isRunning ?? false) && (
+          <p
+            data-testid="post-run-override-note"
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              margin: '0 0 var(--aparture-space-4) 0',
+            }}
+          >
+            Verdict changes made now are saved as feedback for your profile. They don&apos;t re-run
+            this briefing.
+          </p>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
           <div>

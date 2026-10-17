@@ -20,6 +20,30 @@ const CORRUPT_BACKUP_KEY = 'aparture-profile-corrupt-backup';
 const PROFILES_KEY = 'aparture-profiles';
 const ACTIVE_PROFILE_KEY = 'aparture-active-profile';
 
+// Rejected suggested changes kept on the profile (newest first) so later
+// suggestions can be told not to re-propose them. Bounded: each entry holds
+// the edit's anchor/content text.
+const MAX_REJECTED_SUGGESTIONS = 20;
+const MAX_REJECTED_TEXT = 500;
+
+function clip(text) {
+  const s = typeof text === 'string' ? text : '';
+  return s.length > MAX_REJECTED_TEXT ? `${s.slice(0, MAX_REJECTED_TEXT)}…` : s;
+}
+
+function toRejectedSuggestion(change, rejectedAt) {
+  if (!change?.edit?.type) return null;
+  return {
+    rationale: clip(change.rationale),
+    edit: {
+      type: change.edit.type,
+      anchor: clip(change.edit.anchor),
+      content: clip(change.edit.content),
+    },
+    rejectedAt,
+  };
+}
+
 // Resolve the named-profile map + active pointer, seeding from the working
 // profile on first load (migrates the existing single profile as "Default").
 // PURE — no localStorage writes. Seed/repair persistence happens in the
@@ -179,6 +203,51 @@ export function useProfile(config = {}) {
     return ok;
   }, []);
 
+  // Named-profile map + active pointer writer (see the "Named profiles"
+  // section below). Declared up here because committing a working-slot
+  // change also writes through to the active snapshot.
+  const persistProfiles = useCallback((profiles, activeProfileName) => {
+    if (typeof window === 'undefined') return;
+    const ok =
+      safeSetItem(PROFILES_KEY, JSON.stringify(profiles)) &&
+      safeSetItem(ACTIVE_PROFILE_KEY, activeProfileName);
+    if (!ok) {
+      console.warn(
+        '[useProfile] localStorage quota exceeded; named profiles could not be persisted (in-memory state preserved for this session)'
+      );
+    }
+  }, []);
+
+  // Commit a new working profile AND write it through to the active named
+  // profile's snapshot. Every committed change (manual save, accepted
+  // suggestion, revert) goes through here, so the active snapshot always
+  // mirrors the working slot. Previously only switchTo snapshotted, so
+  // after "Save as…" the profile you left kept whatever content it was
+  // SEEDED with — usually the first-run template — and switching back
+  // silently loaded that over the user's real profile.
+  //
+  // Same ordering rule as switchTo: the map is written only after the
+  // working-slot write lands, so disk never holds a snapshot newer than the
+  // working slot it mirrors.
+  const commitProfile = useCallback(
+    (prev, nextProfile) => {
+      const name = prev.activeProfileName;
+      const current = prev.profiles?.[name];
+      const profiles =
+        current && current.content !== nextProfile.content
+          ? {
+              ...prev.profiles,
+              [name]: { content: nextProfile.content, updatedAt: nextProfile.updatedAt },
+            }
+          : prev.profiles;
+      if (persist(nextProfile) && profiles !== prev.profiles) {
+        persistProfiles(profiles, name);
+      }
+      return { ...prev, profile: nextProfile, profiles };
+    },
+    [persist, persistProfiles]
+  );
+
   const updateProfile = useCallback(
     (newContent) => {
       setState((prev) => {
@@ -199,11 +268,10 @@ export function useProfile(config = {}) {
           updatedAt: now,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
   );
 
   const clearHistory = useCallback(() => {
@@ -233,11 +301,79 @@ export function useProfile(config = {}) {
           lastFeedbackCutoff,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
+  );
+
+  // The Suggest dialog's single exit point. outcome = {
+  //   kind: 'applied' | 'rejected' | 'no-change',
+  //   content, rationale,            // 'applied' only: the new profile text
+  //   accepted, rejected,            // the model's change objects, split by the user
+  //   appliedAt,                     // shared with useFeedback.markIncorporated
+  // }
+  // Only an applied outcome with a real content change creates a revision;
+  // its createdAt is `appliedAt`, so reverting it can re-open exactly the
+  // feedback that revision incorporated. The legacy lastFeedbackCutoff is
+  // left alone: incorporation is tracked per event now (feedbackStatus.js).
+  //
+  // Every outcome also updates two pieces of suggestion memory on the
+  // profile:
+  //   - suggestionStats {accepted, rejected, noChange}: running counts of
+  //     changes the user accepted vs rejected, and of "no change" results.
+  //     POSITIONING's success criterion ("suggestions are accepted more often
+  //     than rejected") is accepted / (accepted + rejected).
+  //   - rejectedSuggestions: the most recent rejected changes (newest
+  //     first), which the Suggest dialog sends with the next request so the
+  //     model is told not to propose them again.
+  const recordSuggestionOutcome = useCallback(
+    (outcome) => {
+      if (!outcome) return;
+      setState((prev) => {
+        const now = outcome.appliedAt ?? Date.now();
+        const accepted = Array.isArray(outcome.accepted) ? outcome.accepted : [];
+        const rejected = Array.isArray(outcome.rejected) ? outcome.rejected : [];
+        const stats = prev.profile.suggestionStats ?? {};
+        const suggestionStats = {
+          accepted: (stats.accepted ?? 0) + accepted.length,
+          rejected: (stats.rejected ?? 0) + rejected.length,
+          noChange: (stats.noChange ?? 0) + (outcome.kind === 'no-change' ? 1 : 0),
+        };
+        const rejectedSuggestions = [
+          ...rejected.map((c) => toRejectedSuggestion(c, now)).filter(Boolean),
+          ...(prev.profile.rejectedSuggestions ?? []),
+        ].slice(0, MAX_REJECTED_SUGGESTIONS);
+        const withMemory = { ...prev.profile, suggestionStats, rejectedSuggestions };
+
+        const contentChanged =
+          outcome.kind === 'applied' &&
+          typeof outcome.content === 'string' &&
+          outcome.content !== prev.profile.content;
+        if (!contentChanged) {
+          // Memory only: the working text (and so every snapshot) is unchanged.
+          persist(withMemory);
+          return { ...prev, profile: withMemory };
+        }
+        const revision = {
+          content: prev.profile.content,
+          createdAt: now,
+          source: 'suggested',
+          lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
+          rationale: outcome.rationale,
+          acceptedCount: accepted.length,
+          rejectedCount: rejected.length,
+        };
+        const nextProfile = {
+          ...withMemory,
+          content: outcome.content,
+          updatedAt: now,
+          revisions: [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS),
+        };
+        return commitProfile(prev, nextProfile);
+      });
+    },
+    [commitProfile, persist]
   );
 
   const revertToRevision = useCallback(
@@ -261,11 +397,10 @@ export function useProfile(config = {}) {
           lastFeedbackCutoff: target.lastFeedbackCutoff,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
   );
 
   const dismissMigrationNotice = useCallback(() => {
@@ -281,17 +416,9 @@ export function useProfile(config = {}) {
   // slot (PROFILE_KEY / profile.content) is what every pipeline stage reads;
   // switching loads a snapshot into it (archiving the outgoing content both
   // as a revision and back into its own snapshot, so nothing is lost).
-  const persistProfiles = useCallback((profiles, activeProfileName) => {
-    if (typeof window === 'undefined') return;
-    const ok =
-      safeSetItem(PROFILES_KEY, JSON.stringify(profiles)) &&
-      safeSetItem(ACTIVE_PROFILE_KEY, activeProfileName);
-    if (!ok) {
-      console.warn(
-        '[useProfile] localStorage quota exceeded; named profiles could not be persisted (in-memory state preserved for this session)'
-      );
-    }
-  }, []);
+  // Committed edits to the working slot also write through to the active
+  // snapshot (commitProfile above), so a snapshot is never staler than the
+  // last thing the user saved under that name.
 
   // Build the next working profile with `content` loaded and the outgoing
   // content archived as a manual revision. No-op shape when content is equal.
@@ -324,10 +451,18 @@ export function useProfile(config = {}) {
         // legitimate ("update my snapshot") and stays allowed. Mirrors the
         // renameProfile guard; ProfileSwitcher surfaces the refusal inline.
         if (prev.profiles[trimmed] && trimmed !== prev.activeProfileName) return prev;
-        const profiles = {
-          ...prev.profiles,
-          [trimmed]: { content: prev.profile.content, updatedAt: Date.now() },
-        };
+        const now = Date.now();
+        const profiles = { ...prev.profiles };
+        // Snapshot the outgoing profile too. Everything committed so far was
+        // committed under the outgoing name, so that name must keep it —
+        // otherwise switching back later loads a stale snapshot (for a
+        // first-run "Default", the bracketed template) over the user's real
+        // profile. commitProfile normally keeps this in sync already; this
+        // also repairs maps persisted before write-through existed.
+        if (profiles[prev.activeProfileName]) {
+          profiles[prev.activeProfileName] = { content: prev.profile.content, updatedAt: now };
+        }
+        profiles[trimmed] = { content: prev.profile.content, updatedAt: now };
         persistProfiles(profiles, trimmed);
         return { ...prev, profiles, activeProfileName: trimmed };
       });
@@ -438,6 +573,7 @@ export function useProfile(config = {}) {
     profile: state.profile,
     updateProfile,
     saveSuggested,
+    recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
     migrationNotice: state.notice,

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   callCheckBriefing,
   callSynthesize,
+  collectReaderNotes,
+  formatAuthorsForPrompt,
   generateQuickSummaries,
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
@@ -491,5 +493,254 @@ describe('runBriefingGeneration — abort handling', () => {
     expect(saveBriefing).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setters.setSynthesizing).toHaveBeenLastCalledWith(false);
+  });
+});
+
+// --- Live-path payload tests -------------------------------------------------
+// These drive runBriefingGeneration WITHOUT a mockTester, with fetch routed by
+// URL, so they pin exactly what the client posts to /api/analyze-pdf-quick,
+// /api/synthesize, and /api/check-briefing.
+
+function makeLiveSetters() {
+  return {
+    setSynthesizing: vi.fn(),
+    setSynthesisError: vi.fn(),
+    setBriefingCheckResult: vi.fn(),
+    setBriefingStage: vi.fn(),
+    setQuickSummariesById: vi.fn(),
+    setFullReportsById: vi.fn(),
+  };
+}
+
+function routeFetch() {
+  const bodies = { quick: [], synthesize: [], check: [] };
+  vi.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (url === '/api/analyze-pdf-quick') {
+      bodies.quick.push(body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ quickSummary: `quick summary of ${body.paper.arxivId}` }),
+      };
+    }
+    if (url === '/api/synthesize') {
+      bodies.synthesize.push(body);
+      const ids = body.papers.map((p) => p.arxivId);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          briefing: {
+            executiveSummary: 'summary',
+            themes: [{ title: 't', argument: 'a', paperIds: ids }],
+            papers: body.papers.map((p) => ({
+              arxivId: p.arxivId,
+              title: p.title,
+              score: 5,
+              onelinePitch: 'pitch',
+              whyMatters: 'why',
+            })),
+          },
+        }),
+      };
+    }
+    if (url === '/api/check-briefing') {
+      bodies.check.push(body);
+      return { ok: true, status: 200, json: async () => ({ verdict: 'NO', justification: 'ok' }) };
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+  return bodies;
+}
+
+const liveRanking = [
+  {
+    arxivId: '2605.0001',
+    title: 'Paper One',
+    authors: ['A. Author', 'B. Author'],
+    abstract: 'Abstract one',
+    score: 8,
+    deepAnalysis: { summary: 'Deep summary one' },
+  },
+  {
+    arxivId: '2605.0002',
+    title: 'Paper Two',
+    authors: ['C. Author'],
+    abstract: 'Abstract two',
+    score: 6,
+    deepAnalysis: { summary: 'Deep summary two' },
+  },
+];
+
+async function runLive(overrides = {}) {
+  // cacheLastAnalysisRun warns in the node env (no window) — silence it.
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const bodies = routeFetch();
+  const saveBriefing = vi.fn();
+  await runBriefingGeneration({
+    results: { finalRanking: liveRanking },
+    briefingModel: 'gemini-3.6-flash',
+    quickSummaryModel: 'gemini-3.6-flash',
+    profile: { content: 'profile' },
+    password: 'pw',
+    saveBriefing,
+    ...makeLiveSetters(),
+    ...overrides,
+  });
+  return { bodies, saveBriefing };
+}
+
+describe('runBriefingGeneration — paper comments reach the synthesizer (P0-1)', () => {
+  it('puts paper-comment text into papers[i].engagement.comments', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [
+        { id: 's1', type: 'star', arxivId: '2605.0001', timestamp: 1 },
+        {
+          id: 'c1',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'This is the key paper today — lead the briefing with it.',
+          timestamp: 2,
+        },
+        {
+          id: 'c2',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'Compare to SBI.',
+          timestamp: 3,
+        },
+        // Whitespace-only text is not a comment.
+        { id: 'c3', type: 'paper-comment', arxivId: '2605.0002', text: '   ', timestamp: 4 },
+      ],
+    });
+
+    expect(bodies.synthesize).toHaveLength(1);
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    // Pre-fix the client read `e.comment` (never set), so `comments` was
+    // always absent and only {starred, dismissed} reached the prompt.
+    expect(byId['2605.0001'].engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['This is the key paper today — lead the briefing with it.', 'Compare to SBI.'],
+    });
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: false });
+  });
+});
+
+describe('runBriefingGeneration — the Gate 3 note reaches the briefing writer (P1-7)', () => {
+  const today = localDateStr();
+  const note = (id, text, extra = {}) => ({
+    id,
+    type: 'general-comment',
+    origin: 'pre-briefing',
+    text,
+    briefingDate: today,
+    timestamp: Number(id.replace(/\D/g, '')) || 1,
+    ...extra,
+  });
+
+  it("collectReaderNotes keeps only today's pre-briefing notes, oldest first", () => {
+    const events = [
+      note('n2', 'More methodology depth.'),
+      note('n1', 'Lead with the diffusion-models cluster.'),
+      note('n3', 'From yesterday.', { briefingDate: '2000-01-01' }),
+      note('n4', 'Said during a dry run.', { testMode: true }),
+      { id: 'g5', type: 'general-comment', text: 'A plain general comment.', briefingDate: today },
+      note('n6', '   '),
+    ];
+    expect(collectReaderNotes(events, today)).toEqual([
+      'Lead with the diffusion-models cluster.',
+      'More methodology depth.',
+    ]);
+    expect(collectReaderNotes(events, today, { includeTestFeedback: true })).toContain(
+      'Said during a dry run.'
+    );
+  });
+
+  it('posts readerNotes with the synthesis request (and omits the field when there are none)', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [note('n1', 'Lead with the diffusion-models cluster.')],
+    });
+    expect(bodies.synthesize[0].readerNotes).toEqual(['Lead with the diffusion-models cluster.']);
+
+    vi.restoreAllMocks();
+    const { bodies: plain } = await runLive({ feedbackEvents: [] });
+    expect(plain.synthesize[0]).not.toHaveProperty('readerNotes');
+  });
+});
+
+describe('runBriefingGeneration — quick summaries and authors (P1-8)', () => {
+  it('keeps quick summaries out of the synthesis payload (the writer grounds in full reports)', async () => {
+    const { bodies } = await runLive();
+    expect(bodies.quick).toHaveLength(2);
+    for (const p of bodies.synthesize[0].papers) expect(p).not.toHaveProperty('quickSummary');
+  });
+
+  it("fills the quick-summary request's authors (the {{authors}} slot was always empty)", async () => {
+    const { bodies } = await runLive();
+    const byId = Object.fromEntries(bodies.quick.map((b) => [b.paper.arxivId, b.paper]));
+    expect(byId['2605.0001'].authors).toEqual(['A. Author', 'B. Author']);
+    expect(byId['2605.0002'].authors).toEqual(['C. Author']);
+  });
+
+  it('formatAuthorsForPrompt trims, tolerates strings, and cuts large collaborations', () => {
+    expect(formatAuthorsForPrompt([' A ', '', 'B'])).toEqual(['A', 'B']);
+    expect(formatAuthorsForPrompt('Single Author')).toEqual(['Single Author']);
+    expect(formatAuthorsForPrompt(undefined)).toEqual([]);
+    const big = Array.from({ length: 57 }, (_, i) => `Author ${i}`);
+    const out = formatAuthorsForPrompt(big);
+    expect(out).toHaveLength(11);
+    expect(out[10]).toBe('et al. (57 authors)');
+  });
+});
+
+describe('runBriefingGeneration — test-run feedback never shapes a real briefing (P0-2)', () => {
+  const testEvents = [
+    { id: 't1', type: 'star', arxivId: '2605.0001', timestamp: 1, testMode: true },
+    {
+      id: 't2',
+      type: 'paper-comment',
+      arxivId: '2605.0001',
+      text: 'said during a dry run',
+      timestamp: 2,
+      testMode: true,
+    },
+    { id: 'r1', type: 'dismiss', arxivId: '2605.0002', timestamp: 3 },
+  ];
+
+  it('drops testMode engagement on a live run', async () => {
+    const { bodies } = await runLive({ feedbackEvents: testEvents });
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    expect(byId['2605.0001'].engagement).toBeUndefined();
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: true });
+  });
+
+  it('keeps it for a mock (dry-run) generation, so the mock flow mirrors the UI', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tester = new MockAPITester({
+      abortControllerRef: { current: null },
+      pauseRef: { current: false },
+      waitForResume: async () => {},
+    });
+    tester.sleepWithAbortCheck = async () => {};
+    const synthSpy = vi.spyOn(tester, 'mockSynthesize');
+    await runBriefingGeneration({
+      results: { finalRanking: liveRanking },
+      briefingModel: 'gemini-3.6-flash',
+      profile: { content: 'profile' },
+      password: 'pw',
+      feedbackEvents: testEvents,
+      saveBriefing: vi.fn(),
+      mockTester: tester,
+      ...makeLiveSetters(),
+    });
+    const papers = synthSpy.mock.calls[0][0];
+    expect(papers.find((p) => p.arxivId === '2605.0001').engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['said during a dry run'],
+    });
   });
 });

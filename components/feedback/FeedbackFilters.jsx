@@ -86,7 +86,7 @@ export default function FeedbackFilters({ filters, onFiltersChange }) {
         }}
       >
         <input type="checkbox" checked={filters.newOnly} onChange={handleNewOnly} />
-        <span>New since last revision</span>
+        <span>Not yet incorporated</span>
       </label>
 
       <Select value={filters.dateRange} onChange={handleDateRange} style={{ width: 'auto' }}>

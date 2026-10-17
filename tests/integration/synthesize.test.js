@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import handler from '../../pages/api/synthesize.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
+import { renderReaderNotesSection } from '../../lib/synthesis/readerNotes.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { hashInput } from '../../lib/llm/hash.js';
 
@@ -289,6 +290,70 @@ describe('synthesize API route — deterministic trust checks (P1-4)', () => {
     const themed = jsonBody.briefing.themes.flatMap((t) => t.paperIds);
     expect(themed).toContain('2504.02345');
     expect(jsonBody.briefing.executiveSummary).not.toContain('2504.99999');
+  });
+});
+
+describe("synthesize API route — the reader's pre-briefing notes reach the prompt (P1-7)", () => {
+  // Same technique as the $-pattern test: seed the fixture under the hash of
+  // the prompt the route SHOULD build (template + profile + papers + the
+  // reader-notes section). If the route dropped the notes, the hash would
+  // miss and the route would 500.
+  const profile = 'I study mechanistic interpretability of large language models.';
+  const papers = [
+    { arxivId: '2504.01234', title: 'Circuit-level analysis of reasoning', abstract: '...' },
+    { arxivId: '2504.02345', title: 'Head pruning ablations', abstract: '...' },
+  ];
+  const readerNotes = ['Lead with the circuit-analysis paper.'];
+  let tmpFixturesDir;
+
+  beforeAll(async () => {
+    const template = await fs.readFile(
+      path.resolve(process.cwd(), 'prompts', 'synthesis.md'),
+      'utf8'
+    );
+    const prompt =
+      renderSynthesisPrompt(template, { profile, papers }) + renderReaderNotesSection(readerNotes);
+    expect(prompt).toContain('- "Lead with the circuit-analysis paper."');
+    const hash = hashInput({
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      prompt,
+      apiKey: 'test-key',
+      structuredOutput: {
+        name: 'briefing',
+        description: 'Aparture daily research briefing',
+        schema: toJsonSchema(),
+      },
+    });
+    const existing = JSON.parse(
+      await fs.readFile(path.resolve(fixturesDir, '0b950173ec403b0723e42fdcbcc83b4f.json'), 'utf8')
+    );
+    tmpFixturesDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aparture-synth-notes-'));
+    await fs.writeFile(
+      path.join(tmpFixturesDir, `${hash}.json`),
+      JSON.stringify({ response: existing.response }),
+      'utf8'
+    );
+  });
+
+  afterAll(async () => {
+    if (tmpFixturesDir) await fs.rm(tmpFixturesDir, { recursive: true, force: true });
+  });
+
+  it('appends the notes section to the prompt sent to the model', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      profile,
+      papers,
+      readerNotes,
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      apiKey: 'test-key',
+      callModelMode: { mode: 'fixture', fixturesDir: tmpFixturesDir },
+    });
+    await handler(req, res);
+    const { statusCode, jsonBody } = getResponse();
+    expect(jsonBody?.error).toBeUndefined();
+    expect(statusCode).toBe(200);
   });
 });
 
