@@ -5,8 +5,12 @@ import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
-import { toJsonSchema } from '../../lib/synthesis/schema.js';
-import { validateBriefing } from '../../lib/synthesis/validator.js';
+import { BriefingSchema, toJsonSchema } from '../../lib/synthesis/schema.js';
+import {
+  normalizeBriefing,
+  salvageBriefing,
+  validateBriefing,
+} from '../../lib/synthesis/validator.js';
 import { repairBriefing } from '../../lib/synthesis/repair.js';
 import { estimateTokens, budgetPreflight } from '../../lib/llm/tokenBudget.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
@@ -113,8 +117,6 @@ export default async function handler(req, res) {
       return;
     }
 
-    const inputPaperIds = papers.map((p) => p.arxivId);
-
     // First call
     const response = await callModel(
       {
@@ -140,40 +142,73 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Validate
-    const validation = validateBriefing(response.structured, inputPaperIds);
+    // Deterministic corrections first: each card's title and score come from
+    // the input paper (the model only copies them), duplicates are dropped.
+    // Reported in `corrections`, never failed. See lib/synthesis/validator.js.
+    const normalized = normalizeBriefing(response.structured, papers);
+    const validation = validateBriefing(normalized.briefing, papers);
     if (validation.ok) {
       res.status(200).json({
-        briefing: response.structured,
+        briefing: normalized.briefing,
         tokensIn: response.tokensIn,
         tokensOut: response.tokensOut,
         repaired: false,
+        corrections: normalized.corrections,
         preflight,
       });
       return;
     }
 
-    // Repair
-    const {
-      briefing,
-      repaired,
-      tokensIn: repairTokensIn,
-      tokensOut: repairTokensOut,
-    } = await repairBriefing({
-      briefing: response.structured,
-      inputPaperIds,
-      callModel: (input) => callModel(input, callMode),
-      llmConfig: { provider, model: modelApiId, apiKey },
-    });
-
-    res.status(200).json({
-      briefing,
-      tokensIn: response.tokensIn + (repairTokensIn ?? 0),
-      tokensOut: response.tokensOut + (repairTokensOut ?? 0),
-      repaired,
-      preflight,
-      originalValidationErrors: validation.errors,
-    });
+    // LLM repair (one shot), then — if that fails — deterministic salvage.
+    try {
+      const repair = await repairBriefing({
+        briefing: normalized.briefing,
+        inputPapers: papers,
+        callModel: (input) => callModel(input, callMode),
+        llmConfig: { provider, model: modelApiId, apiKey },
+      });
+      res.status(200).json({
+        briefing: repair.briefing,
+        tokensIn: response.tokensIn + (repair.tokensIn ?? 0),
+        tokensOut: response.tokensOut + (repair.tokensOut ?? 0),
+        repaired: repair.repaired,
+        corrections: [...normalized.corrections, ...(repair.corrections ?? [])],
+        preflight,
+        originalValidationErrors: validation.errors,
+      });
+      return;
+    } catch (repairErr) {
+      // A provider rate limit, refusal or 5xx during repair, a text-only
+      // repair, or a repair that still fails validation: rather than throw
+      // away the briefing after all the per-paper spend, salvage the best
+      // schema-valid candidate — strip unknown ids, give every left-out
+      // paper a labelled card, group unthemed cards — and say so.
+      const candidate = [repairErr?.briefing, normalized.briefing].find(
+        (b) => b && BriefingSchema.safeParse(b).success
+      );
+      if (!candidate) throw repairErr;
+      const salvage = salvageBriefing(candidate, papers);
+      const finalCheck = validateBriefing(salvage.briefing, papers);
+      if (!finalCheck.ok) throw repairErr;
+      console.warn(
+        `[synthesize] repair failed (${repairErr?.message ?? repairErr}); salvaged deterministically:`,
+        salvage.actions
+      );
+      res.status(200).json({
+        briefing: salvage.briefing,
+        tokensIn: response.tokensIn + (repairErr?.tokensIn ?? 0),
+        tokensOut: response.tokensOut + (repairErr?.tokensOut ?? 0),
+        // true when the salvaged candidate is the LLM-repaired briefing,
+        // false when repair produced nothing usable and the first pass was used.
+        repaired: candidate === repairErr?.briefing,
+        corrections: [...normalized.corrections, ...(repairErr?.corrections ?? [])],
+        salvaged: salvage.actions,
+        repairError: String(repairErr?.message ?? repairErr),
+        preflight,
+        originalValidationErrors: validation.errors,
+      });
+      return;
+    }
   } catch (err) {
     if (sendRefusalErrorResponse(res, err)) return;
     if (sendProviderErrorResponse(res, err)) return;

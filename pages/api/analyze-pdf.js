@@ -7,6 +7,8 @@ import { parseRetryAfterHeader as parseRetryAfterMs } from '../../lib/llm/retryA
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
+import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
+import { isPlausibleApiKey } from '../../lib/auth/apiKeyShape.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 import path from 'path';
 import fs from 'fs';
@@ -14,8 +16,8 @@ import fs from 'fs';
 // Module-level throttle for arXiv PDF downloads. Serializes fetches across
 // all concurrent /api/analyze-pdf requests served by this Node process so a
 // client-side parallel fan-out (introduced with `pdfAnalysisConcurrency`)
-// doesn't blow past arXiv's 1-req/3s cap. Spacing defaults to 5s per
-// docs/superpowers/specs/2026-04-17-pdf-parallelism-design.md §2.2.
+// doesn't outpace arXiv. Spacing defaults to 15 s — arxiv.org/robots.txt's
+// `Crawl-delay: 15` for /pdf (ARXIV_DOWNLOAD_DELAY_MS in rateLimit.js).
 //
 // Single-process assumption: Aparture is a local dev-server (npm run dev),
 // so module state is shared across all requests. If this ever moves to a
@@ -98,7 +100,7 @@ async function downloadPDFWithPlaywright(chromium, pdfUrl, throttle = null) {
 
     // The abs-page navigation above consumed the caller's throttle slot; the
     // PDF fetch is a SECOND arXiv hit, so take its own slot rather than
-    // squeezing two requests through one 5s spacing window.
+    // squeezing two requests through one 15 s spacing window.
     if (throttle) await throttle.acquire();
     const response = await context.request.get(fullPdfUrl);
 
@@ -238,6 +240,25 @@ export default async function handler(req, res) {
   const provider = modelConfig.provider.toLowerCase();
   const modelApiId = modelConfig.apiId ?? model;
 
+  // Authenticate BEFORE any arXiv download or headless-Chromium launch. The
+  // shared route auth below lets any non-empty apiKey skip the password (the
+  // BYOK path); a bogus key would only be rejected by the provider AFTER this
+  // route had already pulled the PDF through the shared arXiv throttle and
+  // possibly started Chromium — so anyone who can reach the server could
+  // drive both. Require the valid ACCESS_PASSWORD, or a client key with the
+  // resolved provider's published shape (lib/auth/apiKeyShape.js).
+  const clientApiKey = req.body.apiKey;
+  const passwordOk =
+    typeof password === 'string' && password !== '' && checkAccessPassword(password);
+  if (!passwordOk && !isPlausibleApiKey(provider, clientApiKey)) {
+    const error = password
+      ? 'invalid password'
+      : clientApiKey
+        ? `apiKey is not a valid ${provider} key`
+        : 'missing credentials';
+    return res.status(401).json({ error });
+  }
+
   // Shared route auth (password gate → env-key resolution → callMode →
   // fixture-aware missing-credentials check); see lib/llm/resolveRouteAuth.js.
   const auth = resolveRouteAuth({
@@ -304,7 +325,8 @@ export default async function handler(req, res) {
 
         try {
           // Throttle arXiv direct-fetch: serialized across concurrent
-          // requests, min 5s spacing, honors Retry-After. See spec §2.2.
+          // requests, min 15 s spacing (robots.txt Crawl-delay), honors
+          // Retry-After.
           await downloadThrottle.acquire();
           let pdfResponse = await fetch(pdfUrl, {
             headers: {

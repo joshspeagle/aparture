@@ -178,6 +178,10 @@ export const useAnalyzerStore = create((set) => ({
   // --- filterResults slice actions ---
   setFilterResults: (updater) =>
     set((state) => ({ filterResults: applyPatch(state.filterResults, updater) })),
+  // Full replacement with the empty buckets. Called at the same first-success
+  // point as resetResults (not at run start), so a run stopped or failed
+  // during the Stage 1 fetch leaves the previous run's buckets on screen.
+  resetFilterResults: () => set({ filterResults: initialState().filterResults }),
 
   // --- processingTiming slice actions ---
   setProcessingTiming: (updater) =>

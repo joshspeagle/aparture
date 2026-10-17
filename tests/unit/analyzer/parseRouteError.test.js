@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseRouteError, RateLimitError } from '../../../lib/analyzer/RateLimitError.js';
+import {
+  parseRouteError,
+  RateLimitError,
+  NonRetryableRouteError,
+  isNonRetryableError,
+} from '../../../lib/analyzer/RateLimitError.js';
 
 function mockResponse({ status, body }) {
   return {
@@ -95,5 +100,59 @@ describe('parseRouteError', () => {
     }
     expect(caught).toBeInstanceOf(Error);
     expect(caught.message).toContain('500');
+  });
+});
+
+describe('parseRouteError — retry classification', () => {
+  const catchFrom = async (status, body, provider = 'anthropic') => {
+    try {
+      await parseRouteError(mockResponse({ status, body }), provider);
+    } catch (err) {
+      return err;
+    }
+    throw new Error('parseRouteError did not throw');
+  };
+
+  it('treats Anthropic 529 (overloaded) like 429/503: a RateLimitError', async () => {
+    const err = await catchFrom(529, { error: 'Overloaded', provider: 'anthropic' });
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect(err.status).toBe(529);
+    expect(err.message).toMatch(/overloaded \(529\)/);
+    expect(isNonRetryableError(err)).toBe(false);
+  });
+
+  it.each([400, 401, 403, 404, 413])('marks HTTP %i non-retryable', async (status) => {
+    const err = await catchFrom(status, { error: 'route error', details: 'provider said no' });
+    expect(err).toBeInstanceOf(NonRetryableRouteError);
+    expect(err.status).toBe(status);
+    expect(err.retryable).toBe(false);
+    expect(err.message).toBe('provider said no');
+  });
+
+  it('marks a 422 that is not a CONTENT_REFUSAL non-retryable', async () => {
+    const err = await catchFrom(422, { error: 'unprocessable' });
+    expect(err).toBeInstanceOf(NonRetryableRouteError);
+    expect(err.message).toBe('unprocessable');
+  });
+
+  it("surfaces the provider's own message from a JSON error body", async () => {
+    const err = await catchFrom(401, {
+      error: 'anthropic request failed (401)',
+      details: JSON.stringify({
+        type: 'error',
+        error: { type: 'authentication_error', message: 'invalid x-api-key' },
+      }),
+      provider: 'anthropic',
+    });
+    expect(err.message).toBe('anthropic: invalid x-api-key');
+  });
+
+  it('keeps 5xx (and 502 validation failures) retryable', async () => {
+    for (const status of [500, 502]) {
+      const err = await catchFrom(status, { error: 'model did not return structured output' });
+      expect(err).not.toBeInstanceOf(NonRetryableRouteError);
+      expect(err.status).toBe(status);
+      expect(isNonRetryableError(err)).toBe(false);
+    }
   });
 });

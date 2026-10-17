@@ -113,6 +113,51 @@ describe('ingest.harvest — atom-only mode', () => {
     ]);
     expect(waitForResume).toHaveBeenCalledTimes(2);
   });
+
+  it('a Stop during the inter-request spacing ends the harvest before the next request', async () => {
+    const controller = new AbortController();
+    const fetchAtomImpl = vi.fn().mockResolvedValue([examplePaper('A', 'cs.AI')]);
+    // A real 3–5 s spacing sleep; Stop lands 20 ms into it.
+    const sleepImpl = vi.fn((ms) => new Promise((r) => setTimeout(r, ms)));
+    setTimeout(() => controller.abort(), 20);
+
+    const started = Date.now();
+    await expect(
+      harvest(baseWindow, {
+        password: 'pw',
+        abortSignal: controller.signal,
+        fetchAtomImpl,
+        harvestOaiImpl: vi.fn(),
+        spacingMsImpl: () => 4000,
+        sleepImpl,
+      })
+    ).rejects.toThrow('Operation aborted');
+
+    expect(Date.now() - started).toBeLessThan(2_000);
+    // Only the first subcategory was requested; the stopped run fired nothing after.
+    expect(fetchAtomImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not return a completed harvest for a run stopped during its last request', async () => {
+    const controller = new AbortController();
+    const fetchAtomImpl = vi.fn(async () => {
+      controller.abort();
+      return [examplePaper('A', 'cs.AI')];
+    });
+
+    await expect(
+      harvest(
+        { ...baseWindow, selectedSubcategories: ['cs.AI'] },
+        {
+          password: 'pw',
+          abortSignal: controller.signal,
+          fetchAtomImpl,
+          harvestOaiImpl: vi.fn(),
+          sleepImpl: noSleep,
+        }
+      )
+    ).rejects.toThrow('Operation aborted');
+  });
 });
 
 describe('ingest.harvest — oai-only mode', () => {

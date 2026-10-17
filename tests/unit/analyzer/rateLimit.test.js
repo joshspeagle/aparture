@@ -10,8 +10,10 @@ import {
   sleep,
   ArxivDownloadThrottle,
   AnalysisWorkerPool,
+  ARXIV_DOWNLOAD_DELAY_MS,
   ARXIV_MAX_RETRY_AFTER_MS,
 } from '../../../lib/analyzer/rateLimit.js';
+import { ARXIV_PAGE_DELAY_MS } from '../../../lib/arxiv/spacing.js';
 
 describe('sleep', () => {
   beforeEach(() => {
@@ -41,6 +43,22 @@ describe('ArxivDownloadThrottle', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("defaults to arXiv's robots.txt Crawl-delay of 15 s between PDF downloads", async () => {
+    expect(ARXIV_PAGE_DELAY_MS).toBe(15_000);
+    expect(ARXIV_DOWNLOAD_DELAY_MS).toBe(ARXIV_PAGE_DELAY_MS);
+    const t = new ArxivDownloadThrottle();
+    expect(t.minSpacingMs).toBe(15_000);
+    await t.acquire();
+    let done = false;
+    t.acquire().then(() => {
+      done = true;
+    });
+    await vi.advanceTimersByTimeAsync(14_900);
+    expect(done).toBe(false); // the old 5 s spacing would have released here
+    await vi.advanceTimersByTimeAsync(200);
+    expect(done).toBe(true);
   });
 
   it('first acquire resolves immediately', async () => {
@@ -245,6 +263,51 @@ describe('AnalysisWorkerPool', () => {
       completed.push(task);
     });
     expect(completed.sort()).toEqual([1, 3, 4]);
+  });
+
+  it('a fatal task error halts the pool and run() rejects with it', async () => {
+    // refusalPolicy 'fail' relies on this channel: before it existed the pool
+    // logged the fatal error like any other, and the stage carried on.
+    const pool = new AnalysisWorkerPool({ concurrency: 1 });
+    const started = [];
+    const fatal = Object.assign(new Error('halt the run'), { fatal: true });
+    await expect(
+      pool.run([1, 2, 3, 4], async (task) => {
+        started.push(task);
+        if (task === 2) throw fatal;
+      })
+    ).rejects.toBe(fatal);
+    // No task was dispatched after the fatal one.
+    expect(started).toEqual([1, 2]);
+  });
+
+  it('a fatal error lets in-flight siblings finish, then rejects with the first fatal', async () => {
+    const pool = new AnalysisWorkerPool({ concurrency: 3 });
+    const finished = [];
+    const first = Object.assign(new Error('first'), { fatal: true });
+    const second = Object.assign(new Error('second'), { fatal: true });
+    await expect(
+      pool.run([1, 2, 3, 4, 5, 6], async (task) => {
+        if (task === 1) throw first;
+        await new Promise((r) => setTimeout(r, 10));
+        if (task === 2) throw second;
+        finished.push(task);
+      })
+    ).rejects.toBe(first);
+    // Tasks 2 and 3 were already in flight; nothing past them was claimed.
+    expect(finished).toEqual([3]);
+  });
+
+  it('an abort error thrown by a task halts the pool and rejects run()', async () => {
+    const pool = new AnalysisWorkerPool({ concurrency: 1 });
+    const started = [];
+    await expect(
+      pool.run([1, 2, 3], async (task) => {
+        started.push(task);
+        if (task === 1) throw new Error('Operation aborted');
+      })
+    ).rejects.toThrow('Operation aborted');
+    expect(started).toEqual([1]);
   });
 
   it('cache warmup releases even when no tasks (edge case)', async () => {
