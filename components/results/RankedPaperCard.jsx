@@ -83,6 +83,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
       }}
     >
       <div
+        className="stack-on-mobile"
         style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -111,7 +112,13 @@ const RankedPaperCard = memo(function RankedPaperCard({
             >
               #{idx + 1}
             </span>
-            <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
+            <span
+              style={{
+                ...badgeBase,
+                background: 'rgba(168,85,247,0.12)',
+                color: 'var(--aparture-comment-text)',
+              }}
+            >
               {(paper.finalScore ?? paper.relevanceScore ?? 0).toFixed(1)}/10
             </span>
             <a

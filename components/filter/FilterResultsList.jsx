@@ -171,6 +171,7 @@ const FilterResultRow = memo(function FilterResultRow({
       }}
     >
       <div
+        className="stack-on-mobile"
         style={{
           display: 'flex',
           alignItems: 'flex-start',

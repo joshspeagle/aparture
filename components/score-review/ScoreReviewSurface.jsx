@@ -91,6 +91,7 @@ const ScoreRow = memo(function ScoreRow({
   return (
     <div
       data-testid={`ms-row-${id}`}
+      className="stack-on-mobile"
       style={{
         display: 'flex',
         alignItems: 'flex-start',

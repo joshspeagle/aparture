@@ -226,3 +226,45 @@ describe('BriefingHeader — claims-check status', () => {
     expect(screen.getByText('claims check did not run')).toBeInTheDocument();
   });
 });
+
+describe('BriefingView — full report panel', () => {
+  const briefing = {
+    executiveSummary: 'Lede.',
+    themes: [{ title: 'Theme A', argument: 'Arg A', paperIds: ['p1', 'p2'] }],
+    papers: [card('p1', 'Paper One'), card('p2', 'Paper Two')],
+  };
+  const open = (fullReportsById, title) => {
+    render(
+      <BriefingView
+        briefing={briefing}
+        date="April 13, 2026"
+        briefingDate="2026-04-13"
+        papersScreened={10}
+        feedbackEvents={[]}
+        fullReportsById={fullReportsById}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onAddComment={() => {}}
+      />
+    );
+    const cards = [...document.querySelectorAll('.paper-card')];
+    const target = cards.find((c) => c.textContent.includes(title));
+    fireEvent.click(
+      [...target.querySelectorAll('button')].find((b) => /full report/i.test(b.textContent))
+    );
+  };
+
+  // composeFullReport returns '' when a paper's PDF was never analyzed; the
+  // panel used to open blank because '' slipped past the ?? fallback.
+  it('says why a paper has no report instead of opening blank', () => {
+    open({ p1: '', p2: '## Summary\n\nReal report.' }, 'Paper One');
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'No full report for this paper: its PDF was not analyzed in this run.'
+    );
+  });
+
+  it('shows the report when there is one', () => {
+    open({ p1: '', p2: '## Summary\n\nReal report.' }, 'Paper Two');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Real report.');
+  });
+});

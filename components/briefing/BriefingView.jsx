@@ -165,7 +165,12 @@ export default function BriefingView({
         onOpenChange={(open) => setOpenFullId(open ? openFullId : null)}
         title={openFullId ? (papersById[openFullId]?.title ?? '') : ''}
         content={
-          openFullId ? (fullReportsById[openFullId] ?? 'Full report not yet available.') : ''
+          !openFullId
+            ? ''
+            : fullReportsById[openFullId] === ''
+              ? // composeFullReport found no PDF analysis for this paper.
+                'No full report for this paper: its PDF was not analyzed in this run.'
+              : (fullReportsById[openFullId] ?? 'Full report not yet available.')
         }
       />
     </BriefingProse>

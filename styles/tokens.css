@@ -43,6 +43,7 @@
   --aparture-warning-text: #92400e;
   --aparture-danger-text: #b91c1c;
   --aparture-override-text: #9a3412;
+  --aparture-comment-text: #7e22ce;
   --aparture-on-status: #1a1a1a;
 
   /* Typography.
@@ -102,6 +103,7 @@
     --aparture-warning-text: #fbbf24;
     --aparture-danger-text: #f87171;
     --aparture-override-text: #fb923c;
+    --aparture-comment-text: #c084fc;
 
     /* Type scale (theme-invariant) */
     --aparture-text-3xl: 39px;
@@ -137,6 +139,7 @@
   --aparture-warning-text: #92400e;
   --aparture-danger-text: #b91c1c;
   --aparture-override-text: #9a3412;
+  --aparture-comment-text: #7e22ce;
   /* Type scale (theme-invariant) */
   --aparture-text-3xl: 39px;
 }
@@ -165,6 +168,7 @@
   --aparture-warning-text: #fbbf24;
   --aparture-danger-text: #f87171;
   --aparture-override-text: #fb923c;
+  --aparture-comment-text: #c084fc;
   /* Type scale (theme-invariant) */
   --aparture-text-3xl: 39px;
 }
