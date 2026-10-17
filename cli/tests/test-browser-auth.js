@@ -12,17 +12,17 @@
  * - Logout functionality
  */
 
-const BrowserAutomation = require('./browser-automation');
-const { ServerManager } = require('./server-manager');
+const BrowserAutomation = require('../browser-automation');
+const { ServerManager } = require('../server-manager');
 const path = require('path');
 const fs = require('fs').promises;
 
 // Test configuration
 const TEST_CONFIG = {
   serverPort: 3000,
-  screenshotDir: path.join(__dirname, '../reports/test-screenshots'),
+  screenshotDir: path.join(__dirname, '../../reports/test-screenshots'),
   headless: true, // Set to false for debugging
-  envFile: path.join(__dirname, '../.env.local'),
+  envFile: path.join(__dirname, '../../.env.local'),
 };
 
 /**
