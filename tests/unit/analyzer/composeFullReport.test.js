@@ -87,4 +87,20 @@ describe('composeFullReport', () => {
     expect(out).toContain('New.');
     expect(out).not.toContain('Legacy.');
   });
+
+  it('ends with the key figure the full read named, and its reason', () => {
+    const out = composeFullReport({
+      deepAnalysis: {
+        summary: 'S.',
+        keyFigure: 'Figure 3',
+        keyFigureReason: 'the posterior shrinks with more data',
+      },
+    });
+    expect(out.endsWith('## Key figure\n\nFigure 3: the posterior shrinks with more data')).toBe(
+      true
+    );
+    expect(composeFullReport({ deepAnalysis: { summary: 'S.', keyFigure: null } })).not.toContain(
+      'Key figure'
+    );
+  });
 });

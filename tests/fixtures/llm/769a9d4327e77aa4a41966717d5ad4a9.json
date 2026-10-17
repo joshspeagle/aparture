@@ -1,5 +1,5 @@
 {
-  "hash": "48de965bef16596f62f9fdff99f5e8a5",
+  "hash": "769a9d4327e77aa4a41966717d5ad4a9",
   "input": {
     "apiKey": "test-key",
     "cacheable": false,
@@ -18,7 +18,9 @@
           "methodology",
           "limitations",
           "relevanceAssessment",
-          "updatedScore"
+          "updatedScore",
+          "keyFigure",
+          "keyFigureReason"
         ],
         "additionalProperties": false,
         "properties": {
@@ -39,6 +41,12 @@
           },
           "updatedScore": {
             "type": "number"
+          },
+          "keyFigure": {
+            "type": ["string", "null"]
+          },
+          "keyFigureReason": {
+            "type": ["string", "null"]
           }
         }
       }
@@ -52,7 +60,9 @@
       "methodology": "A sparse dictionary learning approach applied to intermediate activations under L1 regularization constraints.",
       "limitations": "Scalability to very large models remains an open question for the proposed manual-inspection labeling step.",
       "relevanceAssessment": "Highly aligned with mechanistic interpretability research priorities and advances the state of the art meaningfully.",
-      "updatedScore": 7.2
+      "updatedScore": 7.2,
+      "keyFigure": null,
+      "keyFigureReason": null
     },
     "tokensIn": 200,
     "tokensOut": 80

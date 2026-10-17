@@ -18,6 +18,8 @@ import { useProfile } from '../../hooks/useProfile.js';
 import { useBriefing } from '../../hooks/useBriefing.js';
 import { useFeedback } from '../../hooks/useFeedback.js';
 import { useSeenPapers } from '../../hooks/useSeenPapers.js';
+import { useAutoProposals } from '../../hooks/useAutoProposals.js';
+import { runProposalRound } from '../../lib/profile/runProposalRound.js';
 import { papersFromBriefing } from '../../lib/seenPapers/papersFromBriefing.js';
 import Sidebar from './Sidebar.jsx';
 import MobileTopBar from './MobileTopBar.jsx';
@@ -34,6 +36,8 @@ const todayStr = () => localDateStr();
 export default function App() {
   const [config, setConfig] = useState(readInitialConfig);
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
+  const [suggestPreset, setSuggestPreset] = useState(null);
+  const autoProposals = useAutoProposals();
 
   // activeView: 'welcome' | 'profile' | 'settings' | 'pipeline' | 'briefing:<date>'
   const [activeView, setActiveView] = useState('welcome');
@@ -55,6 +59,7 @@ export default function App() {
   const {
     profile,
     updateProfile,
+    updateNotes,
     recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
@@ -222,6 +227,9 @@ export default function App() {
   // saveBriefing is async (it awaits the cold-tier POST), so we must await
   // it here — passing the unresolved Promise into the template literal
   // produces `briefing:[object Promise]` and breaks the subsequent loadBriefing.
+  // The latest state an automatic proposal round reads: saveBriefingAndSwitch
+  // runs it long after the render that defined it.
+  const proposalInputsRef = useRef(null);
   const saveBriefingAndSwitch = async (date, briefing, metadata, options) => {
     const newId = await saveBriefing(date, briefing, metadata, options);
     setActiveView(`briefing:${newId}`);
@@ -248,6 +256,16 @@ export default function App() {
       }
     } catch (err) {
       console.warn('[App] seenPapers.recordRun on briefing save failed:', err);
+    }
+    // After a real briefing, maybe prepare profile proposals for the reader
+    // (lib/profile/runProposalRound.js): one briefing-model call when the
+    // pending feedback adds up; nothing changes until the reader accepts.
+    const inputs = proposalInputsRef.current;
+    if (!metadata?.testMode && inputs?.config?.autoProposals !== false) {
+      runProposalRound({ ...inputs, briefingDate: date, addStatus }).catch((err) => {
+        console.warn('[App] automatic proposals failed:', err);
+        addStatus(`⚠️ Could not prepare profile proposals: ${err.message}`);
+      });
     }
     return newId;
   };
@@ -831,7 +849,16 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, profile, password, stableSaveBriefingAndSwitch]);
 
-  const openSuggestDialog = useCallback(() => setShowSuggestDialog(true), []);
+  const openSuggestDialog = useCallback(() => {
+    setSuggestPreset(null);
+    setShowSuggestDialog(true);
+  }, []);
+  // Proposals the editor prepared after a briefing open the same dialog,
+  // straight at the review step.
+  const reviewAutoProposals = useCallback(() => {
+    setSuggestPreset(autoProposals.pending);
+    setShowSuggestDialog(true);
+  }, [autoProposals.pending]);
 
   // --- Derived data (useMemo) ---
   const abstractOnlyPapers = useMemo(() => {
@@ -875,6 +902,18 @@ export default function App() {
     () => feedback.getNewSince(profile?.lastFeedbackCutoff ?? 0),
     [feedback, profile?.lastFeedbackCutoff]
   );
+
+  // Refreshed after commit, like saveBriefingAndSwitchRef.
+  useEffect(() => {
+    proposalInputsRef.current = {
+      pendingFeedback: newFeedback,
+      autoProposals,
+      profile,
+      config,
+      briefingHistory,
+      password,
+    };
+  });
 
   // MainArea's subtree only reads processing.{stage,isRunning,isPaused}
   // (ProgressTimeline subscribes to the store directly for progress/logs).
@@ -1170,6 +1209,9 @@ export default function App() {
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
+          updateNotes={updateNotes}
+          pendingProposals={autoProposals.pending}
+          onReviewProposals={reviewAutoProposals}
           revertToRevision={handleRevertToRevision}
           clearHistory={clearHistory}
           migrationNotice={migrationNotice}
@@ -1252,6 +1294,7 @@ export default function App() {
         isOpen={showSuggestDialog}
         onClose={() => setShowSuggestDialog(false)}
         profile={profile?.content ?? ''}
+        notes={profile?.notes ?? []}
         newFeedback={newFeedback}
         briefingHistory={briefingHistory}
         cap={{ commentCap: 30 }}
@@ -1261,12 +1304,17 @@ export default function App() {
         ).toLowerCase()}
         password={password}
         rejectedSuggestions={profile?.rejectedSuggestions ?? []}
+        preset={suggestPreset}
         onAccept={(outcome) => {
           // Profile side: content + revision for accepted changes. Feedback
           // side: only the events behind accepted changes become
           // incorporated, stamped with the same appliedAt as the revision.
           recordSuggestionOutcome(outcome);
           feedback.markIncorporated(outcome.incorporatedEventIds, outcome.appliedAt);
+          if (suggestPreset) {
+            autoProposals.clearPending();
+            setSuggestPreset(null);
+          }
           setShowSuggestDialog(false);
         }}
       />

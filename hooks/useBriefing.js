@@ -53,7 +53,7 @@ function dropOne(entries) {
 // Dropping them degrades the old-briefing view (quick summaries + full
 // reports show placeholders; pipeline archive panel hides) but keeps the
 // briefing readable.
-const HEAVY_FIELDS = ['pipelineArchive', 'quickSummariesById', 'fullReportsById'];
+const HEAVY_FIELDS = ['pipelineArchive', 'quickSummariesById', 'fullReportsById', 'figuresById'];
 
 function stripHeavy(entry) {
   const out = { ...entry };
@@ -379,7 +379,7 @@ export function useBriefing({ password = '' } = {}) {
       date,
       briefing,
       generationMetadata,
-      { quickSummariesById, fullReportsById, pipelineArchive, editorQuestions } = {}
+      { quickSummariesById, fullReportsById, figuresById, pipelineArchive, editorQuestions } = {}
     ) => {
       const id = generateId();
       const entry = {
@@ -391,6 +391,7 @@ export function useBriefing({ password = '' } = {}) {
         ...(generationMetadata !== undefined ? { generationMetadata } : {}),
         ...(quickSummariesById ? { quickSummariesById } : {}),
         ...(fullReportsById ? { fullReportsById } : {}),
+        ...(figuresById ? { figuresById } : {}),
         ...(pipelineArchive ? { pipelineArchive } : {}),
         ...(Array.isArray(editorQuestions) && editorQuestions.length > 0
           ? { editorQuestions }

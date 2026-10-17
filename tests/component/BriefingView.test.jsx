@@ -268,3 +268,33 @@ describe('BriefingView — full report panel', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Real report.');
   });
 });
+
+describe('BriefingView — key figures', () => {
+  it('shows a card’s key figure from figuresById, and none on the other cards', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:fig');
+    URL.revokeObjectURL = vi.fn();
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ ok: true, blob: async () => new Blob(['png']) });
+    render(
+      <BriefingView
+        briefing={{
+          executiveSummary: 'Lede.',
+          themes: [{ title: 'T', argument: 'A', paperIds: ['p1', 'p2'] }],
+          papers: [card('p1', 'Paper One'), card('p2', 'Paper Two')],
+        }}
+        date="April 13, 2026"
+        briefingDate="2026-04-13"
+        figuresById={{ p1: { label: 'Figure 2', caption: 'Figure 2. Widths.', page: 3 } }}
+        feedbackEvents={[]}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onAddComment={() => {}}
+      />
+    );
+    expect(await screen.findByRole('img', { name: 'Figure 2. Widths.' })).toBeInTheDocument();
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    fetchSpy.mockRestore();
+  });
+});

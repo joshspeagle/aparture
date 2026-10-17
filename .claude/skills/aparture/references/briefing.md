@@ -4,6 +4,8 @@ The briefing is a morning newsletter written for one reader. It should take unde
 
 Read the "Style and voice" and "Sourcing discipline" sections of `prompts/synthesis.md` before writing. They apply here unchanged: write like a serious editor, ground every claim about a paper in its report, and avoid "novel", "breakthrough" and "paradigm-shift".
 
+Follow the reader's writing notes too (`node bin/aparture.mjs notes --state <state> --scope writing`): they are how this reader has asked the briefing to read. Where one conflicts with the profile, the profile wins.
+
 **Keep the qualifiers when you compress.** On the first live run, most of what the audit flagged was not invented; it was scope lost in shortening. A timing measured on six of eight benchmarks was stated for all eight. "The robustness tests named in the main text" became "the robustness tests". A network shared among blocks of one kind became one network for every block. When a report says which datasets, which experiments, which blocks or which sections a claim covers, the briefing says so too, or drops the claim. Where the report's one-line summary and its method section disagree, trust the method section, and check the paper text when it matters.
 
 ## What each part is for

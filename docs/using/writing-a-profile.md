@@ -210,7 +210,27 @@ Named profiles are snapshots, and the active one is what every run reads: the pi
 - <span class="ui-action">Save as…</span> copies the current text under a new name and makes the copy active. The profile you were on keeps its own text. A name that another profile already uses is refused rather than overwritten.
 - Switching loads another profile into the editor. Nothing is lost: the outgoing text stays in its own snapshot, and the swap is recorded in the revision history like any other edit.
 
+Each named profile also keeps its own [editorial notes](#editorial-notes), and switching brings them along.
+
 Two things named profiles are _not_: they aren't run in parallel (one run reads one profile), and they don't each carry their own feedback history — stars, dismisses, and comments accumulate in one shared stream regardless of which profile was active.
+
+## Editorial notes
+
+The profile says what you work on. Editorial notes say how the editor should judge and write for you: "Benchmark-only papers count as adjacent", "Open each theme with its result, then the method", "Keep the podcast brisk". They sit on the <span class="ui-action">Editorial notes</span> tab beside the profile text.
+
+Each note has a scope, and code decides which prompts see it:
+
+| Scope     | Reaches                                                            |
+| --------- | ------------------------------------------------------------------ |
+| Selection | the quick filter, abstract scoring, score review, and the PDF read |
+| Writing   | the briefing synthesis and the editor's questions                  |
+| Podcast   | the focus prompt in the podcast bundle                             |
+
+In those prompts, a scope's notes follow your research profile under a line saying the profile wins where they disagree. The claims check sees none: it checks claims, not taste.
+
+Notes change only when you change them: type one in, edit it, or remove it on the tab, or accept a note the [refinement flow](/using/refining-over-time) proposes. Every change goes into the same revision history as the profile text, so reverting a change puts back the notes from before it too. Each scope holds up to 12 notes; at the limit, the refinement flow proposes rewording or retiring a note instead of adding one.
+
+A rule of thumb for what goes where: a topic to add, narrow, or drop belongs in the profile; how much incremental work you'll accept, whether released code matters, or how a briefing should read belongs in a note.
 
 ## Next
 

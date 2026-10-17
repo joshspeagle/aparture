@@ -4,7 +4,7 @@ Each pipeline stage reads from its own model slot, and picking the model for eac
 
 ## The model slots
 
-Aparture has six model slots for the pipeline plus one for the optional podcast add-on. Every slot ships with a default, and any slot can be changed between runs without restarting the server. Six have drop-downs in the Settings panel; the post-processing one appears when **Enable Post-Processing** is on. `notebookLMModel` is picked on the NotebookLM card in the briefing view.
+Aparture has six model slots for the pipeline plus one for the optional podcast add-on. Every slot ships with a default, and any slot can be changed between runs without restarting the server. Six have drop-downs in the Settings panel; the post-processing one appears when **Enable Post-Processing** is on. `notebookLMModel` is picked on the Podcast card in the briefing view.
 
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -92,7 +92,7 @@ Google rejects requests from unrestricted standard API keys. [Google setup](/get
 | `gemini-3-flash` (preview)                              | `gemini-3.8-flash`    |
 | `gemini-3.1-pro` (preview)                              | `gemini-4-argon`      |
 
-The move happens once, when the app loads a saved config, and covers every model slot including `refusalFallbackModel` and the NotebookLM model. Most replacements cost the same as or less than the model they replace. Two cost more at list price: the `gemini-3-flash` preview moves to `gemini-3.8-flash`, and the `gemini-3.1-pro` preview moves to `gemini-4-argon`, which also needs a paid tier. Check those slots in Settings if you were using either preview. Models removed in earlier refreshes move the same way.
+The move happens once, when the app loads a saved config, and covers every model slot including `refusalFallbackModel` and the podcast model (`notebookLMModel`). Most replacements cost the same as or less than the model they replace. Two cost more at list price: the `gemini-3-flash` preview moves to `gemini-3.8-flash`, and the `gemini-3.1-pro` preview moves to `gemini-4-argon`, which also needs a paid tier. Check those slots in Settings if you were using either preview. Models removed in earlier refreshes move the same way.
 
 ## Per-stage recommendations
 

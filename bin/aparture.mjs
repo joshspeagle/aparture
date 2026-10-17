@@ -291,6 +291,7 @@ async function cmdEnrich(flags) {
 
     let pdfPath = null;
     let pdfText = null;
+    let pdfFigures = [];
     if (!parsed.ok) {
       // No HTML rendering: keep the PDF so a reader can open it directly.
       await politely();
@@ -304,6 +305,10 @@ async function cmdEnrich(flags) {
           pdfPath = path.join(outDir, `${id}.pdf`);
           fs.writeFileSync(pdfPath, buf);
           pdfText = pdfToText(pdfPath);
+          // The captions stand in for the HTML figure list; render crops
+          // the chosen one from the PDF (lib/figures/cropFigure.js).
+          const { listFigures } = await import('../lib/figures/cropFigure.js');
+          pdfFigures = (await listFigures(buf)).map((f) => ({ ...f, images: [], source: 'pdf' }));
         }
       } catch (err) {
         log(`${id}: PDF fallback failed: ${err.message}`);
@@ -339,9 +344,9 @@ async function cmdEnrich(flags) {
       id,
       htmlAvailable: parsed.ok,
       reason: parsed.ok ? null : parsed.reason,
-      license: parsed.ok ? parsed.license : null,
+      license: parsed.ok ? parsed.license : (meta.license ?? null),
       wordCount: parsed.ok ? parsed.wordCount : null,
-      figures: parsed.ok ? parsed.figures : [],
+      figures: parsed.ok ? parsed.figures : pdfFigures,
       tables: parsed.ok ? parsed.tables : [],
       figureFiles,
       pdfPath,
@@ -528,22 +533,45 @@ async function cmdRender(flags) {
 
     if (!p.figure || p.tier !== 'read' || !rec) continue;
     const fig = (rec.figures ?? []).find((f) => f.id === p.figure.id);
-    if (!fig || fig.images.length === 0) continue;
+    const fromPdf = fig?.source === 'pdf' && rec.pdfPath && fs.existsSync(rec.pdfPath);
+    if (!fig || (fig.images.length === 0 && !fromPdf)) continue;
     if (!figureReuseAllowed(rec.license)) {
-      figures.set(p.id, new Map([[fig.id, { label: fig.label, linkOnly: true }]]));
+      const href = fromPdf
+        ? `${rec.links?.pdf ?? `https://arxiv.org/pdf/${p.id}`}#page=${fig.page}`
+        : null;
+      figures.set(p.id, new Map([[fig.id, { label: fig.label, linkOnly: true, href }]]));
       continue;
+    }
+    if (fromPdf) {
+      const cropped = path.join(papersDir, 'figures', p.id, `${fig.id.replace(/\W+/g, '-')}.png`);
+      if (!fs.existsSync(cropped)) {
+        const { cropFigure } = await import('../lib/figures/cropFigure.js');
+        const crop = await cropFigure(fs.readFileSync(rec.pdfPath), fig.label);
+        if (!crop) {
+          log(`${p.id}: could not crop ${fig.label} from the PDF`);
+          continue;
+        }
+        fs.mkdirSync(path.dirname(cropped), { recursive: true });
+        fs.writeFileSync(cropped, crop.png);
+      }
+      rec.figureFiles = [
+        ...(rec.figureFiles ?? []),
+        { id: fig.id, label: fig.label, file: cropped },
+      ];
     }
     // Reuse a file from enrich or from an earlier render before asking
     // arXiv again; renders are often repeated while a briefing is revised.
-    const cached = path.join(
-      papersDir,
-      'figures',
-      p.id,
-      `${fig.id}${path.extname(new URL(fig.images[0]).pathname) || '.png'}`
-    );
     let file = rec.figureFiles?.find((f) => f.id === fig.id)?.file;
+    const cached = fromPdf
+      ? file
+      : path.join(
+          papersDir,
+          'figures',
+          p.id,
+          `${fig.id}${path.extname(new URL(fig.images[0]).pathname) || '.png'}`
+        );
     if (!file || !fs.existsSync(file)) file = fs.existsSync(cached) ? cached : null;
-    if (!file) {
+    if (!file && !fromPdf) {
       if (fetched > 0) await arxivSleep(spacing());
       fetched += 1;
       try {
@@ -745,6 +773,18 @@ Commands:
             <state>/feedback.jsonl (idempotent via feedback-cursor.json).
             --docs <file>       JSON array of {id, data} from the page's db
             --state <dir>
+  notes     Read the editorial notes in <state>/learned.md, the way the app
+            reads them. With --scope, print the block that follows the
+            research profile in that scope's prompts (empty when none).
+            --state <dir>
+            --scope selection|writing|podcast
+            --init              rewrite learned.md in the sectioned format
+  figure    Crop a labelled figure out of a PDF, as the app does for a
+            paper's key figure, and print its page and caption (the
+            paper's own text). Prints {found: false} when no caption matches.
+            --pdf <file>        the paper's PDF
+            --label <label>     as the paper prints it, e.g. "Figure 3"
+            --out <file.png>    where to write the image
   help      Show this message.
 `;
 
@@ -755,7 +795,60 @@ const COMMANDS = {
   render: cmdRender,
   record: cmdRecord,
   ingest: cmdIngest,
+  figure: cmdFigure,
+  notes: cmdNotes,
 };
+
+// --- notes -----------------------------------------------------------------
+
+async function cmdNotes(flags) {
+  if (!flags.state) throw new Error('notes: --state <dir> is required');
+  const { NOTE_SCOPES, parseLearnedMarkdown, renderLearnedMarkdown, renderNotesBlock } =
+    await import('../lib/profile/editorialNotes.js');
+  const file = path.join(flags.state, 'learned.md');
+  const notes = parseLearnedMarkdown(readText(file));
+  if (flags.init) {
+    // Rewrites learned.md in the sectioned format, keeping every note.
+    fs.writeFileSync(file, renderLearnedMarkdown(notes));
+    log(`learned.md: ${notes.length} note(s) in ${NOTE_SCOPES.length} sections`);
+  }
+  if (flags.scope) {
+    if (!NOTE_SCOPES.includes(flags.scope)) {
+      throw new Error(`notes: --scope must be one of ${NOTE_SCOPES.join(', ')}`);
+    }
+    // The same block the app appends after the research profile.
+    process.stdout.write(`${renderNotesBlock(notes, flags.scope)}\n`);
+    return;
+  }
+  writeOut(undefined, { notes: notes.map(({ scope, text }) => ({ scope, text })) });
+}
+
+// --- figure ----------------------------------------------------------------
+
+async function cmdFigure(flags) {
+  if (!flags.pdf || !flags.label || !flags.out) {
+    throw new Error('figure: --pdf <file>, --label <label> and --out <file.png> are required');
+  }
+  const { cropFigure } = await import('../lib/figures/cropFigure.js');
+  const crop = await cropFigure(fs.readFileSync(flags.pdf), String(flags.label));
+  if (!crop) {
+    log(`${flags.label}: no caption found in ${flags.pdf}`);
+    writeOut(undefined, { found: false, label: flags.label });
+    return;
+  }
+  fs.mkdirSync(path.dirname(path.resolve(flags.out)), { recursive: true });
+  fs.writeFileSync(flags.out, crop.png);
+  log(`${flags.label}: page ${crop.page}, ${crop.width}x${crop.height} -> ${flags.out}`);
+  writeOut(undefined, {
+    found: true,
+    label: flags.label,
+    page: crop.page,
+    caption: crop.caption,
+    width: crop.width,
+    height: crop.height,
+    file: flags.out,
+  });
+}
 
 async function main() {
   const { command, flags } = parseArgs(process.argv.slice(2));

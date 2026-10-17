@@ -10,6 +10,8 @@ import { createUsageAccumulator } from '../../lib/llm/usageAccumulator.js';
 import { checkAccessPassword } from '../../lib/auth/checkAccessPassword.js';
 import { isPlausibleApiKey } from '../../lib/auth/apiKeyShape.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
+import { cropFigure, figureNumber } from '../../lib/figures/cropFigure.js';
+import { saveFigure } from '../../lib/figures/store.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -131,6 +133,8 @@ function pdfAnalysisJsonSchema() {
       'limitations',
       'relevanceAssessment',
       'updatedScore',
+      'keyFigure',
+      'keyFigureReason',
     ],
     additionalProperties: false,
     properties: {
@@ -140,8 +144,45 @@ function pdfAnalysisJsonSchema() {
       limitations: { type: 'string' },
       relevanceAssessment: { type: 'string' },
       updatedScore: { type: 'number' },
+      keyFigure: { type: ['string', 'null'] },
+      keyFigureReason: { type: ['string', 'null'] },
     },
   };
+}
+
+// The key-figure fields are optional in substance: a paper may have no
+// figure worth showing, and an answer without them is still a full read.
+// Keep a label only when it names a figure ("Figure 3", "Fig. S2").
+function normalizeKeyFigure(parsed) {
+  const label =
+    typeof parsed.keyFigure === 'string' && figureNumber(parsed.keyFigure)
+      ? parsed.keyFigure.trim()
+      : null;
+  const reason =
+    label && typeof parsed.keyFigureReason === 'string' && parsed.keyFigureReason.trim()
+      ? parsed.keyFigureReason.trim()
+      : null;
+  return { ...parsed, keyFigure: label, keyFigureReason: reason };
+}
+
+// Crop the named figure from the PDF already in memory and store it under
+// reports/figures/. Best-effort: a miss costs the figure, never the analysis.
+async function extractKeyFigure(pdfBytes, arxivId, label) {
+  if (!pdfBytes || !label || !arxivId) return null;
+  try {
+    const crop = await cropFigure(pdfBytes, label);
+    if (!crop) return null;
+    const saved = await saveFigure(arxivId, {
+      png: crop.png,
+      label,
+      caption: crop.caption,
+      page: crop.page,
+    });
+    return saved ? { label, caption: crop.caption, page: crop.page } : null;
+  } catch (err) {
+    console.warn(`[analyze-pdf] could not crop ${label} of ${arxivId}:`, err.message);
+    return null;
+  }
 }
 
 function validatePDFAnalysisResponse(parsed) {
@@ -218,6 +259,7 @@ export default async function handler(req, res) {
 
   const {
     pdfUrl,
+    arxivId,
     scoringCriteria,
     originalScore,
     password,
@@ -277,6 +319,8 @@ export default async function handler(req, res) {
   try {
     let responseText;
     let parsed;
+    // The PDF's bytes, kept for the key-figure crop after the model answers.
+    let pdfBytes = null;
 
     // Token usage summed across every provider call this request makes
     // (initial + backend auto-correction), returned on the 200 body so the
@@ -444,6 +488,8 @@ export default async function handler(req, res) {
         );
       }
 
+      pdfBytes = Buffer.from(base64Data, 'base64');
+
       const { cachePrefix, variableTail } = await loadRubricPrompt(
         'rubric-pdf.md',
         { profile: scoringCriteria ?? '' },
@@ -532,8 +578,11 @@ export default async function handler(req, res) {
       });
     }
 
+    const analysis = normalizeKeyFigure(parsed);
+    analysis.figure = await extractKeyFigure(pdfBytes, arxivId, analysis.keyFigure);
+
     res.status(200).json({
-      analysis: parsed,
+      analysis,
       rawResponse: responseText,
       tokensIn: usage.tokensIn,
       tokensOut: usage.tokensOut,

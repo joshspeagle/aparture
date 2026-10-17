@@ -14,40 +14,35 @@ const briefing = {
 };
 
 describe('buildFocusPrompt', () => {
-  it('interpolates the duration and describes the commute/paper-flagging framing', () => {
-    const prompt = buildFocusPrompt(briefing, 20);
-    expect(prompt).toContain('Target length: 20 minutes');
+  it('states the preset and its range and describes the commute/paper-flagging framing', () => {
+    const prompt = buildFocusPrompt(briefing, 'default');
+    expect(prompt).toContain('Target length: Default, about 10–15 minutes');
+    expect(prompt).toContain('1,500–2,250 words');
     expect(prompt.toLowerCase()).toMatch(/commute|flag|audio substitute/);
     expect(prompt).toContain('arXiv ID');
   });
 
-  it('points NotebookLM at the uploaded sources rather than re-enumerating them', () => {
-    const prompt = buildFocusPrompt(briefing, 20);
-    // Should reference the sources by name
+  it('points the notebook at the uploaded sources rather than re-enumerating them', () => {
+    const prompt = buildFocusPrompt(briefing, 'default');
     expect(prompt).toContain('discussion-guide.md');
     expect(prompt).toContain('briefing.md');
-    // Should NOT re-enumerate theme arguments or per-paper entries
     expect(prompt).not.toContain('Heads are converging');
     expect(prompt).not.toContain('Circuit-level analysis');
     expect(prompt).not.toContain('2504.01234');
   });
 
-  it('includes an explicit depth strategy scaled to the duration', () => {
-    const shortPrompt = buildFocusPrompt(briefing, 5);
-    const longPrompt = buildFocusPrompt(briefing, 30);
-    // Both should mention a depth/pruning strategy
-    expect(shortPrompt.toLowerCase()).toMatch(/deep-dive|deep dive|prune|drop/);
-    expect(longPrompt.toLowerCase()).toMatch(/deep-dive|deep dive|prune|drop/);
-    // 5-min cap should prune more aggressively than 30-min
-    expect(shortPrompt).toContain('1 theme');
-    expect(longPrompt).toMatch(/3-4 themes|3\s*-\s*4\s*themes/);
+  it('scales the depth strategy to the preset', () => {
+    const shortPrompt = buildFocusPrompt(briefing, 'short');
+    const longPrompt = buildFocusPrompt(briefing, 'long');
+    expect(shortPrompt).toContain('1-2 themes');
+    expect(shortPrompt).toContain('below 8/10');
+    expect(longPrompt).toContain('3-4 themes');
+    expect(longPrompt).toContain('Target length: Long, about 20–30 minutes');
   });
 
-  it('is non-empty even when themes/papers are absent (briefing arg is unused anyway)', () => {
-    const minimal = { executiveSummary: 'x', themes: [], papers: [] };
-    const prompt = buildFocusPrompt(minimal, 10);
-    expect(typeof prompt).toBe('string');
-    expect(prompt.length).toBeGreaterThan(100);
-    expect(prompt).toContain('Target length: 10 minutes');
+  it('maps a minute count from an older session onto a preset', () => {
+    expect(buildFocusPrompt(briefing, 5)).toBe(buildFocusPrompt(briefing, 'short'));
+    expect(buildFocusPrompt(briefing, 20)).toBe(buildFocusPrompt(briefing, 'default'));
+    expect(buildFocusPrompt(briefing, 30)).toBe(buildFocusPrompt(briefing, 'long'));
   });
 });

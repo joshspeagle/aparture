@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { DEFAULT_MODEL_ID } from '../utils/models.js';
+import { DEFAULT_PODCAST_LENGTH } from '../lib/notebooklm/podcastLength.js';
 
 // Initial state factory — called from tests to reset between cases,
 // and used once at store creation. Separated so the test harness can
@@ -56,7 +57,7 @@ export function initialState() {
     },
     // --- notebookLM slice ---
     notebookLM: {
-      podcastDuration: 20,
+      podcastDuration: DEFAULT_PODCAST_LENGTH,
       notebookLMModel: DEFAULT_MODEL_ID,
       notebookLMStatus: '',
       notebookLMContent: null,

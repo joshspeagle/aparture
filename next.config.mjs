@@ -20,6 +20,11 @@ const nextConfig = {
   // historically a frequent source of Next.js security advisories, exposed.
   images: { unoptimized: true },
 
+  // The key-figure crop (lib/figures/cropFigure.js) renders with pdf.js
+  // through a native canvas binding; load both from node_modules at run
+  // time instead of bundling them.
+  serverExternalPackages: ['pdfjs-dist', '@napi-rs/canvas'],
+
   // Next 16.3+ appends a managed "agent rules" block to CLAUDE.md whenever
   // `next dev` runs under an AI coding agent. CLAUDE.md here is curated by
   // hand, so keep the dev server from editing it.

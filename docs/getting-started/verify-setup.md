@@ -17,7 +17,7 @@ _The System Tests section expanded. The Minimal API Test stays locked until a Dr
 
 ## Step 0: API Setup Check (free)
 
-The **Check API Setup** button probes each provider you've configured, without sampling a single token. It reads every configured model slot (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, NotebookLM), dedupes slots that share a model, and runs one free probe per unique provider/model pair.
+The **Check API Setup** button probes each provider you've configured, without sampling a single token. It reads every configured model slot (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, podcast), dedupes slots that share a model, and runs one free probe per unique provider/model pair.
 
 ### What it validates
 

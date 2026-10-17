@@ -32,6 +32,14 @@ When you click <span class="ui-action">Generate suggestion</span>, the model rec
 
 The model's job is to read these signals and propose surgical edits that align your profile with what the feedback suggests you actually want.
 
+## Automatic proposals
+
+You don't have to remember to click <span class="ui-action">Suggest improvements</span>. After a real briefing (not a Dry Run or Minimal Test), Aparture checks whether your pending feedback adds up to something worth a look, and if it does, asks the briefing model for proposals in the background. When it finds any, a card under the briefing says how many; <span class="ui-action">Review proposals</span> opens the same review dialog, with nothing changed until you accept.
+
+What adds up: a star, dismissal, or filter override counts 1 point, a comment 2, and an answer to one of the editor's questions 4. A round runs when feedback no earlier round has weighed reaches 4 points across at least two briefings, or includes an answer (the editor asked that question to settle something, so the answer can act on its own). The two-briefing rule keeps one unusual day from driving an edit. No new round starts while earlier proposals still wait for you, and a round that finds no pattern shows nothing and doesn't weigh the same feedback again.
+
+Each round is one call on the briefing model, about what a manual <span class="ui-action">Suggest improvements</span> costs. Turn it off under Settings → Review & confirmation ("Propose profile changes after a briefing…").
+
 ## Per-call guidance
 
 Above the <span class="ui-action">Generate suggestion</span> button sits a small text field labelled _"Guidance for this suggestion (optional)"_. It's the place to type a short, direct note about how you want the profile to change on this one call — examples that work:
@@ -66,6 +74,8 @@ When suggestions come back, the dialog swaps to a per-change review. Top to bott
 Each proposed change renders as a card with a checkbox (checked by default), a small label showing the edit type, a diff preview, and the model's rationale below.
 
 The diff preview uses the colour conventions used elsewhere in the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey _"after: …"_ context because the anchor itself isn't being touched — the new content is going in right after it.
+
+Proposed [editorial notes](/using/writing-a-profile#editorial-notes) appear as cards of their own: _Add a writing note_, _Revise a note_ (the old text struck through above the new), or _Retire a note_. They are ticked and applied the same way, and the cumulative preview shows only the profile text.
 
 Rationales tend to look like _"You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this adds MoE to your active topics and removes sparse attention."_ Read them. Uncheck anything whose reasoning you don't buy.
 

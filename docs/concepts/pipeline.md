@@ -148,7 +148,9 @@ Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Apa
 
 **Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.8-flash`), `pdfAnalysisConcurrency` (default 3).
 
-**Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
+**Key figure.** The deep read also names the one figure a reader should look at first, by its printed label ("Figure 3"). While the PDF is still in memory, the server finds that figure's caption in the PDF's text layer, renders the region above it, and saves the image and the caption to `reports/figures/<arxivId>.png` and `.json`. No second download, no model call. When the caption can't be found, the paper simply has no figure; the analysis is unaffected.
+
+**Output.** `finalRanking` — papers augmented with `deepAnalysis` (including `keyFigure` and, when the crop worked, `figure`), `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
 **Cost.** A few cents per paper. This stage dominates the bill. Anthropic prompt caching (automatic on Anthropic models) reduces repeat-prefix input tokens substantially, which cuts the effective per-paper input cost by a comparable margin once warmup is done.
 

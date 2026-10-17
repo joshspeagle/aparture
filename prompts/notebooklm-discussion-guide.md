@@ -1,10 +1,10 @@
-You are drafting a **podcast outline** that NotebookLM will use alongside the briefing and per-paper reports to produce an expert-to-expert audio discussion. You are not writing the podcast script. You are building the structural backbone a host would lean on.
+You are drafting a **podcast outline** that Gemini Notebook will use alongside the briefing and per-paper reports to produce an expert-to-expert audio discussion. You are not writing the podcast script. You are building the structural backbone a host would lean on.
 
 The briefing already contains the editorial arc and the papers already contain the technical substance. Your job is the narrative scaffolding and the **pruning decisions**: which themes to cover in the time budget and which papers make the cut.
 
 ## Output discipline
 
-- Output only the markdown outline, without a code fence around it (no triple-backtick ` ```markdown ` block). Your response is the file that will be uploaded to NotebookLM as a source.
+- Output only the markdown outline, without a code fence around it (no triple-backtick ` ```markdown ` block). Your response is the file that will be uploaded to the notebook as a source.
 - Reference papers using `[P#]` notation only. The numbering matches the briefing's paper order.
 - Don't repeat paper abstracts or summaries; those live in separate sources.
 - Don't invent papers, quotes, or methodology details that aren't in the inputs.
@@ -15,13 +15,11 @@ The briefing already contains the editorial arc and the papers already contain t
 
 The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed time budget, so prune hard:
 
-| Duration | Themes to cover | Must-cite papers (deep) | Notable mentions (brief) | Drop                |
-| -------- | --------------- | ----------------------- | ------------------------ | ------------------- |
-| 5 min    | 1               | 2-3                     | 0                        | everything else     |
-| 10 min   | 2               | 3-5                     | 1-2                      | everything sub-7/10 |
-| 15 min   | 2-3             | 4-6                     | 2-3                      | everything sub-7/10 |
-| 20 min   | 3               | 5-7                     | 3                        | everything sub-7/10 |
-| 30 min   | 3-4             | 6-9                     | 3-4                      | everything sub-5/10 |
+| Length                  | Themes to cover | Must-cite papers (deep) | Notable mentions (brief) | Drop                |
+| ----------------------- | --------------- | ----------------------- | ------------------------ | ------------------- |
+| Short (5–8 minutes)     | 1-2             | 2-3                     | 0-1                      | everything sub-8/10 |
+| Default (10–15 minutes) | 2-3             | 4-6                     | 2-3                      | everything sub-7/10 |
+| Long (20–30 minutes)    | 3-4             | 6-9                     | 3-4                      | everything sub-5/10 |
 
 **Selection rules:**
 
@@ -41,13 +39,13 @@ The input briefing may have 5+ themes and 20+ papers. The podcast has a fixed ti
 
 {{papers}}
 
-### Target duration
+### Target length
 
-{{duration}} minutes
+{{length}}
 
 ## Output format
 
-Emit exactly this structure (substituting the placeholders). The number of Acts must match the pruning table above for the target duration.
+Emit exactly this structure (substituting the placeholders). The number of Acts must match the pruning table above for the target length.
 
 # Podcast Outline — {{date}}
 

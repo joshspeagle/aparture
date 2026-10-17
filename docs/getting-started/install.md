@@ -112,6 +112,8 @@ npm install
 
 `npm install` pulls roughly 700 packages (~500 MB) and takes 1–3 minutes on a clean machine.
 
+Key figures on briefing cards are cropped from each paper's PDF with pdf.js and a prebuilt native canvas module (`@napi-rs/canvas`), which `npm install` fetches for macOS, Windows and Linux. If the module can't load on your machine, cards simply show no figure.
+
 ## 3. Set a local access password
 
 Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll remember:
@@ -147,7 +149,7 @@ Skipping this step is fine — Aparture will still work — but enabling it redu
 
 Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
 
-Without Playwright, affected papers get a notice in the run log and skip the deep-analysis stage. They stay in the ranking on their abstract score and still reach the briefing, without a full report, and an end-of-run card lists them. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, NotebookLM generation) works regardless.
+Without Playwright, affected papers get a notice in the run log and skip the deep-analysis stage. They stay in the ranking on their abstract score and still reach the briefing, without a full report, and an end-of-run card lists them. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, podcast bundle) works regardless.
 
 Install it if you'd like the fallback available:
 

@@ -21,6 +21,7 @@ import { encodePasswordHeader } from '../lib/auth/passwordHeader.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
 import { BLANK_PROFILE_TEMPLATE } from '../lib/profile/starterTemplates.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
+import { resolvePodcastLength } from '../lib/notebooklm/podcastLength.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
@@ -80,7 +81,7 @@ function remapRetiredModels(config) {
 }
 
 export const DEFAULT_CONFIG = {
-  version: 10,
+  version: 11,
   // Neutral first-run defaults (2026-07): fresh installs get a small starter
   // category set and the bracketed fill-in profile template instead of a
   // personal research profile. The old shipped profile lives on as the
@@ -154,6 +155,10 @@ export const DEFAULT_CONFIG = {
   // tap-to-answer questions when the day's papers expose a gap in the
   // profile (pages/api/editor-questions.js). Answers feed suggest-profile.
   editorQuestions: true,
+  // After a briefing, ask the briefing model for profile proposals when the
+  // pending feedback adds up (lib/profile/autoProposals.js). One call per
+  // round; the reader reviews the proposals before anything changes.
+  autoProposals: true,
   maxAbstractDisplay: 500,
   arxivIngestion: 'auto',
   minPapersPerSubcategory: 5,
@@ -290,6 +295,13 @@ export function migrateLegacyConfig(config) {
   if (config.version === 9) {
     remapRetiredModels(config);
     config.version = 10;
+  }
+
+  // v10 → v11: introduces autoProposals. Default `true` matches new installs;
+  // ?? keeps an explicit `false`.
+  if (config.version === 10) {
+    config.autoProposals = config.autoProposals ?? true;
+    config.version = 11;
   }
 
   // Two-model → three-model setup
@@ -557,7 +569,10 @@ export function useAnalyzerPersistence({
       setTestState(revivedTestState);
     }
     if (parsed.notebookLM) {
-      if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
+      if (parsed.notebookLM.duration) {
+        // Older sessions saved a minute count; map it onto a length preset.
+        setPodcastDuration(resolvePodcastLength(parsed.notebookLM.duration));
+      }
       if (parsed.notebookLM.model) {
         // The notebookLM model persists OUTSIDE config (hotEntry.notebookLM),
         // so the v8→v9 config migration never sees it. Remap retired IDs here

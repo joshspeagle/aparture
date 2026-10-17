@@ -31,4 +31,4 @@ Map their topics to arXiv categories (the full list is in `utils/arxivCategories
 
 `readCount` is how many papers get a full deep read: 8–12 suits most readers; more makes the briefing longer, not better. `watchlist` entries match author names and title/abstract text, and promote matches into the reading set.
 
-Create empty `learned.md`, `feedback.jsonl`, and `seen.json` (`{}`). If the reader wants history and backup, make the state directory a git repository (private) so every profile change is a commit.
+Create `learned.md` with `node bin/aparture.mjs notes --state <state> --init` (empty Selection, Writing and Podcast sections), an empty `feedback.jsonl`, and `seen.json` (`{}`). If the reader wants history and backup, make the state directory a git repository (private) so every profile change is a commit.

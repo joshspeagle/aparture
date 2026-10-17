@@ -127,7 +127,7 @@ Each click replaces your earlier override for that paper, and moving a paper bac
 
 ### The Feedback panel carries the general-comment input
 
-Every briefing view has a section labelled **Feedback** below the briefing and its Generation details panel. On the current briefing, the NotebookLM card sits below it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — _"General comment on this week's briefing or your research interests…"_ — for notes that aren't tied to any one paper.
+Every briefing view has a section labelled **Feedback** below the briefing and its Generation details panel. On the current briefing, the Podcast card sits below it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — _"General comment on this week's briefing or your research interests…"_ — for notes that aren't tied to any one paper.
 
 General comments are distinctive: they go to the refinement flow as profile-level guidance rather than paper-level signal. The flow sees the comment text alongside the briefing it was written against, so a comment like _"this week leaned too heavily on interpretability"_ has context to be interpreted correctly.
 

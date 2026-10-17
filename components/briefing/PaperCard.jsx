@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import DuplicateBadge from '../ui/DuplicateBadge.jsx';
+import KeyFigure from './KeyFigure.jsx';
 
 // Stable empty fallback so the Zustand selector returns the same reference
 // when reactContext.seenPapersIndex is undefined (pre-migration). Otherwise
@@ -67,6 +68,8 @@ export default function PaperCard({
   // are then tagged as test feedback and kept out of suggestions. Forwarded
   // from BriefingView's own testMode prop.
   testMode = false,
+  // { label, caption, page } when the full read's key figure was cropped.
+  figure = null,
 }) {
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -144,6 +147,7 @@ export default function PaperCard({
       <hr className="hairline" />
       <p className="italic-pitch">{paper.onelinePitch}</p>
       <p>{paper.whyMatters}</p>
+      <KeyFigure arxivId={paper.arxivId} figure={figure} />
       <div className="action-row">
         <button type="button" onClick={() => onOpenQuickSummary?.(paper.arxivId)}>
           → quick summary

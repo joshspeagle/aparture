@@ -70,6 +70,7 @@ export default function BriefingView({
   onAnswer,
   quickSummariesById = {},
   fullReportsById = {},
+  figuresById = {},
   feedbackEvents,
   onStar,
   onDismiss,
@@ -97,6 +98,7 @@ export default function BriefingView({
           briefingDate={briefingDate}
           feedbackEvents={feedbackEvents}
           testMode={testMode}
+          figure={figuresById[paper.arxivId] ?? null}
           onStar={onStar}
           onDismiss={onDismiss}
           onAddComment={onAddComment}

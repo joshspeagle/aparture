@@ -4,14 +4,14 @@ Triage decides which of the day's papers deserve a full read. It runs as paralle
 
 ## Instructions for a triage worker
 
-You will receive the reader's profile, `learned.md`, a few recent feedback highlights, and one chunk file of papers (`## <arxivId>`, title, categories and authors, abstract).
+You will receive the reader's profile, the selection notes from `learned.md`, a few recent feedback highlights, and one chunk file of papers (`## <arxivId>`, title, categories and authors, abstract).
 
 The rubric is shared with the Aparture web app so the two stay consistent. Read these two files from the repository and apply their guidance, ignoring their `{{...}}` placeholders and their closing "Return one entry per paper…" line, which describes the web app's schema (the output format below replaces it):
 
 - `prompts/rubric-filter.md` — the YES / MAYBE / NO verdict rules. Prefer MAYBE over NO when the abstract is ambiguous.
 - `prompts/rubric-scoring.md` — the 0–10 score: Research Alignment × 0.5 + Paper Quality × 0.5, with its profile-aware quality calibration. Apply it to YES and MAYBE papers only.
 
-Treat `learned.md` as part of the profile. Treat feedback highlights as evidence of taste: a paper resembling recent stars leans up, one resembling recent dismissals leans down, but neither overrides what the profile says.
+Treat the selection notes as part of the profile; where they conflict with it, the profile wins. Treat feedback highlights as evidence of taste: a paper resembling recent stars leans up, one resembling recent dismissals leans down, but neither overrides what the profile says.
 
 Ground every judgment in the abstract. Titles oversell; if the abstract doesn't support the title's claim, score the abstract.
 

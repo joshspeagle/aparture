@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { migrateFromPhase1 } from '../lib/profile/migrations.js';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
 import { localDateStr } from '../lib/dates.js';
+import { normalizeNotes } from '../lib/profile/editorialNotes.js';
 
 const PROFILE_KEY = 'aparture-profile';
 const MIGRATION_DISMISSED_KEY = 'aparture-migration-notice-dismissed';
@@ -27,12 +28,34 @@ const ACTIVE_PROFILE_KEY = 'aparture-active-profile';
 const MAX_REJECTED_SUGGESTIONS = 20;
 const MAX_REJECTED_TEXT = 500;
 
+// A named-profile snapshot: the research profile and its editorial notes.
+function snapshotOf(profile, updatedAt) {
+  return { content: profile.content, notes: profile.notes ?? [], updatedAt };
+}
+
+function sameNotes(a, b) {
+  return JSON.stringify(a ?? []) === JSON.stringify(b ?? []);
+}
+
 function clip(text) {
   const s = typeof text === 'string' ? text : '';
   return s.length > MAX_REJECTED_TEXT ? `${s.slice(0, MAX_REJECTED_TEXT)}…` : s;
 }
 
 function toRejectedSuggestion(change, rejectedAt) {
+  // A rejected editorial-note change (see SuggestDialog): remembered by what
+  // it would have done, so the next suggestion doesn't propose it again.
+  if (change?.note?.action) {
+    return {
+      rationale: clip(change.rationale),
+      note: {
+        action: change.note.action,
+        scope: change.note.scope ?? null,
+        text: clip(change.note.text),
+      },
+      rejectedAt,
+    };
+  }
   if (!change?.edit?.type) return null;
   return {
     rationale: clip(change.rationale),
@@ -64,7 +87,11 @@ function readInitialProfiles(storage, profile) {
   }
   if (!profiles || typeof profiles !== 'object' || Object.keys(profiles).length === 0) {
     const seeded = {
-      Default: { content: profile.content, updatedAt: profile.updatedAt || Date.now() },
+      Default: {
+        content: profile.content,
+        notes: profile.notes ?? [],
+        updatedAt: profile.updatedAt || Date.now(),
+      },
     };
     // profilesNeedRepair: a stored-but-unusable map (corrupt JSON, non-object,
     // empty) must be OVERWRITTEN by the mount effect — its "persist only when
@@ -82,7 +109,7 @@ function readInitialProfiles(storage, profile) {
 function readInitialState(config) {
   if (typeof window === 'undefined') {
     return {
-      profile: { content: '', updatedAt: 0, lastFeedbackCutoff: 0, revisions: [] },
+      profile: { content: '', notes: [], updatedAt: 0, lastFeedbackCutoff: 0, revisions: [] },
       notice: null,
       needsRepair: false,
       corruptRaw: null,
@@ -113,6 +140,8 @@ function readInitialState(config) {
       // otherwise crash the initializer at profile.content with no repair
       // path — JSON validity alone isn't enough.
       if (profile && typeof profile === 'object' && typeof profile.content === 'string') {
+        // Editorial notes ride on the working slot; older blobs have none.
+        profile.notes = normalizeNotes(profile.notes);
         return {
           profile,
           notice: null,
@@ -135,7 +164,9 @@ function readInitialState(config) {
   // if present, otherwise seed from config.scoringCriteria. The migrated
   // profile is PERSISTED by the mount effect in useProfile, not here — the
   // initializer must stay side-effect free.
-  const { profile, notice } = migrateFromPhase1(window.localStorage, config);
+  const migrated = migrateFromPhase1(window.localStorage, config);
+  const profile = { ...migrated.profile, notes: normalizeNotes(migrated.profile.notes) };
+  const notice = migrated.notice;
 
   const dismissed = window.localStorage.getItem(MIGRATION_DISMISSED_KEY) === 'true';
   return {
@@ -235,10 +266,11 @@ export function useProfile(config = {}) {
       const name = prev.activeProfileName;
       const current = prev.profiles?.[name];
       const profiles =
-        current && current.content !== nextProfile.content
+        current &&
+        (current.content !== nextProfile.content || !sameNotes(current.notes, nextProfile.notes))
           ? {
               ...prev.profiles,
-              [name]: { content: nextProfile.content, updatedAt: nextProfile.updatedAt },
+              [name]: snapshotOf(nextProfile, nextProfile.updatedAt),
             }
           : prev.profiles;
       if (persist(nextProfile) && profiles !== prev.profiles) {
@@ -262,6 +294,7 @@ export function useProfile(config = {}) {
         const now = Date.now();
         const revision = {
           content: prev.profile.content,
+          notes: prev.profile.notes ?? [],
           createdAt: now,
           source,
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
@@ -273,6 +306,34 @@ export function useProfile(config = {}) {
           content: newContent,
           updatedAt: now,
           revisions,
+        };
+        return commitProfile(prev, nextProfile);
+      });
+    },
+    [commitProfile]
+  );
+
+  // Edit the editorial notes directly (the Notes tab: add, edit, remove).
+  // A revision archives the profile and notes from before, like any change.
+  const updateNotes = useCallback(
+    (nextNotes, { source = 'manual', rationale } = {}) => {
+      setState((prev) => {
+        const notes = normalizeNotes(nextNotes);
+        if (sameNotes(notes, prev.profile.notes)) return prev;
+        const now = Date.now();
+        const revision = {
+          content: prev.profile.content,
+          notes: prev.profile.notes ?? [],
+          createdAt: now,
+          source,
+          lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
+          ...(rationale ? { rationale } : {}),
+        };
+        const nextProfile = {
+          ...prev.profile,
+          notes,
+          updatedAt: now,
+          revisions: [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS),
         };
         return commitProfile(prev, nextProfile);
       });
@@ -294,6 +355,7 @@ export function useProfile(config = {}) {
         const now = Date.now();
         const revision = {
           content: prev.profile.content,
+          notes: prev.profile.notes ?? [],
           createdAt: now,
           source: 'suggested',
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
@@ -352,17 +414,24 @@ export function useProfile(config = {}) {
         ].slice(0, MAX_REJECTED_SUGGESTIONS);
         const withMemory = { ...prev.profile, suggestionStats, rejectedSuggestions };
 
-        const contentChanged =
+        // An applied outcome may change the profile text, the editorial
+        // notes, or both; either makes a revision.
+        const nextContent =
+          typeof outcome.content === 'string' ? outcome.content : prev.profile.content;
+        const nextNotes = Array.isArray(outcome.notes)
+          ? normalizeNotes(outcome.notes)
+          : (prev.profile.notes ?? []);
+        const changed =
           outcome.kind === 'applied' &&
-          typeof outcome.content === 'string' &&
-          outcome.content !== prev.profile.content;
-        if (!contentChanged) {
+          (nextContent !== prev.profile.content || !sameNotes(nextNotes, prev.profile.notes));
+        if (!changed) {
           // Memory only: the working text (and so every snapshot) is unchanged.
           persist(withMemory);
           return { ...prev, profile: withMemory };
         }
         const revision = {
           content: prev.profile.content,
+          notes: prev.profile.notes ?? [],
           createdAt: now,
           source: 'suggested',
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
@@ -372,7 +441,8 @@ export function useProfile(config = {}) {
         };
         const nextProfile = {
           ...withMemory,
-          content: outcome.content,
+          content: nextContent,
+          notes: nextNotes,
           updatedAt: now,
           revisions: [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS),
         };
@@ -390,6 +460,7 @@ export function useProfile(config = {}) {
         const now = Date.now();
         const revertRevision = {
           content: prev.profile.content,
+          notes: prev.profile.notes ?? [],
           createdAt: now,
           source: 'revert',
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
@@ -399,6 +470,8 @@ export function useProfile(config = {}) {
         const nextProfile = {
           ...prev.profile,
           content: target.content,
+          // Revisions from before notes existed carry none; keep today's.
+          notes: target.notes ?? prev.profile.notes ?? [],
           updatedAt: now,
           lastFeedbackCutoff: target.lastFeedbackCutoff,
           revisions,
@@ -428,11 +501,12 @@ export function useProfile(config = {}) {
 
   // Build the next working profile with `content` loaded and the outgoing
   // content archived as a 'switch' revision. No-op shape when content is equal.
-  const loadContentIntoProfile = useCallback((profile, content, rationale) => {
-    if (profile.content === content) return profile;
+  const loadContentIntoProfile = useCallback((profile, content, rationale, notes = []) => {
+    if (profile.content === content && sameNotes(profile.notes, notes)) return profile;
     const now = Date.now();
     const revision = {
       content: profile.content,
+      notes: profile.notes ?? [],
       createdAt: now,
       source: 'switch',
       lastFeedbackCutoff: profile.lastFeedbackCutoff,
@@ -441,6 +515,7 @@ export function useProfile(config = {}) {
     return {
       ...profile,
       content,
+      notes: normalizeNotes(notes),
       updatedAt: now,
       revisions: [revision, ...profile.revisions].slice(0, MAX_REVISIONS),
     };
@@ -466,9 +541,9 @@ export function useProfile(config = {}) {
         // profile. commitProfile normally keeps this in sync already; this
         // also repairs maps persisted before write-through existed.
         if (profiles[prev.activeProfileName]) {
-          profiles[prev.activeProfileName] = { content: prev.profile.content, updatedAt: now };
+          profiles[prev.activeProfileName] = snapshotOf(prev.profile, now);
         }
-        profiles[trimmed] = { content: prev.profile.content, updatedAt: now };
+        profiles[trimmed] = snapshotOf(prev.profile, now);
         persistProfiles(profiles, trimmed);
         return { ...prev, profiles, activeProfileName: trimmed };
       });
@@ -485,15 +560,13 @@ export function useProfile(config = {}) {
         // away never discards saved-slot edits.
         const profiles = { ...prev.profiles };
         if (profiles[prev.activeProfileName]) {
-          profiles[prev.activeProfileName] = {
-            content: prev.profile.content,
-            updatedAt: Date.now(),
-          };
+          profiles[prev.activeProfileName] = snapshotOf(prev.profile, Date.now());
         }
         const nextProfile = loadContentIntoProfile(
           prev.profile,
           target.content,
-          `Switched to profile "${name}"`
+          `Switched to profile "${name}"`,
+          target.notes
         );
         // Working slot first; advance the stored map + pointer only if it
         // landed. A half-written switch (pointer on the new name, working
@@ -531,7 +604,7 @@ export function useProfile(config = {}) {
         // via revision history.
         const remaining = Object.keys(profiles);
         if (remaining.length === 0) {
-          const seeded = { Default: { content: prev.profile.content, updatedAt: Date.now() } };
+          const seeded = { Default: snapshotOf(prev.profile, Date.now()) };
           persistProfiles(seeded, 'Default');
           return { ...prev, profiles: seeded, activeProfileName: 'Default' };
         }
@@ -539,7 +612,8 @@ export function useProfile(config = {}) {
         const nextProfile = loadContentIntoProfile(
           prev.profile,
           profiles[nextActive].content,
-          `Deleted profile "${name}"; switched to "${nextActive}"`
+          `Deleted profile "${name}"; switched to "${nextActive}"`,
+          profiles[nextActive].notes
         );
         // Same ordering rule as switchTo: don't delete the entry from disk
         // unless the working slot's write landed, or a reload would show the
@@ -578,6 +652,7 @@ export function useProfile(config = {}) {
   return {
     profile: state.profile,
     updateProfile,
+    updateNotes,
     saveSuggested,
     recordSuggestionOutcome,
     revertToRevision,

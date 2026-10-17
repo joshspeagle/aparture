@@ -71,7 +71,7 @@ From `prompts/synthesis.md`:
 
 The model copies `title` and `score` only because the schema asks for them; before display, Aparture overwrites both with the input paper's values.
 
-Each card renders inside its parent theme with a colour-coded score badge (brightened at 9+), the title as a link to the arXiv page, a row of links (abstract, PDF, arXiv's HTML rendering, alphaXiv), the italicised one-line pitch, the "why it matters" paragraph, and action buttons for quick summary, full report, star, dismiss, and comment.
+Each card renders inside its parent theme with a colour-coded score badge (brightened at 9+), the title as a link to the arXiv page, a row of links (abstract, PDF, arXiv's HTML rendering, alphaXiv), the italicised one-line pitch, the "why it matters" paragraph, the paper's key figure when the full read picked one, and action buttons for quick summary, full report, star, dismiss, and comment.
 
 ## Everything else on the page
 
@@ -80,6 +80,10 @@ Three features look like they're part of the briefing but come from elsewhere in
 ### Quick summaries
 
 ~300-word per-paper summaries, generated in parallel during Stage 5 of the pipeline. Render as an inline bordered block directly below each paper card when the user clicks the quick-summary button. They are for the reader only: the synthesis prompt doesn't receive them, and the audit doesn't check against them. Nothing audits a quick summary, so treat it as a reading aid.
+
+### Key figures
+
+The image is cropped from the paper's own PDF, and the caption under it is the paper's text, read from the PDF, not written by a model. Only the choice of figure is the model's. The images live in `reports/figures/`, keyed by arXiv ID, and are served by `/api/figures/<arxivId>` behind the access password. Briefings record which figure goes with which card (`figuresById`), so archived briefings keep theirs.
 
 ### Full reports
 

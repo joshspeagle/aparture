@@ -22,20 +22,20 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 
 ## Quick reference
 
-| Variable                                | Required                  | Read by                                                                     | Default                               |
-| --------------------------------------- | ------------------------- | --------------------------------------------------------------------------- | ------------------------------------- |
-| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                                                 | None — unset means every request 401s |
-| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | Anthropic models unavailable if unset |
-| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | OpenAI models unavailable if unset    |
-| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | Google models unavailable if unset    |
-| `PORT`                                  | No                        | Next.js CLI (not read from source)                                          | `3000`                                |
-| `NODE_ENV`                              | No                        | `lib/llm/resolveCallModelMode.js` · `pages/api/analyze-pdf.js` (test gates) | `development` (set by Next)           |
-| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/harvest-arxiv.js` · `fetch-arxiv.js` · `bin/aparture.mjs`        | Unset — no `From` header sent         |
-| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js`                      | `<cwd>/reports`                       |
-| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/loadRubricPrompt.js`                     | Unset                                 |
-| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                      | Unset                                 |
-| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                              | Unset                                 |
-| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                               | Unset                                 |
+| Variable                                | Required                  | Read by                                                                         | Default                               |
+| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------- | ------------------------------------- |
+| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                                                     | None — unset means every request 401s |
+| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | Anthropic models unavailable if unset |
+| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | OpenAI models unavailable if unset    |
+| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | Google models unavailable if unset    |
+| `PORT`                                  | No                        | Next.js CLI (not read from source)                                              | `3000`                                |
+| `NODE_ENV`                              | No                        | `lib/llm/resolveCallModelMode.js` · `pages/api/analyze-pdf.js` (test gates)     | `development` (set by Next)           |
+| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/harvest-arxiv.js` · `fetch-arxiv.js` · `bin/aparture.mjs`            | Unset — no `From` header sent         |
+| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js` · `lib/figures/store.js` | `<cwd>/reports`                       |
+| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/loadRubricPrompt.js`                         | Unset                                 |
+| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                          | Unset                                 |
+| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                                  | Unset                                 |
+| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                                   | Unset                                 |
 
 ## Required
 
@@ -109,9 +109,10 @@ Institutional addresses (`.edu`, `.ac.*`) tend to carry more weight than generic
 
 ### `APARTURE_REPORTS_DIR`
 
-Base directory for runtime-state files. Today two persistence layers write here:
+Base directory for runtime-state files. Today three persistence layers write here:
 
 - briefing tier writes to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`,
+- key figures go to `<APARTURE_REPORTS_DIR>/figures/<arxivId>.png`, with the label and caption beside it in `.json`,
 - analyzer session tier writes to `<APARTURE_REPORTS_DIR>/sessions/<sessionId>.json` (full `allPapers` + `scoredPapers` + filter verdicts; the localStorage hot blob keeps only a summary so quota is never the limit).
 
 Defaults to `<cwd>/reports`, matching the existing `reports/` convention.

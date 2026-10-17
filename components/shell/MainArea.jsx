@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
+import ProposalsCard from '../profile/ProposalsCard.jsx';
 import { summarizeAudit } from '../briefing/BriefingHeader.jsx';
 import GenerationDetails from '../briefing/GenerationDetails.jsx';
 import PipelineArchiveView from '../briefing/PipelineArchiveView.jsx';
@@ -46,9 +47,13 @@ function MainArea({
   onDismiss,
   onAddComment,
   onAnswer,
+  // Profile proposals prepared after a briefing, and how to open them.
+  pendingProposals = null,
+  onReviewProposals,
   // For profile view
   profile,
   updateProfile,
+  updateNotes,
   revertToRevision,
   clearHistory,
   migrationNotice,
@@ -147,6 +152,7 @@ function MainArea({
         <YourProfile
           profile={profile}
           updateProfile={updateProfile}
+          updateNotes={updateNotes}
           migrationNotice={migrationNotice}
           dismissMigrationNotice={dismissMigrationNotice}
           revertToRevision={revertToRevision}
@@ -407,11 +413,17 @@ function MainArea({
           }
           quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
           fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
+          figuresById={entry.figuresById}
           feedbackEvents={feedbackEvents}
           onStar={onStar}
           onDismiss={onDismiss}
           onAddComment={onAddComment}
         />
+
+        {/* Proposals the editor prepared after the latest briefing. */}
+        {entry.id === currentBriefing?.id && (
+          <ProposalsCard pending={pendingProposals} onReview={onReviewProposals} />
+        )}
 
         <GenerationDetails generationMetadata={entry.generationMetadata} />
 

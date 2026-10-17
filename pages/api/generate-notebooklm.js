@@ -18,19 +18,21 @@ import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
 import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
+import { DEFAULT_PODCAST_LENGTH, podcastLengthInfo } from '../../lib/notebooklm/podcastLength.js';
 import { renderBriefingMarkdown } from '../../lib/notebooklm/renderBriefingMarkdown.js';
 import { renderPaperReport } from '../../lib/notebooklm/renderPaperReport.js';
 import { buildFocusPrompt } from '../../lib/notebooklm/buildFocusPrompt.js';
 import { bundleZip } from '../../lib/notebooklm/bundleZip.js';
-import { INSTRUCTIONS_MD } from '../../lib/notebooklm/instructions.js';
+import { instructionsMd } from '../../lib/notebooklm/instructions.js';
+import { MAX_NOTE_CHARS, MAX_NOTES_PER_SCOPE } from '../../lib/profile/editorialNotes.js';
 
 const GUIDE_PROMPT_PATH = path.join(process.cwd(), 'prompts/notebooklm-discussion-guide.md');
 
-function renderGuidePrompt(template, { themes, papers, duration, date }) {
+function renderGuidePrompt(template, { themes, papers, length, date }) {
   return template
     .replaceAll('{{themes}}', () => JSON.stringify(themes, null, 2))
     .replaceAll('{{papers}}', () => JSON.stringify(papers, null, 2))
-    .replaceAll('{{duration}}', () => String(duration))
+    .replaceAll('{{length}}', () => `${length.label} (about ${length.range})`)
     .replaceAll('{{date}}', () => date);
 }
 
@@ -56,7 +58,9 @@ export default async function handler(req, res) {
   const {
     briefing,
     papers = [],
-    podcastDuration = 20,
+    // A length preset id; older clients sent a minute count.
+    podcastDuration = DEFAULT_PODCAST_LENGTH,
+    podcastNotes = [],
     notebookLMModel,
     provider,
     password,
@@ -110,6 +114,7 @@ export default async function handler(req, res) {
     // synthesize.js — callModel sends the apiId to the provider.
     const modelApiId = modelCfg.apiId ?? notebookLMModel;
 
+    const length = podcastLengthInfo(podcastDuration);
     const template = fs.readFileSync(GUIDE_PROMPT_PATH, 'utf8');
     const guidePrompt = renderGuidePrompt(template, {
       themes: briefing.themes ?? [],
@@ -119,7 +124,7 @@ export default async function handler(req, res) {
         title: p.title,
         score: p.score,
       })),
-      duration: podcastDuration,
+      length,
       date: runDate,
     });
 
@@ -150,7 +155,15 @@ export default async function handler(req, res) {
     const discussionGuide = stripCodeFence(rawGuide);
 
     const briefingMd = renderBriefingMarkdown(briefing, { date: runDate });
-    const focusPrompt = buildFocusPrompt(briefing, podcastDuration);
+    // Client-supplied text, pasted by the user into Gemini Notebook: keep it
+    // to the notes' own bounds.
+    const notes = Array.isArray(podcastNotes)
+      ? podcastNotes
+          .filter((n) => typeof n === 'string')
+          .slice(0, MAX_NOTES_PER_SCOPE)
+          .map((n) => n.slice(0, MAX_NOTE_CHARS))
+      : [];
+    const focusPrompt = buildFocusPrompt(briefing, length.id, { notes });
     const paperFiles = {};
     papers.forEach((p, i) => {
       const { filename, content } = renderPaperReport(p, i + 1);
@@ -158,7 +171,7 @@ export default async function handler(req, res) {
     });
 
     const files = {
-      'INSTRUCTIONS.md': INSTRUCTIONS_MD,
+      'INSTRUCTIONS.md': instructionsMd(length),
       'briefing.md': briefingMd,
       'discussion-guide.md': discussionGuide,
       'focus-prompt.txt': focusPrompt,

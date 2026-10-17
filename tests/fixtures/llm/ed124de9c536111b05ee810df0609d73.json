@@ -1,12 +1,12 @@
 {
-  "hash": "f4513aa1bab8eeed14fa54c0447bbbfb",
+  "hash": "ed124de9c536111b05ee810df0609d73",
   "input": {
     "apiKey": "test-key",
     "cacheable": false,
     "cachePrefix": "",
     "model": "claude-haiku-4-5",
     "pdfBase64": "ANALYZE_PDF_TEST_PDF_FIXTURE",
-    "prompt": "ANALYZE_PDF_TEST_FIXTURE",
+    "prompt": "ANALYZE_PDF_FIGURE_FIXTURE",
     "provider": "anthropic",
     "structuredOutput": {
       "name": "pdf_analysis",
@@ -19,7 +19,9 @@
           "methodology",
           "limitations",
           "relevanceAssessment",
-          "updatedScore"
+          "updatedScore",
+          "keyFigure",
+          "keyFigureReason"
         ],
         "additionalProperties": false,
         "properties": {
@@ -40,6 +42,12 @@
           },
           "updatedScore": {
             "type": "number"
+          },
+          "keyFigure": {
+            "type": ["string", "null"]
+          },
+          "keyFigureReason": {
+            "type": ["string", "null"]
           }
         }
       }
@@ -53,7 +61,9 @@
       "methodology": "The authors apply dictionary learning to intermediate layer activations, fitting a sparse overcomplete basis that minimizes reconstruction error with L1 regularization.",
       "limitations": "The method requires manual inspection to label discovered features, which does not scale well to very large models with millions of parameters.",
       "relevanceAssessment": "This work is highly relevant to mechanistic interpretability research and provides practical tools for understanding model internals, representing an improvement over the abstract-based score of 7.5/10.",
-      "updatedScore": 7.2
+      "updatedScore": 7.2,
+      "keyFigure": "Figure 1",
+      "keyFigureReason": "the recovered population tracks the injected one"
     },
     "tokensIn": 500,
     "tokensOut": 100
