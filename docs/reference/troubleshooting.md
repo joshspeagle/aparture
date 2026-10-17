@@ -50,26 +50,30 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 
 ## Master symptom table
 
-| Symptom                                                              | Likely cause                                                           | Jump to                                                                   |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install             | [npm install failures](#npm-install-failures)                             |
-| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or a corporate proxy                  | [Playwright install failures](#playwright-install-failures)               |
-| `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                               | [Port 3000 already in use](#port-3000-already-in-use)                     |
-| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access-password-mismatch)                     |
-| `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                        |
-| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                           |
-| `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                                 | [arXiv rate limits](#arxiv-rate-limits)                                   |
-| Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                            | [arXiv rate-limited](#arxiv-rate-limited)                                 |
-| `Failed to download PDF: HTTP 403` (or 404 / timeout)                | Genuine download failure — retried, then reported with the real status | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
-| `reCAPTCHA detected` / Playwright fallback firing                    | ArXiv served a reCAPTCHA interstitial instead of PDF bytes             | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
-| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                         | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
-| `google: rate limited (429) — retry in 23s` (any provider)           | Provider rate-limit                                                    | [Provider rate limits](#provider-rate-limits)                             |
-| `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window                   | [Context overflow](#context-overflow)                                     |
-| Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops            | [Cost spike mid-run](#cost-spike-mid-run)                                 |
-| Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab      | [Stuck stage](#stuck-stage)                                               |
-| `Briefing generation failed: synthesis failed`                       | Schema validation + repair both failed                                 | [Briefing schema-validation failure](#briefing-schema-validation-failure) |
-| Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged                   | [Hallucination-retry loop](#hallucination-retry-loop)                     |
-| Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                             | [Hallucination-retry loop](#hallucination-retry-loop)                     |
+| Symptom                                                              | Likely cause                                                           | Jump to                                                                         |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install             | [npm install failures](#npm-install-failures)                                   |
+| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or a corporate proxy                  | [Playwright install failures](#playwright-install-failures)                     |
+| `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                               | [Port 3000 already in use](#port-3000-already-in-use)                           |
+| The app loads on this machine but not from another device            | The server listens on 127.0.0.1 only                                   | [Reaching the app from another device](#reaching-the-app-from-another-device)   |
+| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access-password-mismatch)                           |
+| `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                              |
+| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                                 |
+| `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                                 | [arXiv rate limits](#arxiv-rate-limits)                                         |
+| Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                            | [arXiv rate-limited](#arxiv-rate-limited)                                       |
+| `Failed to download PDF: HTTP 403` (or 404 / timeout)                | Genuine download failure — retried, then reported with the real status | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                       |
+| `reCAPTCHA detected` / Playwright fallback firing                    | ArXiv served a reCAPTCHA interstitial instead of PDF bytes             | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                       |
+| End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                         | [reCAPTCHA without Playwright](#recaptcha-without-playwright)                   |
+| `google: rate limited (429) — retry in 23s` (any provider)           | Provider rate-limit                                                    | [Provider rate limits](#provider-rate-limits)                                   |
+| `anthropic: overloaded (529)`                                        | Anthropic is overloaded; handled like a rate limit                     | [Provider rate limits](#provider-rate-limits)                                   |
+| A stage fails on its first attempt with the provider's message       | A bad key, unknown model, or malformed or oversized request            | [Errors that fail on the first attempt](#errors-that-fail-on-the-first-attempt) |
+| `Run halted: … refusalPolicy is 'fail'`                              | A safety classifier declined a call, and the policy stops the run      | [Safety refusal](#a-provider-declined-the-content-safety-refusal)               |
+| `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window                   | [Context overflow](#context-overflow)                                           |
+| Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops            | [Cost spike mid-run](#cost-spike-mid-run)                                       |
+| Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab      | [Stuck stage](#stuck-stage)                                                     |
+| `Briefing generation failed: repair failed: …`                       | The briefing failed its checks, and repair and salvage failed too      | [Briefing schema-validation failure](#briefing-schema-validation-failure)       |
+| Briefing renders with a `YES` hallucination badge                    | Audit flagged claims; retry disabled or also flagged                   | [Hallucination-retry loop](#hallucination-retry-loop)                           |
+| Briefing retries repeatedly and still fails                          | By design — at most one retry per briefing                             | [Hallucination-retry loop](#hallucination-retry-loop)                           |
 
 ---
 
@@ -168,6 +172,16 @@ netstat -ano | findstr :3000
 ```
 
 Either kill that process or set `PORT=3001` in `.env.local` and restart `npm run dev`.
+
+### Reaching the app from another device
+
+`npm run dev` and `npm start` listen on 127.0.0.1, so only the machine running the server can open the app. To reach it from another device on your network, start the server on all interfaces:
+
+```bash
+npm run dev -- -H 0.0.0.0
+```
+
+Then open `http://<this-machine's-address>:3000` from the other device. Anyone who can reach that address gets the login screen, so set a long `ACCESS_PASSWORD` first. Don't expose the app to the public internet this way.
 
 ### `.env.local` not loading
 
@@ -282,7 +296,7 @@ Symptoms: `npm run dev` logs show `OAI 429` or `arXiv 429` repeatedly, run repor
 
 ### reCAPTCHA on PDF downloads
 
-ArXiv's PDF endpoint starts serving reCAPTCHA HTML after roughly 10–20 rapid downloads. Aparture detects this automatically — an HTTP-OK response whose body doesn't begin with `%PDF-` is treated as the interstitial — and falls back to Playwright, which reuses a persistent cookie jar at `temp/playwright-profile/` to clear the challenge.
+ArXiv's PDF endpoint can serve reCAPTCHA HTML instead of a PDF, typically after a burst of downloads. Aparture spaces PDF downloads 15 seconds apart, the crawl delay arXiv's robots.txt sets, which makes this less likely; a Playwright fallback uses two of those slots, one for the abstract page and one for the PDF. Aparture detects the interstitial automatically — an HTTP-OK response whose body doesn't begin with `%PDF-` is treated as the interstitial — and falls back to Playwright, which reuses a persistent cookie jar at `temp/playwright-profile/` to clear the challenge.
 
 Genuine network/HTTP failures (a 403, a 404, a timeout, an exhausted 429) are **not** treated as reCAPTCHA: they go through the normal retry ladder and are reported with their real HTTP status, so a `Failed to download PDF: HTTP 403` line means the download itself failed, not that a challenge fired.
 
@@ -330,8 +344,8 @@ See [Install → Playwright](/getting-started/install#_5-playwright-optional-fal
 ### Provider rate limits
 
 Aparture honors `Retry-After` from every provider and pauses ALL concurrent
-workers for the same provider when one batch trips a 429 (Gemini's RPM cap is
-project-scoped, so siblings are about to trip too). The retry ladder uses
+workers for the same provider when one batch trips a 429, a 503, or Anthropic's
+529 (Gemini's RPM cap is project-scoped, so siblings are about to trip too). The retry ladder uses
 exponential backoff with ±20 % jitter capped at 30 s, with up to
 `maxRetries` retries (default 4 → 5 attempts). On a 429 with `Retry-After`,
 the ladder honors that value first (capped at 60 s). End-of-stage activity-log
@@ -343,7 +357,7 @@ parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight
 warning before the stage starts. The run still proceeds and self-heals via the
 barrier, but expect more retries.
 
-Each provider has several flavours of 429, each with its own fix. The activity log shows a 429 as `<provider>: rate limited (429)`, followed by `— retry in Ns` when the provider sent a retry time; the terminal shows the provider's raw error body.
+Each provider has several flavours of 429, each with its own fix. The activity log shows a 429 as `<provider>: rate limited (429)` and Anthropic's 529 as `anthropic: overloaded (529)`, followed by `— retry in Ns` when the provider sent a retry time; the terminal shows the provider's raw error body. A 529 means Anthropic is short of capacity, not that you hit your limit, so it usually clears on its own.
 
 **Anthropic 429** (`anthropic: rate limited (429)`).
 
@@ -364,6 +378,17 @@ New OpenAI accounts start on the lowest usage tier, and its per-minute limits ar
 
 **429 during briefing prep (quick-summary fan-out).** The briefing stage fans out quick-summary calls with default concurrency 5 (`quickSummaryConcurrency`). If 429s land there, lower **Parallel Quick-Summary Calls** under Settings → Advanced Options → Briefing Options.
 
+### Errors that fail on the first attempt
+
+Some provider errors give the same answer however often the request is repeated, so Aparture doesn't retry them. The batch fails at once, and the activity log shows the provider's own message:
+
+- **401 or 403:** the key is missing, malformed, revoked, or lacks access. See [API key format issues](#api-key-format-issues).
+- **400 or 404:** the model ID is unknown to the provider, or the request is malformed. Check the slot in Settings, then run the [API Setup Check](/getting-started/verify-setup#step-0-api-setup-check-free).
+- **413:** the request is too large for the provider. Lower the stage's batch size, or pick a model with a larger context window.
+- **422** other than a safety refusal or the reCAPTCHA notice.
+
+The stage records the failed batch and carries on with the rest, as it does when the retry ladder runs out.
+
 ### A provider declined the content (safety refusal)
 
 ```
@@ -373,7 +398,7 @@ google blocked the prompt (SAFETY)
 
 A safety classifier refused the call. This is a content-policy decision by the provider — not a bug, not a malformed request, and not something a retry will fix (the same prompt to the same classifier gets the same answer, which is exactly why Aparture doesn't retry it).
 
-What happens next depends on **Settings → Query Options → On Safety Refusal** (`refusalPolicy`, default `skip`): the affected paper or batch is dropped, recorded, and the run continues. At the end of the run a summary card lists what was declined, at which stage, and under which category. See [Tuning the pipeline](/using/tuning-the-pipeline#when-a-provider-declines-on-content-grounds) for the full policy table.
+What happens next depends on **Settings → Query Options → On Safety Refusal** (`refusalPolicy`, default `skip`). Under `skip`, the affected paper or batch is dropped, recorded, and the run continues. Under `fail`, the run stops with a message that starts `Run halted: anthropic declined scoring (batch 3 …) on content grounds (cyber), and refusalPolicy is 'fail'.` and goes on to say how to switch to `skip` or `fallback`. At the end of the run a summary card lists what was declined, at which stage, and under which category. See [Tuning the pipeline](/using/tuning-the-pipeline#when-a-provider-declines-on-content-grounds) for the full policy table.
 
 If it keeps happening:
 
@@ -422,6 +447,8 @@ The pipeline appears frozen for more than 5 minutes with no terminal output.
 - `/api/analyze-pdf` pending > 2 min — likely Playwright hung on a reCAPTCHA challenge. Check that `temp/playwright-profile/` isn't corrupted; delete it and rerun if so.
 - No pending request — the pipeline may have crashed silently. Check the terminal for an exception trace; if none, reload the page.
 
+**To abandon the run,** click Stop. The run ends at its next checkpoint and the controls free up at once, so you can start again. Requests already sent to a provider still finish and are billed; their results are discarded.
+
 ---
 
 ## Briefing-time issues
@@ -429,19 +456,21 @@ The pipeline appears frozen for more than 5 minutes with no terminal output.
 ### Briefing schema-validation failure
 
 ```
-Briefing generation failed: synthesis failed
+Briefing generation failed: repair failed: paper "2510.01234" is not in any theme
 ```
 
-The synthesis response didn't match the briefing schema, and the repair pass (a second LLM call showing the validation errors) also failed. The UI surfaces a red banner.
+Every briefing goes through deterministic checks before it renders: titles and scores are corrected from the input, and a briefing fails if it cites an unknown arXiv ID (in a card, a theme, or the prose), leaves out a paper, gives one paper two cards, or leaves a card in no theme. A failed briefing gets one LLM repair call that sees the errors. If the repair fails, Aparture salvages the briefing in code instead: it removes cards for unknown IDs, adds labelled placeholder cards for left-out papers, groups unthemed cards under "Other papers", and replaces unknown IDs in prose with _[unverified arXiv ID removed]_. The terminal logs `[synthesize] repair failed (…); salvaged deterministically:` with the list of fixes.
+
+You see the error above only when even the salvaged briefing fails, usually because the model's output didn't match the schema at all. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
 
 What to check:
 
 1. Open browser devtools → Network → click the failed `synthesize` request.
-2. Look at the response body's `details` field — it contains the zod validation errors.
+2. Look at the response body's `details` field. It lists the failed checks or the schema errors.
 3. Common errors:
-   - `arxivId not in input list` — the model cited a paper that wasn't in the input. Not fixable via retry; the model is confused. Switch `briefingModel` to a stronger option.
-   - `required field missing` — the model returned a partial object. Retry usually works.
-   - `model did not return structured output` — the provider silently fell back to plain text. Seen occasionally with Google on complex schemas. Switch to Anthropic or OpenAI for `briefingModel`.
+   - `references unknown arxivId` or `mentions arXiv id …, which is not in today's input`: the model cited a paper that wasn't in the input. Switch `briefingModel` to a stronger option.
+   - `has no card` or `is not in any theme`: the model left papers out. A retry usually works; on large runs, a stronger model or a lower `maxDeepAnalysis` helps.
+   - `repair callModel returned no structured output` or `model did not return structured output`: the provider fell back to plain text. Seen occasionally with Google on complex schemas. Switch to Anthropic or OpenAI for `briefingModel`.
 
 **Token budget block.** Occasionally you'll see `synthesis prompt exceeds token budget` (400). The route estimates the prompt's size at about four characters per token, for every provider, and the estimate is above the block threshold (500,000 tokens by default). Shorten your profile, reduce `maxDeepAnalysis`, or pass `allowOverBudget: true` (not currently exposed in the UI — requires editing the request).
 

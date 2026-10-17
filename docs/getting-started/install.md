@@ -120,7 +120,9 @@ Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll re
 ACCESS_PASSWORD=pick-anything-memorable
 ```
 
-Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder, which works fine for local-only development, though you should obviously pick something real before exposing the app beyond your own machine.
+Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder.
+
+`npm run dev` listens on 127.0.0.1, so only this machine can open the app, and the placeholder is enough to get started. To reach the app from another device on your network, start it with `npm run dev -- -H 0.0.0.0`, and set a long password first.
 
 You'll also add your LLM API key to this same `.env.local` file on the next page. The dev server starts without one — there's no startup validation — but every pipeline run will fail at its first LLM call until a key is present.
 

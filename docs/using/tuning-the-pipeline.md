@@ -79,7 +79,7 @@ Same Anthropic cache-warmup behavior as filter.
 
 ### Parallel PDF calls
 
-**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Calls** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side with a ~5-second spacing to respect arXiv's rate limits, but once the PDFs are in hand the LLM calls themselves run in parallel.
+**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Calls** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side, 15 seconds apart, the crawl delay arXiv's robots.txt sets for PDFs; once the PDFs are in hand, the LLM calls themselves run in parallel. That spacing puts a floor under Stage 4: 30 PDFs take at least seven and a half minutes to download, whatever the concurrency. A download that falls back to Playwright uses two slots, one for the abstract page and one for the PDF.
 
 - On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing.
 - On **Google** and **OpenAI**, all workers start immediately.
@@ -92,7 +92,7 @@ Same Anthropic cache-warmup behavior as filter.
 
 Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI's Launch tier and up); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google projects have the lowest limits, so start at 2–3 if you're relying on the free tier for filtering.
 
-Aparture self-heals on transient 429s: when one batch hits a rate limit, every concurrent worker for the same provider pauses for the `Retry-After` window (capped at 60 s, or 5 s when the provider doesn't send one), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If a stage runs on a Gemini Flash-Lite model with enough batches and parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight warning before the stage starts.
+Aparture self-heals on transient errors. When one batch hits a rate limit (429), an unavailable provider (503), or an overloaded one (Anthropic's 529), every concurrent worker for the same provider pauses for the `Retry-After` window (capped at 60 s, or 5 s when the provider doesn't send one), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. Errors that a retry can't fix fail on the first attempt with the provider's message instead of spending the ladder: a bad or missing key (401, 403), an unknown model or malformed request (400, 404), a request that's too large (413), or a 422 other than a safety refusal. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If a stage runs on a Gemini Flash-Lite model with enough batches and parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight warning before the stage starts.
 
 ### When a provider declines on content grounds
 
@@ -104,7 +104,7 @@ The important property is that a refusal is **deterministic**: the same prompt t
 | --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Skip and continue**       | `skip`          | Default. The affected paper (or batch) is dropped, recorded, and the run carries on. An unattended overnight run isn't killed by one paper tripping a classifier. |
 | **Retry on fallback model** | `fallback`      | Re-issue the call once against `refusalFallbackModel`, then skip if that model refuses too. The fallback may be a different provider.                             |
-| **Stop the run**            | `fail`          | Halt on the first refusal.                                                                                                                                        |
+| **Stop the run**            | `fail`          | Halt on the first refusal. The run stops with an error that names the stage and the provider and says how to switch to `skip` or `fallback`.                      |
 
 Under any policy, refusals are surfaced rather than silently swallowed: a summary card at the end of the run lists what was declined, at which stage, and under which category. This matters most under the default `skip` policy — without it you'd see a shorter briefing with no explanation for the gap.
 

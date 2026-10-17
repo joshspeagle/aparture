@@ -47,7 +47,7 @@ The password that gates every API route. The web UI sends it in the `password` f
 ACCESS_PASSWORD=correct-horse-battery-staple
 ```
 
-A long random string (12+ characters) is enough for the intended use case — a single-tenant dev or self-hosted instance. Aparture is not designed to sit on the public internet unprotected; for that, wrap it behind a real auth layer.
+A long random string (12+ characters) is enough for the intended use case — a single-tenant dev or self-hosted instance. `npm run dev` and `npm start` listen on 127.0.0.1, so only the local machine can reach the app; `npm run dev -- -H 0.0.0.0` opens it to your network. Aparture is not designed to sit on the public internet unprotected; for that, wrap it behind a real auth layer.
 
 The headless runner (`node bin/aparture.mjs`) calls the arXiv proxy routes in-process rather than over HTTP. When `ACCESS_PASSWORD` is unset it generates a random one for its own process, so it needs no password configured.
 
@@ -56,6 +56,8 @@ The headless runner (`node bin/aparture.mjs`) calls the arXiv proxy routes in-pr
 You need at least one provider key. Providing several lets you mix providers across pipeline stages — the default config uses Google for all slots, but Anthropic + Google, OpenAI + Anthropic, or any other combination works as long as each selected model's provider has a key.
 
 Each route resolves its key at request time based on the selected model's provider. No startup validation — a stage configured for a provider with no key will fail only when it tries to run.
+
+A request can also bring its own provider key, in an `apiKey` body field, instead of the password. The web UI doesn't do this; it exists for the planned desktop app. `/api/analyze-pdf` downloads a PDF before it calls a model, so there a client key must have its provider's published shape (`sk-ant-…` for Anthropic, `sk-…` for OpenAI, `AIza…` for Google), or the request needs the password.
 
 ### `CLAUDE_API_KEY`
 
