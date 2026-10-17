@@ -187,9 +187,8 @@ describe('parseOpenAIResponsesResponse', () => {
 
 describe('parseOpenAIResponsesResponse message selection', () => {
   it('reads the final-answer message, not an earlier commentary message', async () => {
-    const { parseOpenAIResponsesResponse } = await import(
-      '../../../../lib/llm/structured/openai.js'
-    );
+    const { parseOpenAIResponsesResponse } =
+      await import('../../../../lib/llm/structured/openai.js');
     const out = parseOpenAIResponsesResponse(
       {
         output: [

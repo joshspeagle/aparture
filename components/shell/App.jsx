@@ -100,27 +100,30 @@ export default function App() {
   // the renderer can show a real error instead of an infinite "Loading…" —
   // the latter is what happens when the index references a briefing whose
   // disk file is missing (e.g. a write that failed atomic-rename).
-  const [selectedEntry, setSelectedEntry] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState('idle');
+  // The fetch result carries the id it was for, and both values derive from
+  // comparing it with the id in view, so a view switch needs no reset.
+  const viewedBriefingId =
+    activeView?.startsWith('briefing:') || activeView?.startsWith('pipeline:')
+      ? activeView.slice(activeView.indexOf(':') + 1)
+      : null;
+  const [loadedBriefing, setLoadedBriefing] = useState({ id: null, entry: null });
   useEffect(() => {
-    if (!activeView?.startsWith('briefing:') && !activeView?.startsWith('pipeline:')) {
-      setSelectedEntry(null);
-      setSelectedStatus('idle');
-      return;
-    }
-    const id = activeView.slice(activeView.indexOf(':') + 1);
+    if (!viewedBriefingId) return;
     let cancelled = false;
-    setSelectedEntry(null);
-    setSelectedStatus('loading');
-    loadBriefing(id).then((entry) => {
-      if (cancelled) return;
-      setSelectedEntry(entry);
-      setSelectedStatus(entry ? 'loaded' : 'not-found');
+    loadBriefing(viewedBriefingId).then((entry) => {
+      if (!cancelled) setLoadedBriefing({ id: viewedBriefingId, entry });
     });
     return () => {
       cancelled = true;
     };
-  }, [activeView, loadBriefing]);
+  }, [viewedBriefingId, loadBriefing]);
+  const loadedIsViewed = viewedBriefingId !== null && loadedBriefing.id === viewedBriefingId;
+  const selectedEntry = loadedIsViewed ? loadedBriefing.entry : null;
+  let selectedStatus = 'idle';
+  if (viewedBriefingId) {
+    if (!loadedIsViewed) selectedStatus = 'loading';
+    else selectedStatus = loadedBriefing.entry ? 'loaded' : 'not-found';
+  }
 
   // Phase 1.5: draft-vs-committed profile editing.
   const [draftContent, setDraftContent] = useState(profile?.content ?? '');
@@ -197,15 +200,17 @@ export default function App() {
   } = useAnalyzerStore.getState();
 
   // Pipeline — reads state from the Zustand store. Only React refs are
-  // passed as closure args.
-  const pipeline = useMemo(
-    () =>
-      createAnalysisPipeline({
-        abortControllerRef,
-        pauseRef,
-        mockAPITesterRef,
-      }),
-    []
+  // passed as closure args, and it reads them only while a run is going,
+  // never during render; the refs rule can't see inside the factory.
+  // A lazy initializer, not useMemo: the pipeline must be built exactly once,
+  // and React may discard a memoized value.
+  // eslint-disable-next-line react-hooks/refs
+  const [pipeline] = useState(() =>
+    createAnalysisPipeline({
+      abortControllerRef,
+      pauseRef,
+      mockAPITesterRef,
+    })
   );
 
   // Wrap saveBriefing so pipeline-generated briefings auto-switch view AND
@@ -217,8 +222,7 @@ export default function App() {
   // saveBriefing is async (it awaits the cold-tier POST), so we must await
   // it here — passing the unresolved Promise into the template literal
   // produces `briefing:[object Promise]` and breaks the subsequent loadBriefing.
-  const saveBriefingAndSwitchRef = useRef(null);
-  saveBriefingAndSwitchRef.current = async (date, briefing, metadata, options) => {
+  const saveBriefingAndSwitch = async (date, briefing, metadata, options) => {
     const newId = await saveBriefing(date, briefing, metadata, options);
     setActiveView(`briefing:${newId}`);
     // Extend dedupe index with papers reachable from this briefing
@@ -247,6 +251,12 @@ export default function App() {
     }
     return newId;
   };
+  // Refreshed after every commit rather than during render; the pipeline
+  // calls it long after mount.
+  const saveBriefingAndSwitchRef = useRef(null);
+  useEffect(() => {
+    saveBriefingAndSwitchRef.current = saveBriefingAndSwitch;
+  });
   const stableSaveBriefingAndSwitch = useCallback(
     (date, briefing, metadata, options) =>
       saveBriefingAndSwitchRef.current(date, briefing, metadata, options),
@@ -312,6 +322,9 @@ export default function App() {
   useEffect(() => {
     if (initialViewSet.current) return;
     if (currentBriefing?.id) {
+      // After hydration on purpose: the server renders the welcome view, so
+      // picking the stored briefing during render would mismatch its HTML.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveView(`briefing:${currentBriefing.id}`);
       initialViewSet.current = true;
     }

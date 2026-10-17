@@ -17,9 +17,9 @@ import path from 'node:path';
 // so send those lines to stderr with the rest of the progress log.
 console.log = (...args) => console.error(...args);
 
-// lib/ is ESM without "type": "module" in package.json (postcss and
-// tailwind configs are CommonJS), so Node detects the syntax per file and
-// warns once per file. The warning is noise here.
+// lib/ is ESM without "type": "module" in package.json (postcss.config.js
+// is CommonJS), so Node detects the syntax per file and warns once per
+// file. The warning is noise here.
 const emitWarning = process.emitWarning.bind(process);
 process.emitWarning = (warning, ...rest) => {
   const code = typeof rest[0] === 'object' ? rest[0]?.code : rest[1];
@@ -83,9 +83,8 @@ export function paperLinks(id) {
 // --- fetch -----------------------------------------------------------------
 
 async function cmdFetch(flags) {
-  const { ensureDomParser, headlessPassword, createArxivFetch } = await import(
-    '../lib/headless/runtime.js'
-  );
+  const { ensureDomParser, headlessPassword, createArxivFetch } =
+    await import('../lib/headless/runtime.js');
   const { buildHarvestWindow } = await import('../lib/arxiv/window.js');
   const { harvest } = await import('../lib/arxiv/ingest.js');
   const { harvestOai } = await import('../lib/arxiv/harvestOai.js');
@@ -484,9 +483,8 @@ async function cmdRender(flags) {
   }
   const candidates = readJson(path.join(runDir, 'candidates.json'), { papers: [] });
   const selection = readJson(path.join(runDir, 'selection.json'), {});
-  const { readAuditRounds, summarizeAuditRounds } = await import(
-    '../lib/briefing/v2/auditSummary.js'
-  );
+  const { readAuditRounds, summarizeAuditRounds } =
+    await import('../lib/briefing/v2/auditSummary.js');
   const auditSummary = summarizeAuditRounds(readAuditRounds(runDir));
   const config = readJson(path.join(stateDir, 'config.json'), {});
   const papersDir = path.join(runDir, 'papers');
@@ -737,6 +735,9 @@ Commands:
   render    Render briefing.json as a self-contained HTML page with the
             figures inlined and feedback controls.
             --run <run dir> [--state <dir>] [--out <file>]
+            --model <name>      the writing model, named in the colophon
+            --standalone        a full HTML document that opens directly
+                                in a browser (default: the page body only)
   record    Add harvested ids to seen.json (90-day window), archive the
             briefing into <state>/briefings/. Refuses a failed validation.
             --run <run dir> [--state <dir>] [--prune-run]
