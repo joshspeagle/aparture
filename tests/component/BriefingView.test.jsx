@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import BriefingView, { layoutBriefing } from '../../components/briefing/BriefingView.jsx';
 import sample from '../fixtures/briefing/sample-output.json';
 
@@ -136,6 +136,27 @@ describe('BriefingView', () => {
     expect(activeStars.length).toBe(1);
     // And the non-starred paper's dismiss/star should not be active.
     expect(container.querySelectorAll('.active-dismiss').length).toBe(0);
+  });
+
+  it('tags stars from a TEST MODE briefing as test feedback', () => {
+    const onStar = vi.fn();
+    render(
+      <BriefingView
+        briefing={sample}
+        date="April 13, 2026"
+        briefingDate="2026-04-13"
+        testMode
+        quickSummariesById={{}}
+        fullReportsById={{}}
+        feedbackEvents={[]}
+        onStar={onStar}
+        onDismiss={() => {}}
+        onAddComment={() => {}}
+      />
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: /star/i })[0]);
+    expect(onStar).toHaveBeenCalledTimes(1);
+    expect(onStar.mock.calls[0][0].testMode).toBe(true);
   });
 
   it('marks a paper as dismissed when feedbackEvents contains a dismiss for that arxivId', () => {

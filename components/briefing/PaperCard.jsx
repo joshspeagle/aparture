@@ -64,8 +64,8 @@ export default function PaperCard({
   onOpenQuickSummary,
   onOpenFullReport,
   // True when the card belongs to a TEST MODE (dry-run) briefing: reactions
-  // are then tagged as test feedback and kept out of suggestions. BriefingView
-  // knows this (its own testMode prop) and should forward it.
+  // are then tagged as test feedback and kept out of suggestions. Forwarded
+  // from BriefingView's own testMode prop.
   testMode = false,
 }) {
   const [showCommentInput, setShowCommentInput] = useState(false);
