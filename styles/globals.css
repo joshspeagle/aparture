@@ -5,10 +5,29 @@
 @import './shell.css';
 @import './briefing.css';
 
-/* tailwindcss */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind supplies Preflight and the few utilities the components use
+   (Lucide sizing, animate-spin). It scans only the app's source, as the v3
+   content globs did, so the docs and tests add no CSS. */
+@import 'tailwindcss' source(none);
+@source '../pages';
+@source '../components';
+
+/* Two places where Tailwind 4's Preflight differs from v3's and the
+   components count on the old behavior. */
+@layer base {
+  /* v4 gives buttons the default cursor; v3 gave them the pointer. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* v4 sets opacity: 1 on form controls, which cancels the browser's dimming
+     of a disabled select: the only cue on a model picker locked by a run or
+     by the refusal policy. */
+  select:disabled {
+    opacity: 0.7;
+  }
+}
 
 html,
 body {

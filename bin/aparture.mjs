@@ -17,9 +17,9 @@ import path from 'node:path';
 // so send those lines to stderr with the rest of the progress log.
 console.log = (...args) => console.error(...args);
 
-// lib/ is ESM without "type": "module" in package.json (postcss and
-// tailwind configs are CommonJS), so Node detects the syntax per file and
-// warns once per file. The warning is noise here.
+// lib/ is ESM without "type": "module" in package.json (postcss.config.js
+// is CommonJS), so Node detects the syntax per file and warns once per
+// file. The warning is noise here.
 const emitWarning = process.emitWarning.bind(process);
 process.emitWarning = (warning, ...rest) => {
   const code = typeof rest[0] === 'object' ? rest[0]?.code : rest[1];

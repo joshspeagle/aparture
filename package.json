@@ -42,12 +42,12 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "^4.1.11",
-    "autoprefixer": "^10.6.1",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.5",
@@ -58,7 +58,7 @@
     "playwright": "^1.56.0",
     "postcss": "^8.5.30",
     "prettier": "^3.9.10",
-    "tailwindcss": "^3.4.0",
+    "tailwindcss": "^4.3.3",
     "vitest": "^4.1.11"
   }
 }
