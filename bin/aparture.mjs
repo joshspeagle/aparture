@@ -484,7 +484,8 @@ async function cmdRender(flags) {
   }
   const candidates = readJson(path.join(runDir, 'candidates.json'), { papers: [] });
   const selection = readJson(path.join(runDir, 'selection.json'), {});
-  const audit = readJson(path.join(runDir, 'audit.json'), null);
+  const { readAuditRounds, summarizeAuditRounds } = await import('../lib/briefing/v2/auditSummary.js');
+  const auditSummary = summarizeAuditRounds(readAuditRounds(runDir));
   const config = readJson(path.join(stateDir, 'config.json'), {});
   const papersDir = path.join(runDir, 'papers');
   const byId = new Map(candidates.papers.map((p) => [p.id, p]));
@@ -532,8 +533,17 @@ async function cmdRender(flags) {
       figures.set(p.id, new Map([[fig.id, { label: fig.label, linkOnly: true }]]));
       continue;
     }
+    // Reuse a file from enrich or from an earlier render before asking
+    // arXiv again; renders are often repeated while a briefing is revised.
+    const cached = path.join(
+      papersDir,
+      'figures',
+      p.id,
+      `${fig.id}${path.extname(new URL(fig.images[0]).pathname) || '.png'}`
+    );
     let file = rec.figureFiles?.find((f) => f.id === fig.id)?.file;
-    if (!file || !fs.existsSync(file)) {
+    if (!file || !fs.existsSync(file)) file = fs.existsSync(cached) ? cached : null;
+    if (!file) {
       if (fetched > 0) await arxivSleep(spacing());
       fetched += 1;
       try {
@@ -542,12 +552,8 @@ async function cmdRender(flags) {
           signal: AbortSignal.timeout(60_000),
         });
         if (res.ok) {
-          const dir = path.join(papersDir, 'figures', p.id);
-          fs.mkdirSync(dir, { recursive: true });
-          file = path.join(
-            dir,
-            `${fig.id}${path.extname(new URL(fig.images[0]).pathname) || '.png'}`
-          );
+          fs.mkdirSync(path.dirname(cached), { recursive: true });
+          file = cached;
           fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
         }
       } catch (err) {
@@ -581,17 +587,17 @@ async function cmdRender(flags) {
       categories: config.categories ?? candidates.window?.selectedSubcategories ?? [],
       citationsChecked: validation?.stats?.citationsChecked,
       quotesChecked: quoteChecked.size,
-      audit: audit
-        ? audit.verdict === 'NO'
-          ? 'no unsupported claims found'
-          : `${audit.flaggedClaims?.length ?? 0} claim(s) flagged and revised`
-        : null,
+      audit: auditSummary,
       model: flags.model ?? null,
     },
   });
   const out = flags.out ?? path.join(runDir, 'briefing.html');
   writeOut(out, html);
-  log(`${Math.round(Buffer.byteLength(html) / 1024)} KB, ${figures.size} figure(s) inlined`);
+  const figureList = [...figures.values()].flatMap((m) => [...m.values()]);
+  const linked = figureList.filter((f) => f.linkOnly).length;
+  log(
+    `${Math.round(Buffer.byteLength(html) / 1024)} KB, ${figureList.length - linked} figure(s) inlined, ${linked} linked`
+  );
 }
 
 // --- record ----------------------------------------------------------------
