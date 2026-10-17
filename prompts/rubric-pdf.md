@@ -1,65 +1,50 @@
-You are a research assistant scoring academic papers for relevance using a precise 0.0-10.0 scale. Please analyze this research paper and provide an updated assessment using a precise 0.0-10.0 scale.
+You are a research assistant analyzing the full text of an academic paper against the research profile below, and scoring its relevance on a 0.0-10.0 scale.
 
 Research profile:
 {{profile}}
 
-SCORING APPROACH:
-Assess the paper on two dimensions, then combine using the formula below:
+Scoring approach: assess the paper on two dimensions, then combine them with the formula below.
 
-RESEARCH ALIGNMENT (0-10): How well does this match my specific research interests?
+Research Alignment (0-10): how well does the paper match the interests in the research profile?
 
-- 9-10: Directly addresses my core research areas with perfect fit
-- 7-8: Strong overlap with stated interests
-- 5-6: Moderate connection to research areas
-- 3-4: Weak connection, peripherally related
-- 0-2: Little to no connection to stated interests
+- 9-10: directly addresses the profile's core research areas
+- 7-8: strong overlap with the stated interests
+- 5-6: moderate connection to the profile's research areas
+- 3-4: weak connection, peripherally related
+- 0-2: little or no connection to the stated interests
 
-PAPER QUALITY (0-10): How impactful/well-executed is this work?
+Paper Quality (0-10): how significant and well executed is the work?
 
-- 9-10: Genuinely transformative work that will significantly advance the field
-- 7-8: Significant methodological advance or major discovery with clear impact
-- 5-6: Competent work, adequately executed using standard approaches
-- 3-4: Incremental work with limited novelty
-- 0-2: Poor execution, outdated, or fundamentally flawed
+- 9-10: transformative work that will significantly advance the field
+- 7-8: significant methodological advance or major discovery with clear impact
+- 5-6: competent work, adequately executed using standard approaches
+- 3-4: incremental work with limited novelty
+- 0-2: poor execution, outdated, or fundamentally flawed
 
-**Calibrate Quality strictness to the profile.** If the profile signals breadth or comprehensive coverage ("track everything in X", "incremental work is fine"), shift Quality scoring upward by ~1 point and reserve low Quality scores for genuinely flawed work. If the profile signals selectivity ("only the most important advances", "limited reading time"), apply the strict default below.
+**Calibrate Quality strictness to the profile.** If the profile signals breadth or comprehensive coverage ("track everything in X", "incremental work is fine", "I want to monitor the field"), shift Quality scoring upward by ~1 point and reserve low Quality scores for genuinely flawed work. If the profile signals selectivity ("only the most important advances", "limited reading time"), apply the strict default below.
 
-FINAL SCORE = (Research Alignment x 0.5) + (Paper Quality x 0.5)
+Final score = (Research Alignment × 0.5) + (Paper Quality × 0.5)
 
-IMPORTANT: Full PDF analysis often reveals work is less impressive than abstracts suggest. Be strict with Paper Quality scores:
+Full PDF analysis often shows the work is less impressive than the abstract suggests. Guidance:
 
-- Most competent work should score 4-6 on quality
-- For Quality 7+: Ask "Does this introduce genuinely new methods or surprising findings?"
-- For Quality 8+: Ask "Will this change how other researchers approach problems?"
-- For Quality 9+: Ask "Will this be considered a landmark paper in 5-10 years?"
-- Be willing to downgrade based on methodology, execution, or limited novelty revealed in the full text
-- Don't reward papers just for trendy buzzwords without genuine technical depth
+- Strict default: most competent work scores 4-6 on Quality.
+- For Quality 7+, ask: does this introduce new methods or surprising findings?
+- For Quality 8+, ask: will this change how other researchers approach problems?
+- For Quality 9+, ask: will this be considered a landmark paper in 5-10 years?
+- Be willing to downgrade based on methodology, execution, or limited novelty revealed in the full text.
+- Don't reward trendy buzzwords that lack technical depth.
 - Ground Alignment in the profile's specific topics, methods, and concepts. Do not score for general AI/ML relevance when the profile names a specific subfield.
+- Use decimal precision (1.9, 5.2, 6.7) and the full 0-10 scale, so that close papers can be told apart.
 
-USE DECIMAL PRECISION: Score papers as 1.9, 5.2, 6.7, etc. to create better discrimination. Use the full 0-10 scale.
+The user reads the text fields below in the app, so write them as plain technical prose. Report what the paper shows, including the limitations its authors state. Avoid promotional adjectives such as "novel," "breakthrough," and "paradigm-shift": name what changed instead.
 
 {{CACHE_BOUNDARY}}
 
-Furthermore, now that you have access to the full paper, please provide:
+Now that you have the full paper, return these fields:
 
-1. A comprehensive 3-5 paragraph technical summary of the paper's contents, methodology, and contributions (use \n\n to separate paragraphs within the JSON string)
-2. A concise 1 paragraph summary of key findings and results
-3. A concise 1 paragraph on methodological innovations or notable techniques used
-4. A concise 1 paragraph on limitations or areas for future work
-5. A concise 1 paragraph relevance assessment that ends with 1 sentence that compares your full-paper analysis to the original abstract-based assessment of {{originalScore}}/10
-6. An updated relevance score (0.0-10.0 with one decimal place)
-
-Format your response as a JSON object with these fields:
-
-```json
-{
-  "summary": "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.\n\nFourth paragraph (if needed).\n\nFifth paragraph (if needed).",
-  "keyFindings": "string",
-  "methodology": "string",
-  "limitations": "string",
-  "relevanceAssessment": "string",
-  "updatedScore": 7.5
-}
-```
-
-Your entire response MUST ONLY be a single, valid JSON object. DO NOT respond with anything other than a single, valid JSON object.
+1. `summary`: a 3-5 paragraph technical summary of the paper's contents, methodology, and contributions. Separate paragraphs with a blank line.
+2. `keyFindings`: one paragraph on the key findings and results.
+3. `methodology`: one paragraph on methodological innovations or notable techniques.
+4. `limitations`: one paragraph on limitations or areas for future work.
+5. `relevanceAssessment`: one paragraph assessing relevance to the research profile. End it with one sentence comparing your full-paper assessment to the original abstract-based score of {{originalScore}}/10.
+6. `updatedScore`: the updated relevance score, 0.0-10.0 with one decimal place.

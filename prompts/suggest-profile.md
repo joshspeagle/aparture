@@ -6,7 +6,7 @@ You are helping a researcher refine their research profile based on how they've 
 
 {{profile}}
 
-## New feedback since last revision
+## Feedback not yet reflected in the profile
 
 {{feedback}}
 
@@ -16,26 +16,28 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
 
 1. **Preserve the user's voice.** Do not impose a different editorial style or rewrite sections that don't need to change. The user wrote their profile intentionally; your job is to adjust, not replace.
 
-2. **Weight signals by importance.** Stars and dismisses are explicit up/down votes on whole papers. Per-paper comments add nuance. General comments inform overall framing; when a general comment is shown, the briefing it was written against may be included beneath it as context — read the comment against that briefing, not in isolation. Filter overrides (when present) mean the user disagreed with the Stage 1 triage — if they are frequent or all in one direction (e.g., the user keeps flipping NO → YES on a specific topic), it suggests the profile may be too narrow for the filter stage and should be broadened in that area.
+2. **Weight signals by section.**
+   - **Stars and dismisses** are explicit up and down votes on whole papers: strong, direct signal.
+   - **Per-paper comments** add nuance to those votes.
+   - **Filter overrides** mean the user disagreed with the quick filter (Stage 2). When they are frequent or all in one direction (for example, the user keeps flipping NO → YES on one topic), the profile is probably too narrow for the filter in that area and should be broadened there. When an override appears with comments inline, treat the comments as the rationale for that verdict change.
+   - **Bucket-level observations** describe aggregate filter behavior in one bucket (YES, MAYBE, or NO). Use them to adjust how broad or specific the criteria are in that direction.
+   - **Score-review notes** are calibration concerns about scoring. Use them to adjust strictness or scoring criteria.
+   - **Run-level observations** describe pipeline behavior at scale (filter aggressiveness, subcategory mix, scoring distribution). Use them as background for the changes you propose.
+   - **General comments** are editorial reactions to specific briefings. Use them to adjust framing and synthesis preferences. When the briefing a comment was written against is shown beneath it, read the comment against that briefing, not in isolation.
+   - **Answers to the editor's questions** settle an ambiguity that a day's papers exposed: the reader picked one of the offered answers. Treat each as a direct statement of preference about the papers it cites, and let it decide between readings of the profile that the other feedback leaves open.
+   - **Previously rejected suggestions**, when that section appears, are edits the user turned down in earlier rounds. Don't propose them, or an equivalent edit, again unless the feedback above gives a new reason.
 
-   Weight signals by section:
-   - **Per-paper signals** (stars / dismisses / paper-comments / overrides) reflect concrete preferences. Strong direct signal. When an override appears with comments inline, treat the comments as rationale for that specific verdict change.
-   - **Bucket-level observations** reflect aggregate filter behavior, scoped to a particular bucket (YES / MAYBE / NO). Use to adjust criteria breadth or specificity in that direction.
-   - **Score-review notes** reflect calibration concerns about scoring. Use to adjust strictness or scoring criteria.
-   - **Run-level observations** reflect pipeline behavior at scale (filter aggressiveness, subcategory mix, scoring distribution). Use as background context for proposed changes.
-   - **General comments** are editorial reactions to specific briefings. Use to adjust framing and synthesis preferences.
-
-   **If a USER GUIDANCE block appears at the top of this prompt, it is the highest-priority signal.** Let it shape the direction and emphasis of your proposed edits; use the feedback events below to ground concrete, cited changes that implement the guidance.
+   **If a USER GUIDANCE block appears at the top of this prompt, it is the highest-priority signal.** Let it shape the direction and emphasis of your proposed edits, and use the feedback events to ground concrete, cited changes that implement it.
 
 3. **Make small, specific changes.** An addition should be a sentence or phrase, not a paragraph. Prefer "added bullet about mechanistic interpretability" over "rewrote the Methods section."
 
-4. **Cite the feedback that motivated each change.** Every change's `rationale` must point at specific feedback events ("Based on stars on 2504.01234 and 2504.03456, both on attention-head analysis, added emphasis on mechanistic interpretability.").
+4. **Cite the feedback that motivated each change.** Every change's `rationale` must point at specific feedback events: name each paper by its arXiv ID, and quote a few words of any comment or note you relied on ("Based on stars on 2504.01234 and 2504.03456, both on attention-head analysis, added emphasis on mechanistic interpretability."). Aparture reads the rationales of the changes the user accepts to mark which feedback has been used, so feedback you don't cite stays pending.
 
-5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas already well-covered by the profile, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous — return an empty `changes` array and fill `noChangeReason` with a short explanation. Forcing a change when none is warranted is worse than no change.
+5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas the profile already covers well, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous, return an empty `changes` list and explain why in `noChangeReason`. Forcing a change when none is warranted is worse than no change.
 
-## Output granularity — ATOMIC, NON-OVERLAPPING CHANGES
+## Output granularity: atomic, non-overlapping changes
 
-Each entry in your `changes` array must be:
+Each entry in your `changes` list must be:
 
 1. **Semantically atomic.** One logical edit per entry. If two improvements would affect the same sentence or clause, merge them into a single entry with a combined rationale.
 2. **Non-overlapping with every other entry.** The text range each change modifies (identified by its `anchor`) must not overlap with any other change's anchor range. Sort your changes top-to-bottom by position in the profile to verify.
@@ -43,9 +45,9 @@ Each entry in your `changes` array must be:
 
 Edit types:
 
-- `replace` — the `anchor` text is replaced wholesale by `content`.
-- `insert` — `content` is inserted **immediately after** `anchor` (anchor itself is preserved).
-- `delete` — the `anchor` text is removed. `content` should be empty.
+- `replace`: the `anchor` text is replaced wholesale by `content`.
+- `insert`: `content` is inserted **immediately after** `anchor` (the anchor itself is preserved).
+- `delete`: the `anchor` text is removed, and `content` is empty.
 
 Example of BAD (overlapping):
 
@@ -56,28 +58,13 @@ Example of GOOD (merged):
 
 - Single change: replace "I am interested in X and Y" with "I am interested in X, Y, and Z"
 
-## Output format
+## Output fields
 
-Return structured JSON:
-
-```json
-{
-  "changes": [
-    {
-      "id": "string — short stable identifier unique within this response (e.g. \"c1\", \"c2\")",
-      "rationale": "string — one sentence explaining why, citing specific feedback events",
-      "edit": {
-        "type": "replace" | "insert" | "delete",
-        "anchor": "string — verbatim substring of the current profile",
-        "content": "string — new text for replace/insert; empty string for delete"
-      }
-    }
-  ],
-  "noChangeReason": "string — optional, only if changes is empty"
-}
-```
-
-If `changes` is empty, `noChangeReason` must be provided.
+- `changes`: the list of proposed edits, each with:
+  - `id`: a short identifier, unique within this response (e.g. "c1", "c2")
+  - `rationale`: one sentence explaining why, citing specific feedback events
+  - `edit`: the edit itself, with `type` (`replace`, `insert`, or `delete`), `anchor` (a verbatim substring of the current profile), and `content` (the new text for `replace` or `insert`; empty for `delete`)
+- `noChangeReason`: null unless `changes` is empty; when it is empty, a short explanation of why the feedback doesn't call for an edit
 
 ## Examples
 

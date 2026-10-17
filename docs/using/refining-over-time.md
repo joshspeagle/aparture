@@ -12,11 +12,11 @@ Most of the detail below is about the review step, because that's where the deci
 
 ## What the flow sees
 
-The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same dialog. The dialog lists every new feedback event since your last profile revision with checkboxes, so you can include or exclude specific events. All are included by default.
+The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same dialog. The dialog lists every pending feedback event (anything not yet incorporated into your profile) with checkboxes, so you can include or exclude specific events. All are included by default. Feedback from test runs is never listed.
 
 ![The Suggest profile improvements dialog: a checklist of recent feedback events with checkboxes, an optional guidance text box, and Cancel and Generate suggestion buttons](/screenshots/suggest-dialog.png)
 
-_The suggestion dialog before generating: every new feedback event is listed with a checkbox, and the guidance field steers this one suggestion without being stored._
+_The suggestion dialog before generating: every pending feedback event is listed with a checkbox, and the guidance field steers this one suggestion without being stored._
 
 When you click <span class="ui-action">Generate suggestion</span>, the model receives:
 
@@ -26,6 +26,8 @@ When you click <span class="ui-action">Generate suggestion</span>, the model rec
 - Your most recent **paper comments** — capped at the most recent 30. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
 - Your most recent **general comments** — same 30-item cap. Each one is paired with the briefing it was written against (executive summary, theme titles and arguments, and per-paper pitches), so the model can interpret reactions like _"this one leaned too heavily on interpretability"_ with the right context.
 - **Scoped feedback** (bucket-level, score-review, and run-level observations), grouped by `briefingDate`. These appear as three labelled sections in the prompt — `BUCKET-LEVEL OBSERVATIONS`, `SCORE-REVIEW NOTES`, and `RUN-LEVEL OBSERVATIONS` — so the model knows which scope each note belongs to and can weight run-level patterns accordingly. Filter-override events and scoped-feedback events are passed through uncapped (both are latest-wins or have no natural numeric accumulation).
+- Your **answers to the editor's questions**, uncapped, in a section of their own (`ANSWERS TO THE EDITOR'S QUESTIONS`), each with the question and the papers that prompted it. An answer is you settling an ambiguity the day's papers exposed, which makes it one of the most direct signals the flow sees.
+- The changes you **rejected** in earlier rounds, the 10 most recent, in a section that tells the model not to propose them again unless the new feedback gives a reason.
 - Any **per-call guidance** you type in (see below).
 
 The model's job is to read these signals and propose surgical edits that align your profile with what the feedback suggests you actually want.
@@ -79,7 +81,17 @@ The cumulative preview is the thing to watch here — it's the only place that s
 
 The Apply button at the bottom reflects your current selection — <span class="ui-action">Apply 3 of 5 changes</span>, and so on. <span class="ui-action">Select all</span> and <span class="ui-action">Select none</span> helpers sit next to it. Clicking Apply commits the cumulative preview as your new profile and archives the previous version in history with a rationale composed from the accepted changes' rationales.
 
-## "No clear change" — when feedback is ambiguous
+The changes you leave unticked count as rejected. Aparture remembers them and lists them in the next suggestion request, so the model doesn't keep proposing an edit you've already turned down. If you untick everything, a <span class="ui-action">Reject all N changes</span> button appears, and clicking it records the rejection. <span class="ui-action">Cancel</span> closes the dialog without deciding anything.
+
+The Suggest improvements card on the Profile page keeps a running tally: _"Suggested changes so far: 7 accepted, 3 rejected (70% accepted)."_ If most suggestions get rejected, write guidance for the next call, or a general comment that says what you want, rather than rerunning the flow on the same feedback.
+
+## Which feedback counts as used
+
+After you apply or reject, Aparture marks as incorporated only the feedback behind the changes you accepted. It works this out from each accepted change's rationale: a star, dismiss, paper comment, or filter override counts when the rationale names its paper by arXiv ID or full title, and a general comment or note counts when the rationale quotes it. A note the rationales don't quote still counts if you accepted at least one change, unless a rejected change quoted it. An answer to one of the editor's questions counts as used whenever you accept at least one change.
+
+Everything else stays pending: events you unticked before generating, events behind the changes you rejected, and all of them after a _"no change"_ result. Pending feedback is offered again the next time you run the flow, where it can add up to a pattern.
+
+## "No clear change": when feedback is ambiguous
 
 Sometimes the model can't find a clear improvement. When that happens, the dialog shows a single _"No profile changes suggested"_ panel with a short explanation — a `noChangeReason` — rather than a change list.
 
@@ -89,25 +101,25 @@ This usually comes up when:
 - Your feedback is contradictory. You starred one paper on a topic and dismissed another on the same topic, so the signal is unclear.
 - Your profile already captures the signal. The papers you dismissed were already excluded by your anti-interests; there's nothing to change.
 
-Close the dialog, keep giving feedback (or refine the guidance note), and try again once there's more signal.
+Close the dialog, keep giving feedback (or refine the guidance note), and try again once there's more signal. The feedback you sent stays pending.
 
 ## Versioned history and rollback
 
 Every accepted suggestion creates a new entry in your profile history, tagged **suggested** to distinguish it from a manual edit. The previous profile is archived with its own timestamp.
 
-To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each revision shows a timestamp, a source tag (manual or suggested), and — for suggested revisions — the concatenated rationales of the changes that were accepted. Click a revision to expand its full content, then <span class="ui-action">Revert</span> to restore it.
+To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each revision shows a timestamp, a source tag (manual or suggested), and — for suggested revisions — how many of the proposed changes you accepted (_"3 of 5 changes accepted"_) and the concatenated rationales of the accepted ones. Click a revision to expand its full content, then <span class="ui-action">Revert</span> to restore it.
 
-Reverting is safe: your current profile is itself archived before the target revision is restored, so you can always flip back. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
+Reverting is safe: your current profile is itself archived before the target revision is restored, so you can always flip back. Reverting also undoes the bookkeeping: feedback incorporated by the revisions you reverted past becomes pending again, so the next suggestion can use it. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
 
 ## When to run it
 
-The flow works best when the feedback store has enough signal to spot patterns, not at any particular cadence. Check the counts at the top of the Feedback panel — _new_ events since your last refinement — and use roughly this guide:
+The flow works best when the feedback store has enough signal to spot patterns, not at any particular cadence. Check the count at the top of the Feedback panel — events _not yet incorporated_ into your profile — and use roughly this guide:
 
-| Aggregate volume                        | What to expect                                                         |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| Fewer than ~10 new events               | Usually too thin — expect _"no clear change"_ or vague proposals.      |
-| ~10–30 new events across a mix of types | Enough for concrete, defensible edits, especially with a few comments. |
-| 30+ new events including comments       | Rich enough to cite specific reactions and recommend targeted edits.   |
+| Aggregate volume                      | What to expect                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| Fewer than ~10 pending events         | Usually too thin — expect _"no clear change"_ or vague proposals.      |
+| ~10–30 pending events, mixed types    | Enough for concrete, defensible edits, especially with a few comments. |
+| 30+ pending events including comments | Rich enough to cite specific reactions and recommend targeted edits.   |
 
 This isn't a calendar thing. A heavy first-day session — a dozen filter overrides, half a dozen stars, a general comment or two — is enough to run the flow right away; two quiet weeks of barely-engaged briefings might not be.
 
@@ -133,7 +145,7 @@ A few things the flow won't do:
 
 - **Write your first profile.** If the current profile is very thin, proposed changes will be too. Write a real profile manually first (see [Writing a good profile](/using/writing-a-profile)), then run refinement once you've given feedback on it.
 - **Know about papers it hasn't seen.** The flow only reads the papers you've reacted to inside Aparture plus your comments and overrides. Stars on arXiv itself don't reach it.
-- **Re-request specific changes later.** If you apply 3 of 5 and then want the other 2 the next day, there's no _"apply the rest"_ — you'd need to run the flow again. Usually that's fine, because accumulated feedback has grown in the meantime.
+- **Re-offer changes you rejected.** If you apply 3 of 5 and later want the other 2, there's no _"apply the rest"_. The 2 you left unticked are remembered as rejected, so the flow won't propose them again without a new reason. Make those edits by hand.
 
 ## Next
 

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: <span class="hero-name">Ap<span class="ar-highlight">ar</span>ture</span>
   text: <span class="tagline-text">Bringing the <span class="arxiv-highlight"><span class="arxiv-ar-highlight">ar</span>Xiv</span> into focus</span>
-  tagline: One briefing a day instead of the listings, with every citation checked
+  tagline: One briefing a day replaces the listings. Every citation in it is checked against the papers it was given.
   actions:
     - theme: brand
       text: Get Started
@@ -18,36 +18,36 @@ hero:
 import { withBase } from 'vitepress';
 </script>
 
-Aparture is a local web app that reads the day's arXiv so you can stop skimming it. You write a profile describing your research interests in plain English, pick a set of arXiv categories to watch, and each run pulls down new preprints, scores them, reads the top PDFs, and produces a briefing — a short editorial summary, a handful of thematic groupings, and per-paper notes tuned to your profile. Every citation in that briefing is checked against the papers it was actually given before anything renders.
+Aparture is a local web app that reads the day's arXiv so you can stop skimming it. You describe your research in plain English and pick the arXiv categories to watch. Each run scores the new preprints in those categories against your description and reads the strongest ones in full. It then writes a briefing that groups the papers into themes and says why each one matters for your work. Every citation in the briefing is checked against the papers it was actually given before anything renders.
 
-It's designed to be used over weeks rather than once: you star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. Those signals feed into a profile-refinement flow that proposes edits you can accept or reject individually, so the briefings gradually converge on what you actually want to see.
+It's designed to be used over weeks rather than once. You star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. When you ask for suggestions, Aparture turns those signals into proposed edits to your profile, and you accept or reject each one.
 
 <div class="landing-cards">
 
 <div class="landing-card">
 <div class="landing-icon">📝</div>
 
-### Your profile, your taxonomy
+### A profile in plain prose
 
-Write your interests as plain prose, not a keyword list. No taxonomies, no schemas, no tuning sliders — the LLM reads what you wrote and uses that to score and filter.
+You describe your research the way you would to a colleague, not as a keyword list. Every stage reads that description, from the first filter to the briefing.
 
 </div>
 
 <div class="landing-card">
 <div class="landing-icon">📰</div>
 
-### Briefings, not summaries
+### One briefing per run
 
-Each run produces one structured reading piece: an editorial lead, themes, and per-paper cards. Designed to help you decide what to actually open, not just produce a list.
+Each run produces one piece of writing that argues across the day's papers. It opens with an editorial lead and tells you which papers to open first.
 
 </div>
 
 <div class="landing-card">
 <div class="landing-icon">🔁</div>
 
-### A tight feedback loop
+### Feedback becomes profile edits
 
-Star, dismiss, or comment on what you see. Those signals accumulate, and the suggest-improvements flow proposes concrete profile edits you can accept or reject per-change.
+Star, dismiss, or comment on what you see. The Suggest Improvements flow reads that feedback and proposes specific edits to your profile, each with the feedback that motivated it. You accept or reject each edit.
 
 </div>
 
@@ -56,7 +56,7 @@ Star, dismiss, or comment on what you see. Those signals accumulate, and the sug
 
 ### Bring your own models
 
-Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across stages — cheap model for filtering, stronger model for synthesis. All keys stay in your local `.env.local`.
+Aparture works with Anthropic, OpenAI, and Google models, and each stage can use a different one: a cheap model for filtering, a stronger one for reading papers. Your keys stay in `.env.local` on your machine.
 
 </div>
 
@@ -92,7 +92,7 @@ Works with Anthropic Claude, OpenAI, and Google Gemini. Mix providers across sta
   <p>A narrated 10-minute walk through your first real briefing, end to end.</p>
 </a>
 
-Already have Aparture running? The [Guide](/using/first-briefing) covers daily use — running briefings, reading them, giving feedback, writing a profile, refining over time — [Under the Hood](/concepts/pipeline) goes deeper into how the pipeline and briefings actually work, and [Reference](/reference/environment) is the lookup surface for env vars, prompt files, and troubleshooting symptoms.
+Already have Aparture running? The [Guide](/using/first-briefing) covers daily use, from running and reading briefings to giving feedback and refining your profile. [Under the Hood](/concepts/pipeline) explains how the pipeline and briefings work. [Reference](/reference/environment) is where to look up environment variables, prompt files, and troubleshooting symptoms.
 
 <div class="landing-footer">
 

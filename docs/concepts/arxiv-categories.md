@@ -6,7 +6,7 @@ The category set in your config determines which papers Aparture fetches each da
 
 arXiv organises papers into a hierarchical taxonomy with major categories (top-level domains like `cs`, `math`, `stat`, `astro-ph`), subcategories within each domain (e.g. `cs.LG` for machine learning), and cross-listings where a single paper appears in multiple subcategories with one designated as primary.
 
-Aparture fetches by subcategory. The selection lives in `config.selectedCategories`, and the default configuration covers machine learning, statistics, and astrophysics — edit it in the Settings view to match your field.
+Aparture fetches by subcategory. The selection lives in `config.selectedCategories`. A fresh install starts with `cs.LG` and `stat.ML`, and picking a starter template on the Profile view replaces that with the template's own list. Edit it in the Settings view to match your field.
 
 ## Top-level divisions
 
@@ -113,6 +113,10 @@ Applied:
 - `econ.EM` — Econometrics
 - `econ.TH` — Theoretical Economics
 
+::: warning Not selectable yet
+The Settings catalog doesn't list the `econ.*` subcategories, so they can't be added to a run from the UI.
+:::
+
 ### Electrical Engineering (`eess.*`)
 
 - `eess.IV` — Image and Video Processing
@@ -160,7 +164,7 @@ stat.ME
 stat.ML
 astro-ph.IM
 physics.data-an
-econ.EM
+q-bio.QM
 ```
 
 Typical volume: 20–50 papers/day. Costs more per run and puts more load on the filter, but cross-field connections surface that narrow configurations miss.
@@ -230,7 +234,7 @@ Typical volume: 15–35 papers/day.
 
 ```
 Core: stat.ME, stat.AP, stat.ML
-Optional: cs.LG, econ.EM
+Optional: cs.LG, stat.CO
 ```
 
 Typical volume: 10–25 papers/day.
@@ -246,7 +250,7 @@ Typical volume: 5–15 papers/day.
 
 ## Fetch behaviour and rate limits
 
-arXiv's query API asks for a three-second delay between requests, and Aparture honours that by fetching one category at a time. Each per-category request is capped at 300 papers, so on exceptionally dense days in a large category the tail of the fetch window can get clipped — not usually a concern for daily runs on typical category sets, but worth knowing if you're running on a busy category across a multi-day window.
+arXiv asks for at least three seconds between requests, and Aparture spaces consecutive requests 3–5 seconds apart. On the primary OAI-PMH path it makes one request per top-level group (`cs`, `stat`, `physics`, and so on) and pages through the results, so ten `cs.*` categories cost about the same as one. The Atom fallback fetches one category at a time and caps each request at 300 papers, so on exceptionally dense days in a large category the tail of the window can get clipped there. See [arXiv ingestion](/concepts/arxiv-ingestion) for both paths.
 
 Fetch time scales roughly with category count:
 
