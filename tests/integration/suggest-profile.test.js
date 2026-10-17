@@ -2,7 +2,10 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
-import handler from '../../pages/api/suggest-profile.js';
+import handler, {
+  suggestedProfileJsonSchema,
+  validateNoteChanges,
+} from '../../pages/api/suggest-profile.js';
 import { hashInput } from '../../lib/llm/hash.js';
 import { renderSuggestPrompt } from '../../lib/profile/suggestPrompt.js';
 
@@ -27,41 +30,6 @@ function createMockReqRes(body) {
 }
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime');
-
-// Mirrors the JSON schema the route emits — needed to compute the deterministic
-// fixture hash. Must stay in sync with suggestedProfileJsonSchema() in the route.
-function suggestedProfileJsonSchema() {
-  return {
-    type: 'object',
-    required: ['changes', 'noChangeReason'],
-    additionalProperties: false,
-    properties: {
-      changes: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['id', 'rationale', 'edit'],
-          additionalProperties: false,
-          properties: {
-            id: { type: 'string' },
-            rationale: { type: 'string' },
-            edit: {
-              type: 'object',
-              required: ['type', 'anchor', 'content'],
-              additionalProperties: false,
-              properties: {
-                type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
-                anchor: { type: 'string' },
-                content: { type: ['string', 'null'] },
-              },
-            },
-          },
-        },
-      },
-      noChangeReason: { type: ['string', 'null'] },
-    },
-  };
-}
 
 const PROFILE_WITH_CHANGES =
   'I study mechanistic interpretability of large language models with a focus on attention heads.';
@@ -114,10 +82,10 @@ const FEEDBACK_NO_CHANGE = [
   },
 ];
 
-async function seedFixture({ profile, feedback, response }) {
+async function seedFixture({ profile, notes, feedback, response }) {
   const templatePath = path.resolve(process.cwd(), 'prompts', 'suggest-profile.md');
   const template = await fs.readFile(templatePath, 'utf8');
-  const prompt = renderSuggestPrompt(template, { profile, events: feedback });
+  const prompt = renderSuggestPrompt(template, { profile, notes, events: feedback });
 
   const input = {
     provider: 'anthropic',
@@ -265,5 +233,119 @@ describe('suggest-profile API route (fixture mode)', () => {
     req.method = 'GET';
     await handler(req, res);
     expect(getResponse().statusCode).toBe(405);
+  });
+});
+
+describe('suggest-profile — editorial notes', () => {
+  const NOTES = [
+    {
+      id: 'n1',
+      text: 'Prefers papers that release code.',
+      scope: 'selection',
+      source: 'manual',
+      createdAt: 1,
+    },
+  ];
+  const PROFILE = 'I study simulation-based inference for galaxy surveys.';
+  const FEEDBACK = [
+    {
+      type: 'general-comment',
+      text: 'Lead each theme with the result, not the method.',
+      timestamp: '2026-10-16T10:00:00Z',
+      briefingDate: '2026-10-16',
+    },
+  ];
+
+  beforeAll(async () => {
+    await seedFixture({
+      profile: PROFILE,
+      notes: NOTES,
+      feedback: FEEDBACK,
+      response: {
+        text: '',
+        tokensIn: 200,
+        tokensOut: 70,
+        structured: {
+          changes: [],
+          noteChanges: [
+            {
+              id: 'n-a',
+              rationale: 'The comment asks to "lead each theme with the result".',
+              action: 'add',
+              noteId: null,
+              scope: 'writing',
+              text: 'Open each theme with its result, then the method.',
+            },
+            {
+              id: 'n-b',
+              rationale: 'Sharpens n1 against the same comment.',
+              action: 'revise',
+              noteId: 'n1',
+              scope: null,
+              text: 'Prefers papers that release code and data.',
+            },
+            {
+              id: 'n-c',
+              rationale: 'Names a note that does not exist.',
+              action: 'retire',
+              noteId: 'n-missing',
+              scope: null,
+              text: null,
+            },
+          ],
+          noChangeReason: null,
+        },
+      },
+    });
+  });
+
+  it('sends the notes to the model and returns the note changes that can apply', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      currentProfile: PROFILE,
+      currentNotes: NOTES,
+      feedback: FEEDBACK,
+      briefingModel: 'claude-opus-4-6',
+      provider: 'anthropic',
+      apiKey: 'test-key',
+      callModelMode: { mode: 'fixture', fixturesDir },
+    });
+    await handler(req, res);
+    const { statusCode, jsonBody } = getResponse();
+    expect(statusCode).toBe(200);
+    expect(jsonBody.changes).toEqual([]);
+    expect(jsonBody.noteChanges.map((c) => c.id)).toEqual(['n-a', 'n-b']);
+    expect(jsonBody.droppedNoteChanges).toBe(1);
+  });
+
+  it('drops an add to a scope already at its limit', () => {
+    const full = Array.from({ length: 12 }, (_, i) => ({
+      id: `s${i}`,
+      text: `Note ${i}`,
+      scope: 'selection',
+    }));
+    const { kept, dropped } = validateNoteChanges(
+      [
+        {
+          id: 'a',
+          rationale: 'r',
+          action: 'add',
+          noteId: null,
+          scope: 'selection',
+          text: 'One more',
+        },
+        {
+          id: 'b',
+          rationale: 'r',
+          action: 'add',
+          noteId: null,
+          scope: 'podcast',
+          text: 'Slower pace',
+        },
+        { id: 'c', rationale: 'r', action: 'revise', noteId: 's3', scope: null, text: '  ' },
+      ],
+      full
+    );
+    expect(kept.map((c) => c.id)).toEqual(['b']);
+    expect(dropped).toBe(2);
   });
 });

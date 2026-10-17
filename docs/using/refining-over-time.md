@@ -67,6 +67,8 @@ Each proposed change renders as a card with a checkbox (checked by default), a s
 
 The diff preview uses the colour conventions used elsewhere in the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey _"after: …"_ context because the anchor itself isn't being touched — the new content is going in right after it.
 
+Proposed [editorial notes](/using/writing-a-profile#editorial-notes) appear as cards of their own: _Add a writing note_, _Revise a note_ (the old text struck through above the new), or _Retire a note_. They are ticked and applied the same way, and the cumulative preview shows only the profile text.
+
 Rationales tend to look like _"You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this adds MoE to your active topics and removes sparse attention."_ Read them. Uncheck anything whose reasoning you don't buy.
 
 ### Cumulative preview

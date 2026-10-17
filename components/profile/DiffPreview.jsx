@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Button from '../ui/Button.jsx';
+import { NOTE_SCOPE_INFO } from '../../lib/profile/editorialNotes.js';
 
 /**
  * Apply a single edit to text. Defensive: silently returns the original
@@ -157,6 +158,63 @@ function ChangeCard({ change, checked, onToggle }) {
   );
 }
 
+const NOTE_ACTION_LABELS = {
+  add: (scope) => `Add a ${NOTE_SCOPE_INFO[scope]?.label.toLowerCase() ?? ''} note`,
+  revise: () => 'Revise a note',
+  retire: () => 'Retire a note',
+};
+
+// One proposed editorial-note change: what it adds, or what it replaces.
+function NoteChangeCard({ change, before, checked, onToggle }) {
+  const { action, scope, text } = change.note ?? {};
+  const label = (NOTE_ACTION_LABELS[action] ?? (() => 'Change a note'))(scope);
+  return (
+    <label
+      data-testid={`note-change-${change.id}`}
+      style={{
+        display: 'flex',
+        gap: 'var(--aparture-space-3)',
+        alignItems: 'flex-start',
+        padding: 'var(--aparture-space-3)',
+        background: 'var(--aparture-surface)',
+        border: '1px solid var(--aparture-hairline)',
+        borderRadius: '4px',
+        cursor: 'pointer',
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        aria-label={label}
+        style={{ marginTop: '4px', accentColor: 'var(--aparture-accent)' }}
+      />
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-xs)',
+        }}
+      >
+        <span style={{ fontWeight: 600, color: 'var(--aparture-ink)' }}>{label}</span>
+        {before && (
+          <span style={{ color: 'var(--aparture-danger-text)', textDecoration: 'line-through' }}>
+            {before}
+          </span>
+        )}
+        {text && <span style={{ color: 'var(--aparture-success-text)' }}>{text}</span>}
+        <span style={{ color: 'var(--aparture-mute)', fontStyle: 'italic' }}>
+          {change.rationale}
+        </span>
+      </div>
+    </label>
+  );
+}
+
 /**
  * Per-hunk accept/reject diff preview.
  *
@@ -166,9 +224,25 @@ function ChangeCard({ change, checked, onToggle }) {
  *   - onApply: ({acceptedIds, resultText}) => void — called on Apply click.
  *   - onCancel: () => void — optional, renders a Cancel button next to Apply.
  */
-export default function DiffPreview({ currentProfile, changes, onApply, onCancel }) {
+export default function DiffPreview({
+  currentProfile,
+  changes,
+  // Editorial-note changes ({id, rationale, note: {action, scope, text},
+  // noteId}) and the reader's current notes, to show what a revise or
+  // retire replaces. Ids must not collide with the profile changes'.
+  noteChanges = [],
+  notes = [],
+  onApply,
+  onCancel,
+}) {
   const safeChanges = useMemo(() => (Array.isArray(changes) ? changes : []), [changes]);
-  const [acceptedIds, setAcceptedIds] = useState(() => new Set(safeChanges.map((c) => c.id)));
+  const safeNoteChanges = useMemo(
+    () => (Array.isArray(noteChanges) ? noteChanges : []),
+    [noteChanges]
+  );
+  const [acceptedIds, setAcceptedIds] = useState(
+    () => new Set([...safeChanges, ...safeNoteChanges].map((c) => c.id))
+  );
 
   const cumulative = useMemo(
     () => applyAll(currentProfile ?? '', safeChanges, acceptedIds),
@@ -184,16 +258,18 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
     });
   };
 
-  const selectAll = () => setAcceptedIds(new Set(safeChanges.map((c) => c.id)));
+  const allChanges = [...safeChanges, ...safeNoteChanges];
+  const selectAll = () => setAcceptedIds(new Set(allChanges.map((c) => c.id)));
   const selectNone = () => setAcceptedIds(new Set());
 
   const count = acceptedIds.size;
-  const total = safeChanges.length;
+  const total = allChanges.length;
+  const profileCount = safeChanges.filter((c) => acceptedIds.has(c.id)).length;
   const canApply = count > 0;
 
   const handleApply = () => {
     if (!onApply) return;
-    const orderedIds = safeChanges.filter((c) => acceptedIds.has(c.id)).map((c) => c.id);
+    const orderedIds = allChanges.filter((c) => acceptedIds.has(c.id)).map((c) => c.id);
     onApply({ acceptedIds: orderedIds, resultText: cumulative });
   };
 
@@ -235,37 +311,48 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
             onToggle={() => toggle(c.id)}
           />
         ))}
+        {safeNoteChanges.map((c) => (
+          <NoteChangeCard
+            key={c.id}
+            change={c}
+            before={notes.find((n) => n.id === c.noteId)?.text ?? null}
+            checked={acceptedIds.has(c.id)}
+            onToggle={() => toggle(c.id)}
+          />
+        ))}
       </div>
 
-      <div
-        data-testid="cumulative-preview"
-        style={{
-          padding: 'var(--aparture-space-3) var(--aparture-space-4)',
-          background: 'var(--aparture-bg)',
-          border: '1px dashed var(--aparture-accent)',
-          borderRadius: '4px',
-          fontFamily: 'var(--aparture-font-serif)',
-          fontSize: 'var(--aparture-text-sm)',
-          color: 'var(--aparture-ink)',
-          lineHeight: 1.6,
-          whiteSpace: 'pre-wrap',
-        }}
-      >
+      {safeChanges.length > 0 && (
         <div
+          data-testid="cumulative-preview"
           style={{
-            fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '12px',
-            fontWeight: 600,
-            color: 'var(--aparture-mute)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            marginBottom: '6px',
+            padding: 'var(--aparture-space-3) var(--aparture-space-4)',
+            background: 'var(--aparture-bg)',
+            border: '1px dashed var(--aparture-accent)',
+            borderRadius: '4px',
+            fontFamily: 'var(--aparture-font-serif)',
+            fontSize: 'var(--aparture-text-sm)',
+            color: 'var(--aparture-ink)',
+            lineHeight: 1.6,
+            whiteSpace: 'pre-wrap',
           }}
         >
-          Preview ({count} of {total} changes)
+          <div
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--aparture-mute)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              marginBottom: '6px',
+            }}
+          >
+            Profile preview ({profileCount} of {safeChanges.length} changes)
+          </div>
+          <div>{cumulative}</div>
         </div>
-        <div>{cumulative}</div>
-      </div>
+      )}
 
       <div
         style={{

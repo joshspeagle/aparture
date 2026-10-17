@@ -9,6 +9,7 @@ import { iconFor } from '../feedback/eventMeta.js';
 import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
 import DiffPreview from './DiffPreview.jsx';
+import { applyNoteChanges } from '../../lib/profile/editorialNotes.js';
 
 // Pre-filled into the guidance field when the dialog opens with no feedback.
 // Editable — users can trim, replace, or augment before generating. Targets
@@ -130,6 +131,9 @@ export default function SuggestDialog({
   isOpen,
   onClose,
   profile,
+  // The reader's editorial notes; the model may propose to add, revise or
+  // retire them alongside profile edits.
+  notes = [],
   newFeedback,
   briefingHistory,
   cap,
@@ -255,6 +259,7 @@ export default function SuggestDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentProfile: profile,
+          currentNotes: notes,
           // Rejections ride after the capped events; the prompt renders them
           // in their own "previously rejected" section (suggestPrompt.js).
           feedback: [...cappedEvents, ...rejectedItems],
@@ -280,6 +285,15 @@ export default function SuggestDialog({
         throw new Error(bodyMsg);
       }
       const data = await res.json();
+      // Note changes get their own id space so they can share DiffPreview's
+      // accept set with the profile changes.
+      data.noteChanges = (data.noteChanges ?? []).map((c) => ({
+        id: `note:${c.id}`,
+        rationale: c.rationale,
+        noteId: c.noteId ?? null,
+        note: { action: c.action, scope: c.scope ?? null, text: c.text ?? null },
+        source: c,
+      }));
       setResponse(data);
       setState('result');
     } catch (e) {
@@ -306,14 +320,19 @@ export default function SuggestDialog({
   // changes, and everything after a "no change" result stay pending.
   function handleApply({ acceptedIds, resultText }) {
     const appliedAt = Date.now();
+    const noteChanges = response.noteChanges ?? [];
     const { accepted, rejected, incorporatedEventIds } = resolveSuggestionOutcome({
       sentEvents,
-      changes: response.changes,
+      changes: [...response.changes, ...noteChanges],
       acceptedIds,
     });
+    const acceptedNotes = accepted.filter((c) => c.note).map((c) => c.source);
     onAccept({
       kind: accepted.length > 0 ? 'applied' : 'rejected',
       content: accepted.length > 0 ? resultText : profile,
+      ...(acceptedNotes.length > 0
+        ? { notes: applyNoteChanges(notes, acceptedNotes, appliedAt) }
+        : {}),
       rationale: accepted.map((c) => `• ${c.rationale}`).join('\n'),
       accepted,
       rejected,
@@ -337,7 +356,7 @@ export default function SuggestDialog({
 
   const resultMode =
     state === 'result' && response
-      ? Array.isArray(response.changes) && response.changes.length > 0
+      ? (response.changes?.length ?? 0) + (response.noteChanges?.length ?? 0) > 0
         ? 'changes'
         : 'no-change'
       : null;
@@ -587,7 +606,7 @@ export default function SuggestDialog({
                       color: 'var(--aparture-ink)',
                     }}
                   >
-                    Proposed changes ({response.changes.length})
+                    Proposed changes ({response.changes.length + response.noteChanges.length})
                   </h3>
                   <div
                     style={{
@@ -602,6 +621,8 @@ export default function SuggestDialog({
                 <DiffPreview
                   currentProfile={profile}
                   changes={response.changes}
+                  noteChanges={response.noteChanges}
+                  notes={notes}
                   onApply={handleApply}
                   onCancel={onClose}
                 />

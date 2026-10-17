@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
-import handler from '../../pages/api/suggest-profile.js';
+import handler, {
+  suggestedProfileJsonSchema as perHunkJsonSchema,
+} from '../../pages/api/suggest-profile.js';
 import { hashInput } from '../../lib/llm/hash.js';
 import { renderSuggestPrompt } from '../../lib/profile/suggestPrompt.js';
 
@@ -27,40 +29,6 @@ function createMockReqRes(body) {
 }
 
 const fixturesDir = path.resolve(__dirname, '../fixtures/llm/runtime-overlap');
-
-// Must stay in sync with suggestedProfileJsonSchema() in the route.
-function perHunkJsonSchema() {
-  return {
-    type: 'object',
-    required: ['changes', 'noChangeReason'],
-    additionalProperties: false,
-    properties: {
-      changes: {
-        type: 'array',
-        items: {
-          type: 'object',
-          required: ['id', 'rationale', 'edit'],
-          additionalProperties: false,
-          properties: {
-            id: { type: 'string' },
-            rationale: { type: 'string' },
-            edit: {
-              type: 'object',
-              required: ['type', 'anchor', 'content'],
-              additionalProperties: false,
-              properties: {
-                type: { type: 'string', enum: ['replace', 'insert', 'delete'] },
-                anchor: { type: 'string' },
-                content: { type: ['string', 'null'] },
-              },
-            },
-          },
-        },
-      },
-      noChangeReason: { type: ['string', 'null'] },
-    },
-  };
-}
 
 const PROFILE =
   'I care about Bayesian methods for hierarchical models in astrophysics and cosmology.';

@@ -5,10 +5,12 @@ import TextArea from '../ui/TextArea.jsx';
 import MigrationNotice from './MigrationNotice.jsx';
 import HistoryDropdown from './HistoryDropdown.jsx';
 import ProfileSwitcher from './ProfileSwitcher.jsx';
+import EditorialNotes from './EditorialNotes.jsx';
 
 export default function YourProfile({
   profile,
   updateProfile,
+  updateNotes,
   migrationNotice,
   dismissMigrationNotice,
   revertToRevision,
@@ -27,6 +29,9 @@ export default function YourProfile({
   renameProfile,
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  // 'profile' (the reader's own text) or 'notes' (editorial notes).
+  const [tab, setTab] = useState('profile');
+  const noteCount = profile?.notes?.length ?? 0;
 
   const currentContent = profile?.content ?? '';
   const currentDraft = draftContent ?? currentContent;
@@ -157,31 +162,83 @@ export default function YourProfile({
             Updated {dateStr}
           </div>
 
-          <TextArea
-            aria-label="Research profile"
-            value={currentDraft}
-            onChange={(e) => setDraftContent(e.target.value)}
-            readOnly={disabled}
-            rows={8}
-            style={{ minHeight: '10rem' }}
-            placeholder="Describe your research interests in prose. This profile drives every pipeline stage and the briefing synthesis."
-          />
-
-          {/* Save / Discard buttons */}
           <div
+            role="tablist"
+            aria-label="Profile sections"
             style={{
-              marginTop: 'var(--aparture-space-3)',
               display: 'flex',
-              gap: 'var(--aparture-space-2)',
+              gap: 'var(--aparture-space-4)',
+              borderBottom: '1px solid var(--aparture-hairline)',
+              marginBottom: 'var(--aparture-space-4)',
             }}
           >
-            <Button variant="primary" onClick={handleSave} disabled={disabled || !dirty}>
-              Save changes
-            </Button>
-            <Button variant="secondary" onClick={handleDiscard} disabled={disabled || !dirty}>
-              Discard
-            </Button>
+            {[
+              ['profile', 'Research profile'],
+              ['notes', `Editorial notes${noteCount ? ` (${noteCount})` : ''}`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`profile-tab-${key}`}
+                aria-selected={tab === key}
+                aria-controls={`profile-panel-${key}`}
+                onClick={() => setTab(key)}
+                className="touch-target"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: `2px solid ${tab === key ? 'var(--aparture-accent)' : 'transparent'}`,
+                  padding: 'var(--aparture-space-2) 0',
+                  marginBottom: '-1px',
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-sm)',
+                  fontWeight: tab === key ? 600 : 400,
+                  color: tab === key ? 'var(--aparture-ink)' : 'var(--aparture-mute)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+
+          {tab === 'profile' ? (
+            <div role="tabpanel" id="profile-panel-profile" aria-labelledby="profile-tab-profile">
+              <TextArea
+                aria-label="Research profile"
+                value={currentDraft}
+                onChange={(e) => setDraftContent(e.target.value)}
+                readOnly={disabled}
+                rows={8}
+                style={{ minHeight: '10rem' }}
+                placeholder="Describe your research interests in prose. This profile drives every pipeline stage and the briefing synthesis."
+              />
+
+              {/* Save / Discard buttons */}
+              <div
+                style={{
+                  marginTop: 'var(--aparture-space-3)',
+                  display: 'flex',
+                  gap: 'var(--aparture-space-2)',
+                }}
+              >
+                <Button variant="primary" onClick={handleSave} disabled={disabled || !dirty}>
+                  Save changes
+                </Button>
+                <Button variant="secondary" onClick={handleDiscard} disabled={disabled || !dirty}>
+                  Discard
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div role="tabpanel" id="profile-panel-notes" aria-labelledby="profile-tab-notes">
+              <EditorialNotes
+                notes={profile?.notes ?? []}
+                onChange={(next, opts) => updateNotes?.(next, opts)}
+                disabled={disabled}
+              />
+            </div>
+          )}
 
           {/* Suggest improvements section */}
           <Card style={{ marginTop: 'var(--aparture-space-6)' }}>
@@ -293,6 +350,7 @@ export default function YourProfile({
           <HistoryDropdown
             revisions={profile?.revisions ?? []}
             currentContent={profile?.content ?? ''}
+            currentNotes={profile?.notes ?? []}
             onRevert={revertToRevision}
             onClearHistory={clearHistory}
           />

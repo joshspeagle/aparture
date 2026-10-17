@@ -773,6 +773,12 @@ Commands:
             <state>/feedback.jsonl (idempotent via feedback-cursor.json).
             --docs <file>       JSON array of {id, data} from the page's db
             --state <dir>
+  notes     Read the editorial notes in <state>/learned.md, the way the app
+            reads them. With --scope, print the block that follows the
+            research profile in that scope's prompts (empty when none).
+            --state <dir>
+            --scope selection|writing|podcast
+            --init              rewrite learned.md in the sectioned format
   figure    Crop a labelled figure out of a PDF, as the app does for a
             paper's key figure, and print its page and caption (the
             paper's own text). Prints {found: false} when no caption matches.
@@ -790,7 +796,32 @@ const COMMANDS = {
   record: cmdRecord,
   ingest: cmdIngest,
   figure: cmdFigure,
+  notes: cmdNotes,
 };
+
+// --- notes -----------------------------------------------------------------
+
+async function cmdNotes(flags) {
+  if (!flags.state) throw new Error('notes: --state <dir> is required');
+  const { NOTE_SCOPES, parseLearnedMarkdown, renderLearnedMarkdown, renderNotesBlock } =
+    await import('../lib/profile/editorialNotes.js');
+  const file = path.join(flags.state, 'learned.md');
+  const notes = parseLearnedMarkdown(readText(file));
+  if (flags.init) {
+    // Rewrites learned.md in the sectioned format, keeping every note.
+    fs.writeFileSync(file, renderLearnedMarkdown(notes));
+    log(`learned.md: ${notes.length} note(s) in ${NOTE_SCOPES.length} sections`);
+  }
+  if (flags.scope) {
+    if (!NOTE_SCOPES.includes(flags.scope)) {
+      throw new Error(`notes: --scope must be one of ${NOTE_SCOPES.join(', ')}`);
+    }
+    // The same block the app appends after the research profile.
+    process.stdout.write(`${renderNotesBlock(notes, flags.scope)}\n`);
+    return;
+  }
+  writeOut(undefined, { notes: notes.map(({ scope, text }) => ({ scope, text })) });
+}
 
 // --- figure ----------------------------------------------------------------
 

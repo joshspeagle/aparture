@@ -46,7 +46,7 @@ Look at the last 30 days of events plus today's triage. Propose at most three ed
 | A comment stating a preference outright                                 | A `learned.md` line quoting it                               |
 | An editor's-question answer                                             | The edit the answer implies                                  |
 
-Prefer `learned.md` for taste (what kind of paper, how much incremental work, code or no code) and `profile.md` for scope (which topics). Write additions in the reader's own voice and format; a proposal that reads like a different author gets declined. Keep each edit to a sentence or a clause. The anchor must be copied exactly from the current file; the validator rejects anchors that don't match.
+Prefer `learned.md` for taste (what kind of paper, how much incremental work, code or no code, how the briefing or podcast should read) and `profile.md` for scope (which topics). A `learned.md` line goes in the section whose prompts it should reach: Selection for what makes the cut, Writing for the briefing's prose, Podcast for the episode. A section holds at most 12 notes, the same limit as the app; at the limit, propose rewording or removing a note instead of adding one. To insert a note, anchor on the section heading (`## Selection`) or on an existing bullet. Write additions in the reader's own voice and format; a proposal that reads like a different author gets declined. Keep each edit to a sentence or a clause. The anchor must be copied exactly from the current file; the validator rejects anchors that don't match.
 
 Don't re-propose an edit the reader declined in the last 30 days. Don't propose anything from a single star or dismissal; one event is a data point, not a preference.
 

@@ -49,6 +49,7 @@ function MainArea({
   // For profile view
   profile,
   updateProfile,
+  updateNotes,
   revertToRevision,
   clearHistory,
   migrationNotice,
@@ -147,6 +148,7 @@ function MainArea({
         <YourProfile
           profile={profile}
           updateProfile={updateProfile}
+          updateNotes={updateNotes}
           migrationNotice={migrationNotice}
           dismissMigrationNotice={dismissMigrationNotice}
           revertToRevision={revertToRevision}

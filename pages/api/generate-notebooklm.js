@@ -23,6 +23,7 @@ import { renderPaperReport } from '../../lib/notebooklm/renderPaperReport.js';
 import { buildFocusPrompt } from '../../lib/notebooklm/buildFocusPrompt.js';
 import { bundleZip } from '../../lib/notebooklm/bundleZip.js';
 import { INSTRUCTIONS_MD } from '../../lib/notebooklm/instructions.js';
+import { MAX_NOTE_CHARS, MAX_NOTES_PER_SCOPE } from '../../lib/profile/editorialNotes.js';
 
 const GUIDE_PROMPT_PATH = path.join(process.cwd(), 'prompts/notebooklm-discussion-guide.md');
 
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
     briefing,
     papers = [],
     podcastDuration = 20,
+    podcastNotes = [],
     notebookLMModel,
     provider,
     password,
@@ -150,7 +152,15 @@ export default async function handler(req, res) {
     const discussionGuide = stripCodeFence(rawGuide);
 
     const briefingMd = renderBriefingMarkdown(briefing, { date: runDate });
-    const focusPrompt = buildFocusPrompt(briefing, podcastDuration);
+    // Client-supplied text, pasted by the user into Gemini Notebook: keep it
+    // to the notes' own bounds.
+    const notes = Array.isArray(podcastNotes)
+      ? podcastNotes
+          .filter((n) => typeof n === 'string')
+          .slice(0, MAX_NOTES_PER_SCOPE)
+          .map((n) => n.slice(0, MAX_NOTE_CHARS))
+      : [];
+    const focusPrompt = buildFocusPrompt(briefing, podcastDuration, { notes });
     const paperFiles = {};
     papers.forEach((p, i) => {
       const { filename, content } = renderPaperReport(p, i + 1);

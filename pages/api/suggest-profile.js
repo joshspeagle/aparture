@@ -10,6 +10,11 @@ import {
   validateNonOverlappingChanges,
 } from '../../lib/profile/suggestPrompt.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
+import {
+  MAX_NOTES_PER_SCOPE,
+  NOTE_SCOPES,
+  normalizeNotes,
+} from '../../lib/profile/editorialNotes.js';
 
 // Zod schema for the per-hunk suggested profile structured output.
 // `content` and `noChangeReason` are nullable rather than optional: OpenAI
@@ -31,8 +36,20 @@ const SuggestProfileChangeSchema = z.object({
   }),
 });
 
+// An editorial-note change (lib/profile/editorialNotes.js). Older fixtures
+// and providers that omit the list parse as no note changes.
+const NoteChangeSchema = z.object({
+  id: z.string().min(1),
+  rationale: z.string().min(1),
+  action: z.enum(['add', 'revise', 'retire']),
+  noteId: z.union([z.string(), z.null()]).default(null),
+  scope: z.union([z.enum(NOTE_SCOPES), z.null()]).default(null),
+  text: z.union([z.string(), z.null()]).default(null),
+});
+
 const SuggestedProfileSchema = z.object({
   changes: z.array(SuggestProfileChangeSchema),
+  noteChanges: z.array(NoteChangeSchema).default([]),
   noChangeReason: z
     .union([z.string(), z.null()])
     .transform((v) => v ?? undefined)
@@ -50,10 +67,10 @@ const SuggestedProfileSchema = z.object({
 // "null"]` and listed in `required` because OpenAI strict mode does not
 // support truly optional fields — the model must always emit the key, but
 // can return null when not applicable.
-function suggestedProfileJsonSchema() {
+export function suggestedProfileJsonSchema() {
   return {
     type: 'object',
-    required: ['changes', 'noChangeReason'],
+    required: ['changes', 'noteChanges', 'noChangeReason'],
     additionalProperties: false,
     properties: {
       changes: {
@@ -78,9 +95,52 @@ function suggestedProfileJsonSchema() {
           },
         },
       },
+      noteChanges: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['id', 'rationale', 'action', 'noteId', 'scope', 'text'],
+          additionalProperties: false,
+          properties: {
+            id: { type: 'string' },
+            rationale: { type: 'string' },
+            action: { type: 'string', enum: ['add', 'revise', 'retire'] },
+            noteId: { type: ['string', 'null'] },
+            scope: { type: ['string', 'null'] },
+            text: { type: ['string', 'null'] },
+          },
+        },
+      },
       noChangeReason: { type: ['string', 'null'] },
     },
   };
+}
+
+// Keep the note changes that can apply to the reader's notes: a revise or
+// retire must name an existing note, an add needs a scope with room. The
+// rest are dropped rather than failing the whole suggestion.
+export function validateNoteChanges(noteChanges, notes) {
+  const ids = new Set(notes.map((n) => n.id));
+  const counts = Object.fromEntries(
+    NOTE_SCOPES.map((s) => [s, notes.filter((n) => n.scope === s).length])
+  );
+  const kept = [];
+  let dropped = 0;
+  for (const c of noteChanges ?? []) {
+    const text = typeof c.text === 'string' ? c.text.trim() : '';
+    let ok = false;
+    if (c.action === 'add') {
+      ok = NOTE_SCOPES.includes(c.scope) && text !== '' && counts[c.scope] < MAX_NOTES_PER_SCOPE;
+      if (ok) counts[c.scope] += 1;
+    } else if (c.action === 'revise') {
+      ok = ids.has(c.noteId) && text !== '';
+    } else if (c.action === 'retire') {
+      ok = ids.has(c.noteId);
+    }
+    if (ok) kept.push({ ...c, text: c.action === 'retire' ? null : text });
+    else dropped += 1;
+  }
+  return { kept, dropped };
 }
 
 // Hint appended to the prompt on overlap retry. Kept as a module-level constant
@@ -98,7 +158,7 @@ function buildRepairPrompt({ originalSuggestion, errors }) {
     'The following validation errors were detected:',
     errors.map((e) => `- ${e}`).join('\n'),
     '',
-    'Please emit a corrected suggestion that (a) conforms to the schema {changes: [{id, rationale, edit: {type, anchor, content}}], noChangeReason?: string}, (b) preserves the original intent and content as much as possible while fixing the errors, (c) does not invent new feedback events. Respond with the corrected structured suggestion.',
+    'Please emit a corrected suggestion that (a) conforms to the schema {changes: [{id, rationale, edit: {type, anchor, content}}], noteChanges: [{id, rationale, action, noteId, scope, text}], noChangeReason?: string}, (b) preserves the original intent and content as much as possible while fixing the errors, (c) does not invent new feedback events. Respond with the corrected structured suggestion.',
   ].join('\n');
 }
 
@@ -121,6 +181,7 @@ export default async function handler(req, res) {
 
   const {
     currentProfile,
+    currentNotes,
     feedback,
     briefings,
     guidance,
@@ -177,8 +238,10 @@ export default async function handler(req, res) {
     // Load the suggest-profile prompt template
     const templatePath = path.resolve(process.cwd(), 'prompts', 'suggest-profile.md');
     const template = await fs.readFile(templatePath, 'utf8');
+    const notes = normalizeNotes(currentNotes);
     const fullPrompt = renderSuggestPrompt(template, {
       profile: currentProfile,
+      notes,
       events: feedback,
       briefings: briefings ?? {},
       guidance: typeof guidance === 'string' ? guidance : '',
@@ -351,8 +414,11 @@ export default async function handler(req, res) {
         return;
       }
 
+      const retryNotes = validateNoteChanges(retryData.noteChanges, notes);
       res.status(200).json({
         changes: retryData.changes,
+        noteChanges: retryNotes.kept,
+        ...(retryNotes.dropped ? { droppedNoteChanges: retryNotes.dropped } : {}),
         noChangeReason: retryData.noChangeReason,
         tokensIn: totalTokensIn + (retryResponse.tokensIn ?? 0),
         tokensOut: totalTokensOut + (retryResponse.tokensOut ?? 0),
@@ -364,8 +430,11 @@ export default async function handler(req, res) {
     }
 
     // First response (possibly repaired) passed both schema and overlap checks.
+    const checkedNotes = validateNoteChanges(data.noteChanges, notes);
     res.status(200).json({
       changes: data.changes,
+      noteChanges: checkedNotes.kept,
+      ...(checkedNotes.dropped ? { droppedNoteChanges: checkedNotes.dropped } : {}),
       noChangeReason: data.noChangeReason,
       tokensIn: totalTokensIn,
       tokensOut: totalTokensOut,

@@ -6,6 +6,12 @@ You are helping a researcher refine their research profile based on how they've 
 
 {{profile}}
 
+## Editorial notes
+
+Short lines about the reader's taste, kept beside the profile. Each has an id in brackets and a scope: selection notes reach the filter, scoring and the PDF read; writing notes reach the briefing's prose; podcast notes reach the podcast's focus prompt.
+
+{{notes}}
+
 ## Feedback not yet reflected in the profile
 
 {{feedback}}
@@ -33,7 +39,9 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
 
 4. **Cite the feedback that motivated each change.** Every change's `rationale` must point at specific feedback events: name each paper by its arXiv ID, and quote a few words of any comment or note you relied on ("Based on stars on 2504.01234 and 2504.03456, both on attention-head analysis, added emphasis on mechanistic interpretability."). Aparture reads the rationales of the changes the user accepts to mark which feedback has been used, so feedback you don't cite stays pending.
 
-5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas the profile already covers well, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous, return an empty `changes` list and explain why in `noChangeReason`. Forcing a change when none is warranted is worse than no change.
+5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas the profile already covers well, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous, return empty `changes` and `noteChanges` lists and explain why in `noChangeReason`. Forcing a change when none is warranted is worse than no change.
+
+6. **Put each change where it belongs.** The profile says what the reader works on: a topic to add, narrow, or drop is a profile edit. Taste is an editorial note: how much incremental work to accept, a preference for released code, how to open a theme, how the podcast should sound. Propose notes in `noteChanges`, written in the reader's register as one sentence each. Prefer revising an existing note to adding a near-duplicate. A scope that already holds 12 notes takes no new one, so revise or retire a note there instead. Note rationales cite feedback the same way as profile rationales (rule 4).
 
 ## Output granularity: atomic, non-overlapping changes
 
@@ -64,7 +72,14 @@ Example of GOOD (merged):
   - `id`: a short identifier, unique within this response (e.g. "c1", "c2")
   - `rationale`: one sentence explaining why, citing specific feedback events
   - `edit`: the edit itself, with `type` (`replace`, `insert`, or `delete`), `anchor` (a verbatim substring of the current profile), and `content` (the new text for `replace` or `insert`; empty for `delete`)
-- `noChangeReason`: null unless `changes` is empty; when it is empty, a short explanation of why the feedback doesn't call for an edit
+- `noteChanges`: the list of proposed editorial-note changes, each with:
+  - `id`: a short identifier, unique within this response (e.g. "n1")
+  - `rationale`: one sentence explaining why, citing specific feedback events
+  - `action`: `add` a new note, `revise` an existing note's text, or `retire` a note that no longer holds
+  - `noteId`: the bracketed id of the note to revise or retire; null for `add`
+  - `scope`: `selection`, `writing`, or `podcast` for `add`; null otherwise
+  - `text`: the note's text for `add` or `revise`; null for `retire`
+- `noChangeReason`: null unless both lists are empty; when they are, a short explanation of why the feedback doesn't call for an edit
 
 ## Examples
 

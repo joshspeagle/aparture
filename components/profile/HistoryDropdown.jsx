@@ -145,21 +145,73 @@ function FullText({ content }) {
 // Each revision holds the text from before its change, so the change is the
 // diff from that text to the next newer one: the revision above it in the
 // list, or the current profile for the newest.
-function useChanges(revisions, currentContent) {
+// What a change did to the editorial notes: notes added, removed, and
+// reworded (same id, new text). Null when either side predates notes.
+export function diffNotes(before, after) {
+  if (!Array.isArray(before) || !Array.isArray(after)) return null;
+  const was = new Map(before.map((n) => [n.id, n]));
+  const now = new Map(after.map((n) => [n.id, n]));
+  const added = after.filter((n) => !was.has(n.id));
+  const removed = before.filter((n) => !now.has(n.id));
+  const edited = after.filter((n) => was.has(n.id) && was.get(n.id).text !== n.text);
+  return added.length || removed.length || edited.length
+    ? { added, removed, edited: edited.map((n) => ({ before: was.get(n.id), after: n })) }
+    : null;
+}
+
+function describeNotes({ added, removed, edited }) {
+  const parts = [];
+  if (added.length) parts.push(`${added.length} note${added.length === 1 ? '' : 's'} added`);
+  if (edited.length) parts.push(`${edited.length} reworded`);
+  if (removed.length) parts.push(`${removed.length} removed`);
+  return parts.join(', ');
+}
+
+function useChanges(revisions, currentContent, currentNotes) {
   return useMemo(
     () =>
       revisions.map((rev, idx) => {
         const after = idx === 0 ? currentContent : revisions[idx - 1].content;
         const lines = typeof after === 'string' ? diffLines(rev.content, after) : null;
-        return { lines, counts: lines ? countChanges(lines) : null };
+        const counts = lines ? countChanges(lines) : null;
+        const afterNotes = idx === 0 ? currentNotes : revisions[idx - 1].notes;
+        const notes = diffNotes(rev.notes, afterNotes);
+        const textChanged = !counts || counts.added > 0 || counts.removed > 0;
+        return { lines: textChanged || !notes ? lines : null, counts, notes, textChanged };
       }),
-    [revisions, currentContent]
+    [revisions, currentContent, currentNotes]
   );
 }
 
-function RevisionList({ revisions, currentContent, onRevert }) {
+function NoteDiff({ notes }) {
+  const row = (marker, text, kind) => (
+    <li
+      key={`${marker}${text}`}
+      style={{
+        background: LINE_KINDS[kind].background,
+        padding: '2px 6px',
+        fontSize: 'var(--aparture-text-xs)',
+        color: 'var(--aparture-ink)',
+      }}
+    >
+      {marker} {text}
+    </li>
+  );
+  return (
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0, borderRadius: '4px' }}>
+      {notes.added.map((n) => row('+', n.text, 'added'))}
+      {notes.edited.flatMap((e) => [
+        row('−', e.before.text, 'removed'),
+        row('+', e.after.text, 'added'),
+      ])}
+      {notes.removed.map((n) => row('−', n.text, 'removed'))}
+    </ul>
+  );
+}
+
+function RevisionList({ revisions, currentContent, currentNotes, onRevert }) {
   const [expandedId, setExpandedId] = useState(null);
-  const changes = useChanges(revisions, currentContent);
+  const changes = useChanges(revisions, currentContent, currentNotes);
 
   const toggleExpanded = (createdAt) => {
     setExpandedId((current) => (current === createdAt ? null : createdAt));
@@ -169,7 +221,7 @@ function RevisionList({ revisions, currentContent, onRevert }) {
     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
       {revisions.map((rev, idx) => {
         const isExpanded = expandedId === rev.createdAt;
-        const { lines, counts } = changes[idx];
+        const { lines, counts, notes, textChanged } = changes[idx];
         return (
           <li
             key={rev.createdAt}
@@ -228,8 +280,11 @@ function RevisionList({ revisions, currentContent, onRevert }) {
                       accepted
                     </span>
                   )}
-                  {counts && (
+                  {counts && textChanged && (
                     <span style={{ color: 'var(--aparture-mute)' }}>{describeCounts(counts)}</span>
+                  )}
+                  {notes && (
+                    <span style={{ color: 'var(--aparture-mute)' }}>{describeNotes(notes)}</span>
                   )}
                 </div>
                 {rev.rationale && (
@@ -272,6 +327,12 @@ function RevisionList({ revisions, currentContent, onRevert }) {
                   marginRight: '4px',
                 }}
               >
+                {notes && (
+                  <>
+                    <div style={smallCaps}>Editorial notes</div>
+                    <NoteDiff notes={notes} />
+                  </>
+                )}
                 {lines ? (
                   <>
                     <div style={smallCaps}>What this change did</div>
@@ -289,7 +350,7 @@ function RevisionList({ revisions, currentContent, onRevert }) {
                       <FullText content={rev.content} />
                     </details>
                   </>
-                ) : (
+                ) : notes ? null : (
                   <>
                     <div style={smallCaps}>Text before this change</div>
                     <FullText content={rev.content} />
@@ -308,7 +369,13 @@ function RevisionList({ revisions, currentContent, onRevert }) {
   );
 }
 
-export default function HistoryDropdown({ revisions, currentContent, onRevert, onClearHistory }) {
+export default function HistoryDropdown({
+  revisions,
+  currentContent,
+  currentNotes = [],
+  onRevert,
+  onClearHistory,
+}) {
   const [open, setOpen] = useState(false);
 
   const handleClearHistory = () => {
@@ -408,6 +475,7 @@ export default function HistoryDropdown({ revisions, currentContent, onRevert, o
             <RevisionList
               revisions={revisions}
               currentContent={currentContent}
+              currentNotes={currentNotes}
               onRevert={onRevert}
             />
           </>

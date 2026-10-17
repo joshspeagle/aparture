@@ -42,7 +42,7 @@ The editor's questions: up to two tap-to-answer questions after a briefing, aske
 
 ### `prompts/suggest-profile.md`
 
-Profile refinement proposals from accumulated feedback. Fires when the user clicks Suggest improvements via `/api/suggest-profile`.
+Profile refinement proposals from accumulated feedback: edits to the profile text and changes to the editorial notes (add, revise, retire). Fires when the user clicks Suggest improvements via `/api/suggest-profile`.
 
 **Variables:** `profile`, `feedback`
 
@@ -84,7 +84,8 @@ Edits to any file in `prompts/` take effect on the next API call that reads it. 
 
 Variables are rendered as simple string substitution. A few are worth noting:
 
-- `profile` is the exact profile text stored in `scoringCriteria` in your config. It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
+- `notes` in `suggest-profile.md` lists the editorial notes by scope, each with the id a revise or retire names.
+- `profile` is the exact profile text stored in `scoringCriteria` in your config, followed by the editorial notes for the prompt's scope when there are any (`lib/profile/editorialNotes.js`). It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
 - `papers` in `synthesis.md` is a JSON-serialised list of the final-round papers: arXiv ID, title, abstract, score, the scoring justification, the full report, and an `engagement` object when you starred, dismissed, or commented on the paper. Quick summaries are not part of it.
 - `papers` in `check-briefing.md` is rendered text, one block per paper (`lib/synthesis/checkCorpus.js`), holding what the writer saw: title, relevance score, your engagement, abstract, scoring justification, and the full report, untruncated. Quick summaries are left out because the writer never sees them. `briefing` is a text rendering of the executive summary, themes, and paper cards.
 - `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups the pending events you ticked by type. It includes an `ANSWERS TO THE EDITOR'S QUESTIONS` section when you've answered any, and ends with a `PREVIOUSLY REJECTED SUGGESTIONS` section when you've turned changes down before (the 10 most recent). The rationales the model writes matter beyond the dialog: Aparture marks feedback as incorporated only when an accepted change's rationale cites it by arXiv ID or quotes it.

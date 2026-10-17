@@ -55,6 +55,7 @@ export default function App() {
   const {
     profile,
     updateProfile,
+    updateNotes,
     recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
@@ -1170,6 +1171,7 @@ export default function App() {
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
+          updateNotes={updateNotes}
           revertToRevision={handleRevertToRevision}
           clearHistory={clearHistory}
           migrationNotice={migrationNotice}
@@ -1252,6 +1254,7 @@ export default function App() {
         isOpen={showSuggestDialog}
         onClose={() => setShowSuggestDialog(false)}
         profile={profile?.content ?? ''}
+        notes={profile?.notes ?? []}
         newFeedback={newFeedback}
         briefingHistory={briefingHistory}
         cap={{ commentCap: 30 }}
