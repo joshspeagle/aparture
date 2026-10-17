@@ -60,7 +60,7 @@ Breaking one of these produces wrong output, an unexpected bill, or lost data.
 
 ### Pipeline
 
-`App.jsx` creates the pipeline once: `useMemo(() => createAnalysisPipeline({ abortControllerRef, pauseRef, mockAPITesterRef }), [])`. `lib/analyzer/pipeline.js` builds the helpers in `stages/core.js` (`recordUsage`, `waitForResume`, `makeRobustAPICall`) once and passes one `deps` object to every stage factory in `lib/analyzer/stages/`. `startProcessing` drives the stages, passes each the run's `{ signal }`, and returns a `RUN_OUTCOME` (`ignored`, `aborted`, `superseded`, `finished`) that callers branch on. Stage behavior: `docs/concepts/pipeline.md`.
+`App.jsx` creates the pipeline once: `useState(() => createAnalysisPipeline({ abortControllerRef, pauseRef, mockAPITesterRef }))`. `lib/analyzer/pipeline.js` builds the helpers in `stages/core.js` (`recordUsage`, `waitForResume`, `makeRobustAPICall`) once and passes one `deps` object to every stage factory in `lib/analyzer/stages/`. `startProcessing` drives the stages, passes each the run's `{ signal }`, and returns a `RUN_OUTCOME` (`ignored`, `aborted`, `superseded`, `finished`) that callers branch on. Stage behavior: `docs/concepts/pipeline.md`.
 
 To add a stage: export `create<Stage>(deps)` from `lib/analyzer/stages/<stage>.js`, instantiate it in `createAnalysisPipeline` before `createStartProcessing`, call it from `startProcessing.js` with the run's signal, and add any new hook value to the `reactContext` publish. A pure in-memory transform is a helper inside an existing stage (`applyDedupe` is the model). To test a stage, set state with `useAnalyzerStore.setState(...)` and drive `startProcessing` with mocked API responses.
 
