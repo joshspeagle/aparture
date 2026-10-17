@@ -37,7 +37,9 @@ The first paragraph carries the headline — what's the most notable thing in to
 
 ### Themes
 
-Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension, and every paper appears in at least one theme.
+Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension.
+
+Each paper's card appears once, in the first theme that lists it. If a later theme lists the same paper, that theme names it in an _"Also in this theme (shown above)"_ line instead of repeating the card. A paper the briefing didn't place in any theme appears in a final **Other papers** group rather than disappearing.
 
 A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. _"1. Interpretability converges on attention heads"_, not _"Interpretability papers"_). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
 
@@ -49,19 +51,22 @@ Each theme contains one or more paper cards. This is where individual papers are
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Score badge**      | A 0.0–10.0 relevance score (one decimal place), more brightly highlighted at 9+ — see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)                                                                   |
 | **Title + arXiv ID** | Linked to the arXiv abstract page                                                                                                                                                                                       |
+| **Links**            | abstract · PDF · HTML · alphaXiv: the arXiv abstract page, the PDF, arXiv's HTML rendering (when the paper has one), and the paper's alphaXiv page                                                                      |
 | **One-line pitch**   | A 15–25 word italic sell — closer to "what would this paper say if it were selling itself in one sentence" than a summary                                                                                               |
 | **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                                                                                                             |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
 The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 3 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
 
+The title and score on a card always come from the pipeline, not from the briefing model: Aparture replaces whatever the model wrote with the paper's real title and score. Two markers mean Aparture repaired the briefing in code because the model's own repair failed: a card whose pitch reads _"Added by Aparture: the briefing model left this paper out"_, and the text _[unverified arXiv ID removed]_ where the prose cited an ID that isn't one of the day's papers. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
+
 ## Going deeper on a single paper
 
 Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.
 
-**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. Click again to collapse.
+**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. They're written for you to read; the briefing writer and the audit don't use them. Click again to collapse.
 
-**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
+**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment, with its headings and lists rendered. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
 
 ::: tip Expansions are free at read time
 Both the quick summary and the full report are generated once during the pipeline run and cached. Opening either costs nothing — no API calls, no waiting — so there's no reason to hesitate before clicking.
@@ -73,7 +78,7 @@ Below the briefing body sit two small sections that are easy to miss but worth o
 
 ### Hallucination audit
 
-After synthesis, Aparture makes a second LLM call, on the same briefing model, that audits the briefing's claims against each paper's abstract, quick summary, and full report. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
+After synthesis, Aparture makes a second LLM call, on the same briefing model, that audits the briefing's claims against each paper's abstract and full report: the same sources the writer was told to ground its claims in. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
 
 | Verdict                                     | Meaning                                                                                                                            |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -103,7 +108,9 @@ Below the audit is a small expandable link: <span class="ui-action">Generation d
 | **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                                                                              |
 | **Generated at**        | ISO timestamp                                                                                                                                                    |
 
-You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired. Briefings are archived for 90 days in the sidebar, and this panel is the permanent record of how each one was made.
+You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired.
+
+Every briefing is saved permanently as a file in `reports/briefings/`, and nothing deletes it except you. The sidebar list lives in browser storage, so it is trimmed to a size budget: when it fills, the oldest test runs (dry runs and Minimal API Tests) drop off the list first, then the oldest real briefings. A briefing that drops off the list is still on disk.
 
 ## A five-minute reading flow
 

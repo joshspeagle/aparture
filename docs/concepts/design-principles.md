@@ -24,9 +24,9 @@ _In the code:_ `utils/models.js` (registry with per-model pricing), `lib/analyze
 
 ## 4. Synthesis is the product, and claims must be checkable
 
-The briefing argues across papers. That editorial connection is the point, and it is allowed. Claims about individual papers are not given the same freedom: numbers, methods, and attributions are audited against the source material, and every cited arXiv ID must exist in the set of papers the model was actually given. A briefing whose citations fail that check is repaired or rejected. When the audit flags unsupported claims, synthesis is retried once by default, and the verdict and flagged claims are saved with the briefing.
+The briefing argues across papers. That editorial connection is the point, and it is allowed. Claims about individual papers are not given the same freedom: numbers, methods, and attributions are audited against the same abstracts and full reports the writer was given, and every cited arXiv ID, in a card or in the prose, must exist in the set of papers the model was actually given. Code also puts each paper's real title and score on its card and checks that every final-round paper has a card in a theme. A briefing that fails these checks gets one repair from the model, then a repair in code that labels what it added or removed. When the audit flags unsupported claims, synthesis is retried once by default, and the verdict and flagged claims are saved with the briefing.
 
-_In the code:_ `lib/synthesis/validator.js` (citation validation), `pages/api/check-briefing.js` and `prompts/check-briefing.md` (the audit pass).
+_In the code:_ `lib/synthesis/validator.js` (corrections, citation and coverage checks, salvage), `pages/api/check-briefing.js`, `lib/synthesis/checkCorpus.js`, and `prompts/check-briefing.md` (the audit pass).
 
 ## 5. Filter permissively, judge strictly
 
@@ -36,12 +36,12 @@ _In the code:_ `prompts/rubric-scoring.md` (the scoring rubric explicitly does n
 
 ## 6. Be a good arXiv citizen
 
-Requests to arXiv are serialized, spaced with jitter, cached, and identified with a contact address when configured. Harvesting uses OAI-PMH with careful date-window handling rather than hammering the search API.
+Requests to arXiv are serialized, spaced with jitter, cached, and identified with a contact address when configured. Metadata requests are 3–5 seconds apart; PDF and page downloads are 15 seconds apart, the crawl delay arXiv's robots.txt sets. Harvesting uses OAI-PMH with careful date-window handling rather than hammering the search API.
 
-_In the code:_ `lib/arxiv/spacing.js`, `lib/arxiv/ingest.js`.
+_In the code:_ `lib/arxiv/spacing.js`, `lib/arxiv/ingest.js`, `lib/analyzer/rateLimit.js` (the PDF download throttle).
 
 ## 7. Local-first
 
-Your API keys, profile, feedback, and briefing history live on your machine. The current architecture is single-tenant — one researcher per instance — and hosted multi-user operation is an explicit non-goal. Future packaging (a desktop app) can add export or sync without moving your data off your machine.
+Your API keys, profile, feedback, and briefing history live on your machine, and the server listens on 127.0.0.1 unless you open it up. The current architecture is single-tenant — one researcher per instance — and hosted multi-user operation is an explicit non-goal. Future packaging (a desktop app) can add export or sync without moving your data off your machine.
 
 _In the code:_ `.env.local` for keys, browser localStorage plus repo-local `reports/` for state; see [Environment](/reference/environment) for the deployment model.

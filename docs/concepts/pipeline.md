@@ -70,7 +70,7 @@ After Stage 1 fetch (and any fill-up steps), an in-memory **dedupe pass** runs a
 
 **What it does.** Batches papers and asks a fast, cheap model to give each one a <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> verdict against your research profile, along with a one-sentence summary and a short justification. This is triage, not scoring — the goal is to drop papers that are clearly irrelevant before the more expensive stages run. The stage can be disabled entirely via `useQuickFilter: false` in config.
 
-You can override any verdict at the review gate. Overrides are recorded as `filter-override` feedback events and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
+You can override any verdict at the review gate, or on the filter results after the run ends; a post-run change is saved as feedback and doesn't re-run anything. Overrides are recorded as `filter-override` feedback events when you click, and flow into the profile-refinement flow as a "profile may be too narrow or too broad" signal.
 
 **Inputs.** Papers from Stage 1, `profile.content`, `filterModel` (default `gemini-3.5-flash-lite`), `filterBatchSize` (default 3), `filterConcurrency` (default 3), `categoriesToScore` (default `['YES', 'MAYBE']`).
 
@@ -140,11 +140,11 @@ This rubric lives in `prompts/rubric-scoring.md` — an editable template file t
 
 **What it does.** Takes the top N papers by score (`maxDeepAnalysis`, default 30), fetches each full PDF from arXiv, and sends it to a vision-capable model to produce a structured deep analysis — key findings, methodology, limitations, and a final relevance score. Both the pre-PDF and final scores are preserved, so you can see how much the full-text read moved the score.
 
-The stage runs with a worker pool. PDF downloads are serialised server-side (~5 seconds between arXiv requests) to respect arXiv's rate limits, but once the PDFs are in hand the LLM analyses themselves run in parallel. Default concurrency is 3, tunable via `pdfAnalysisConcurrency` (1–20). If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
+The stage runs with a worker pool. PDF downloads are serialised server-side, 15 seconds apart, the crawl delay arXiv's robots.txt sets for PDFs; the Playwright fallback takes two of those slots, one for the abstract page and one for the PDF. Once the PDFs are in hand, the LLM analyses themselves run in parallel. Default concurrency is 3, tunable via `pdfAnalysisConcurrency` (1–20). If arXiv returns reCAPTCHA instead of a PDF, Aparture falls back to a Playwright browser with cached session cookies.
 
 On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, and the remaining workers then start and hit the cache on every subsequent paper. This costs a few extra seconds on the first paper in exchange for a large input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
 
-Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's per-minute cap, which is easiest to hit on a free-tier Gemini project.
+Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429, a 503, or Anthropic's 529 (overloaded), all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's per-minute cap, which is easiest to hit on a free-tier Gemini project. Errors that a retry can't fix (400, 401, 403, 404, 413, and a 422 other than a safety refusal or the reCAPTCHA notice) fail on the first attempt with the provider's message.
 
 **Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.8-flash`), `pdfAnalysisConcurrency` (default 3).
 
@@ -158,27 +158,27 @@ Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Apa
 
 After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
-1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
-2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, full report, and any stars, dismissals, or comments). The `briefingModel` (default `gemini-3.8-flash`) gets the main synthesis prompt. Output is validated against a zod schema and the input paper IDs; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
-4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract, quick summary, and full report.
+1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events; feedback from test runs is left out of real runs).
+2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. They're for the reader only; synthesis doesn't receive them. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, scoring justification, full report, and any stars, dismissals, or comments). Notes you left at Gate 3 go along as editorial instructions. The `briefingModel` (default `gemini-3.8-flash`) gets the main synthesis prompt. The output then goes through deterministic checks: titles and scores are corrected from the input, and missing, duplicate, or unthemed papers and unknown arXiv IDs fail the briefing. A failed briefing gets one LLM repair call, and if that fails too, Aparture repairs it in code. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
+4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract and full report, untruncated.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
-6. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk; the browser's localStorage keeps the current briefing and a search index for the sidebar.
+6. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk and kept there until you delete it. The browser's localStorage keeps the current briefing and the sidebar's search index, which is trimmed to a size budget: the oldest test runs leave the list first, then the oldest real briefings, and their files stay on disk.
 
 Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model, which gets no cache markers, and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
 
-**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events.
+**Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events, and the day's Gate 3 notes.
 
-**Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports.
+**Output.** A saved briefing object + `briefingCheckResult` (verdict, justification, flagged claims) + cached quick summaries and full reports. Each paper card links the paper's arXiv abstract, PDF, HTML rendering, and alphaXiv page.
 
 **Cost.** A few cents per briefing on typical setups:
 
 - Quick summaries: a small amount per paper (short model, one-page compression).
 - Synthesis: tens of thousands of input tokens at the default 30 papers, because every full report goes into one call.
-- Hallucination check: a similar amount, since it reads the same reports (each cut at 4,000 characters) plus the quick summaries.
+- Hallucination check: a similar amount, since it reads the same abstracts and full reports.
 - Retry, if triggered: roughly doubles the synthesis + check cost.
 
-**Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after Stage 4 finishes, giving you a chance to star, dismiss, or comment on papers before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
+**Pause gate.** `pauseBeforeBriefing` (default: on). The pipeline halts at the `pre-briefing-review` stage after Stage 4 finishes, giving you a chance to star, dismiss, or comment on papers, and to leave the writer a note, before synthesis runs. Stars and dismissals influence which papers anchor which themes in the briefing.
 
 ## The hallucination-retry loop
 
