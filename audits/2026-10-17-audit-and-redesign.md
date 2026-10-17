@@ -546,7 +546,7 @@ _Four code-audit passes (backend **be**, tests and infrastructure **ti**, docs a
    I created none of these. The repo and routine are outward-facing, and the network setting is yours to change.
 
 2. **Which plan are you on?** It decides how many deep reads a daily run should do. I can tune the defaults (triage model, read count) once I know.
-3. **Verify the model refresh live, for free.** Every model ID and request shape changed (§7). Fixture tests and docs verify them, but no live calls were made, because they would bill your keys. Run Settings → "Validate setup" (free count-tokens probes) once, and `node scripts/smoke-llm-routes.mjs` if you're willing to spend a few cents.
+3. **Verify the model refresh live, for free.** Every model ID and request shape changed (§7). Fixture tests and docs verify them, but no live calls were made, because they would bill your keys. Run Settings → "Validate setup" (free count-tokens probes) once, and `node scripts/smoke-llm-routes.mjs` if you're willing to spend a few cents. Six facts in the docs couldn't be checked against a live page: Anthropic prices (taken from a 2026-10-06 table), the format of Google's newer keys, the Gemini 2.5 shutdown date, the 60 RPM free-tier figure, OpenAI's minimum purchase, and Anthropic's starter credit.
 4. **Node 22 or later is now required** (Node 20 reached end of life in April 2026). Revert `engines` if you need 20 for a while.
 5. **Build the grounded podcast now, or after the trial?** It is about two weeks of work and about $0.30 an episode on your Google key.
 6. **Delete `cli/`?** The old browser-automation CLI (5,363 lines) can't finish a run against today's interface (T3). `bin/aparture.mjs` and the skill cover unattended runs. I'd delete it with its seven npm scripts.
