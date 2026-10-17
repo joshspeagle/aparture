@@ -74,6 +74,10 @@ Some briefings end with up to two short questions under **Notes from the editor*
 
 Answers are feedback. They go into the next [profile suggestion](/using/refining-over-time) as evidence, and you still accept or reject the edits it proposes. Later questions see your earlier answers, so nothing is asked twice. Most days there are no questions, and that's normal. To turn them off, clear **Ask me up to two questions after each briefing…** in **Settings → Review & confirmation**.
 
+### Proposed profile changes
+
+When your recent feedback adds up, the latest briefing also shows a card: _N proposed changes to your profile_. <span class="ui-action">Review proposals</span> opens the review dialog with them; nothing changes until you accept. See [automatic proposals](/using/refining-over-time#automatic-proposals) for when they appear.
+
 ## Going deeper on a single paper
 
 Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.

@@ -80,7 +80,7 @@ function remapRetiredModels(config) {
 }
 
 export const DEFAULT_CONFIG = {
-  version: 10,
+  version: 11,
   // Neutral first-run defaults (2026-07): fresh installs get a small starter
   // category set and the bracketed fill-in profile template instead of a
   // personal research profile. The old shipped profile lives on as the
@@ -154,6 +154,10 @@ export const DEFAULT_CONFIG = {
   // tap-to-answer questions when the day's papers expose a gap in the
   // profile (pages/api/editor-questions.js). Answers feed suggest-profile.
   editorQuestions: true,
+  // After a briefing, ask the briefing model for profile proposals when the
+  // pending feedback adds up (lib/profile/autoProposals.js). One call per
+  // round; the reader reviews the proposals before anything changes.
+  autoProposals: true,
   maxAbstractDisplay: 500,
   arxivIngestion: 'auto',
   minPapersPerSubcategory: 5,
@@ -290,6 +294,13 @@ export function migrateLegacyConfig(config) {
   if (config.version === 9) {
     remapRetiredModels(config);
     config.version = 10;
+  }
+
+  // v10 → v11: introduces autoProposals. Default `true` matches new installs;
+  // ?? keeps an explicit `false`.
+  if (config.version === 10) {
+    config.autoProposals = config.autoProposals ?? true;
+    config.version = 11;
   }
 
   // Two-model → three-model setup

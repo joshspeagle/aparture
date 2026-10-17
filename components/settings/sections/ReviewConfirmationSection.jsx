@@ -82,6 +82,12 @@ export default function ReviewConfirmationSection({ config, setConfig, processin
           onChange={(e) => setConfig((prev) => ({ ...prev, editorQuestions: e.target.checked }))}
           disabled={processing.isRunning}
         />
+        <Checkbox
+          label="Propose profile changes after a briefing when my recent feedback adds up (one call on the briefing model; nothing changes until I accept)"
+          checked={config.autoProposals ?? true}
+          onChange={(e) => setConfig((prev) => ({ ...prev, autoProposals: e.target.checked }))}
+          disabled={processing.isRunning}
+        />
       </div>
     </div>
   );

@@ -94,7 +94,7 @@ describe('readInitialConfig', () => {
       })
     );
     const config = readInitialConfig();
-    expect(config.version).toBe(10);
+    expect(config.version).toBe(11);
     expect(config.scoringCriteria).toBe('my hand-written research profile');
     expect(config.selectedCategories).toEqual(['astro-ph.GA', 'astro-ph.SR', 'stat.ME']);
     expect(config.scoringCriteria).not.toBe(DEFAULT_CONFIG.scoringCriteria);
@@ -866,7 +866,7 @@ describe('migrateLegacyConfig — retired-model remaps (v8 → v9 → v10)', () 
       notebookLMModel: 'claude-sonnet-4.5',
     };
     const result = migrateLegacyConfig(v8Config);
-    expect(result.version).toBe(10);
+    expect(result.version).toBe(11);
     expect(result.filterModel).toBe('claude-haiku-4.5');
     expect(result.scoringModel).toBe('claude-sonnet-5.5');
     expect(result.postProcessingModel).toBe('claude-opus-5.5');
@@ -889,7 +889,7 @@ describe('migrateLegacyConfig — retired-model remaps (v8 → v9 → v10)', () 
       refusalFallbackModel: 'gpt-5.4',
     };
     const result = migrateLegacyConfig(v9Config);
-    expect(result.version).toBe(10);
+    expect(result.version).toBe(11);
     expect(result).toMatchObject({
       filterModel: 'gpt-6-luna',
       scoringModel: 'gemini-3.6-flash',
@@ -913,14 +913,20 @@ describe('migrateLegacyConfig — retired-model remaps (v8 → v9 → v10)', () 
       refusalFallbackModel: '',
     };
     const result = migrateLegacyConfig({ ...v9Config });
-    expect(result.version).toBe(10);
-    expect(result).toMatchObject({ ...v9Config, version: 10 });
+    expect(result.version).toBe(11);
+    expect(result).toMatchObject({ ...v9Config, version: 11 });
+  });
+
+  it('v10 → v11 turns automatic proposals on, keeping an explicit off', () => {
+    expect(migrateLegacyConfig({ version: 10 }).autoProposals).toBe(true);
+    expect(migrateLegacyConfig({ version: 10, autoProposals: false }).autoProposals).toBe(false);
+    expect(DEFAULT_CONFIG.autoProposals).toBe(true);
   });
 
   it('chains from older versions through the remap (v7 with a retired model)', () => {
     const v7Config = { version: 7, pdfModel: 'claude-opus-4.1' };
     const result = migrateLegacyConfig(v7Config);
-    expect(result.version).toBe(10);
+    expect(result.version).toBe(11);
     expect(result.pauseBeforeDeepAnalysis).toBe(true);
     expect(result.pdfModel).toBe('claude-opus-5.5');
   });
@@ -932,7 +938,7 @@ describe('DEFAULT_CONFIG', () => {
   });
 
   it('defaults model slots to GA models (no preview-only heavy slots)', () => {
-    expect(DEFAULT_CONFIG.version).toBe(10);
+    expect(DEFAULT_CONFIG.version).toBe(11);
     expect(DEFAULT_CONFIG.scoringModel).toBe('gemini-3.6-flash');
     expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.6-flash');
     expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.8-flash');

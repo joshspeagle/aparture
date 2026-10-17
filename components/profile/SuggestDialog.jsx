@@ -10,6 +10,7 @@ import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
 import DiffPreview from './DiffPreview.jsx';
 import { applyNoteChanges } from '../../lib/profile/editorialNotes.js';
+import { requestSuggestion } from '../../lib/profile/requestSuggestion.js';
 
 // Pre-filled into the guidance field when the dialog opens with no feedback.
 // Editable — users can trim, replace, or augment before generating. Targets
@@ -18,41 +19,6 @@ import { applyNoteChanges } from '../../lib/profile/editorialNotes.js';
 // orientation.
 const DEFAULT_CLARITY_GUIDANCE =
   'Sharpen the clarity and specificity of my profile. Look for vague terms that could be replaced with concrete methods or subfields, implicit scope boundaries that should be made explicit (what’s in vs. out of scope), priority signals that aren’t yet legible (primary vs. secondary interests), and places where methodology vs. application orientation is ambiguous.';
-
-// Pull out the briefings referenced by general-comment events and return a
-// map keyed by briefingId, shaped so the suggest-profile prompt can render
-// them inline. We include only the editorial layer (executive summary,
-// theme titles + arguments, and per-paper pitches) — not full per-paper
-// technical reports or quick summaries, which are noisy and not what the
-// user was reacting to.
-function collectBriefingsForGeneralComments(events, briefingHistory) {
-  if (!Array.isArray(briefingHistory) || briefingHistory.length === 0) return {};
-  const referenced = new Set();
-  for (const e of events) {
-    if (e.type === 'general-comment' && e.briefingId) referenced.add(e.briefingId);
-  }
-  if (referenced.size === 0) return {};
-  const out = {};
-  for (const entry of briefingHistory) {
-    if (!referenced.has(entry.id)) continue;
-    const b = entry.briefing ?? {};
-    out[entry.id] = {
-      date: entry.date,
-      executiveSummary: b.executiveSummary ?? '',
-      themes: (b.themes ?? []).map((t) => ({
-        title: t.title ?? '',
-        argument: t.argument ?? '',
-        paperIds: Array.isArray(t.paperIds) ? t.paperIds : [],
-      })),
-      papers: (b.papers ?? []).map((p) => ({
-        arxivId: p.arxivId ?? '',
-        title: p.title ?? '',
-        onelinePitch: p.onelinePitch ?? '',
-      })),
-    };
-  }
-  return out;
-}
 
 function scopeKindLabel(scope) {
   if (scope?.kind === 'bucket') return `${scope.bucket} bucket`;
@@ -145,6 +111,9 @@ export default function SuggestDialog({
   // newest first). The most recent few are sent so the model is told not to
   // propose them again.
   rejectedSuggestions = [],
+  // Proposals prepared after a briefing ({response, sentEvents}): the dialog
+  // opens at the review step with them instead of asking the model again.
+  preset = null,
 }) {
   const feedbackSignature = useMemo(() => newFeedback.map((e) => e.id).join('|'), [newFeedback]);
   const rejectedItems = useMemo(
@@ -186,8 +155,14 @@ export default function SuggestDialog({
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
     if (isOpen) {
-      setState('selection');
-      setResponse(null);
+      if (preset?.response) {
+        setState('result');
+        setResponse(preset.response);
+        setSentEvents(preset.sentEvents ?? []);
+      } else {
+        setState('selection');
+        setResponse(null);
+      }
       setError(null);
     }
   }
@@ -241,59 +216,23 @@ export default function SuggestDialog({
     abortRef.current = controller;
     try {
       const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
-      // Apply the SAME comment cap that drives the "N older comments will not
-      // be included" notice so the POST body matches what the user is told.
-      // applyCap keeps all stars/dismisses/scoped-feedback/filter-overrides and
-      // only trims paper/general comments to the most-recent `cap` per type —
-      // without this, the trimming notice was display-only and the dropped
-      // comments were still sent, inflating token cost.
-      const cappedEvents = applyCap(selectedEvents, cap).kept;
-      setSentEvents(cappedEvents);
-      // Collect briefings referenced by general-comment events so the
-      // suggest-profile prompt can cite the content the comment was
-      // written against. Only include the editorial layer (executive
-      // summary, themes, paper pitches) — not full per-paper reports.
-      const briefings = collectBriefingsForGeneralComments(cappedEvents, briefingHistory);
-      const res = await fetch('/api/suggest-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentProfile: profile,
-          currentNotes: notes,
-          // Rejections ride after the capped events; the prompt renders them
-          // in their own "previously rejected" section (suggestPrompt.js).
-          feedback: [...cappedEvents, ...rejectedItems],
-          briefings,
-          guidance: guidance.trim() || undefined,
-          briefingModel,
-          provider,
-          password,
-        }),
+      // The comment cap inside requestSuggestion is the same one that drives
+      // the "N older comments will not be included" notice, so what is sent
+      // matches what the user is told.
+      const { response: data, sentEvents: sent } = await requestSuggestion({
+        profile,
+        notes,
+        events: selectedEvents,
+        cap,
+        rejectedSuggestions,
+        briefingHistory,
+        guidance,
+        briefingModel,
+        provider,
+        password,
         signal: controller.signal,
       });
-      if (!res.ok) {
-        // Surface the route's structured details (e.g. provider rate-limit
-        // message) instead of the bare HTTP code.
-        let bodyMsg = `Suggestion failed: ${res.status}`;
-        try {
-          const errBody = await res.json();
-          if (errBody?.details) bodyMsg = errBody.details;
-          else if (errBody?.error) bodyMsg = errBody.error;
-        } catch {
-          // body wasn't JSON — keep the status-based message
-        }
-        throw new Error(bodyMsg);
-      }
-      const data = await res.json();
-      // Note changes get their own id space so they can share DiffPreview's
-      // accept set with the profile changes.
-      data.noteChanges = (data.noteChanges ?? []).map((c) => ({
-        id: `note:${c.id}`,
-        rationale: c.rationale,
-        noteId: c.noteId ?? null,
-        note: { action: c.action, scope: c.scope ?? null, text: c.text ?? null },
-        source: c,
-      }));
+      setSentEvents(sent);
       setResponse(data);
       setState('result');
     } catch (e) {

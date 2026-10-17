@@ -36,6 +36,8 @@ Types: `star`, `unstar`, `dismiss`, `undismiss`, `already-knew`, `comment` (with
 
 ## Proposing edits (while writing the briefing)
 
+Propose only when the pending evidence adds up, by the same rule as the app (`lib/profile/autoProposals.js`): a star, dismissal or filter override is 1 point, a comment 2, an answer to an editor's question 4. Propose when events not yet weighed by an earlier round reach 4 points across at least two briefings, or include an answer; not while earlier proposals still wait for the reader's decision. A pattern, not a count, justifies an edit; the points only decide when to look.
+
 Look at the last 30 days of events plus today's triage. Propose at most three edits, and only from patterns like these:
 
 | Signal                                                                  | Proposal                                                     |

@@ -32,6 +32,14 @@ When you click <span class="ui-action">Generate suggestion</span>, the model rec
 
 The model's job is to read these signals and propose surgical edits that align your profile with what the feedback suggests you actually want.
 
+## Automatic proposals
+
+You don't have to remember to click <span class="ui-action">Suggest improvements</span>. After a real briefing (not a Dry Run or Minimal Test), Aparture checks whether your pending feedback adds up to something worth a look, and if it does, asks the briefing model for proposals in the background. When it finds any, a card under the briefing says how many; <span class="ui-action">Review proposals</span> opens the same review dialog, with nothing changed until you accept.
+
+What adds up: a star, dismissal, or filter override counts 1 point, a comment 2, and an answer to one of the editor's questions 4. A round runs when feedback no earlier round has weighed reaches 4 points across at least two briefings, or includes an answer (the editor asked that question to settle something, so the answer can act on its own). The two-briefing rule keeps one unusual day from driving an edit. No new round starts while earlier proposals still wait for you, and a round that finds no pattern shows nothing and doesn't weigh the same feedback again.
+
+Each round is one call on the briefing model, about what a manual <span class="ui-action">Suggest improvements</span> costs. Turn it off under Settings → Review & confirmation ("Propose profile changes after a briefing…").
+
 ## Per-call guidance
 
 Above the <span class="ui-action">Generate suggestion</span> button sits a small text field labelled _"Guidance for this suggestion (optional)"_. It's the place to type a short, direct note about how you want the profile to change on this one call — examples that work:
