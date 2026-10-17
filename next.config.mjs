@@ -20,6 +20,11 @@ const nextConfig = {
   // historically a frequent source of Next.js security advisories, exposed.
   images: { unoptimized: true },
 
+  // Next 16.3+ appends a managed "agent rules" block to CLAUDE.md whenever
+  // `next dev` runs under an AI coding agent. CLAUDE.md here is curated by
+  // hand, so keep the dev server from editing it.
+  agentRules: false,
+
   // Anchor Turbopack to the repo root explicitly. Without this Next walks
   // up looking for a workspace lockfile and may pick the wrong ancestor
   // (the warning we saw when /mnt/c/Users/joshs/package.json was present).
