@@ -7,9 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // be watched (dev) or traced (build). They contain generated state, browser
 // profiles, the VitePress site, and test fixtures — none of which the Next
 // app needs to compile or serve. Without these excludes Turbopack/webpack's
-// file watcher holds metadata for ~1 GB of irrelevant files (notebooklm-profile
-// alone is 240+ MB) which blows dev memory past 3 GB.
-const EXCLUDED_DIRS = ['reports', 'temp', 'docs', 'cli', 'tests', '.next', '.vercel', '.husky'];
+// file watcher holds metadata for ~1 GB of irrelevant files (a browser
+// profile under temp/ alone can pass 240 MB) which blows dev memory past 3 GB.
+const EXCLUDED_DIRS = ['reports', 'temp', 'docs', 'tests', '.next', '.vercel', '.husky'];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -49,7 +49,7 @@ const nextConfig = {
 
   // Webpack dev mode (`next dev --webpack`): exclude these directories from
   // the file watcher entirely. Without this webpack tracks every file in
-  // reports/legacy/ (713 MB) and temp/notebooklm-profile/ (244 MB).
+  // reports/legacy/ (713 MB) and the browser profiles under temp/ (244 MB).
   //
   // Next.js's default `watchOptions.ignored` is a RegExp that already covers
   // `node_modules` and `.next`. We replace it wholesale with a string-array

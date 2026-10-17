@@ -320,10 +320,6 @@ npm run dev
 
 The next PDF download will re-solve the challenge.
 
-::: danger Don't delete `temp/notebooklm-profile/`
-That's a Google session used for podcast generation, unrelated to arXiv. Deleting it forces an interactive Google re-login on the next podcast run.
-:::
-
 ### reCAPTCHA without Playwright
 
 If Playwright isn't installed, the fallback can't run. Each affected paper gets a per-paper notice in the Progress Timeline:

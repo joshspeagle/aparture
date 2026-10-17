@@ -92,18 +92,6 @@ export default [
     },
   },
 
-  // Overrides for CLI scripts (non-React files)
-  {
-    files: ['cli/**/*.js', 'cli/tests/**/*.js'],
-    rules: {
-      'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
-      'react-hooks/rules-of-hooks': 'off',
-      'react/display-name': 'off',
-      'no-unused-vars': 'warn',
-    },
-  },
-
   // Overrides for config files
   {
     files: ['*.config.js', '*.config.mjs'],

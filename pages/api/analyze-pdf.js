@@ -53,17 +53,13 @@ function isPDFResponse(buffer) {
 
 // Helper function to download PDF using Playwright (bypasses reCAPTCHA)
 //
-// IMPORTANT: This function works correctly even when called from within npm run analyze automation:
-// - Main automation uses temp/browser-profile (non-headless, user-visible)
-// - PDF fallback uses temp/playwright-profile (headless, background)
-// - Separate profiles prevent locking conflicts
-// - Each Playwright instance establishes its own arXiv session by visiting abstract page first
-// - No cookie sharing needed - each instance independently bypasses reCAPTCHA
+// The headless browser keeps its own persistent profile (temp/playwright-profile)
+// and establishes its own arXiv session by visiting the abstract page first, so
+// no cookies are shared with the user's browser.
 async function downloadPDFWithPlaywright(chromium, pdfUrl, throttle = null) {
   console.log('Attempting PDF download via Playwright (reCAPTCHA bypass)...');
 
-  // Use separate profile for PDF downloads to avoid conflicts with main automation
-  // This profile is independent and works whether or not npm run analyze is running
+  // A dedicated profile, so the cached arXiv session survives between runs.
   const userDataDir = path.join(process.cwd(), 'temp', 'playwright-profile');
 
   // Ensure temp directory exists
@@ -74,7 +70,6 @@ async function downloadPDFWithPlaywright(chromium, pdfUrl, throttle = null) {
   let context;
   try {
     // Launch headless persistent context for PDF download
-    // Uses separate profile from main automation (temp/browser-profile) to avoid locks
     context = await chromium.launchPersistentContext(userDataDir, {
       headless: true,
       acceptDownloads: true,

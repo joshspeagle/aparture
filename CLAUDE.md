@@ -14,7 +14,6 @@ Mechanically, it is a Next.js app running a staged arXiv pipeline over LLMs. Des
 - `tests/setup.js` deletes the provider keys, `ARXIV_CONTACT_EMAIL`, and `APARTURE_REPORTS_DIR` so the suite stays hermetic; a test that needs one sets it.
 - Hooks: pre-commit runs lint-staged (eslint and prettier); pre-push runs `eslint .` and `npm test`. CI (`.github/workflows/ci.yml`: pushes to main, PRs, weekly) runs lint, `npx prettier --check .`, `npm audit --omit=dev --audit-level=high`, `npm test`, and `npm run build` on Node 22 and 24, `npm test` again at UTC+14 (`TZ=Pacific/Kiritimati`) on Node 22, and a docs build. Briefing days are local calendar days, so run that leg locally after touching date code. Dependabot opens grouped weekly updates.
 - `node scripts/smoke-llm-routes.mjs` calls every LLM route in-process on all three providers. **It bills the user.** Needs `.env.local` keys; flags are in its header. `scripts/probe-arxiv*.mjs` hit arXiv live: by hand only.
-- `cli/` is deprecated (removed in Phase 2): `npm run setup`, `npm run analyze[:report|:document|:podcast]`, and `npm run test:dryrun` / `test:minimal` (the app's Dry Run and Minimal API Test through a browser; `test:minimal` bills).
 
 ## Invariants
 
@@ -43,9 +42,9 @@ Breaking one of these produces wrong output, an unexpected bill, or lost data.
     - API requests are 3–5 s apart with jitter (`arxivSpacingMs`), never before the first. Pages and files on arxiv.org, including the server's PDF downloads, are 15 s apart (`ARXIV_PAGE_DELAY_MS`, from robots.txt); a Playwright fallback takes two slots.
     - The proxies rewrite upstream 5xx to the 429 shape so one retry ladder handles both.
 11. **Dedupe** (`hooks/useSeenPapers.js`, `lib/analyzer/applyDedupe.js`). `applyDedupe` runs in `fetchPapers` after `harvest()` (fill-ups included), before any LLM call. The index is fed on briefing save, not session save, so aborted runs can't poison it. `_`-prefixed keys are metadata; bump `CURRENT_DEDUPE_VERSION` when migration semantics change; keep the hot index `{arxivId → YYYY-MM-DD}`. Briefing cards come from synthesis output, so `components/briefing/PaperCard.jsx` derives the duplicate flag from the index, as any new surface downstream of synthesis must.
-12. **Persistence.** The hot session key `arxivAnalyzerState` and its `.config` and `.results.finalRanking` fields are frozen (`cli/` reads them). Cold briefing files are removed only by an explicit delete, never by retention.
+12. **Persistence.** The hot session key `arxivAnalyzerState` keeps its name: renaming it strands every saved session unless a migration moves them. Cold briefing files are removed only by an explicit delete, never by retention.
 13. **Registry discipline.** Update `MODEL_REGISTRY` and `AVAILABLE_MODELS` (`utils/models.js`) together. A removed ID goes into `RETIRED_MODEL_REMAP` (`hooks/useAnalyzerPersistence.js`) with a config version bump; remap targets must be registered (a test asserts it).
-14. **Browser profiles.** Never delete `temp/playwright-profile/` (arXiv reCAPTCHA state) or `temp/notebooklm-profile/` (Google cookies).
+14. **Browser profile.** Never delete `temp/playwright-profile/`: it holds the arXiv reCAPTCHA state the PDF fallback relies on.
 
 ## Architecture
 
@@ -185,7 +184,7 @@ The agent skill reads prompts by heading: "Style and voice" and "Sourcing discip
 - **New feedback type.** Extend the union in `hooks/useFeedback.js`; add a variant in `components/feedback/FeedbackItem.jsx` and a color in `eventMeta.js`; add it to `applyCap` in `lib/profile/feedbackCap.js` (unknown types are silently dropped there) and a section in `renderFeedbackSection` (`lib/profile/suggestPrompt.js`); decide whether `isEditableFeedback` allows edits and how `resolveSuggestionOutcome` attributes it.
 - **New LLM provider.** Add it to `lib/llm/providers.js`; write `lib/llm/structured/<provider>.js` like the others (`pdfBase64`, refusal detection in `parse*`, token counts); add a branch in `callModel.js`, a probe in `validateSetup.js`, a key shape in `apiKeyShape.js`, and tests in `tests/unit/llm/structured/`.
 - **New config key.** Add it to `DEFAULT_CONFIG`, bump `version`, and seed existing configs in `migrateLegacyConfig` (with `??`, so explicit values survive). Integer keys go in `INTEGER_CONFIG_KEYS`. Add the Settings control and grep `docs/`.
-- **Registry refresh.** Edit both registry tables; move removed IDs into `RETIRED_MODEL_REMAP` with a version bump; check `DEFAULT_CONFIG`, `DEFAULT_MODEL_ID`, and `cli/config-manager.js`; grep `docs/`, where model IDs appear on many pages.
+- **Registry refresh.** Edit both registry tables; move removed IDs into `RETIRED_MODEL_REMAP` with a version bump; check `DEFAULT_CONFIG` and `DEFAULT_MODEL_ID`; grep `docs/`, where model IDs appear on many pages.
 - **New mutable briefing field.** Whitelist it in `MUTABLE_FIELDS`; add it to `HEAVY_FIELDS` if quota pressure may strip it, and to `buildIndexEntry` if search needs it.
 - **New LLM-backed test.** Use fixtures: `lib/llm/hash.js` hashes the input, responses live at `tests/fixtures/llm/<hash>.json`, and `tests/fixtures/synthesis/generate-sample.mjs` or the `beforeAll` pattern in existing integration tests creates them. Vitest worker timeouts under WSL are infrastructure flakes; trust the final count.
 
@@ -221,4 +220,4 @@ Screenshots live in `docs/public/screenshots/`, captured at 1440×900 in the lig
 
 ## Phase 2
 
-Phase 2 is the planned desktop packaging: an Electron app with state under `~/aparture/` (`reports/` through `APARTURE_REPORTS_DIR`, and `cache/` for the browser profiles now in `temp/`), API keys in the OS keychain sent through the `apiKey` route path, a first-run wizard, a daily scheduler, NotebookLM ZIP and HTML export, and installers. `cli/` goes once its dry-run and minimal-test entry points move into the app. Until then the code keeps three seams: `APARTURE_REPORTS_DIR`, dual `apiKey`/`password` auth, and the frozen `arxivAnalyzerState` key.
+Phase 2 is the planned desktop packaging: an Electron app with state under `~/aparture/` (`reports/` through `APARTURE_REPORTS_DIR`, and `cache/` for the Playwright profile now in `temp/`), API keys in the OS keychain sent through the `apiKey` route path, a first-run wizard, a daily scheduler, NotebookLM ZIP and HTML export, and installers. Until then the code keeps three seams: `APARTURE_REPORTS_DIR`, dual `apiKey`/`password` auth, and the frozen `arxivAnalyzerState` key.
