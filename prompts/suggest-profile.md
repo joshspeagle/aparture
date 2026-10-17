@@ -6,7 +6,7 @@ You are helping a researcher refine their research profile based on how they've 
 
 {{profile}}
 
-## New feedback since last revision
+## Feedback not yet reflected in the profile
 
 {{feedback}}
 
@@ -24,12 +24,13 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
    - **Score-review notes** are calibration concerns about scoring. Use them to adjust strictness or scoring criteria.
    - **Run-level observations** describe pipeline behavior at scale (filter aggressiveness, subcategory mix, scoring distribution). Use them as background for the changes you propose.
    - **General comments** are editorial reactions to specific briefings. Use them to adjust framing and synthesis preferences. When the briefing a comment was written against is shown beneath it, read the comment against that briefing, not in isolation.
+   - **Previously rejected suggestions**, when that section appears, are edits the user turned down in earlier rounds. Don't propose them, or an equivalent edit, again unless the feedback above gives a new reason.
 
    **If a USER GUIDANCE block appears at the top of this prompt, it is the highest-priority signal.** Let it shape the direction and emphasis of your proposed edits, and use the feedback events to ground concrete, cited changes that implement it.
 
 3. **Make small, specific changes.** An addition should be a sentence or phrase, not a paragraph. Prefer "added bullet about mechanistic interpretability" over "rewrote the Methods section."
 
-4. **Cite the feedback that motivated each change.** Every change's `rationale` must point at specific feedback events ("Based on stars on 2504.01234 and 2504.03456, both on attention-head analysis, added emphasis on mechanistic interpretability.").
+4. **Cite the feedback that motivated each change.** Every change's `rationale` must point at specific feedback events: name each paper by its arXiv ID, and quote a few words of any comment or note you relied on ("Based on stars on 2504.01234 and 2504.03456, both on attention-head analysis, added emphasis on mechanistic interpretability."). Aparture reads the rationales of the changes the user accepts to mark which feedback has been used, so feedback you don't cite stays pending.
 
 5. **Return no changes if the feedback doesn't clearly point to a gap.** If stars are in areas the profile already covers well, dismisses are on papers that already look like they wouldn't match, or comments are ambiguous, return an empty `changes` list and explain why in `noChangeReason`. Forcing a change when none is warranted is worse than no change.
 

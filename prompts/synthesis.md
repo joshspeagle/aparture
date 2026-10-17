@@ -65,8 +65,8 @@ If a day's papers don't cluster naturally, prefer fewer themes with clear argume
 Each paper card has:
 
 - `arxivId`: the paper's arXiv identifier
-- `title`: the full paper title
-- `score`: the relevance score from the input data
+- `title`: the paper's title, copied from the input
+- `score`: the paper's relevance score, copied from the input
 - `onelinePitch`: a 15-25 word pitch that captures the paper's argument or contribution. Not a summary, a pitch: what would this paper say if it were selling itself in one sentence?
 - `whyMatters`: a 2-4 sentence paragraph grounded in the user's profile and engagement signals.
   - For starred papers: give the richest treatment. Reference the user's stated interests by name. Explain what makes this paper worth the user's time.
@@ -87,7 +87,7 @@ Each paper card has:
 
 # Hard constraints
 
-- Copy every `arxivId` you emit, in `papers` and in `themes.paperIds`, exactly as it appears in the input list. Never invent, normalize, shorten, or reformat an ID.
+- Copy every `arxivId` you emit, in `papers`, in `themes.paperIds`, and in prose such as the reading recommendation, exactly as it appears in the input list. Never invent, normalize, shorten, or reformat an ID, and don't cite an arXiv ID that isn't in the input list.
 - `papers` contains one entry per final-round paper in the input list.
 - `themes` contains at least one theme, and every paper in `papers` appears in at least one theme.
 

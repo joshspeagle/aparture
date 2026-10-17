@@ -14,7 +14,7 @@ Return a verdict, a one-paragraph justification, and a list of the specific clai
 
 ## Which sources to trust
 
-Each paper's abstract is the authors' own text. Quick summaries and full reports were written by earlier model passes and can contain their own errors, and a full report may be truncated. When a model-written source disagrees with the abstract, trust the abstract.
+For each paper, the evidence is its abstract, which is the authors' own text, and its full report, which an earlier model pass wrote from the whole paper. These are the same sources the briefing's writer was told to ground per-paper claims in. The full report can contain its own errors: when it disagrees with the abstract, trust the abstract. A paper may also list its relevance score, the scoring justification, and the user's stars, dismissals, or comments. Those describe how the paper relates to the user, not what the paper says, so they can't support a factual claim about it.
 
 ## What counts as a hallucination
 
