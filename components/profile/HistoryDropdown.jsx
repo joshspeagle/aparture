@@ -208,6 +208,12 @@ export default function HistoryDropdown({ revisions, onRevert, onClearHistory })
                             {formatDate(rev.createdAt)}
                           </span>
                           <SourceBadge source={rev.source} />
+                          {Number.isFinite(rev.acceptedCount) && (
+                            <span style={{ color: 'var(--aparture-mute)' }}>
+                              {rev.acceptedCount} of {rev.acceptedCount + (rev.rejectedCount ?? 0)}{' '}
+                              changes accepted
+                            </span>
+                          )}
                         </div>
                         {rev.rationale && (
                           <p

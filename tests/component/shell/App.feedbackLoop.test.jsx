@@ -234,6 +234,35 @@ describe('App — Suggest outcome and revert keep feedback status honest (P1-4)'
     expect(captured.suggestDialog.newFeedback.map((e) => e.id).sort()).toEqual(['unused', 'used']);
   });
 
+  it('a rejected change is remembered and handed to the next Suggest round (P1-5)', () => {
+    seedStore();
+    render(<App />);
+    const rejectedChange = {
+      id: 'c9',
+      rationale: 'Based on the dismiss on 2610.unused',
+      edit: { type: 'delete', anchor: 'my ', content: '' },
+    };
+    act(() => {
+      captured.suggestDialog.onAccept({
+        kind: 'rejected',
+        content: 'my profile',
+        accepted: [],
+        rejected: [rejectedChange],
+        incorporatedEventIds: [],
+        appliedAt: 4242,
+      });
+    });
+    expect(storedProfile().content).toBe('my profile');
+    expect(storedProfile().suggestionStats).toEqual({ accepted: 0, rejected: 1, noChange: 0 });
+    expect(captured.suggestDialog.rejectedSuggestions).toEqual([
+      {
+        rationale: 'Based on the dismiss on 2610.unused',
+        edit: { type: 'delete', anchor: 'my ', content: '' },
+        rejectedAt: 4242,
+      },
+    ]);
+  });
+
   it('a no-change result marks nothing incorporated', () => {
     seedStore();
     render(<App />);

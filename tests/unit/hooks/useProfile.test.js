@@ -98,6 +98,80 @@ describe('useProfile', () => {
     expect(result.current.profile.revisions).toHaveLength(revisionsBefore);
   });
 
+  it('recordSuggestionOutcome remembers rejected changes and counts accepted vs rejected (P1-5)', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('base profile');
+    });
+    const change = (id, anchor) => ({
+      id,
+      rationale: `rationale ${id}`,
+      edit: { type: 'replace', anchor, content: `${anchor}!` },
+    });
+    act(() => {
+      result.current.recordSuggestionOutcome({
+        kind: 'applied',
+        content: 'base profile!',
+        accepted: [change('c1', 'profile')],
+        rejected: [change('c2', 'base')],
+        appliedAt: 1000,
+      });
+    });
+    act(() => {
+      result.current.recordSuggestionOutcome({
+        kind: 'rejected',
+        content: 'base profile!',
+        accepted: [],
+        rejected: [change('c3', 'base'), change('c4', 'profile!')],
+        appliedAt: 2000,
+      });
+    });
+    act(() => {
+      result.current.recordSuggestionOutcome({ kind: 'no-change', appliedAt: 3000 });
+    });
+
+    const { profile } = result.current;
+    expect(profile.suggestionStats).toEqual({ accepted: 1, rejected: 3, noChange: 1 });
+    // Newest first, with the decision time.
+    expect(profile.rejectedSuggestions.map((r) => r.rationale)).toEqual([
+      'rationale c3',
+      'rationale c4',
+      'rationale c2',
+    ]);
+    expect(profile.rejectedSuggestions[0]).toEqual({
+      rationale: 'rationale c3',
+      edit: { type: 'replace', anchor: 'base', content: 'base!' },
+      rejectedAt: 2000,
+    });
+    // The applied revision records how many of its changes were accepted.
+    expect(profile.revisions[0]).toMatchObject({ acceptedCount: 1, rejectedCount: 1 });
+    // Memory-only outcomes are persisted too.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-profile'));
+    expect(stored.suggestionStats).toEqual({ accepted: 1, rejected: 3, noChange: 1 });
+    expect(stored.rejectedSuggestions).toHaveLength(3);
+  });
+
+  it('caps remembered rejections at 20 and clips long edit text', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    const long = 'x'.repeat(900);
+    act(() => {
+      result.current.recordSuggestionOutcome({
+        kind: 'rejected',
+        accepted: [],
+        rejected: Array.from({ length: 25 }, (_, i) => ({
+          id: `c${i}`,
+          rationale: long,
+          edit: { type: 'insert', anchor: 'a', content: long },
+        })),
+        appliedAt: 1,
+      });
+    });
+    const { rejectedSuggestions } = result.current.profile;
+    expect(rejectedSuggestions).toHaveLength(20);
+    expect(rejectedSuggestions[0].edit.content.length).toBeLessThan(long.length);
+    expect(rejectedSuggestions[0].rationale.endsWith('…')).toBe(true);
+  });
+
   it('revertToRevision restores earlier content with a new manual revision entry', () => {
     const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
     act(() => {

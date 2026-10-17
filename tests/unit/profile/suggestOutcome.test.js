@@ -1,9 +1,31 @@
 import { describe, it, expect } from 'vitest';
 import {
+  REJECTED_SUGGESTIONS_SENT,
   rationaleCitesPaper,
   rationaleQuotesText,
+  rejectedSuggestionPromptItems,
   resolveSuggestionOutcome,
 } from '../../../lib/profile/suggestOutcome.js';
+
+describe('rejectedSuggestionPromptItems', () => {
+  it('turns stored rejections into request items, newest first, capped', () => {
+    const stored = Array.from({ length: 15 }, (_, i) => ({
+      rationale: `r${i}`,
+      edit: { type: 'insert', anchor: 'a', content: `c${i}` },
+      rejectedAt: 100 - i,
+    }));
+    const items = rejectedSuggestionPromptItems(stored);
+    expect(items).toHaveLength(REJECTED_SUGGESTIONS_SENT);
+    expect(items[0]).toEqual({
+      type: 'rejected-suggestion',
+      rationale: 'r0',
+      edit: { type: 'insert', anchor: 'a', content: 'c0' },
+      rejectedAt: 100,
+    });
+    expect(rejectedSuggestionPromptItems(undefined)).toEqual([]);
+    expect(rejectedSuggestionPromptItems([{ rationale: 'no edit' }])).toEqual([]);
+  });
+});
 
 const star = {
   id: 'star',

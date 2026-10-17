@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
-import { resolveSuggestionOutcome } from '../../lib/profile/suggestOutcome.js';
+import {
+  rejectedSuggestionPromptItems,
+  resolveSuggestionOutcome,
+} from '../../lib/profile/suggestOutcome.js';
 import { iconFor } from '../feedback/eventMeta.js';
 import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
@@ -134,8 +137,16 @@ export default function SuggestDialog({
   provider,
   password,
   onAccept,
+  // Changes the user rejected in earlier rounds (profile.rejectedSuggestions,
+  // newest first). The most recent few are sent so the model is told not to
+  // propose them again.
+  rejectedSuggestions = [],
 }) {
   const feedbackSignature = useMemo(() => newFeedback.map((e) => e.id).join('|'), [newFeedback]);
+  const rejectedItems = useMemo(
+    () => rejectedSuggestionPromptItems(rejectedSuggestions),
+    [rejectedSuggestions]
+  );
   const [lastSignature, setLastSignature] = useState(feedbackSignature);
   const [selectedIds, setSelectedIds] = useState(() => new Set(newFeedback.map((e) => e.id)));
   const [guidance, setGuidance] = useState(() =>
@@ -244,7 +255,9 @@ export default function SuggestDialog({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentProfile: profile,
-          feedback: cappedEvents,
+          // Rejections ride after the capped events; the prompt renders them
+          // in their own "previously rejected" section (suggestPrompt.js).
+          feedback: [...cappedEvents, ...rejectedItems],
           briefings,
           guidance: guidance.trim() || undefined,
           briefingModel,
@@ -461,6 +474,22 @@ export default function SuggestDialog({
                   >
                     No recent feedback — describe below what you&apos;d like changed and the LLM
                     will revise your profile from guidance alone.
+                  </p>
+                )}
+
+                {rejectedItems.length > 0 && (
+                  <p
+                    data-testid="rejected-suggestions-note"
+                    style={{
+                      fontFamily: 'var(--aparture-font-sans)',
+                      fontSize: 'var(--aparture-text-xs)',
+                      color: 'var(--aparture-mute)',
+                      margin: 0,
+                    }}
+                  >
+                    {rejectedItems.length < rejectedSuggestions.length
+                      ? `The ${rejectedItems.length} most recent changes you rejected are sent with this request, marked as rejected.`
+                      : `${rejectedItems.length} change${rejectedItems.length === 1 ? '' : 's'} you rejected earlier ${rejectedItems.length === 1 ? 'is' : 'are'} sent with this request, marked as rejected.`}
                   </p>
                 )}
 

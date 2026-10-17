@@ -20,6 +20,30 @@ const CORRUPT_BACKUP_KEY = 'aparture-profile-corrupt-backup';
 const PROFILES_KEY = 'aparture-profiles';
 const ACTIVE_PROFILE_KEY = 'aparture-active-profile';
 
+// Rejected suggested changes kept on the profile (newest first) so later
+// suggestions can be told not to re-propose them. Bounded: each entry holds
+// the edit's anchor/content text.
+const MAX_REJECTED_SUGGESTIONS = 20;
+const MAX_REJECTED_TEXT = 500;
+
+function clip(text) {
+  const s = typeof text === 'string' ? text : '';
+  return s.length > MAX_REJECTED_TEXT ? `${s.slice(0, MAX_REJECTED_TEXT)}…` : s;
+}
+
+function toRejectedSuggestion(change, rejectedAt) {
+  if (!change?.edit?.type) return null;
+  return {
+    rationale: clip(change.rationale),
+    edit: {
+      type: change.edit.type,
+      anchor: clip(change.edit.anchor),
+      content: clip(change.edit.content),
+    },
+    rejectedAt,
+  };
+}
+
 // Resolve the named-profile map + active pointer, seeding from the working
 // profile on first load (migrates the existing single profile as "Default").
 // PURE — no localStorage writes. Seed/repair persistence happens in the
@@ -293,27 +317,55 @@ export function useProfile(config = {}) {
   // its createdAt is `appliedAt`, so reverting it can re-open exactly the
   // feedback that revision incorporated. The legacy lastFeedbackCutoff is
   // left alone: incorporation is tracked per event now (feedbackStatus.js).
+  //
+  // Every outcome also updates two pieces of suggestion memory on the
+  // profile:
+  //   - suggestionStats {accepted, rejected, noChange}: running counts of
+  //     changes the user accepted vs rejected, and of "no change" results.
+  //     POSITIONING's success criterion ("suggestions are accepted more often
+  //     than rejected") is accepted / (accepted + rejected).
+  //   - rejectedSuggestions: the most recent rejected changes (newest
+  //     first), which the Suggest dialog sends with the next request so the
+  //     model is told not to propose them again.
   const recordSuggestionOutcome = useCallback(
     (outcome) => {
       if (!outcome) return;
       setState((prev) => {
-        if (
-          outcome.kind !== 'applied' ||
-          typeof outcome.content !== 'string' ||
-          outcome.content === prev.profile.content
-        ) {
-          return prev;
-        }
         const now = outcome.appliedAt ?? Date.now();
+        const accepted = Array.isArray(outcome.accepted) ? outcome.accepted : [];
+        const rejected = Array.isArray(outcome.rejected) ? outcome.rejected : [];
+        const stats = prev.profile.suggestionStats ?? {};
+        const suggestionStats = {
+          accepted: (stats.accepted ?? 0) + accepted.length,
+          rejected: (stats.rejected ?? 0) + rejected.length,
+          noChange: (stats.noChange ?? 0) + (outcome.kind === 'no-change' ? 1 : 0),
+        };
+        const rejectedSuggestions = [
+          ...rejected.map((c) => toRejectedSuggestion(c, now)).filter(Boolean),
+          ...(prev.profile.rejectedSuggestions ?? []),
+        ].slice(0, MAX_REJECTED_SUGGESTIONS);
+        const withMemory = { ...prev.profile, suggestionStats, rejectedSuggestions };
+
+        const contentChanged =
+          outcome.kind === 'applied' &&
+          typeof outcome.content === 'string' &&
+          outcome.content !== prev.profile.content;
+        if (!contentChanged) {
+          // Memory only: the working text (and so every snapshot) is unchanged.
+          persist(withMemory);
+          return { ...prev, profile: withMemory };
+        }
         const revision = {
           content: prev.profile.content,
           createdAt: now,
           source: 'suggested',
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
           rationale: outcome.rationale,
+          acceptedCount: accepted.length,
+          rejectedCount: rejected.length,
         };
         const nextProfile = {
-          ...prev.profile,
+          ...withMemory,
           content: outcome.content,
           updatedAt: now,
           revisions: [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS),
@@ -321,7 +373,7 @@ export function useProfile(config = {}) {
         return commitProfile(prev, nextProfile);
       });
     },
-    [commitProfile]
+    [commitProfile, persist]
   );
 
   const revertToRevision = useCallback(

@@ -1235,6 +1235,7 @@ export default function App() {
           MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
         ).toLowerCase()}
         password={password}
+        rejectedSuggestions={profile?.rejectedSuggestions ?? []}
         onAccept={(outcome) => {
           // Profile side: content + revision for accepted changes. Feedback
           // side: only the events behind accepted changes become

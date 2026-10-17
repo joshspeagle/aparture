@@ -600,4 +600,46 @@ describe('SuggestDialog — accept/reject/dismiss', () => {
     expect(outcome.content).toBeUndefined();
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('Reject all records every change as rejected and incorporates nothing (P1-5)', async () => {
+    respondWith(twoChanges);
+    const onAccept = vi.fn();
+    await generate({ onAccept });
+    await screen.findByText(/proposed changes/i);
+    fireEvent.click(screen.getByText(/select none/i));
+    fireEvent.click(screen.getByRole('button', { name: /reject all 2 changes/i }));
+    const outcome = onAccept.mock.calls[0][0];
+    expect(outcome.kind).toBe('rejected');
+    expect(outcome.accepted).toEqual([]);
+    expect(outcome.rejected.map((c) => c.id)).toEqual(['c1', 'c2']);
+    expect(outcome.incorporatedEventIds).toEqual([]);
+  });
+
+  it('sends remembered rejections after the feedback events and says so (P1-5)', async () => {
+    const fetchMock = respondWith({ changes: [], noChangeReason: 'covered' });
+    const rejectedSuggestions = [
+      {
+        rationale: 'stars on lensing',
+        edit: { type: 'insert', anchor: 'Methods:', content: ' strong lensing.' },
+        rejectedAt: 1700000000000,
+      },
+    ];
+    render(<SuggestDialog {...baseProps} rejectedSuggestions={rejectedSuggestions} />);
+    expect(screen.getByTestId('rejected-suggestions-note')).toHaveTextContent(
+      /1 change you rejected earlier is sent with this request/i
+    );
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/no profile changes suggested/i);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body).feedback;
+    expect(sent.map((e) => e.type)).toEqual([
+      'star',
+      'dismiss',
+      'general-comment',
+      'rejected-suggestion',
+    ]);
+    expect(sent[3]).toMatchObject({
+      rationale: 'stars on lensing',
+      edit: { type: 'insert', anchor: 'Methods:', content: ' strong lensing.' },
+    });
+  });
 });

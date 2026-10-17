@@ -62,6 +62,10 @@ export default function YourProfile({
 
   const dateStr = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleDateString() : 'never';
 
+  // Accepted vs rejected suggested changes (useProfile recordSuggestionOutcome).
+  const suggestionStats = profile?.suggestionStats ?? {};
+  const decidedSuggestions = (suggestionStats.accepted ?? 0) + (suggestionStats.rejected ?? 0);
+
   return (
     <section
       style={{
@@ -260,6 +264,25 @@ export default function YourProfile({
               guidance.
               {dirty ? ' Save or discard your unsaved changes first.' : ''}
             </p>
+
+            {decidedSuggestions > 0 && (
+              <p
+                data-testid="suggestion-acceptance"
+                style={{
+                  fontFamily: 'var(--aparture-font-sans)',
+                  fontSize: 'var(--aparture-text-xs)',
+                  color: 'var(--aparture-mute)',
+                  lineHeight: 1.6,
+                  margin: 0,
+                  marginBottom: 'var(--aparture-space-4)',
+                }}
+              >
+                Suggested changes so far: {suggestionStats.accepted ?? 0} accepted,{' '}
+                {suggestionStats.rejected ?? 0} rejected (
+                {Math.round(((suggestionStats.accepted ?? 0) / decidedSuggestions) * 100)}%
+                accepted).
+              </p>
+            )}
 
             <Button variant="primary" onClick={handleSuggest} disabled={disabled || dirty}>
               Suggest improvements →
