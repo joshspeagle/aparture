@@ -179,6 +179,51 @@ export function useProfile(config = {}) {
     return ok;
   }, []);
 
+  // Named-profile map + active pointer writer (see the "Named profiles"
+  // section below). Declared up here because committing a working-slot
+  // change also writes through to the active snapshot.
+  const persistProfiles = useCallback((profiles, activeProfileName) => {
+    if (typeof window === 'undefined') return;
+    const ok =
+      safeSetItem(PROFILES_KEY, JSON.stringify(profiles)) &&
+      safeSetItem(ACTIVE_PROFILE_KEY, activeProfileName);
+    if (!ok) {
+      console.warn(
+        '[useProfile] localStorage quota exceeded; named profiles could not be persisted (in-memory state preserved for this session)'
+      );
+    }
+  }, []);
+
+  // Commit a new working profile AND write it through to the active named
+  // profile's snapshot. Every committed change (manual save, accepted
+  // suggestion, revert) goes through here, so the active snapshot always
+  // mirrors the working slot. Previously only switchTo snapshotted, so
+  // after "Save as…" the profile you left kept whatever content it was
+  // SEEDED with — usually the first-run template — and switching back
+  // silently loaded that over the user's real profile.
+  //
+  // Same ordering rule as switchTo: the map is written only after the
+  // working-slot write lands, so disk never holds a snapshot newer than the
+  // working slot it mirrors.
+  const commitProfile = useCallback(
+    (prev, nextProfile) => {
+      const name = prev.activeProfileName;
+      const current = prev.profiles?.[name];
+      const profiles =
+        current && current.content !== nextProfile.content
+          ? {
+              ...prev.profiles,
+              [name]: { content: nextProfile.content, updatedAt: nextProfile.updatedAt },
+            }
+          : prev.profiles;
+      if (persist(nextProfile) && profiles !== prev.profiles) {
+        persistProfiles(profiles, name);
+      }
+      return { ...prev, profile: nextProfile, profiles };
+    },
+    [persist, persistProfiles]
+  );
+
   const updateProfile = useCallback(
     (newContent) => {
       setState((prev) => {
@@ -199,11 +244,10 @@ export function useProfile(config = {}) {
           updatedAt: now,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
   );
 
   const clearHistory = useCallback(() => {
@@ -233,11 +277,10 @@ export function useProfile(config = {}) {
           lastFeedbackCutoff,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
   );
 
   const revertToRevision = useCallback(
@@ -261,11 +304,10 @@ export function useProfile(config = {}) {
           lastFeedbackCutoff: target.lastFeedbackCutoff,
           revisions,
         };
-        persist(nextProfile);
-        return { ...prev, profile: nextProfile };
+        return commitProfile(prev, nextProfile);
       });
     },
-    [persist]
+    [commitProfile]
   );
 
   const dismissMigrationNotice = useCallback(() => {
@@ -281,17 +323,9 @@ export function useProfile(config = {}) {
   // slot (PROFILE_KEY / profile.content) is what every pipeline stage reads;
   // switching loads a snapshot into it (archiving the outgoing content both
   // as a revision and back into its own snapshot, so nothing is lost).
-  const persistProfiles = useCallback((profiles, activeProfileName) => {
-    if (typeof window === 'undefined') return;
-    const ok =
-      safeSetItem(PROFILES_KEY, JSON.stringify(profiles)) &&
-      safeSetItem(ACTIVE_PROFILE_KEY, activeProfileName);
-    if (!ok) {
-      console.warn(
-        '[useProfile] localStorage quota exceeded; named profiles could not be persisted (in-memory state preserved for this session)'
-      );
-    }
-  }, []);
+  // Committed edits to the working slot also write through to the active
+  // snapshot (commitProfile above), so a snapshot is never staler than the
+  // last thing the user saved under that name.
 
   // Build the next working profile with `content` loaded and the outgoing
   // content archived as a manual revision. No-op shape when content is equal.
@@ -324,10 +358,18 @@ export function useProfile(config = {}) {
         // legitimate ("update my snapshot") and stays allowed. Mirrors the
         // renameProfile guard; ProfileSwitcher surfaces the refusal inline.
         if (prev.profiles[trimmed] && trimmed !== prev.activeProfileName) return prev;
-        const profiles = {
-          ...prev.profiles,
-          [trimmed]: { content: prev.profile.content, updatedAt: Date.now() },
-        };
+        const now = Date.now();
+        const profiles = { ...prev.profiles };
+        // Snapshot the outgoing profile too. Everything committed so far was
+        // committed under the outgoing name, so that name must keep it —
+        // otherwise switching back later loads a stale snapshot (for a
+        // first-run "Default", the bracketed template) over the user's real
+        // profile. commitProfile normally keeps this in sync already; this
+        // also repairs maps persisted before write-through existed.
+        if (profiles[prev.activeProfileName]) {
+          profiles[prev.activeProfileName] = { content: prev.profile.content, updatedAt: now };
+        }
+        profiles[trimmed] = { content: prev.profile.content, updatedAt: now };
         persistProfiles(profiles, trimmed);
         return { ...prev, profiles, activeProfileName: trimmed };
       });

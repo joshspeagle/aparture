@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useProfile } from '../../../hooks/useProfile.js';
+import {
+  BLANK_PROFILE_TEMPLATE,
+  STARTER_TEMPLATES,
+} from '../../../lib/profile/starterTemplates.js';
 
 describe('useProfile', () => {
   beforeEach(() => {
@@ -295,9 +299,8 @@ describe('useProfile — named profiles', () => {
     act(() => {
       result.current.saveAs('A');
     });
-    act(() => {
-      result.current.updateProfile('profile B');
-    });
+    // Fork B from A BEFORE editing: committed edits write through to the
+    // active snapshot, so editing first would (correctly) change A too.
     act(() => {
       result.current.saveAs('B');
     });
@@ -423,13 +426,16 @@ describe('useProfile — named profiles', () => {
     act(() => {
       result.current.updateProfile('something else entirely');
     });
-    // Attempt to save the new content over the OTHER snapshot ("Default",
-    // seeded on first load). Snapshot contents are never revision-archived,
-    // so a clobber here would be silent, irreversible loss.
+    // Attempt to save the new content over the OTHER snapshot ("Default").
+    // Snapshot contents are never revision-archived, so a clobber here would
+    // be silent, irreversible loss.
     act(() => {
       result.current.saveAs('Default');
     });
-    expect(result.current.profiles.Default.content).toBe('');
+    // Default keeps what was committed under it before "Save as A" — not the
+    // empty first-load seed (the stale-snapshot bug) and not the refused
+    // overwrite.
+    expect(result.current.profiles.Default.content).toBe('profile A');
     expect(result.current.activeProfileName).toBe('A');
   });
 
@@ -456,11 +462,12 @@ describe('useProfile — named profiles', () => {
     act(() => {
       result.current.saveAs('A');
     });
-    act(() => {
-      result.current.updateProfile('profile B');
-    });
+    // Fork first, then edit (edits write through to the active snapshot).
     act(() => {
       result.current.saveAs('B');
+    });
+    act(() => {
+      result.current.updateProfile('profile B');
     });
 
     // Quota failure ONLY on the working-slot key; map/pointer writes go
@@ -507,5 +514,166 @@ describe('useProfile — named profiles', () => {
     expect(second.result.current.profiles.Persisted.content).toBe('persisted content');
     // The pipeline read path is unchanged.
     expect(second.result.current.profile.content).toBe('persisted content');
+  });
+});
+
+// P0-3 regression: "Save as…" then switching back used to load a stale
+// snapshot — on a fresh install, the bracketed first-run template — over the
+// user's real profile, because committed edits never reached the active
+// profile's snapshot and saveAs didn't refresh the outgoing one.
+describe('useProfile — named profiles never lose committed content (P0-3)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const templateText = STARTER_TEMPLATES[0].profileText;
+
+  it("audit scenario: template + 2 accepted suggestions, Save as, edit, switch back → Default keeps the user's profile", () => {
+    // Fresh install: the working slot (and the seeded "Default" snapshot)
+    // start as the neutral bracketed template.
+    const first = renderHook(() => useProfile({ scoringCriteria: BLANK_PROFILE_TEMPLATE }));
+    const { result } = first;
+    expect(result.current.profiles.Default.content).toBe(BLANK_PROFILE_TEMPLATE);
+
+    // 1. Apply a starter template (StarterTemplatePicker calls updateProfile).
+    act(() => {
+      result.current.updateProfile(templateText);
+    });
+    // 2. Accept two suggested changes.
+    act(() => {
+      result.current.saveSuggested(`${templateText}\nFirst accepted change.`, 0, 'r1');
+    });
+    act(() => {
+      result.current.saveSuggested(
+        `${templateText}\nFirst accepted change.\nSecond accepted change.`,
+        0,
+        'r2'
+      );
+    });
+    const realProfile = result.current.profile.content;
+    // Write-through: the active snapshot tracks every committed change.
+    expect(result.current.profiles.Default.content).toBe(realProfile);
+
+    // 3. Save as "Exoplanets" and edit it.
+    act(() => {
+      result.current.saveAs('Exoplanets');
+    });
+    act(() => {
+      result.current.updateProfile('I study exoplanet atmospheres.');
+    });
+    expect(result.current.profiles.Exoplanets.content).toBe('I study exoplanet atmospheres.');
+
+    // 4. Switch back to Default.
+    act(() => {
+      result.current.switchTo('Default');
+    });
+    expect(result.current.activeProfileName).toBe('Default');
+    expect(result.current.profile.content).toBe(realProfile);
+    expect(result.current.profile.content).not.toBe(BLANK_PROFILE_TEMPLATE);
+    // The Exoplanets edit was snapshotted on the way out, not lost.
+    expect(result.current.profiles.Exoplanets.content).toBe('I study exoplanet atmospheres.');
+
+    // And the persisted map agrees, so a reload can't resurrect the template.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-profiles'));
+    expect(stored.Default.content).toBe(realProfile);
+    expect(stored.Exoplanets.content).toBe('I study exoplanet atmospheres.');
+    first.unmount();
+
+    const second = renderHook(() => useProfile({ scoringCriteria: BLANK_PROFILE_TEMPLATE }));
+    expect(second.result.current.profile.content).toBe(realProfile);
+    act(() => {
+      second.result.current.switchTo('Exoplanets');
+    });
+    act(() => {
+      second.result.current.switchTo('Default');
+    });
+    expect(second.result.current.profile.content).toBe(realProfile);
+  });
+
+  it('every committed change (manual, suggested, revert) writes through to the active snapshot', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.saveAs('Mine');
+    });
+
+    act(() => {
+      result.current.updateProfile('manual edit');
+    });
+    expect(result.current.profiles.Mine.content).toBe('manual edit');
+
+    act(() => {
+      result.current.saveSuggested('suggested edit', 0, 'because');
+    });
+    expect(result.current.profiles.Mine.content).toBe('suggested edit');
+
+    const manualRevision = result.current.profile.revisions.find(
+      (r) => r.content === 'manual edit'
+    );
+    act(() => {
+      result.current.revertToRevision(manualRevision.createdAt);
+    });
+    expect(result.current.profile.content).toBe('manual edit');
+    expect(result.current.profiles.Mine.content).toBe('manual edit');
+    expect(JSON.parse(window.localStorage.getItem('aparture-profiles')).Mine.content).toBe(
+      'manual edit'
+    );
+  });
+
+  it('saveAs repairs a stale outgoing snapshot persisted before write-through existed', () => {
+    // A map written by the old code: Default still holds its first-load
+    // seed while the working slot holds the user's real profile.
+    window.localStorage.setItem(
+      'aparture-profile',
+      JSON.stringify({
+        content: 'my real profile',
+        updatedAt: 2,
+        lastFeedbackCutoff: 0,
+        revisions: [],
+      })
+    );
+    window.localStorage.setItem(
+      'aparture-profiles',
+      JSON.stringify({ Default: { content: BLANK_PROFILE_TEMPLATE, updatedAt: 1 } })
+    );
+    window.localStorage.setItem('aparture-active-profile', 'Default');
+
+    const { result } = renderHook(() => useProfile({ scoringCriteria: BLANK_PROFILE_TEMPLATE }));
+    act(() => {
+      result.current.saveAs('Fork');
+    });
+    act(() => {
+      result.current.switchTo('Default');
+    });
+    expect(result.current.profile.content).toBe('my real profile');
+  });
+
+  it('does not touch the named-profile map when the working-slot write fails', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('committed');
+    });
+    const realSetItem = Storage.prototype.setItem;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === 'aparture-profile') {
+        const err = new Error('quota');
+        err.name = 'QuotaExceededError';
+        throw err;
+      }
+      return realSetItem.call(this, key, value);
+    });
+    act(() => {
+      result.current.updateProfile('in-memory only');
+    });
+    // In memory the snapshot follows the session state…
+    expect(result.current.profiles.Default.content).toBe('in-memory only');
+    // …but disk stays consistent with the (unchanged) stored working slot.
+    expect(JSON.parse(window.localStorage.getItem('aparture-profiles')).Default.content).toBe(
+      'committed'
+    );
   });
 });
