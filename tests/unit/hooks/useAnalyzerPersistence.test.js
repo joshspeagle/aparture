@@ -94,7 +94,7 @@ describe('readInitialConfig', () => {
       })
     );
     const config = readInitialConfig();
-    expect(config.version).toBe(9);
+    expect(config.version).toBe(10);
     expect(config.scoringCriteria).toBe('my hand-written research profile');
     expect(config.selectedCategories).toEqual(['astro-ph.GA', 'astro-ph.SR', 'stat.ME']);
     expect(config.scoringCriteria).not.toBe(DEFAULT_CONFIG.scoringCriteria);
@@ -301,6 +301,31 @@ describe('useAnalyzerPersistence — load effect', () => {
     expect(getCall).toBeUndefined();
   });
 
+  it('a blob saved mid test run restores with no test in progress', async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        testState: {
+          dryRunCompleted: true,
+          dryRunInProgress: true,
+          minimalTestInProgress: true,
+          lastDryRunTime: '2026-10-17T16:39:00.000Z',
+        },
+      })
+    );
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+    await waitFor(() => expect(props.setTestState).toHaveBeenCalled());
+    const restored = props.setTestState.mock.calls.at(-1)[0];
+    expect(restored).toMatchObject({
+      dryRunCompleted: true,
+      dryRunInProgress: false,
+      minimalTestInProgress: false,
+    });
+    expect(restored.lastDryRunTime).toBeInstanceOf(Date);
+  });
+
   it('lazy-loads cold tier when hot blob has sessionId but no allPapers', async () => {
     window.localStorage.setItem(
       STORAGE_KEY,
@@ -388,13 +413,13 @@ describe('useAnalyzerPersistence — load effect notebookLM model repair (C4)', 
       STORAGE_KEY,
       JSON.stringify({
         config: DEFAULT_CONFIG,
-        notebookLM: { duration: 20, model: 'claude-opus-4.7', content: null },
+        notebookLM: { duration: 20, model: 'claude-opus-5', content: null },
       })
     );
     const props = makeProps();
     renderHook(() => useAnalyzerPersistence(props));
     await waitFor(() => {
-      expect(props.setNotebookLMModel).toHaveBeenCalledWith('claude-opus-4.7');
+      expect(props.setNotebookLMModel).toHaveBeenCalledWith('claude-opus-5');
     });
   });
 });
@@ -828,8 +853,8 @@ describe('migrateLegacyConfig — v7 → v8', () => {
   });
 });
 
-describe('migrateLegacyConfig — v8 → v9 (removed Anthropic model remap)', () => {
-  it('remaps every removed Anthropic ID across all model slots', () => {
+describe('migrateLegacyConfig — retired-model remaps (v8 → v9 → v10)', () => {
+  it('remaps the 2026-07 removals straight to current models', () => {
     const v8Config = {
       version: 8,
       filterModel: 'claude-haiku-3.5',
@@ -841,41 +866,63 @@ describe('migrateLegacyConfig — v8 → v9 (removed Anthropic model remap)', ()
       notebookLMModel: 'claude-sonnet-4.5',
     };
     const result = migrateLegacyConfig(v8Config);
-    expect(result.version).toBe(9);
+    expect(result.version).toBe(10);
     expect(result.filterModel).toBe('claude-haiku-4.5');
-    expect(result.scoringModel).toBe('claude-sonnet-5');
-    expect(result.postProcessingModel).toBe('claude-opus-4.8');
-    expect(result.pdfModel).toBe('claude-opus-4.8');
-    expect(result.briefingModel).toBe('claude-opus-4.8');
+    expect(result.scoringModel).toBe('claude-sonnet-5.5');
+    expect(result.postProcessingModel).toBe('claude-opus-5.5');
+    expect(result.pdfModel).toBe('claude-opus-5.5');
+    expect(result.briefingModel).toBe('claude-opus-5.5');
     expect(result.quickSummaryModel).toBe('claude-haiku-4.5');
-    expect(result.notebookLMModel).toBe('claude-sonnet-5');
+    expect(result.notebookLMModel).toBe('claude-sonnet-5.5');
+  });
+
+  it('remaps the 2026-10 removals across every model slot, including the refusal fallback', () => {
+    const v9Config = {
+      version: 9,
+      filterModel: 'gpt-5.4-nano',
+      scoringModel: 'gemini-3.5-flash',
+      postProcessingModel: 'gpt-5.4-mini',
+      pdfModel: 'claude-opus-4.8',
+      briefingModel: 'gemini-3.1-pro',
+      quickSummaryModel: 'gemini-3-flash',
+      notebookLMModel: 'claude-sonnet-4.6',
+      refusalFallbackModel: 'gpt-5.4',
+    };
+    const result = migrateLegacyConfig(v9Config);
+    expect(result.version).toBe(10);
+    expect(result).toMatchObject({
+      filterModel: 'gpt-6-luna',
+      scoringModel: 'gemini-3.6-flash',
+      postProcessingModel: 'gpt-6-luna',
+      pdfModel: 'claude-opus-5.5',
+      briefingModel: 'gemini-4-argon',
+      quickSummaryModel: 'gemini-3.8-flash',
+      notebookLMModel: 'claude-sonnet-5.5',
+      refusalFallbackModel: 'gpt-6.1-sol',
+    });
   });
 
   it('leaves still-registered model selections untouched', () => {
-    const v8Config = {
-      version: 8,
+    const v9Config = {
+      version: 9,
       filterModel: 'gemini-3.1-flash-lite',
-      scoringModel: 'gemini-3-flash',
-      pdfModel: 'gemini-3.1-pro',
-      briefingModel: 'claude-opus-4.7',
-      quickSummaryModel: 'gpt-5.4-nano',
+      scoringModel: 'gemini-3.6-flash',
+      pdfModel: 'claude-opus-5',
+      briefingModel: 'gpt-5.6-terra',
+      quickSummaryModel: 'gemini-2.5-flash-lite',
+      refusalFallbackModel: '',
     };
-    const result = migrateLegacyConfig(v8Config);
-    expect(result.version).toBe(9);
-    // Preview Google IDs still work; explicit user selections are preserved.
-    expect(result.filterModel).toBe('gemini-3.1-flash-lite');
-    expect(result.scoringModel).toBe('gemini-3-flash');
-    expect(result.pdfModel).toBe('gemini-3.1-pro');
-    expect(result.briefingModel).toBe('claude-opus-4.7');
-    expect(result.quickSummaryModel).toBe('gpt-5.4-nano');
+    const result = migrateLegacyConfig({ ...v9Config });
+    expect(result.version).toBe(10);
+    expect(result).toMatchObject({ ...v9Config, version: 10 });
   });
 
   it('chains from older versions through the remap (v7 with a retired model)', () => {
     const v7Config = { version: 7, pdfModel: 'claude-opus-4.1' };
     const result = migrateLegacyConfig(v7Config);
-    expect(result.version).toBe(9);
+    expect(result.version).toBe(10);
     expect(result.pauseBeforeDeepAnalysis).toBe(true);
-    expect(result.pdfModel).toBe('claude-opus-4.8');
+    expect(result.pdfModel).toBe('claude-opus-5.5');
   });
 });
 
@@ -885,11 +932,11 @@ describe('DEFAULT_CONFIG', () => {
   });
 
   it('defaults model slots to GA models (no preview-only heavy slots)', () => {
-    expect(DEFAULT_CONFIG.version).toBe(9);
+    expect(DEFAULT_CONFIG.version).toBe(10);
     expect(DEFAULT_CONFIG.scoringModel).toBe('gemini-3.6-flash');
     expect(DEFAULT_CONFIG.postProcessingModel).toBe('gemini-3.6-flash');
-    expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.6-flash');
-    expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.6-flash');
+    expect(DEFAULT_CONFIG.pdfModel).toBe('gemini-3.8-flash');
+    expect(DEFAULT_CONFIG.briefingModel).toBe('gemini-3.8-flash');
     // The Lite slots were previously unpinned, so a silent change here would
     // not have failed anything — which is exactly the rot this test exists
     // to catch.

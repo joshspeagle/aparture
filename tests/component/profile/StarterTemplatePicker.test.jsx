@@ -70,7 +70,11 @@ describe('StarterTemplatePicker', () => {
 
     const featured = STARTER_TEMPLATES[0];
     expect(featured.id).toBe('focused-example');
-    expect(updateProfile).toHaveBeenCalledWith(featured.profileText);
+    // Logged as template use, not as a manual edit, in the profile history.
+    expect(updateProfile).toHaveBeenCalledWith(featured.profileText, {
+      source: 'template',
+      rationale: `Started from the "${featured.name}" template`,
+    });
     // setConfig receives an updater; apply it to verify the categories.
     const updater = setConfig.mock.calls[0][0];
     expect(updater({ selectedCategories: ['cs.LG'] }).selectedCategories).toEqual(
@@ -91,7 +95,10 @@ describe('StarterTemplatePicker', () => {
       />
     );
     fireEvent.click(screen.getByRole('button', { name: /start from scratch/i }));
-    expect(updateProfile).toHaveBeenCalledWith('');
+    expect(updateProfile).toHaveBeenCalledWith('', {
+      source: 'template',
+      rationale: 'Started from a blank profile',
+    });
     expect(window.localStorage.getItem(TEMPLATE_PICKER_DISMISSED_KEY)).toBe('true');
   });
 

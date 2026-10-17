@@ -33,6 +33,19 @@
   --aparture-hover: #ede6d5;
   --aparture-focus-ring: #b31b1b;
 
+  /* Status text. The semantic status hues (CLAUDE.md) fail contrast as text
+   * on these surfaces (#f59e0b is 1.9:1), so text and icons in a status
+   * colour use these shades, which keep at least 4.5:1 on bg, surface,
+   * surface-2 and the hue's own tint in both themes. Fills, borders and
+   * tints keep the raw hex. --aparture-on-status is text on a filled hue,
+   * theme-invariant because the fill is. */
+  --aparture-success-text: #166534;
+  --aparture-warning-text: #92400e;
+  --aparture-danger-text: #b91c1c;
+  --aparture-override-text: #9a3412;
+  --aparture-comment-text: #7e22ce;
+  --aparture-on-status: #1a1a1a;
+
   /* Typography.
    * --font-serif/--font-sans/--font-mono carry the hashed next/font family
    * names (set on :root by pages/_app.js). The quoted names are fallbacks
@@ -85,6 +98,13 @@
     --aparture-hover: #2a2520;
     --aparture-focus-ring: #d94545;
 
+    /* Status text (dark) */
+    --aparture-success-text: #4ade80;
+    --aparture-warning-text: #fbbf24;
+    --aparture-danger-text: #f87171;
+    --aparture-override-text: #fb923c;
+    --aparture-comment-text: #c084fc;
+
     /* Type scale (theme-invariant) */
     --aparture-text-3xl: 39px;
   }
@@ -115,6 +135,11 @@
   --aparture-sidebar-active: #ede6d5;
   --aparture-hover: #ede6d5;
   --aparture-focus-ring: #b31b1b;
+  --aparture-success-text: #166534;
+  --aparture-warning-text: #92400e;
+  --aparture-danger-text: #b91c1c;
+  --aparture-override-text: #9a3412;
+  --aparture-comment-text: #7e22ce;
   /* Type scale (theme-invariant) */
   --aparture-text-3xl: 39px;
 }
@@ -139,6 +164,11 @@
   --aparture-sidebar-active: #2a2520;
   --aparture-hover: #2a2520;
   --aparture-focus-ring: #d94545;
+  --aparture-success-text: #4ade80;
+  --aparture-warning-text: #fbbf24;
+  --aparture-danger-text: #f87171;
+  --aparture-override-text: #fb923c;
+  --aparture-comment-text: #c084fc;
   /* Type scale (theme-invariant) */
   --aparture-text-3xl: 39px;
 }

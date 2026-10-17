@@ -8,6 +8,7 @@ const TYPE_META = {
   'general-comment': { icon: '💭', borderColor: '#3b82f6', label: 'general' },
   'filter-override': { icon: '⇄', borderColor: '#f97316', label: 'filter override' },
   'scoped-feedback': { icon: '📋', borderColor: '#6366f1', label: 'scoped feedback' },
+  answer: { icon: '✓', borderColor: '#3b82f6', label: "answer to the editor's question" },
 };
 
 const FALLBACK = { icon: '·', borderColor: 'var(--aparture-hairline)', label: 'event' };

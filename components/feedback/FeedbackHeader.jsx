@@ -3,6 +3,7 @@ import Button from '../ui/Button.jsx';
 export default function FeedbackHeader({
   newCount,
   totalCount,
+  testCount = 0,
   onSuggestClick,
   lastFeedbackCutoff,
 }) {
@@ -38,7 +39,8 @@ export default function FeedbackHeader({
             marginTop: '2px',
           }}
         >
-          {newCount} new since last revision · {totalCount} total
+          {newCount} not yet incorporated · {totalCount} total
+          {testCount > 0 ? ` · ${testCount} from test runs` : ''}
         </p>
       </div>
       <Button variant="primary" onClick={onSuggestClick}>

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import handler from '../../pages/api/check-briefing.js';
 import { hashInput } from '../../lib/llm/hash.js';
+import { renderCheckCorpus } from '../../lib/synthesis/checkCorpus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,25 +84,9 @@ function renderBriefingText(briefing) {
   return parts.join('\n\n');
 }
 
-// Mirrors renderPapersCorpus in the route.
-function renderPapersCorpus(papers) {
-  if (!Array.isArray(papers) || papers.length === 0) return '(no papers)';
-  return papers
-    .map((p) => {
-      const lines = [`- ${p.arxivId} "${p.title ?? ''}"`];
-      if (p.abstract) lines.push(`  Abstract: ${p.abstract}`);
-      if (p.quickSummary) lines.push(`  Quick summary: ${p.quickSummary}`);
-      if (p.fullReport) {
-        const truncated =
-          p.fullReport.length > 4000
-            ? `${p.fullReport.slice(0, 4000)}\n[...truncated]`
-            : p.fullReport;
-        lines.push(`  Full report: ${truncated}`);
-      }
-      return lines.join('\n');
-    })
-    .join('\n\n');
-}
+// The route renders the source corpus with the shared renderer (its exact
+// content is pinned by tests/unit/synthesis/checkCorpus.test.js).
+const renderPapersCorpus = renderCheckCorpus;
 
 const CLEAN_BRIEFING = {
   executiveSummary:
@@ -269,6 +254,53 @@ describe('check-briefing API route (fixture mode)', () => {
     expect(jsonBody.flaggedClaims[0].paperArxivId).toBe('2504.01234');
     expect(jsonBody.flaggedClaims[0].concern).toBeTruthy();
     expect(jsonBody.repaired).toBe(false);
+  });
+
+  it('audits against the full, untruncated writer corpus', async () => {
+    // A report longer than the old 4000-char cut, with the claim the
+    // briefing makes sitting past it — plus the scoring justification and the
+    // user's comment, which the writer saw and the audit used to drop.
+    const longReport =
+      '## Summary\n\n' +
+      'Filler sentence about the method. '.repeat(150) +
+      '\n\n## Limitations\n\n' +
+      'The method fails beyond 512 dimensions.';
+    const papers = [
+      {
+        arxivId: '2504.01234',
+        title: 'Circuit-level analysis of reasoning',
+        score: 8.4,
+        abstract: 'We identify attention head circuits.',
+        scoringJustification: 'Directly on the profile’s interpretability focus.',
+        engagement: { starred: true, dismissed: false, comments: ['skeptical of the eval'] },
+        fullReport: longReport,
+      },
+    ];
+    expect(longReport.length).toBeGreaterThan(4000);
+    await seedFixture({
+      briefing: CLEAN_BRIEFING,
+      papers,
+      response: {
+        text: '',
+        tokensIn: 900,
+        tokensOut: 40,
+        structured: { verdict: 'NO', justification: 'Grounded.', flaggedClaims: [] },
+      },
+    });
+
+    const { req, res, getResponse } = createMockReqRes({
+      briefing: CLEAN_BRIEFING,
+      papers,
+      model: 'claude-opus-4-6',
+      provider: 'anthropic',
+      apiKey: 'test-key',
+      callModelMode: { mode: 'fixture', fixturesDir },
+    });
+    await handler(req, res);
+    // The fixture is keyed on the full rendered prompt: a route that
+    // truncated or dropped fields would miss it and 500.
+    expect(getResponse().statusCode).toBe(200);
+    expect(getResponse().jsonBody.verdict).toBe('NO');
   });
 
   it('rejects live-mode requests with neither apiKey nor password', async () => {

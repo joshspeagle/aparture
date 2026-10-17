@@ -32,21 +32,55 @@ function generateSessionId() {
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-// 2026-07 model-registry refresh: retired/removed model IDs → their closest
-// current-generation replacement. Shared between the v8→v9 config migration
-// (which walks config's model slots) and the load effect's notebookLM.model
-// repair — the notebookLM model does NOT live in config (it persists at
-// hotEntry.notebookLM.model, see lib/session/buildHotEntry.js), so the config
-// migration alone can't fix it.
+// Model ids removed from utils/models.js → their closest current
+// replacement. Shared between the config migrations (which walk config's
+// model slots) and the load effect's notebookLM.model repair — the
+// notebookLM model does NOT live in config (it persists at
+// hotEntry.notebookLM.model, see lib/session/buildHotEntry.js), so the
+// config migration alone can't fix it. Values must be registered ids: the
+// models test asserts it, so a later removal can't strand a mapping.
 export const RETIRED_MODEL_REMAP = {
+  // 2026-07 refresh
   'claude-haiku-3.5': 'claude-haiku-4.5',
-  'claude-opus-4.1': 'claude-opus-4.8',
-  'claude-opus-4.5': 'claude-opus-4.8',
-  'claude-sonnet-4.5': 'claude-sonnet-5',
+  'claude-opus-4.1': 'claude-opus-5.5',
+  'claude-opus-4.5': 'claude-opus-5.5',
+  'claude-sonnet-4.5': 'claude-sonnet-5.5',
+  // 2026-10 refresh: the registry keeps current + previous generation.
+  // Most replacements cost the same or less. The two Gemini previews move
+  // to models that cost more at list price (Argon also needs a paid tier).
+  'claude-opus-4.8': 'claude-opus-5.5',
+  'claude-opus-4.7': 'claude-opus-5.5',
+  'claude-opus-4.6': 'claude-opus-5.5',
+  'claude-sonnet-4.6': 'claude-sonnet-5.5',
+  'gpt-5.4': 'gpt-6.1-sol',
+  'gpt-5.4-mini': 'gpt-6-luna',
+  'gpt-5.4-nano': 'gpt-6-luna', // deprecated 2026-10-01, shuts down 2027-04-01
+  'gemini-3.5-flash': 'gemini-3.6-flash', // deprecated; Google already routes it there
+  'gemini-3-flash': 'gemini-3.8-flash', // preview; Google names 3.6 Flash and newer as successors
+  'gemini-3.1-pro': 'gemini-4-argon', // preview; Argon is the GA flagship
 };
 
+// Every config slot that names a model.
+const MODEL_SLOTS = [
+  'filterModel',
+  'scoringModel',
+  'postProcessingModel',
+  'pdfModel',
+  'briefingModel',
+  'quickSummaryModel',
+  'notebookLMModel',
+  'refusalFallbackModel',
+];
+
+function remapRetiredModels(config) {
+  for (const slot of MODEL_SLOTS) {
+    const mapped = RETIRED_MODEL_REMAP[config[slot]];
+    if (mapped) config[slot] = mapped;
+  }
+}
+
 export const DEFAULT_CONFIG = {
-  version: 9,
+  version: 10,
   // Neutral first-run defaults (2026-07): fresh installs get a small starter
   // category set and the bracketed fill-in profile template instead of a
   // personal research profile. The old shipped profile lives on as the
@@ -96,12 +130,14 @@ export const DEFAULT_CONFIG = {
   postProcessingModel: 'gemini-3.6-flash',
   // Number of post-processing (Stage 3.5) batches fired in parallel. Clamped 1–20.
   postProcessingConcurrency: 3,
-  pdfModel: 'gemini-3.6-flash',
+  // The two reading-and-writing slots get Google's most capable Flash
+  // model; the high-volume triage slots stay on cheaper ones.
+  pdfModel: 'gemini-3.8-flash',
   // Stage 3 parallel analysis width. Default 3 is safe across provider tiers
   // (Anthropic Tier 1 with cache warmup; Google/OpenAI have headroom). Clamped
   // 1–20 in pipeline.js.
   pdfAnalysisConcurrency: 3,
-  briefingModel: 'gemini-3.6-flash',
+  briefingModel: 'gemini-3.8-flash',
   // Quick summaries compress each full PDF analysis into a ~300-word pre-read.
   // Small/cheap text-only model is appropriate (input is the text of the full
   // report, not the PDF). Flash-Lite by default; fall back to briefingModel if
@@ -114,6 +150,10 @@ export const DEFAULT_CONFIG = {
   pauseBeforeBriefing: true,
   briefingRetryOnYes: true,
   briefingRetryOnMaybe: false,
+  // One small call on the briefing model after each briefing: up to two
+  // tap-to-answer questions when the day's papers expose a gap in the
+  // profile (pages/api/editor-questions.js). Answers feed suggest-profile.
+  editorQuestions: true,
   maxAbstractDisplay: 500,
   arxivIngestion: 'auto',
   minPapersPerSubcategory: 5,
@@ -240,20 +280,16 @@ export function migrateLegacyConfig(config) {
   // Anthropic adapter). Google defaults also moved to GA gemini-3.5-flash,
   // but existing preview selections are left alone — they still work.
   if (config.version === 8) {
-    const modelSlots = [
-      'filterModel',
-      'scoringModel',
-      'postProcessingModel',
-      'pdfModel',
-      'briefingModel',
-      'quickSummaryModel',
-      'notebookLMModel',
-    ];
-    for (const slot of modelSlots) {
-      const mapped = RETIRED_MODEL_REMAP[config[slot]];
-      if (mapped) config[slot] = mapped;
-    }
+    remapRetiredModels(config);
     config.version = 9;
+  }
+
+  // v9 → v10: 2026-10 model-registry refresh (see RETIRED_MODEL_REMAP).
+  // Selections that are still registered, including the old defaults, are
+  // left alone.
+  if (config.version === 9) {
+    remapRetiredModels(config);
+    config.version = 10;
   }
 
   // Two-model → three-model setup
@@ -272,7 +308,7 @@ export function migrateLegacyConfig(config) {
   // Single-model → three-model setup
   if (config.selectedModel) {
     config.filterModel = 'gemini-3.1-flash-lite';
-    config.scoringModel = 'gemini-3-flash';
+    config.scoringModel = 'gemini-3.6-flash';
     config.pdfModel = config.selectedModel;
     delete config.selectedModel;
   }
@@ -504,7 +540,14 @@ export function useAnalyzerPersistence({
       // Revive Date fields — JSON round-trips them as ISO strings, and
       // ControlPanel calls `.toLocaleString()` expecting real Dates (on a
       // string that renders the raw ISO text).
-      const revivedTestState = { ...parsed.testState };
+      // A test run lives in the page, so none survives a reload. A blob saved
+      // mid-run would otherwise restore "Testing..." with both test buttons
+      // disabled until the user resets.
+      const revivedTestState = {
+        ...parsed.testState,
+        dryRunInProgress: false,
+        minimalTestInProgress: false,
+      };
       for (const key of ['lastDryRunTime', 'lastMinimalTestTime']) {
         if (revivedTestState[key]) {
           const revived = new Date(revivedTestState[key]);

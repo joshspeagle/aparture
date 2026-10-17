@@ -78,11 +78,12 @@ const RankedPaperCard = memo(function RankedPaperCard({
         padding: 'var(--aparture-space-4)',
         border: '1px solid var(--aparture-hairline)',
         borderLeft: inFinalRanking ? '3px solid #22c55e' : '1px solid var(--aparture-hairline)',
-        opacity: dismissed ? 0.55 : 1,
+        opacity: dismissed ? 0.7 : 1,
         transition: 'border-color 150ms ease, background 150ms ease, opacity 150ms ease',
       }}
     >
       <div
+        className="stack-on-mobile"
         style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -102,10 +103,22 @@ const RankedPaperCard = memo(function RankedPaperCard({
               flexWrap: 'wrap',
             }}
           >
-            <span style={{ ...badgeBase, background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
+            <span
+              style={{
+                ...badgeBase,
+                background: 'rgba(59,130,246,0.12)',
+                color: 'var(--aparture-info-text)',
+              }}
+            >
               #{idx + 1}
             </span>
-            <span style={{ ...badgeBase, background: 'rgba(168,85,247,0.12)', color: '#a855f7' }}>
+            <span
+              style={{
+                ...badgeBase,
+                background: 'rgba(168,85,247,0.12)',
+                color: 'var(--aparture-comment-text)',
+              }}
+            >
               {(paper.finalScore ?? paper.relevanceScore ?? 0).toFixed(1)}/10
             </span>
             <a
@@ -133,7 +146,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                 marginBottom: '6px',
                 flexWrap: 'wrap',
                 fontFamily: 'var(--aparture-font-sans)',
-                fontSize: '11px',
+                fontSize: '12px',
                 color: 'var(--aparture-mute)',
               }}
             >
@@ -143,7 +156,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                   ...badgeBase,
                   background: 'var(--aparture-bg)',
                   color: 'var(--aparture-mute)',
-                  fontSize: '11px',
+                  fontSize: '12px',
                 }}
               >
                 Abstract: {(paper.initialScore ?? paper.relevanceScore ?? 0).toFixed(1)}
@@ -155,10 +168,13 @@ const RankedPaperCard = memo(function RankedPaperCard({
                   <span
                     style={{
                       ...badgeBase,
-                      fontSize: '11px',
+                      fontSize: '12px',
                       background:
                         paper.scoreAdjustment > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(249,115,22,0.1)',
-                      color: paper.scoreAdjustment > 0 ? '#22c55e' : '#f97316',
+                      color:
+                        paper.scoreAdjustment > 0
+                          ? 'var(--aparture-success-text)'
+                          : 'var(--aparture-override-text)',
                     }}
                   >
                     Rescore: {(paper.adjustedScore ?? paper.relevanceScore ?? 0).toFixed(1)}
@@ -176,7 +192,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                   <span
                     style={{
                       ...badgeBase,
-                      fontSize: '11px',
+                      fontSize: '12px',
                       background:
                         paper.pdfScoreAdjustment > 0
                           ? 'rgba(34,197,94,0.1)'
@@ -185,9 +201,9 @@ const RankedPaperCard = memo(function RankedPaperCard({
                             : 'var(--aparture-bg)',
                       color:
                         paper.pdfScoreAdjustment > 0
-                          ? '#22c55e'
+                          ? 'var(--aparture-success-text)'
                           : paper.pdfScoreAdjustment < 0
-                            ? '#f97316'
+                            ? 'var(--aparture-override-text)'
                             : 'var(--aparture-mute)',
                     }}
                   >
@@ -211,7 +227,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
             <p
               style={{
                 fontFamily: 'var(--aparture-font-sans)',
-                fontSize: '11px',
+                fontSize: '12px',
                 color: 'var(--aparture-mute)',
                 marginBottom: '4px',
                 lineHeight: 1.4,
@@ -306,7 +322,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                       <div
                         style={{
                           fontFamily: 'var(--aparture-font-sans)',
-                          fontSize: '10px',
+                          fontSize: '12px',
                           color: 'var(--aparture-mute)',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
@@ -340,6 +356,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
                   );
                 })()}
                 <textarea
+                  aria-label="Comment on this paper"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={3}

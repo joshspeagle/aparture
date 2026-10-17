@@ -408,3 +408,67 @@ describe('renderFeedbackSection — pairing integration', () => {
     expect(out).toMatch(/"wrong justification"/);
   });
 });
+
+describe('renderFeedbackSection — previously rejected suggestions (P1-5)', () => {
+  const baseTemplate = 'P\n{{profile}}\n\nF\n{{feedback}}';
+  const rejected = (type, anchor, content, rationale) => ({
+    type: 'rejected-suggestion',
+    rationale,
+    edit: { type, anchor, content },
+    rejectedAt: Date.UTC(2026, 9, 12),
+  });
+
+  it('renders every rejected edit type, last, with its date and old rationale', () => {
+    const events = [
+      {
+        type: 'star',
+        arxivId: '2504.01234',
+        paperTitle: 'T',
+        score: 9,
+        briefingDate: 'd',
+        timestamp: 1,
+      },
+      rejected('replace', 'galaxy dynamics', 'galaxy and stellar dynamics', 'stars on 2504.0001'),
+      rejected('insert', 'Methods:', ' diffusion models.', ''),
+      rejected('delete', 'I avoid simulations.', '', 'dismisses on simulation papers'),
+    ];
+    const out = renderSuggestPrompt(baseTemplate, { profile: 'p', events, briefings: {} });
+    expect(out).toMatch(/PREVIOUSLY REJECTED SUGGESTIONS \(3, newest first\)/);
+    expect(out).toMatch(/Do not propose them, or an equivalent edit, again/);
+    expect(out).toContain(
+      '- [2026-10-12] replace "galaxy dynamics" with "galaxy and stellar dynamics" (its rationale was: "stars on 2504.0001")'
+    );
+    expect(out).toContain('- [2026-10-12] insert after "Methods:": " diffusion models."');
+    expect(out).toContain('- [2026-10-12] delete "I avoid simulations."');
+    // After the regular feedback sections.
+    expect(out.indexOf('STARS (1)')).toBeLessThan(out.indexOf('PREVIOUSLY REJECTED'));
+  });
+
+  it('omits the section when nothing was rejected', () => {
+    const out = renderSuggestPrompt(baseTemplate, { profile: 'p', events: [], briefings: {} });
+    expect(out).not.toMatch(/PREVIOUSLY REJECTED/);
+  });
+});
+
+describe("renderFeedbackSection — answers to the editor's questions", () => {
+  it('renders each answer with its question and the papers that prompted it', () => {
+    const out = renderSuggestPrompt('F\n{{feedback}}', {
+      profile: 'p',
+      events: [
+        {
+          type: 'answer',
+          question: 'Reserve a slot for galaxy formation?',
+          answer: 'Yes, reserve a slot',
+          evidence: ['2610.21628'],
+          briefingDate: '2026-10-17',
+          timestamp: 1,
+        },
+      ],
+      briefings: {},
+    });
+    expect(out).toContain("ANSWERS TO THE EDITOR'S QUESTIONS (1):");
+    expect(out).toContain(
+      '- [2026-10-17] "Reserve a slot for galaxy formation?" → "Yes, reserve a slot" (asked about 2610.21628)'
+    );
+  });
+});

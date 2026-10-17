@@ -122,7 +122,7 @@ export default function SettingsPanel({ config, setConfig, processing }) {
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: 'var(--aparture-space-1) 0 0 0',
               lineHeight: 1.5,

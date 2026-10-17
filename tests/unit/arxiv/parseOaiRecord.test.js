@@ -12,6 +12,7 @@ const buildRecordXml = (overrides = {}) => {
   const abstract = overrides.abstract ?? 'Abstract text.';
   const categories = overrides.categories ?? 'cs.AI cs.LG';
   const authors = overrides.authors ?? 'Alice Author, Bob Builder';
+  const extra = overrides.extra ?? '';
   const versionXml = versions
     .map((v) => `<version version="${v.seq}"><date>${v.date}</date><size>1000kb</size></version>`)
     .join('');
@@ -30,6 +31,7 @@ const buildRecordXml = (overrides = {}) => {
       <authors>${authors}</authors>
       <categories>${categories}</categories>
       <abstract>${abstract}</abstract>
+      ${extra}
     </arXivRaw>
   </metadata>
 </record>`;
@@ -42,6 +44,37 @@ function parseFirstRecord(xml) {
 }
 
 describe('parseOaiRecord', () => {
+  it('drops affiliation groups and decodes TeX accents in author names', () => {
+    const record = parseFirstRecord(
+      buildRecordXml({
+        authors: String.raw`M. Scalco (1), J. M\"uller-Horn (1), and L. R. Bedin (2) ((1) Indiana University, Bloomington, USA, (2) INAF, Padova, Italy)`,
+      })
+    );
+    expect(parseOaiRecord(record).authors).toEqual(['M. Scalco', 'J. Müller-Horn', 'L. R. Bedin']);
+  });
+
+  it('keeps generational suffixes with their name', () => {
+    const record = parseFirstRecord(buildRecordXml({ authors: 'John Smith, Jr., Ada Lovelace' }));
+    expect(parseOaiRecord(record).authors).toEqual(['John Smith, Jr.', 'Ada Lovelace']);
+  });
+
+  it('keeps comments and license, and returns null when they are absent', () => {
+    const withBoth = parseOaiRecord(
+      parseFirstRecord(
+        buildRecordXml({
+          extra:
+            '<comments>12 pages, 8 figures. Code at https://github.com/x/y</comments><license>http://creativecommons.org/licenses/by/4.0/</license>',
+        })
+      )
+    );
+    expect(withBoth.comments).toBe('12 pages, 8 figures. Code at https://github.com/x/y');
+    expect(withBoth.license).toBe('http://creativecommons.org/licenses/by/4.0/');
+
+    const withNeither = parseOaiRecord(parseFirstRecord(buildRecordXml()));
+    expect(withNeither.comments).toBeNull();
+    expect(withNeither.license).toBeNull();
+  });
+
   it('parses a well-formed record and uses v1 as published', () => {
     const record = parseFirstRecord(buildRecordXml());
     const paper = parseOaiRecord(record);

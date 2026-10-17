@@ -22,7 +22,9 @@ export default function BriefingOptionsSection({ config, setConfig, processing }
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Parallel Quick-Summary Calls</label>
+          <label htmlFor="setting-quickSummaryConcurrency" style={FIELD_LABEL_STYLE}>
+            Parallel Quick-Summary Calls
+          </label>
           <Input {...integerInputProps('quickSummaryConcurrency', 5, 1, 20)} />
           <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
         </div>

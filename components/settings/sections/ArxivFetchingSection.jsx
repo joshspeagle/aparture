@@ -19,9 +19,12 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
     >
       <p style={SECTION_TITLE_STYLE}>ArXiv Fetching</p>
       <div style={{ marginBottom: 'var(--aparture-space-3)' }}>
-        <label style={FIELD_LABEL_STYLE}>Ingestion Mode</label>
+        <label id="setting-arxivIngestion-label" style={FIELD_LABEL_STYLE}>
+          Ingestion Mode
+        </label>
         <div
           role="radiogroup"
+          aria-labelledby="setting-arxivIngestion-label"
           style={{
             display: 'inline-flex',
             border: '1px solid var(--aparture-hairline)',
@@ -66,9 +69,12 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
         </p>
       </div>
       <div style={{ marginBottom: 'var(--aparture-space-3)' }}>
-        <label style={FIELD_LABEL_STYLE}>Window Semantics</label>
+        <label id="setting-arxivWindowSemantics-label" style={FIELD_LABEL_STYLE}>
+          Window Semantics
+        </label>
         <div
           role="radiogroup"
+          aria-labelledby="setting-arxivWindowSemantics-label"
           style={{
             display: 'inline-flex',
             border: '1px solid var(--aparture-hairline)',
@@ -116,13 +122,18 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Min Papers Per Subcategory</label>
+          <label htmlFor="setting-minPapersPerSubcategory" style={FIELD_LABEL_STYLE}>
+            Min Papers Per Subcategory
+          </label>
           <Input {...integerInputProps('minPapersPerSubcategory', 5, 0, 100)} />
           <p style={HELP_TEXT_STYLE}>Floor before fill-ups trigger</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Fill-Up Lookback (Days)</label>
+          <label htmlFor="setting-lookbackExtensions" style={FIELD_LABEL_STYLE}>
+            Fill-Up Lookback (Days)
+          </label>
           <Input
+            id="setting-lookbackExtensions"
             type="text"
             defaultValue={(config.lookbackExtensions ?? [3, 7, 14]).join(', ')}
             onBlur={(e) => {
@@ -138,7 +149,9 @@ export default function ArxivFetchingSection({ config, setConfig, processing }) 
           <p style={HELP_TEXT_STYLE}>Comma-separated days for staged fill-ups</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Cache TTL (minutes)</label>
+          <label htmlFor="setting-arxivCacheTtlMinutes" style={FIELD_LABEL_STYLE}>
+            Cache TTL (minutes)
+          </label>
           <Input {...integerInputProps('arxivCacheTtlMinutes', 60, 0, 4320)} />
           <p style={HELP_TEXT_STYLE}>Reuse recent arXiv responses (0 disables)</p>
         </div>

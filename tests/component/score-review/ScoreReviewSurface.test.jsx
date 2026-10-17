@@ -27,6 +27,23 @@ describe('ScoreReviewSurface', () => {
     expect(screen.getByText(/Review your scored papers before PDF analysis/i)).toBeInTheDocument();
   });
 
+  // Harvested papers carry only `id`; the row used to print a blank ID.
+  it('shows the arXiv ID of a harvested paper that has no arxivId field', () => {
+    const { arxivId: _omit, ...harvested } = mkPaper('2610.17146', 6.7);
+    render(
+      <ScoreReviewSurface
+        availablePapers={[harvested]}
+        maxDeepAnalysis={1}
+        starredIds={new Set()}
+        dismissedIds={new Set()}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onContinue={() => {}}
+      />
+    );
+    expect(screen.getByText('2610.17146 · score 6.7')).toBeInTheDocument();
+  });
+
   it('renders the title with paper count', () => {
     render(
       <ScoreReviewSurface

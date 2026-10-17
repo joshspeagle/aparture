@@ -1,11 +1,11 @@
 # Anthropic (Claude) API key
 
-This page walks you through creating an Anthropic API key and wiring it into Aparture so the pipeline can call Claude models. If you haven't picked a provider yet, [Google AI](/getting-started/api-keys-google) is the easier on-ramp — Aparture's default model slots are already all-Google, and the free tier covers an all-Flash setup end-to-end.
+This page walks you through creating an Anthropic API key and wiring it into Aparture so the pipeline can call Claude models. If you haven't picked a provider yet, [Google AI](/getting-started/api-keys-google) is the easier on-ramp: Aparture's default model slots are all Google, and the free tier covers them.
 
 Two things worth knowing about Anthropic before you start:
 
-- New accounts get a **one-time ~$5 starter credit**, which is enough to run a few small Aparture runs before you need to top up. You can kick the tires without entering a credit card.
-- Aparture has prompt caching wired in explicitly for Anthropic calls, so repeat runs with the same profile typically come in 20–40% below list pricing once the cache warms up.
+- New accounts get a **one-time ~$5 starter credit**, which is enough to run a few small Aparture runs before you need to top up. You can try it without entering a credit card.
+- Aparture caches the rubric and your profile on Anthropic calls, so repeat calls within a few minutes of each other read that part of the prompt at a fraction of the input price.
 
 ## 1. Sign up
 
@@ -17,7 +17,7 @@ Anthropic requires SMS phone verification at signup, and it rejects VoIP numbers
 
 Once you're signed in, navigate to **Settings → API Keys → Create Key**.
 
-Give the key a recognisable name (something like `aparture-local` works) so you can identify it later in the usage log. If you want a safety net on spend, you can set a per-key monthly cap at creation time — $20–50 is a reasonable starting point for a personal Aparture deployment.
+Give the key a recognisable name (something like `aparture-local` works) so you can identify it later in the usage log. If you want a safety net on spend, you can set a per-key monthly cap at creation time; $20–50 is a reasonable starting point for a personal Aparture deployment.
 
 **Copy the key immediately once it appears.** Anthropic shows the full value exactly once; afterwards, you'll only see a masked preview. If you close the dialog without copying, revoke the key and create a new one.
 
@@ -31,106 +31,109 @@ Open `.env.local` in the Aparture project root and paste the key:
 CLAUDE_API_KEY=sk-ant-api03-your-actual-key-here
 ```
 
-No quotes, no spaces around `=`. Restart `npm run dev` if it's already running — Next.js reads `.env.local` once at server startup and won't pick up the change otherwise.
+No quotes, no spaces around `=`. Restart `npm run dev` if it's already running; Next.js reads `.env.local` at server startup and may not pick up the change otherwise.
 
 If you haven't already set `ACCESS_PASSWORD` in the same file, see the [install page](/getting-started/install#_3-set-a-local-access-password). Both values live in `.env.local`; the web UI can't launch without a password.
 
 ## 4. Verify
 
-Aparture's default model slots are all-Google, so adding a Claude key alone doesn't route anything to Anthropic yet. To actually test your key, switch at least one slot to a Claude model first:
+Aparture's default model slots are all Google, so adding a Claude key alone doesn't route anything to Anthropic yet. To test your key, switch at least one slot to a Claude model first:
 
 1. Start (or restart) `npm run dev` and log in.
 2. Open the **Settings** panel.
-3. Change the `pdfModel` slot to `claude-sonnet-4.6` or `claude-opus-5`. This is the most expensive stage and the clearest signal that your key works.
-4. Back in the Control Panel, run the [Minimal API Test](/getting-started/verify-setup).
+3. Change the `pdfModel` slot to `claude-sonnet-5.5` or `claude-opus-5.5`. This is the most expensive stage and the clearest signal that your key works.
+4. Back in the Control Panel, run the [API Setup Check](/getting-started/verify-setup#step-0-api-setup-check-free), then the [Minimal API Test](/getting-started/verify-setup). The setup check validates the key, the model ID, and the request syntax for free.
 
-Expect ~$0.50–$1 on the 5-paper test once the PDF stage is running on Claude.
+Expect about $0.50 on the 5-paper test with Sonnet 5.5 on the PDF slot, or $0.90 with Opus 5.5, with the other slots on their Google defaults. Thinking tokens come on top.
 
-If the key is invalid, you'll see `"Anthropic API key not found"` (env var missing or misspelled) or an HTTP 401 response (key malformed or revoked).
+If the key is missing, the activity log shows `no API key for anthropic: set CLAUDE_API_KEY in .env.local and restart the server` (the env var is unset or misspelled). If it is malformed or revoked, Anthropic's own authentication error appears instead.
 
 ## 5. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does and how Aparture uses it end to end; the table below is just the recommended Anthropic picks for an all-Anthropic setup.
+You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does; the table below is the recommended all-Anthropic lineup.
 
 | Stage                               | Model               |
 | ----------------------------------- | ------------------- |
-| Filter (`filterModel`)              | `claude-haiku-4.5`  |
-| Scoring (`scoringModel`)            | `claude-sonnet-4.6` |
-| PDF analysis (`pdfModel`)           | `claude-opus-5`     |
-| Briefing (`briefingModel`)          | `claude-opus-5`     |
-| Quick summary (`quickSummaryModel`) | `claude-haiku-4.5`  |
-| NotebookLM doc (`notebookLMModel`)  | `claude-opus-5`     |
+| Filter (`filterModel`)              | `claude-haiku-5.5`  |
+| Scoring (`scoringModel`)            | `claude-sonnet-5.5` |
+| PDF analysis (`pdfModel`)           | `claude-opus-5.5`   |
+| Briefing (`briefingModel`)          | `claude-opus-5.5`   |
+| Quick summary (`quickSummaryModel`) | `claude-haiku-5.5`  |
+| NotebookLM doc (`notebookLMModel`)  | `claude-opus-5.5`   |
 
-Opus 5 replaced Opus 4.7 in this lineup in July 2026. It's the current Opus flagship at exactly the same $5 / $25 pricing, so the swap costs nothing — 4.7 and 4.8 remain in the registry if you'd rather pin a known-good model.
+::: warning Post-processing stays on Google unless you change it
+Stage 3.5 runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and doesn't follow your other choices. With no Google key, pick a Claude model as the **Review Model** under **Enable Post-Processing** in Settings, or turn post-processing off; otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.
+:::
 
-If you want a quality/cost step down, swap `pdfModel` to Sonnet 4.6 — that single change cuts roughly a third off a typical run, since PDF analysis dominates cost. In the other direction, `claude-fable-5` sits above Opus at 2× the price; see the pricing note below before putting it in a per-paper slot.
+For a quality/cost step down, put `claude-sonnet-5.5` on `pdfModel`; that halves the most expensive stage, and the reference run below drops from about $3.93 to $2.43. For a step up on the briefing, `claude-fable-5.1` costs 2.5 times as much as Opus 5.5 (about $4.87 for the reference run); see the notes below before putting it in a per-paper slot.
 
 ## 6. Cost estimate
 
 ### Per-model pricing
 
-All Claude models bill per million tokens (MTok), separately for input and output. Input tokens are everything you send to the model (prompt, system message, PDF content, prior-paper context); output tokens are everything the model writes back, **including adaptive-thinking tokens** on the Opus and Sonnet models (which can inflate output by 20–50% on hard prompts).
+Claude models bill per million tokens (MTok), separately for input and output. Input tokens are everything you send (prompt, profile, PDF content); output tokens are everything the model writes back, **including adaptive-thinking tokens**, which every current Claude model uses.
 
-Current (July 2026) list pricing for every Anthropic model in Aparture's registry:
+List pricing for every Anthropic model in Aparture's registry:
 
-| Model                                                   | Context | Input ($/MTok) | Output ($/MTok) |
-| ------------------------------------------------------- | ------- | -------------: | --------------: |
-| `claude-fable-5`†                                       | 1M      |            $10 |             $50 |
-| `claude-opus-5` (recommended PDF + briefing)            | 1M      |             $5 |             $25 |
-| `claude-opus-4.8`                                       | 1M      |             $5 |             $25 |
-| `claude-opus-4.7`                                       | 1M      |             $5 |             $25 |
-| `claude-opus-4.6`                                       | 1M      |             $5 |             $25 |
-| `claude-sonnet-5`\*                                     | 1M      |             $3 |             $15 |
-| `claude-sonnet-4.6` (recommended scoring)               | 1M      |             $3 |             $15 |
-| `claude-haiku-4.5` (recommended filter + quick-summary) | 200k    |             $1 |              $5 |
+| Model                                                     | Context | Input ($/MTok) | Output ($/MTok) |
+| --------------------------------------------------------- | ------- | -------------: | --------------: |
+| `claude-fable-5.1`†                                       | 1M      |            $10 |             $50 |
+| `claude-opus-5.5` (recommended PDF + briefing)            | 1M      |             $4 |             $20 |
+| `claude-sonnet-5.5` (recommended scoring)                 | 1M      |             $2 |             $10 |
+| `claude-haiku-5.5`\* (recommended filter + quick summary) | 1M      |          $0.10 |           $0.50 |
+| `claude-fable-5`†                                         | 1M      |            $10 |             $50 |
+| `claude-opus-5`                                           | 1M      |             $5 |             $25 |
+| `claude-sonnet-5`                                         | 1M      |             $2 |             $10 |
+| `claude-haiku-4.5`                                        | 200k    |             $1 |              $5 |
 
-\* `claude-sonnet-5` has introductory pricing of $2 / $10 per MTok through 2026-08-31, after which the $3 / $15 list price applies. It also uses a new tokenizer that produces roughly 30% more tokens for the same text than Sonnet 4.6, so per-request cost doesn't drop 1:1 with the sticker price.
+\* `claude-haiku-5.5`'s price holds for prompts up to 100K tokens. Longer prompts bill at $0.50 / $2.50, which a long PDF can reach if you put Haiku on `pdfModel`.
 
-† `claude-fable-5` is the most expensive model in the registry — 2× Opus on both input and output — and its thinking is always on, so you can't trade thinking tokens away to claw the cost back. It also **requires your Anthropic organization's data retention to be set to 30 days**; under zero data retention every request fails with a 400 that looks like a malformed-payload error rather than a policy one. It shares Opus 4.7's tokenizer, so token counts are comparable to Opus 4.7/4.8 but each token costs twice as much. Worth trying in the `briefingModel` slot if editorial quality is the thing you care about most; hard to justify for `pdfModel`, where volume multiplies the premium across every paper.
+† The Fable models are the most expensive in the registry, and their thinking is always on, so you can't trade thinking tokens away to claw the cost back. They also **require your Anthropic organization's data retention to be set to 30 days**; under zero data retention every request fails with a 400 that looks like a malformed-payload error rather than a policy one. Worth trying on `briefingModel` if editorial quality matters most to you; hard to justify on `pdfModel`, where the premium multiplies across every paper.
 
-The retired 2026-07 registry entries (`claude-opus-4.5`, `claude-opus-4.1`, `claude-sonnet-4.5`, `claude-haiku-3.5`) are no longer selectable; existing configs that referenced them are remapped automatically to the closest current-generation model on next load.
+The October 2026 refresh removed Opus 4.6–4.8 and Sonnet 4.6. Saved configs that pointed at them move to Opus 5.5 and Sonnet 5.5 the next time the app loads.
 
-**Two discounts apply automatically to repeat runs** and aren't shown in list pricing:
+**Two cache effects apply automatically to repeat calls** and aren't in list pricing:
 
-- **Prompt caching.** Aparture marks the stable prefix of each prompt (template text + your profile) as cacheable. The first call writes the cache at ~1.25× input price; subsequent calls within ~5 minutes read it at ~0.1× input price. Across a session, this nets a 20–40% reduction on input tokens.
-- **Cache warmup on parallel PDFs.** Stage 4 runs Anthropic's first PDF call alone before releasing the other workers, so the cache entry is primed once instead of racing N parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
+- **Prompt caching.** Aparture marks the stable prefix of each prompt (the template text and your profile) as cacheable. The first call writes the cache at a small premium; calls within about five minutes read it at a fraction of the input price. PDFs and abstracts aren't part of the cached prefix.
+- **Cache warmup on parallel PDFs.** Stage 4 runs Anthropic's first PDF call alone before releasing the other workers, so the cache entry is written once instead of by N parallel calls. See [Parallel PDF calls](/using/tuning-the-pipeline#parallel-pdf-calls).
 
-### Worked calculation: 100 input papers (all-Anthropic lineup)
+### Worked calculation: 100 input papers (Anthropic lineup)
 
-Reference case: 100 fetched papers, ~50 pass the filter and get scored, 20 go through PDF analysis (below the default `maxDeepAnalysis` cap of 30).
+Reference case: 100 fetched papers, 50 pass the filter and are scored and post-processed, 20 go through PDF analysis (below the default cap of 30). Token counts are the app's own per-paper planning estimates, and they leave out thinking tokens.
 
-| Stage                    | Model      | Input tokens | Output tokens | Cost                               |
-| ------------------------ | ---------- | ------------ | ------------- | ---------------------------------- |
-| Filter (100 abstracts)   | Haiku 4.5  | ~40,000      | ~5,000        | 40k × $1 / MTok + 5k × $5 = ~$0.07 |
-| Scoring (50 abstracts)   | Sonnet 4.6 | ~40,000      | ~7,500        | 40k × $3 + 7.5k × $15 = ~$0.23     |
-| PDF analysis (20 papers) | Opus 5     | ~360,000     | ~40,000       | 360k × $5 + 40k × $25 = ~$2.80     |
-| Quick summaries (20)     | Haiku 4.5  | ~30,000      | ~8,000        | 30k × $1 + 8k × $5 = ~$0.07        |
-| Briefing synthesis       | Opus 5     | ~10,000      | ~3,500        | 10k × $5 + 3.5k × $25 = ~$0.14     |
-| Hallucination audit      | Opus 5     | ~6,000       | ~800          | 6k × $5 + 0.8k × $25 = ~$0.05      |
-| **Total, list price**    |            |              |               | **~$3.36**                         |
+| Stage                       | Model             | Input tokens | Output tokens | Cost                              |
+| --------------------------- | ----------------- | ------------ | ------------- | --------------------------------- |
+| Filter (100 abstracts)      | Haiku 5.5         | ~50,000      | ~10,000       | 50k × $0.10 + 10k × $0.50 = $0.01 |
+| Scoring (50 abstracts)      | Sonnet 5.5        | ~40,000      | ~10,000       | 40k × $2 + 10k × $10 = $0.18      |
+| Post-processing (50 papers) | Gemini 3.6 Flash† | ~35,000      | ~6,000        | 35k × $1.50 + 6k × $7.50 = $0.10  |
+| PDF analysis (20 papers)    | Opus 5.5          | ~600,000     | ~30,000       | 600k × $4 + 30k × $20 = $3.00     |
+| Quick summaries (20)        | Haiku 5.5         | ~40,000      | ~6,000        | 40k × $0.10 + 6k × $0.50 = $0.01  |
+| Briefing synthesis + audit  | Opus 5.5          | ~108,000     | ~10,000       | 108k × $4 + 10k × $20 = $0.63     |
+| **Total, list price**       |                   |              |               | **~$3.93**                        |
 
-The PDF-analysis output-token count includes adaptive-thinking tokens (an Opus-tier model uses roughly 1000–2000 output tokens per paper with thinking on). Costs are unchanged from the previous Opus 4.7 lineup — Opus 5 is priced identically. Running the same stage on Haiku 4.5, which has no adaptive thinking, puts output closer to ~20,000 tokens total.
+† Post-processing stays on its Google default (see the warning above). Without a Google key, turn it off; the total drops to about $3.83.
 
-With prompt caching on repeat runs (same profile, same category set, within ~5 min of the first call), expect **~$2.30–2.70 per run** after the first.
+Thinking adds output tokens on every row; on the PDF and briefing rows that is usually the biggest difference between this estimate and a real run. After a run, the Download Report card shows the estimate from the tokens the run actually used.
 
 ### Scaling to other input volumes
 
-Filter and scoring scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse — the default cap is `maxDeepAnalysis = 30`, which binds at higher input volumes:
+Filter and scoring scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse, and the default cap of 30 binds at higher volumes:
 
-- **50 papers in** (10 PDFs): ~$1.75 list / ~$1.20 with caching
-- **100 papers in** (20 PDFs): ~$3.35 list / ~$2.30 with caching (reference case above)
-- **250 papers in** (30 PDFs, at cap): ~$5.20 list / ~$3.65 with caching — PDF analysis plateaus at the cap; filter + scoring keep growing
+- **50 papers in** (10 PDFs): ~$2.05 list
+- **100 papers in** (20 PDFs): ~$3.93 list (reference case above)
+- **250 papers in** (30 PDFs, at cap): ~$5.95 list. PDF analysis plateaus at the cap; filter and scoring keep growing.
 
-For authoritative pricing verify against Anthropic's [models page](https://platform.claude.com/docs/en/docs/about-claude/models) and [pricing page](https://claude.com/pricing) before committing to real spend.
+For authoritative pricing, check Anthropic's [models page](https://platform.claude.com/docs/en/docs/about-claude/models) and [pricing page](https://claude.com/pricing) before committing to real spend.
 
 ## 7. Common gotchas
 
-- **Forgot to restart `npm run dev`.** Easily the most common cause of "my key isn't working". Hot-reload doesn't pick up `.env.local` changes reliably; stop the server and start it again.
-- **Minimal API Test still runs against Google.** If you added the Claude key but didn't change a model slot in Settings, the test runs with Google models and won't exercise Anthropic at all. Swap at least one slot to a Claude model first.
+- **Forgot to restart `npm run dev`.** Easily the most common cause of "my key isn't working". Stop the server and start it again after editing `.env.local`.
+- **Minimal API Test still runs against Google.** If you added the Claude key but didn't change a model slot in Settings, the test runs on Google models and doesn't exercise Anthropic at all. Swap at least one slot to a Claude model first.
+- **Stage 3.5 errors without a Google key.** See the warning under Recommended models: post-processing stays on its Google default unless you turn it off or edit the saved config.
 - **Copied only the masked preview.** If you missed the full key at creation, revoke and recreate. There's no "show full key" button anywhere.
 - **Starter credit expired.** The ~$5 new-account credit has an expiration, typically 14–30 days. If you signed up months ago without using it, check **Settings → Billing → Credit history**.
-- **Slow PDF analysis on a new account.** Tier 1 has tight rate limits — a 20-paper deep-analysis stage on Opus can take ~40 minutes. Tier 2 unlocks automatically at ~$40 cumulative spend; until then, Sonnet 4.6 is a much faster option for the PDF stage ([tuning the pipeline](/using/tuning-the-pipeline)).
-- **First PDF feels slow even though analysis is parallel.** Aparture runs a single cache-warmup call before releasing sibling workers on Anthropic, so the first paper takes 3–6 s longer than subsequent ones. This is deliberate — it primes the prompt-cache entry so the remaining N-1 papers hit the cache instead of racing parallel cache-creates. See [Parallel PDF analyses](/using/tuning-the-pipeline#parallel-pdf-analyses).
+- **Slow PDF analysis on a new account.** Tier 1 has tight rate limits, so a 20-paper deep-analysis stage on Opus can take a long time. Tier 2 unlocks automatically after enough cumulative spend; until then, Sonnet 5.5 is a faster option for the PDF stage ([tuning the pipeline](/using/tuning-the-pipeline)).
+- **First PDF feels slow even though analysis is parallel.** Aparture runs a single cache-warmup call before releasing sibling workers on Anthropic, so the first paper takes a few seconds longer than the rest. This is deliberate: it writes the prompt-cache entry once so the remaining papers read it instead of each writing their own. See [Parallel PDF calls](/using/tuning-the-pipeline#parallel-pdf-calls).
 
 ## Next
 
@@ -138,4 +141,4 @@ Key added and dev server restarted? Confirm it works: [Verify your setup →](/g
 
 ---
 
-_Snapshot taken 2026-04-19. Anthropic pricing, tier thresholds, and signup flow may change. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/api/overview) and [claude.com/pricing](https://claude.com/pricing) before committing to real spend._
+_Pricing snapshot taken 2026-10-17 from the model registry. Anthropic pricing, tier thresholds, and signup flow may change. Verify against [platform.claude.com/docs](https://platform.claude.com/docs/en/api/overview) and [claude.com/pricing](https://claude.com/pricing) before committing to real spend._

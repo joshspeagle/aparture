@@ -14,6 +14,8 @@ From top to bottom, a briefing stacks like this:
 
 ```
   ┌────────────────────────────────────┐
+  │  Header                            │  date, counts, claims-check status
+  ├────────────────────────────────────┤
   │  Executive summary                 │  200-400 word editorial lead
   ├────────────────────────────────────┤
   │  Theme 1                           │
@@ -22,12 +24,18 @@ From top to bottom, a briefing stacks like this:
   │     ├─ Paper card                  │
   │     └─ Paper card                  │
   ├────────────────────────────────────┤
-  │  Theme 2 … 5                       │
+  │  Theme 2 … 5, Other papers         │
+  ├────────────────────────────────────┤
+  │  Notes from the editor             │  up to two questions, some days
   ├────────────────────────────────────┤
   │  Hallucination audit               │  verdict + flagged claims
   │  Generation details ▸              │  how this briefing was made
   └────────────────────────────────────┘
 ```
+
+### Header
+
+Under the date, one line counts the papers in focus and the papers screened, estimates the reading time, and gives the claims-check status: _claims checked_, _claims check flagged N claims_, or _claims check did not run_. The last two show in amber, so a flagged or unaudited briefing is visible before you read it.
 
 ### Executive summary
 
@@ -37,7 +45,9 @@ The first paragraph carries the headline — what's the most notable thing in to
 
 ### Themes
 
-Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension; every paper lands in exactly one theme, and no paper is left out.
+Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension.
+
+Each paper's card appears once, in the first theme that lists it. If a later theme lists the same paper, that theme names it in an _"Also in this theme (shown above)"_ line instead of repeating the card. A paper the briefing didn't place in any theme appears in a final **Other papers** group rather than disappearing.
 
 A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. _"1. Interpretability converges on attention heads"_, not _"Interpretability papers"_). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
 
@@ -49,19 +59,28 @@ Each theme contains one or more paper cards. This is where individual papers are
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Score badge**      | A 0.0–10.0 relevance score (one decimal place), more brightly highlighted at 9+ — see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)                                                                   |
 | **Title + arXiv ID** | Linked to the arXiv abstract page                                                                                                                                                                                       |
+| **Links**            | abstract · PDF · HTML · alphaXiv: the arXiv abstract page, the PDF, arXiv's HTML rendering (when the paper has one), and the paper's alphaXiv page                                                                      |
 | **One-line pitch**   | A 15–25 word italic sell — closer to "what would this paper say if it were selling itself in one sentence" than a summary                                                                                               |
 | **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                                                                                                             |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
 The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 3 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
 
+The title and score on a card always come from the pipeline, not from the briefing model: Aparture replaces whatever the model wrote with the paper's real title and score. Two markers mean Aparture repaired the briefing in code because the model's own repair failed: a card whose pitch reads _"Added by Aparture: the briefing model left this paper out"_, and the text _[unverified arXiv ID removed]_ where the prose cited an ID that isn't one of the day's papers. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
+
+### Notes from the editor
+
+Some briefings end with up to two short questions under **Notes from the editor**. They appear only when the day's papers exposed something your profile doesn't settle: a strong paper in an area the profile never mentions, say, or several papers ranked down for a reason the profile is silent about. Each question names what prompted it and offers two to four answers. Tap one to answer; tap it again to take the answer back.
+
+Answers are feedback. They go into the next [profile suggestion](/using/refining-over-time) as evidence, and you still accept or reject the edits it proposes. Later questions see your earlier answers, so nothing is asked twice. Most days there are no questions, and that's normal. To turn them off, clear **Ask me up to two questions after each briefing…** in **Settings → Review & confirmation**.
+
 ## Going deeper on a single paper
 
 Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.
 
-**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`) in parallel during briefing synthesis. Click again to collapse.
+**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. They're written for you to read; the briefing writer and the audit don't use them. Click again to collapse.
 
-**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4, usually around 700–1000 words of key findings, methodology notes, and limitations. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
+**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment, with its headings and lists rendered. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
 
 ::: tip Expansions are free at read time
 Both the quick summary and the full report are generated once during the pipeline run and cached. Opening either costs nothing — no API calls, no waiting — so there's no reason to hesitate before clicking.
@@ -73,13 +92,15 @@ Below the briefing body sit two small sections that are easy to miss but worth o
 
 ### Hallucination audit
 
-After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
+After synthesis, Aparture makes a second LLM call, on the same briefing model, that audits the briefing's claims against each paper's abstract and full report: the same sources the writer was told to ground its claims in. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
 
 | Verdict                                     | Meaning                                                                                                                            |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | <span class="verdict is-yes">NO</span>      | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                    |
 | <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list. |
 | <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                            |
+
+If the audit call fails, Aparture tries it once more. If it still can't run, the briefing is saved unaudited: the header reads _claims check did not run_, and Generation details gives the reason. An unaudited briefing never shows as checked.
 
 If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (retry-on-YES defaults on, retry-on-MAYBE defaults off), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
 
@@ -96,14 +117,16 @@ Below the audit is a small expandable link: <span class="ui-action">Generation d
 | Field                   | What it carries                                                                                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Profile snapshot**    | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable)                                                            |
-| **Models**              | Model IDs used at each stage: filter, scoring, PDF analysis, briefing, quick summary                                                                             |
+| **Models**              | Model IDs used for the filter, scoring, PDF analysis, and briefing stages                                                                                        |
 | **Categories**          | arXiv categories selected for the run, as small badges                                                                                                           |
 | **Filter verdicts**     | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> counts from the quick-filter stage |
-| **Settings flags**      | Whether pause gates and retry checks were on or off                                                                                                              |
+| **Settings flags**      | Whether the filter gate (`pauseAfterFilter`) and the two retry checks were on or off                                                                             |
 | **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                                                                              |
 | **Generated at**        | ISO timestamp                                                                                                                                                    |
 
-You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired. Briefings are archived for 90 days in the sidebar, and this panel is the permanent record of how each one was made.
+You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired.
+
+Every briefing is saved permanently as a file in `reports/briefings/`, and nothing deletes it except you. The sidebar list lives in browser storage, so it is trimmed to a size budget: when it fills, the oldest test runs (dry runs and Minimal API Tests) drop off the list first, then the oldest real briefings. A briefing that drops off the list is still on disk.
 
 ## A five-minute reading flow
 

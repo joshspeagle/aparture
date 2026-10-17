@@ -84,7 +84,7 @@ function ChangeCard({ change, checked, onToggle }) {
         <div
           style={{
             fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             color: 'var(--aparture-mute)',
             textTransform: 'uppercase',
@@ -107,7 +107,7 @@ function ChangeCard({ change, checked, onToggle }) {
             <div
               style={{
                 background: 'rgba(239, 68, 68, 0.12)',
-                color: '#ef4444',
+                color: 'var(--aparture-danger-text)',
                 textDecoration: edit.type === 'delete' ? 'line-through' : 'none',
                 padding: '2px 4px',
                 borderRadius: '2px',
@@ -120,7 +120,7 @@ function ChangeCard({ change, checked, onToggle }) {
           {edit.type === 'insert' && (
             <div
               style={{
-                fontSize: '10px',
+                fontSize: '12px',
                 color: 'var(--aparture-mute)',
                 marginBottom: '3px',
                 fontStyle: 'italic',
@@ -133,7 +133,7 @@ function ChangeCard({ change, checked, onToggle }) {
             <div
               style={{
                 background: 'rgba(34, 197, 94, 0.12)',
-                color: '#22c55e',
+                color: 'var(--aparture-success-text)',
                 padding: '2px 4px',
                 borderRadius: '2px',
               }}
@@ -197,6 +197,14 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
     onApply({ acceptedIds: orderedIds, resultText: cumulative });
   };
 
+  // Turning every change down is a decision too: it is recorded (the
+  // rejected changes are remembered for the next suggestion), unlike Cancel,
+  // which closes without deciding anything.
+  const handleRejectAll = () => {
+    if (!onApply) return;
+    onApply({ acceptedIds: [], resultText: currentProfile ?? '' });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-3)' }}>
       <div
@@ -206,8 +214,8 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
           color: 'var(--aparture-mute)',
         }}
       >
-        Pick which suggested changes to apply. Each change is atomic; untick the ones you want to
-        skip.
+        Pick which suggested changes to apply. Each change is atomic. Unticked changes are saved as
+        rejected and listed in the next suggestion request. Feedback behind them stays pending.
       </div>
 
       <div
@@ -246,7 +254,7 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
         <div
           style={{
             fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             color: 'var(--aparture-mute)',
             textTransform: 'uppercase',
@@ -312,6 +320,11 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
           {onCancel && (
             <Button variant="secondary" onClick={onCancel}>
               Cancel
+            </Button>
+          )}
+          {count === 0 && total > 0 && (
+            <Button variant="secondary" onClick={handleRejectAll}>
+              Reject all {total} {total === 1 ? 'change' : 'changes'}
             </Button>
           )}
           <Button variant="primary" onClick={handleApply} disabled={!canApply}>

@@ -31,7 +31,7 @@ export default function RefusalSummaryCard({ refusals }) {
       <div style={{ display: 'flex', gap: 'var(--aparture-space-3)', alignItems: 'flex-start' }}>
         <ShieldAlert
           className="w-5 h-5"
-          style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }}
+          style={{ color: 'var(--aparture-warning-text)', flexShrink: 0, marginTop: '2px' }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div

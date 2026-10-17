@@ -30,7 +30,8 @@ export default function ReviewConfirmationSection({ config, setConfig, processin
           marginBottom: 'var(--aparture-space-4)',
         }}
       >
-        Training wheels — turn these off as you build trust in your pipeline setup.
+        Each pause is where you steer the run: correct filter verdicts, pick which papers get a full
+        read, and leave notes for the briefing.
       </p>
       <div
         style={{
@@ -73,6 +74,12 @@ export default function ReviewConfirmationSection({ config, setConfig, processin
           onChange={(e) =>
             setConfig((prev) => ({ ...prev, briefingRetryOnMaybe: e.target.checked }))
           }
+          disabled={processing.isRunning}
+        />
+        <Checkbox
+          label="Ask me up to two questions after each briefing when the day's papers expose a gap in my profile"
+          checked={config.editorQuestions ?? true}
+          onChange={(e) => setConfig((prev) => ({ ...prev, editorQuestions: e.target.checked }))}
           disabled={processing.isRunning}
         />
       </div>

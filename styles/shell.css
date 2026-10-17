@@ -159,4 +159,34 @@
   .settings-field-row > div {
     min-width: 45%;
   }
+
+  /* Rows that set a title beside a group of action pills (filter verdicts,
+   * score review, ranked cards) put the pills under the title: side by
+   * side, the pills keep their width and squeeze the title to a word per
+   * line. !important beats the rows' inline alignment and margins. */
+  .stack-on-mobile {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .stack-on-mobile > * {
+    margin-left: 0 !important;
+  }
+
+  /* Side panels (the full report) take the whole screen. */
+  .sheet-on-mobile {
+    width: 100% !important;
+    border-left: none !important;
+  }
+
+  .sheet-on-mobile > * {
+    padding-left: var(--aparture-space-4) !important;
+    padding-right: var(--aparture-space-4) !important;
+  }
+
+  /* The title sits in the sticky header; at desktop size a long one would
+   * cover half the screen. */
+  .sheet-on-mobile h2 {
+    font-size: var(--aparture-text-lg) !important;
+  }
 }

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import {
   callCheckBriefing,
   callSynthesize,
+  collectReaderNotes,
+  formatAuthorsForPrompt,
   generateQuickSummaries,
   runBriefingGeneration,
 } from '../../../lib/analyzer/briefingClient.js';
@@ -71,6 +73,69 @@ describe('callCheckBriefing — non-fatal contract', () => {
       json: async () => ({ error: 'check failed' }),
     });
     await expect(callCheckBriefing(baseArgs)).resolves.toBeNull();
+  });
+});
+
+describe('callCheckBriefing — failure reasons and corpus', () => {
+  it('reports why a check did not run', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'check failed' }),
+    });
+    const onFailure = vi.fn();
+    await expect(callCheckBriefing({ ...baseArgs, onFailure })).resolves.toBeNull();
+    expect(onFailure).toHaveBeenCalledWith('HTTP 500: check failed');
+  });
+
+  it('treats a network error as a check that did not run, not a failed briefing', async () => {
+    vi.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+    const onFailure = vi.fn();
+    await expect(callCheckBriefing({ ...baseArgs, onFailure })).resolves.toBeNull();
+    expect(onFailure).toHaveBeenCalledWith('network error: fetch failed');
+  });
+
+  it('rethrows an abort instead of reporting it', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    vi.spyOn(global, 'fetch').mockRejectedValue(
+      Object.assign(new Error('aborted'), { name: 'AbortError' })
+    );
+    await expect(callCheckBriefing({ ...baseArgs, signal: controller.signal })).rejects.toThrow(
+      'aborted'
+    );
+  });
+
+  it("sends the writer's paper fields and no quick summaries", async () => {
+    const spy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ verdict: 'NO' }),
+    });
+    await callCheckBriefing({
+      ...baseArgs,
+      papers: [
+        {
+          arxivId: '2605.0001',
+          title: 'T',
+          abstract: 'A',
+          score: 7.5,
+          scoringJustification: 'J',
+          fullReport: 'R',
+          engagement: { starred: true, dismissed: false },
+        },
+      ],
+    });
+    const sent = JSON.parse(spy.mock.calls[0][1].body).papers[0];
+    expect(sent).toEqual({
+      arxivId: '2605.0001',
+      title: 'T',
+      abstract: 'A',
+      score: 7.5,
+      scoringJustification: 'J',
+      fullReport: 'R',
+      engagement: { starred: true, dismissed: false },
+    });
   });
 });
 
@@ -491,5 +556,316 @@ describe('runBriefingGeneration — abort handling', () => {
     expect(saveBriefing).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setters.setSynthesizing).toHaveBeenLastCalledWith(false);
+  });
+});
+
+// --- Live-path payload tests -------------------------------------------------
+// These drive runBriefingGeneration WITHOUT a mockTester, with fetch routed by
+// URL, so they pin exactly what the client posts to /api/analyze-pdf-quick,
+// /api/synthesize, and /api/check-briefing.
+
+function makeLiveSetters() {
+  return {
+    setSynthesizing: vi.fn(),
+    setSynthesisError: vi.fn(),
+    setBriefingCheckResult: vi.fn(),
+    setBriefingStage: vi.fn(),
+    setQuickSummariesById: vi.fn(),
+    setFullReportsById: vi.fn(),
+  };
+}
+
+function routeFetch({ checkResponses = null } = {}) {
+  const bodies = { quick: [], synthesize: [], check: [] };
+  const pendingChecks = checkResponses ? [...checkResponses] : null;
+  vi.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (url === '/api/analyze-pdf-quick') {
+      bodies.quick.push(body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ quickSummary: `quick summary of ${body.paper.arxivId}` }),
+      };
+    }
+    if (url === '/api/synthesize') {
+      bodies.synthesize.push(body);
+      const ids = body.papers.map((p) => p.arxivId);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          briefing: {
+            executiveSummary: 'summary',
+            themes: [{ title: 't', argument: 'a', paperIds: ids }],
+            papers: body.papers.map((p) => ({
+              arxivId: p.arxivId,
+              title: p.title,
+              score: 5,
+              onelinePitch: 'pitch',
+              whyMatters: 'why',
+            })),
+          },
+        }),
+      };
+    }
+    if (url === '/api/editor-questions') {
+      bodies.questions = [...(bodies.questions ?? []), body];
+      const first = body.papers[0]?.arxivId;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          questions: [
+            { id: 'q1', text: 'Want more like this?', options: ['Yes', 'No'], evidence: [first] },
+          ],
+          dropped: [],
+        }),
+      };
+    }
+    if (url === '/api/check-briefing') {
+      bodies.check.push(body);
+      if (pendingChecks && pendingChecks.length > 0) return pendingChecks.shift();
+      return { ok: true, status: 200, json: async () => ({ verdict: 'NO', justification: 'ok' }) };
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+  return bodies;
+}
+
+const liveRanking = [
+  {
+    arxivId: '2605.0001',
+    title: 'Paper One',
+    authors: ['A. Author', 'B. Author'],
+    abstract: 'Abstract one',
+    score: 8,
+    deepAnalysis: { summary: 'Deep summary one' },
+  },
+  {
+    arxivId: '2605.0002',
+    title: 'Paper Two',
+    authors: ['C. Author'],
+    abstract: 'Abstract two',
+    score: 6,
+    deepAnalysis: { summary: 'Deep summary two' },
+  },
+];
+
+async function runLive({ checkResponses, ...overrides } = {}) {
+  // cacheLastAnalysisRun warns in the node env (no window) — silence it.
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const bodies = routeFetch({ checkResponses });
+  const saveBriefing = vi.fn();
+  await runBriefingGeneration({
+    results: { finalRanking: liveRanking },
+    briefingModel: 'gemini-3.6-flash',
+    quickSummaryModel: 'gemini-3.6-flash',
+    profile: { content: 'profile' },
+    password: 'pw',
+    saveBriefing,
+    ...makeLiveSetters(),
+    ...overrides,
+  });
+  return { bodies, saveBriefing };
+}
+
+describe('runBriefingGeneration — paper comments reach the synthesizer (P0-1)', () => {
+  it('puts paper-comment text into papers[i].engagement.comments', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [
+        { id: 's1', type: 'star', arxivId: '2605.0001', timestamp: 1 },
+        {
+          id: 'c1',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'This is the key paper today — lead the briefing with it.',
+          timestamp: 2,
+        },
+        {
+          id: 'c2',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'Compare to SBI.',
+          timestamp: 3,
+        },
+        // Whitespace-only text is not a comment.
+        { id: 'c3', type: 'paper-comment', arxivId: '2605.0002', text: '   ', timestamp: 4 },
+      ],
+    });
+
+    expect(bodies.synthesize).toHaveLength(1);
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    // Pre-fix the client read `e.comment` (never set), so `comments` was
+    // always absent and only {starred, dismissed} reached the prompt.
+    expect(byId['2605.0001'].engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['This is the key paper today — lead the briefing with it.', 'Compare to SBI.'],
+    });
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: false });
+  });
+});
+
+describe('runBriefingGeneration — the Gate 3 note reaches the briefing writer (P1-7)', () => {
+  const today = localDateStr();
+  const note = (id, text, extra = {}) => ({
+    id,
+    type: 'general-comment',
+    origin: 'pre-briefing',
+    text,
+    briefingDate: today,
+    timestamp: Number(id.replace(/\D/g, '')) || 1,
+    ...extra,
+  });
+
+  it("collectReaderNotes keeps only today's pre-briefing notes, oldest first", () => {
+    const events = [
+      note('n2', 'More methodology depth.'),
+      note('n1', 'Lead with the diffusion-models cluster.'),
+      note('n3', 'From yesterday.', { briefingDate: '2000-01-01' }),
+      note('n4', 'Said during a dry run.', { testMode: true }),
+      { id: 'g5', type: 'general-comment', text: 'A plain general comment.', briefingDate: today },
+      note('n6', '   '),
+    ];
+    expect(collectReaderNotes(events, today)).toEqual([
+      'Lead with the diffusion-models cluster.',
+      'More methodology depth.',
+    ]);
+    expect(collectReaderNotes(events, today, { includeTestFeedback: true })).toContain(
+      'Said during a dry run.'
+    );
+  });
+
+  it('posts readerNotes with the synthesis request (and omits the field when there are none)', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [note('n1', 'Lead with the diffusion-models cluster.')],
+    });
+    expect(bodies.synthesize[0].readerNotes).toEqual(['Lead with the diffusion-models cluster.']);
+
+    vi.restoreAllMocks();
+    const { bodies: plain } = await runLive({ feedbackEvents: [] });
+    expect(plain.synthesize[0]).not.toHaveProperty('readerNotes');
+  });
+});
+
+describe('runBriefingGeneration — quick summaries and authors (P1-8)', () => {
+  it('keeps quick summaries out of the synthesis payload (the writer grounds in full reports)', async () => {
+    const { bodies } = await runLive();
+    expect(bodies.quick).toHaveLength(2);
+    for (const p of bodies.synthesize[0].papers) expect(p).not.toHaveProperty('quickSummary');
+  });
+
+  it("fills the quick-summary request's authors (the {{authors}} slot was always empty)", async () => {
+    const { bodies } = await runLive();
+    const byId = Object.fromEntries(bodies.quick.map((b) => [b.paper.arxivId, b.paper]));
+    expect(byId['2605.0001'].authors).toEqual(['A. Author', 'B. Author']);
+    expect(byId['2605.0002'].authors).toEqual(['C. Author']);
+  });
+
+  it('formatAuthorsForPrompt trims, tolerates strings, and cuts large collaborations', () => {
+    expect(formatAuthorsForPrompt([' A ', '', 'B'])).toEqual(['A', 'B']);
+    expect(formatAuthorsForPrompt('Single Author')).toEqual(['Single Author']);
+    expect(formatAuthorsForPrompt(undefined)).toEqual([]);
+    const big = Array.from({ length: 57 }, (_, i) => `Author ${i}`);
+    const out = formatAuthorsForPrompt(big);
+    expect(out).toHaveLength(11);
+    expect(out[10]).toBe('et al. (57 authors)');
+  });
+});
+
+describe('runBriefingGeneration — test-run feedback never shapes a real briefing (P0-2)', () => {
+  const testEvents = [
+    { id: 't1', type: 'star', arxivId: '2605.0001', timestamp: 1, testMode: true },
+    {
+      id: 't2',
+      type: 'paper-comment',
+      arxivId: '2605.0001',
+      text: 'said during a dry run',
+      timestamp: 2,
+      testMode: true,
+    },
+    { id: 'r1', type: 'dismiss', arxivId: '2605.0002', timestamp: 3 },
+  ];
+
+  it('drops testMode engagement on a live run', async () => {
+    const { bodies } = await runLive({ feedbackEvents: testEvents });
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    expect(byId['2605.0001'].engagement).toBeUndefined();
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: true });
+  });
+
+  it('keeps it for a mock (dry-run) generation, so the mock flow mirrors the UI', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tester = new MockAPITester({
+      abortControllerRef: { current: null },
+      pauseRef: { current: false },
+      waitForResume: async () => {},
+    });
+    tester.sleepWithAbortCheck = async () => {};
+    const synthSpy = vi.spyOn(tester, 'mockSynthesize');
+    await runBriefingGeneration({
+      results: { finalRanking: liveRanking },
+      briefingModel: 'gemini-3.6-flash',
+      profile: { content: 'profile' },
+      password: 'pw',
+      feedbackEvents: testEvents,
+      saveBriefing: vi.fn(),
+      mockTester: tester,
+      ...makeLiveSetters(),
+    });
+    const papers = synthSpy.mock.calls[0][0];
+    expect(papers.find((p) => p.arxivId === '2605.0001').engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['said during a dry run'],
+    });
+  });
+});
+
+describe('runBriefingGeneration — a claims check that does not run is reported (B7)', () => {
+  const failed = { ok: false, status: 502, json: async () => ({ error: 'upstream timeout' }) };
+
+  it('retries once, then warns and records why the briefing is unaudited', async () => {
+    const addStatus = vi.fn();
+    const { bodies, saveBriefing } = await runLive({
+      checkResponses: [failed, failed],
+      addStatus,
+      generationMetadata: { briefingModel: 'gemini-3.6-flash' },
+    });
+    expect(bodies.check).toHaveLength(2);
+    expect(addStatus).toHaveBeenCalledWith(
+      expect.stringContaining('Claims check did not run (HTTP 502: upstream timeout)')
+    );
+    // saveBriefing(date, briefing, generationMetadata, extras)
+    const metadata = saveBriefing.mock.calls[0][2];
+    expect(metadata.hallucinationCheck).toBeNull();
+    expect(metadata.hallucinationCheckError).toBe('HTTP 502: upstream timeout');
+  });
+
+  it('keeps quiet when the second attempt succeeds', async () => {
+    const addStatus = vi.fn();
+    const { bodies } = await runLive({ checkResponses: [failed], addStatus });
+    expect(bodies.check).toHaveLength(2);
+    expect(addStatus).not.toHaveBeenCalledWith(expect.stringContaining('did not run'));
+  });
+});
+
+describe("runBriefingGeneration — the editor's questions are saved with the briefing", () => {
+  it('asks once, with the briefing papers, and saves the questions', async () => {
+    const { bodies, saveBriefing } = await runLive();
+    expect(bodies.questions).toHaveLength(1);
+    expect(bodies.questions[0].papers.map((p) => p.arxivId)).toEqual(['2605.0001', '2605.0002']);
+    const extras = saveBriefing.mock.calls[0][3];
+    expect(extras.editorQuestions).toEqual([
+      { id: 'q1', text: 'Want more like this?', options: ['Yes', 'No'], evidence: ['2605.0001'] },
+    ]);
+  });
+
+  it('skips the call when the setting is off', async () => {
+    const { bodies, saveBriefing } = await runLive({ editorQuestionsEnabled: false });
+    expect(bodies.questions).toBeUndefined();
+    expect(saveBriefing.mock.calls[0][3]).not.toHaveProperty('editorQuestions');
   });
 });

@@ -21,7 +21,9 @@ function makeReqRes() {
       pdfUrl: 'https://arxiv.org/pdf/2501.12345',
       scoringCriteria: 'anything',
       originalScore: 5.5,
-      apiKey: 'test-api-key',
+      // Key-shaped (the route rejects implausible keys before downloading);
+      // never reaches a provider — every case here fails at the download.
+      apiKey: 'sk-ant-api03-test-key-not-real-0000000000',
       model: 'claude-haiku-4.5',
     },
   };
@@ -68,8 +70,55 @@ describe('analyze-pdf — download error routing', () => {
     global.fetch = originalFetch;
     process.env.NODE_ENV = originalNodeEnv;
     vi.doUnmock('playwright');
+    vi.doUnmock('../../../lib/arxiv/spacing.js');
     vi.resetModules();
     vi.restoreAllMocks();
+  });
+
+  // Auth before any download (audit P2-9): any non-empty apiKey used to skip
+  // the password gate, so a LAN client with apiKey "x" could make this route
+  // download arXiv PDFs and launch headless Chromium before the provider ever
+  // rejected the key.
+  test.each([
+    ['an implausible apiKey', { apiKey: 'x' }, /not a valid anthropic key/],
+    [
+      'a key shaped for another provider',
+      { apiKey: 'AIzaSyDUMMYDUMMYDUMMYDUMMYDUMMYDUMMY12' },
+      /not a valid anthropic key/,
+    ],
+    ['a wrong password', { apiKey: undefined, password: 'wrong' }, /invalid password/],
+    ['no credentials at all', { apiKey: undefined }, /missing credentials/],
+  ])('rejects %s with 401 before touching arXiv', async (_label, creds, message) => {
+    global.fetch = vi.fn(async () => {
+      throw new Error('must not download');
+    });
+    const { default: handler } = await import('../../../pages/api/analyze-pdf.js');
+    const { req, res } = makeReqRes();
+    Object.assign(req.body, creds);
+    await handler(req, res);
+
+    expect(res.getStatus()).toBe(401);
+    expect(res.getJson().error).toMatch(message);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('the valid password still authenticates without a client key', async () => {
+    global.fetch = vi.fn(async () => ({ ok: false, status: 404 }));
+    const prevKey = process.env.CLAUDE_API_KEY;
+    process.env.CLAUDE_API_KEY = 'sk-ant-api03-env-key-not-real-000000000000';
+    try {
+      const { default: handler } = await import('../../../pages/api/analyze-pdf.js');
+      const { req, res } = makeReqRes();
+      req.body.apiKey = undefined;
+      req.body.password = 'test-password';
+      await handler(req, res);
+      // Past the auth gate: the download ran (and 404'd).
+      expect(global.fetch).toHaveBeenCalled();
+      expect(res.getStatus()).toBe(404);
+    } finally {
+      if (prevKey === undefined) delete process.env.CLAUDE_API_KEY;
+      else process.env.CLAUDE_API_KEY = prevKey;
+    }
   });
 
   test('HTTP 404 from arXiv propagates as 404 with the real message (not a 422)', async () => {
@@ -113,6 +162,12 @@ describe('analyze-pdf — download error routing', () => {
         ok: false,
         status: 429,
         headers: { get: () => '0' },
+      }));
+      // The retry takes a second throttle slot; shrink the 15 s production
+      // spacing (robots.txt Crawl-delay) so the test doesn't wait it out.
+      vi.doMock('../../../lib/arxiv/spacing.js', async (importOriginal) => ({
+        ...(await importOriginal()),
+        ARXIV_PAGE_DELAY_MS: 20,
       }));
 
       const { default: handler } = await import('../../../pages/api/analyze-pdf.js');

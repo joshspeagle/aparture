@@ -59,7 +59,7 @@ function VerdictButton({ option, isActive, disabled, originalVerdict, onClick })
       disabled={disabled}
       style={{
         padding: '2px 8px',
-        fontSize: '10px',
+        fontSize: '12px',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         borderRadius: '9999px',
@@ -117,6 +117,7 @@ function RowComment({ arxivId, onAddPaperComment }) {
   return (
     <div style={{ marginTop: '6px' }}>
       <textarea
+        aria-label="Comment on this paper"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={2}
@@ -165,11 +166,12 @@ const FilterResultRow = memo(function FilterResultRow({
         borderRadius: '4px',
         padding: 'var(--aparture-space-3)',
         border: `1px solid ${borderColor}`,
-        opacity: verdict === 'NO' ? 0.55 : 1,
+        opacity: verdict === 'NO' ? 0.7 : 1,
         transition: 'background 150ms ease, opacity 150ms ease',
       }}
     >
       <div
+        className="stack-on-mobile"
         style={{
           display: 'flex',
           alignItems: 'flex-start',
@@ -344,7 +346,10 @@ export default function FilterResultsList({
         <div
           style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
         >
-          <FileText className="w-5 h-5" style={{ marginRight: '8px', color: '#f59e0b' }} />
+          <FileText
+            className="w-5 h-5"
+            style={{ marginRight: '8px', color: 'var(--aparture-warning-text)' }}
+          />
           <h2
             style={{
               fontFamily: 'var(--aparture-font-sans)',
@@ -376,10 +381,26 @@ export default function FilterResultsList({
           </h2>
           {testState?.dryRunInProgress && <TestModeBadge label="TEST DATA" />}
         </div>
+        {/* After the run the pills re-enable. A click is recorded as feedback
+            at once (App.setFilterVerdict), but nothing re-scores, so say so. */}
+        {hasAny && !(processing?.isRunning ?? false) && (
+          <p
+            data-testid="post-run-override-note"
+            style={{
+              fontFamily: 'var(--aparture-font-sans)',
+              fontSize: 'var(--aparture-text-xs)',
+              color: 'var(--aparture-mute)',
+              margin: '0 0 var(--aparture-space-4) 0',
+            }}
+          >
+            Verdict changes made now are saved as feedback for your profile. They don&apos;t re-run
+            this briefing.
+          </p>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--aparture-space-4)' }}>
           <div>
-            <h3 style={sectionTitleStyle('#22c55e')}>
+            <h3 style={sectionTitleStyle('var(--aparture-success-text)')}>
               {'\u2713'} YES ({filterResults.yes.length})
               {scoredYesCount > 0 && (
                 <span
@@ -421,7 +442,7 @@ export default function FilterResultsList({
           </div>
 
           <div>
-            <h3 style={sectionTitleStyle('#f59e0b')}>
+            <h3 style={sectionTitleStyle('var(--aparture-warning-text)')}>
               ? MAYBE ({filterResults.maybe.length})
               {scoredMaybeCount > 0 && (
                 <span
@@ -463,7 +484,7 @@ export default function FilterResultsList({
           </div>
 
           <div>
-            <h3 style={sectionTitleStyle('#ef4444')}>
+            <h3 style={sectionTitleStyle('var(--aparture-danger-text)')}>
               {'\u2717'} NO ({filterResults.no.length} filtered out)
             </h3>
             {renderBucketFeedback('NO')}

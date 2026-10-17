@@ -5,6 +5,7 @@ import { callModel } from '../../lib/llm/callModel.js';
 import { checkRoutePassword, resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
+import { renderCheckCorpus } from '../../lib/synthesis/checkCorpus.js';
 import { MODEL_REGISTRY } from '../../utils/models.js';
 
 // Zod schema for the hallucination check structured output
@@ -91,26 +92,6 @@ function renderBriefingText(briefing) {
   return parts.join('\n\n');
 }
 
-function renderPapersCorpus(papers) {
-  if (!Array.isArray(papers) || papers.length === 0) return '(no papers)';
-  return papers
-    .map((p) => {
-      const lines = [`- ${p.arxivId} "${p.title ?? ''}"`];
-      if (p.abstract) lines.push(`  Abstract: ${p.abstract}`);
-      if (p.quickSummary) lines.push(`  Quick summary: ${p.quickSummary}`);
-      if (p.fullReport) {
-        // Truncate very long full reports to keep the audit prompt bounded.
-        const truncated =
-          p.fullReport.length > 4000
-            ? `${p.fullReport.slice(0, 4000)}\n[...truncated]`
-            : p.fullReport;
-        lines.push(`  Full report: ${truncated}`);
-      }
-      return lines.join('\n');
-    })
-    .join('\n\n');
-}
-
 function buildRepairPrompt({ originalResponse, errors }) {
   return [
     'You previously emitted a briefing hallucination check that failed validation. Here is the original output:',
@@ -178,9 +159,11 @@ export default async function handler(req, res) {
   try {
     const templatePath = path.resolve(process.cwd(), 'prompts', 'check-briefing.md');
     const template = await fs.readFile(templatePath, 'utf8');
+    // Same corpus the writer saw: untruncated full reports, scoring
+    // justifications and the user's engagement (see checkCorpus.js).
     const fullPrompt = template
       .replace('{{briefing}}', () => renderBriefingText(briefing))
-      .replace('{{papers}}', () => renderPapersCorpus(papers));
+      .replace('{{papers}}', () => renderCheckCorpus(papers));
 
     // The stable cache prefix is the template text before {{briefing}} (the static
     // instructions). The variable tail is the rendered briefing + papers content.

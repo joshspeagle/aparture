@@ -45,6 +45,7 @@ export default function GeneralCommentInput({ onSave, placeholder }) {
   return (
     <div>
       <TextArea
+        aria-label="General comment"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={6}

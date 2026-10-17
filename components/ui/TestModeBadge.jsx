@@ -13,7 +13,7 @@ export default function TestModeBadge({ label }) {
         marginLeft: '12px',
         padding: '2px 8px',
         background: 'rgba(245,158,11,0.12)',
-        color: '#f59e0b',
+        color: 'var(--aparture-warning-text)',
         fontSize: 'var(--aparture-text-xs)',
         fontFamily: 'var(--aparture-font-sans)',
         borderRadius: '9999px',

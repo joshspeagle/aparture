@@ -10,23 +10,23 @@ Your profile is a plain-English document you wrote, and it is the only represent
 
 _In the code:_ `hooks/useProfile.js` (every pipeline stage reads `profile.content`), `pages/api/suggest-profile.js` (feedback → proposed edits with per-change rationales).
 
-## 2. Nothing expensive happens without you
+## 2. You decide what gets read in full
 
-The pipeline pauses before each escalation in cost or judgment: after filtering, after scoring (before PDFs are read), and before the briefing is written. Each gate shows you what's about to happen and lets you override it. A "skip remaining gates" link exists for days you don't need them, and each gate can be turned off in settings.
+The pipeline pauses at three points: after filtering, after scoring (before any PDF is read), and before the briefing is written. Each gate shows what the next stage will work on and lets you change it. You can move a paper between filter buckets, star a paper into the PDF set or dismiss it, and comment before synthesis. The score-review and pre-briefing gates also show the projected cost of the stage they hold back. A "Skip remaining gates this run" link exists for days you don't need them, and each gate can be turned off in Settings.
 
-_In the code:_ the three gates in `lib/analyzer/pipeline.js`; `components/run/ReviewGateBanner.jsx`.
+_In the code:_ the three gates in `lib/analyzer/stages/startProcessing.js`; `components/run/ReviewGateBanner.jsx`.
 
 ## 3. Spending follows relevance
 
-Cheap models read everything; capable models read only what survives. Each pipeline stage has its own model slot, and defaults follow the shape of the work rather than a brand: at each registry refresh they are hand-chosen from the registry's pricing and capability data, favoring cheap models for the high-volume triage slots and the most capable GA model for the reading and briefing slots. Prompt caching and cross-run duplicate detection exist for the same reason — to avoid paying twice for the same reading.
+Cheap models read everything; stronger models read only what survives. Each pipeline stage has its own model slot. The defaults are chosen at each registry refresh from the registry's pricing and capability data: a lighter model on the high-volume slots (the filter and quick summaries) and a stronger one on scoring, PDF reading, and the briefing. You can move any slot up or down. Prompt caching and cross-run duplicate detection exist for the same reason, to avoid paying twice for the same reading.
 
 _In the code:_ `utils/models.js` (registry with per-model pricing), `lib/analyzer/applyDedupe.js`, the caching paths in `lib/llm/`.
 
 ## 4. Synthesis is the product, and claims must be checkable
 
-The briefing argues across papers — that editorial connection is the point, and it is allowed. Claims about individual papers are not given the same freedom: numbers, methods, and attributions are audited against the source material, and every cited arXiv ID must exist in the set of papers the model was actually given. A briefing that fails these checks is repaired or retried before you see it.
+The briefing argues across papers. That editorial connection is the point, and it is allowed. Claims about individual papers are not given the same freedom: numbers, methods, and attributions are audited against the same abstracts and full reports the writer was given, and every cited arXiv ID, in a card or in the prose, must exist in the set of papers the model was actually given. Code also puts each paper's real title and score on its card and checks that every final-round paper has a card in a theme. A briefing that fails these checks gets one repair from the model, then a repair in code that labels what it added or removed. When the audit flags unsupported claims, synthesis is retried once by default, and the verdict and flagged claims are saved with the briefing.
 
-_In the code:_ `lib/synthesis/validator.js` (citation validation), `pages/api/check-briefing.js` and `prompts/check-briefing.md` (the audit pass).
+_In the code:_ `lib/synthesis/validator.js` (corrections, citation and coverage checks, salvage), `pages/api/check-briefing.js`, `lib/synthesis/checkCorpus.js`, and `prompts/check-briefing.md` (the audit pass).
 
 ## 5. Filter permissively, judge strictly
 
@@ -36,12 +36,12 @@ _In the code:_ `prompts/rubric-scoring.md` (the scoring rubric explicitly does n
 
 ## 6. Be a good arXiv citizen
 
-Requests to arXiv are serialized, spaced with jitter, cached, and identified with a contact address when configured. Harvesting uses OAI-PMH with careful date-window handling rather than hammering the search API.
+Requests to arXiv are serialized, spaced with jitter, cached, and identified with a contact address when configured. Metadata requests are 3–5 seconds apart; PDF and page downloads are 15 seconds apart, the crawl delay arXiv's robots.txt sets. Harvesting uses OAI-PMH with careful date-window handling rather than hammering the search API.
 
-_In the code:_ `lib/arxiv/spacing.js`, `lib/arxiv/ingest.js`.
+_In the code:_ `lib/arxiv/spacing.js`, `lib/arxiv/ingest.js`, `lib/analyzer/rateLimit.js` (the PDF download throttle).
 
 ## 7. Local-first
 
-Your API keys, profile, feedback, and briefing history live on your machine. The current architecture is single-tenant — one researcher per instance — and hosted multi-user operation is an explicit non-goal. Future packaging (a desktop app) can add export or sync without moving your data off your machine.
+Your API keys, profile, feedback, and briefing history live on your machine, and the server listens on 127.0.0.1 unless you open it up. The current architecture is single-tenant — one researcher per instance — and hosted multi-user operation is an explicit non-goal. Future packaging (a desktop app) can add export or sync without moving your data off your machine.
 
 _In the code:_ `.env.local` for keys, browser localStorage plus repo-local `reports/` for state; see [Environment](/reference/environment) for the deployment model.

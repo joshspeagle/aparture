@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import FeedbackItem from '../../../components/feedback/FeedbackItem.jsx';
 
 describe('FeedbackItem', () => {
@@ -68,6 +68,50 @@ describe('FeedbackItem', () => {
   it('shows the briefing date in the metadata line', () => {
     render(<FeedbackItem event={baseStar} />);
     expect(screen.getByText(/2026-04-10/)).toBeInTheDocument();
+  });
+
+  describe('edit / delete (P1-10)', () => {
+    const comment = {
+      ...baseStar,
+      id: 'c1',
+      type: 'paper-comment',
+      text: 'Compare to the 2024 emualtor',
+    };
+
+    it('shows no actions unless the panel supplies handlers', () => {
+      render(<FeedbackItem event={comment} />);
+      expect(screen.queryByRole('button', { name: /delete this feedback/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /edit this feedback/i })).toBeNull();
+    });
+
+    it('edits a comment in place', () => {
+      const onUpdateText = vi.fn();
+      render(<FeedbackItem event={comment} onUpdateText={onUpdateText} onRemove={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: /edit this feedback/i }));
+      const box = screen.getByRole('textbox', { name: /edit feedback text/i });
+      expect(box).toHaveValue('Compare to the 2024 emualtor');
+      fireEvent.change(box, { target: { value: 'Compare to the 2024 emulator' } });
+      fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+      expect(onUpdateText).toHaveBeenCalledWith('c1', 'Compare to the 2024 emulator');
+    });
+
+    it('asks once before deleting, and Keep cancels', () => {
+      const onRemove = vi.fn();
+      render(<FeedbackItem event={baseStar} onRemove={onRemove} onUpdateText={vi.fn()} />);
+      // Stars are re-clicked, not edited.
+      expect(screen.queryByRole('button', { name: /edit this feedback/i })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /delete this feedback/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^keep$/i }));
+      expect(onRemove).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: /delete this feedback/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+      expect(onRemove).toHaveBeenCalledWith('s1');
+    });
+
+    it('marks an edited event in the meta line', () => {
+      render(<FeedbackItem event={{ ...comment, editedAt: 1700000005000 }} />);
+      expect(screen.getByText(/· edited/)).toBeInTheDocument();
+    });
   });
 
   describe('scoped-feedback variant', () => {

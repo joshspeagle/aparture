@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import FeedbackPanel from '../../../components/feedback/FeedbackPanel.jsx';
+import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
 
 describe('FeedbackPanel', () => {
   const makeStar = (id, arxivId, timestamp) => ({
@@ -45,8 +46,8 @@ describe('FeedbackPanel', () => {
       makeStar('s3', 'p3', 4000), // newer
     ];
     render(<FeedbackPanel {...defaultProps} events={events} cutoff={2000} />);
-    // Header should say "2 new since last revision · 3 total"
-    expect(screen.getByText(/2 new/i)).toBeInTheDocument();
+    // Header should say "2 not yet incorporated · 3 total"
+    expect(screen.getByText(/2 not yet incorporated/i)).toBeInTheDocument();
     expect(screen.getByText(/3 total/i)).toBeInTheDocument();
   });
 
@@ -101,6 +102,74 @@ describe('FeedbackPanel', () => {
     it('renders the + feedback on this run trigger', () => {
       render(<FeedbackPanel {...defaultProps} runFeedbackSavedText="" onRunFeedback={() => {}} />);
       expect(screen.getByText('+ feedback on this run')).toBeInTheDocument();
+    });
+  });
+
+  describe('edit / delete wiring (P1-10)', () => {
+    afterEach(() => {
+      useAnalyzerStore.setState(initialState());
+    });
+
+    it("falls back to the feedback hook's methods published in the store", () => {
+      // MainArea passes no housekeeping props; App publishes the hook into
+      // reactContext, and the panel reads the methods from there.
+      const removeEvent = vi.fn();
+      useAnalyzerStore.setState({
+        reactContext: {
+          ...useAnalyzerStore.getState().reactContext,
+          feedback: { removeEvent, updateEventText: vi.fn(), clearTestEvents: vi.fn() },
+        },
+      });
+      render(<FeedbackPanel {...defaultProps} events={[makeStar('s1', 'p1', 1000)]} />);
+      fireEvent.click(screen.getByRole('button', { name: /delete this feedback/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+      expect(removeEvent).toHaveBeenCalledWith('s1');
+    });
+  });
+
+  describe('test-run feedback (P0-2)', () => {
+    const events = [
+      makeStar('real', 'p1', 3000),
+      { ...makeStar('dry', 'p2', 3500), testMode: true },
+      {
+        id: 'junk',
+        type: 'filter-override',
+        arxivId: 'p3',
+        paperTitle: 'Old dry-run paper',
+        originalVerdict: 123,
+        newVerdict: 'NO',
+        timestamp: 3600,
+        briefingDate: '2026-04-10',
+      },
+    ];
+
+    it('leaves test-run events out of the new and total counts', () => {
+      render(<FeedbackPanel {...defaultProps} events={events} cutoff={2000} />);
+      expect(
+        screen.getByText(/1 not yet incorporated · 1 total · 2 from test runs/i)
+      ).toBeInTheDocument();
+    });
+
+    it('groups them, collapsed, under "From test runs" and clears them on request', () => {
+      const onClearTestEvents = vi.fn();
+      const { container } = render(
+        <FeedbackPanel
+          {...defaultProps}
+          events={events}
+          cutoff={2000}
+          onClearTestEvents={onClearTestEvents}
+        />
+      );
+      const group = screen.getByTestId('test-feedback-group');
+      expect(group).toHaveTextContent(/from test runs \(2\) · not used for suggestions/i);
+      // Collapsed: only the real star renders until "Show".
+      expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Show' }));
+      expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(2);
+      expect(container.querySelector('[data-event-type="filter-override"]')).not.toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: /clear test feedback/i }));
+      expect(onClearTestEvents).toHaveBeenCalledOnce();
     });
   });
 });

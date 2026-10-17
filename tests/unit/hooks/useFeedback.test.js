@@ -1,9 +1,137 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useFeedback } from '../../../hooks/useFeedback.js';
+import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  useAnalyzerStore.setState(initialState());
+});
+
+describe('test-run feedback is tagged and kept out of suggestions (P0-2)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useAnalyzerStore.setState(initialState());
+  });
+
+  const paper = {
+    arxivId: '2610.00001',
+    paperTitle: 'A paper seen in a dry run',
+    quickSummary: 'Mock evaluation for test paper 1.',
+    score: 7.3,
+    briefingDate: '2026-10-17',
+  };
+
+  const setTestState = (patch) =>
+    useAnalyzerStore.setState({
+      testState: { ...useAnalyzerStore.getState().testState, ...patch },
+    });
+
+  it('stamps testMode on every event type created while a Dry Run is running', () => {
+    setTestState({ dryRunInProgress: true });
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(paper);
+      result.current.addPaperComment({ ...paper, arxivId: '2610.00002' }, 'looks great');
+      result.current.addGeneralComment('lead with the flows cluster', '2026-10-17');
+      result.current.recordFilterOverride({
+        arxivId: '2610.00003',
+        originalVerdict: 'NO',
+        newVerdict: 'YES',
+        briefingDate: '2026-10-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'too lenient',
+        briefingDate: '2026-10-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(5);
+    result.current.events.forEach((e) => expect(e.testMode).toBe(true));
+    // None of it reaches the Suggest dialog.
+    expect(result.current.getNewSince(0)).toEqual([]);
+  });
+
+  it('tags Minimal Test feedback the same way', () => {
+    setTestState({ minimalTestInProgress: true });
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.ensureStar(paper);
+    });
+    expect(result.current.events[0].testMode).toBe(true);
+  });
+
+  it('leaves real-run feedback untagged and honours an explicit testMode flag', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(paper);
+      result.current.addPaperComment({ ...paper, testMode: true }, 'from a dry-run artifact');
+    });
+    const star = result.current.events.find((e) => e.type === 'star');
+    const comment = result.current.events.find((e) => e.type === 'paper-comment');
+    expect(star.testMode).toBeUndefined();
+    expect(comment.testMode).toBe(true);
+    expect(result.current.getNewSince(0).map((e) => e.type)).toEqual(['star']);
+  });
+
+  it('a test-run reaction never replaces or deletes a real one', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addDismiss(paper); // real
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addStar(paper); // test: must not flip the real dismiss
+    });
+    act(() => {
+      result.current.addDismiss(paper); // test: must not toggle the real dismiss off
+    });
+    const real = result.current.events.filter((e) => !e.testMode);
+    expect(real).toHaveLength(1);
+    expect(real[0].type).toBe('dismiss');
+  });
+
+  it('a test-run scoped note never overwrites the real note for the same scope and day', () => {
+    const { result } = renderHook(() => useFeedback());
+    const note = (text) => ({ scope: { kind: 'run' }, text, briefingDate: '2026-10-17' });
+    act(() => {
+      result.current.addScopedFeedback(note('real run note'));
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addScopedFeedback(note('dry-run note'));
+    });
+    expect(result.current.events).toHaveLength(2);
+    expect(result.current.events.find((e) => !e.testMode).text).toBe('real run note');
+  });
+
+  it('clearTestEvents removes test-run events and legacy "filter said 123" junk only', () => {
+    const legacyJunk = {
+      id: 'junk',
+      type: 'filter-override',
+      arxivId: '2610.00009',
+      originalVerdict: 123,
+      newVerdict: 'NO',
+      timestamp: 5,
+      briefingDate: '2026-10-01',
+    };
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events: [legacyJunk] }));
+    const { result } = renderHook(() => useFeedback());
+    // Legacy junk is already excluded from suggestions…
+    expect(result.current.getNewSince(0)).toEqual([]);
+    act(() => {
+      result.current.addStar(paper); // real
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addPaperComment(paper, 'test-run comment');
+    });
+    act(() => {
+      result.current.clearTestEvents();
+    });
+    expect(result.current.events.map((e) => e.type)).toEqual(['star']);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toHaveLength(1);
+  });
 });
 
 describe('useFeedback', () => {
@@ -140,6 +268,134 @@ describe('useFeedback', () => {
       result.current.addStar(samplePaper);
     });
     expect(result.current).not.toBe(first);
+  });
+});
+
+describe('per-event incorporation (P1-4)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const seed = (events) =>
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events }));
+  const ev = (id, timestamp, extra = {}) => ({
+    id,
+    type: 'star',
+    arxivId: `2610.${id}`,
+    timestamp,
+    briefingDate: '2026-10-17',
+    ...extra,
+  });
+
+  it('markIncorporated removes exactly the given events from the pending set', () => {
+    seed([ev('a', 10), ev('b', 20), ev('c', 30)]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      // Only the newest event motivated an accepted change. Under the old
+      // max-timestamp cutoff, a and b would have been "incorporated" too.
+      result.current.markIncorporated(['c'], 1000);
+    });
+    expect(result.current.getNewSince(0).map((e) => e.id)).toEqual(['a', 'b']);
+    expect(result.current.events.find((e) => e.id === 'c').incorporatedAt).toBe(1000);
+    // Persisted.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-feedback')).events;
+    expect(stored.find((e) => e.id === 'c').incorporatedAt).toBe(1000);
+  });
+
+  it('keeps the first incorporatedAt when an event is marked twice', () => {
+    seed([ev('a', 10)]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.markIncorporated(['a'], 1000);
+    });
+    act(() => {
+      result.current.markIncorporated(['a'], 2000);
+    });
+    expect(result.current.events[0].incorporatedAt).toBe(1000);
+  });
+
+  it('reopenIncorporatedSince re-opens events incorporated at or after a reverted revision', () => {
+    seed([
+      ev('early', 10, { incorporatedAt: 500 }),
+      ev('reverted', 20, { incorporatedAt: 1000 }),
+      ev('later', 30, { incorporatedAt: 1500 }),
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.reopenIncorporatedSince(1000);
+    });
+    expect(result.current.getNewSince(0).map((e) => e.id)).toEqual(['reverted', 'later']);
+    expect(result.current.events.find((e) => e.id === 'early').incorporatedAt).toBe(500);
+  });
+
+  it('the legacy cutoff still labels pre-upgrade events as incorporated', () => {
+    seed([ev('old', 10), ev('new', 30)]);
+    const { result } = renderHook(() => useFeedback());
+    expect(result.current.getNewSince(20).map((e) => e.id)).toEqual(['new']);
+  });
+});
+
+describe('removeEvent / updateEventText (P1-10)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const seed = (events) =>
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events }));
+
+  it('removeEvent deletes exactly one event and persists', () => {
+    seed([
+      { id: 'a', type: 'star', arxivId: 'p1', timestamp: 1 },
+      { id: 'b', type: 'paper-comment', arxivId: 'p1', text: 'typo', timestamp: 2 },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.removeEvent('b');
+    });
+    expect(result.current.events.map((e) => e.id)).toEqual(['a']);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toHaveLength(1);
+    const before = result.current.events;
+    act(() => {
+      result.current.removeEvent('missing');
+    });
+    expect(result.current.events).toBe(before);
+  });
+
+  it('updateEventText rewrites a comment and makes it pending again', () => {
+    seed([
+      {
+        id: 'c',
+        type: 'general-comment',
+        text: 'too much theroy',
+        timestamp: 10,
+        incorporatedAt: 50,
+      },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    expect(result.current.getNewSince(0)).toEqual([]); // incorporated
+    act(() => {
+      result.current.updateEventText('c', '  too much theory  ');
+    });
+    const [edited] = result.current.events;
+    expect(edited.text).toBe('too much theory');
+    expect(edited.incorporatedAt).toBeUndefined();
+    expect(edited.editedAt).toEqual(expect.any(Number));
+    // Even an event before the legacy cutoff is pending once edited.
+    expect(result.current.getNewSince(20).map((e) => e.id)).toEqual(['c']);
+  });
+
+  it('updateEventText refuses empty text and non-text event types', () => {
+    seed([
+      { id: 'c', type: 'paper-comment', arxivId: 'p1', text: 'keep', timestamp: 1 },
+      { id: 's', type: 'star', arxivId: 'p2', timestamp: 2 },
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.updateEventText('c', '   ');
+      result.current.updateEventText('s', 'stars have no text');
+    });
+    expect(result.current.events.find((e) => e.id === 'c').text).toBe('keep');
+    expect(result.current.events.find((e) => e.id === 's').text).toBeUndefined();
   });
 });
 
@@ -410,5 +666,182 @@ describe('addScopedFeedback — run scope', () => {
     expect(bucketEvent.text).toBe('bucket comment');
     const runEvent = result.current.events.find((e) => e.scope?.kind === 'run');
     expect(runEvent.text).toBe('run comment');
+  });
+});
+
+describe('recordFilterOverride — click-time, latest-wins, validated (P0-2 / P1-6)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const override = (patch = {}) => ({
+    arxivId: '2504.01234',
+    paperTitle: 'A filtered paper',
+    summary: 'one-line filter summary',
+    justification: 'why the filter said NO',
+    originalVerdict: 'NO',
+    newVerdict: 'YES',
+    briefingDate: '2026-10-17',
+    ...patch,
+  });
+
+  it('records an override with the filter context', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0]).toMatchObject({
+      type: 'filter-override',
+      arxivId: '2504.01234',
+      originalVerdict: 'NO',
+      newVerdict: 'YES',
+      summary: 'one-line filter summary',
+      briefingDate: '2026-10-17',
+    });
+  });
+
+  it('a second click on the same paper replaces the first (latest-wins)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'MAYBE' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].newVerdict).toBe('YES');
+  });
+
+  it("moving a paper back to the filter's own verdict removes the override", () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'NO' }));
+    });
+    expect(result.current.events).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toEqual([]);
+  });
+
+  it('re-recording the identical override is a no-op (same event, same state reference)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    const before = result.current.events;
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    expect(result.current.events).toBe(before);
+  });
+
+  it('refuses verdicts outside YES/MAYBE/NO (the dry-run mock used to send 123)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ originalVerdict: 123 }));
+      result.current.recordFilterOverride(override({ originalVerdict: undefined }));
+      result.current.recordFilterOverride(override({ originalVerdict: 'yes' }));
+      result.current.recordFilterOverride(override({ newVerdict: 'PROBABLY' }));
+      result.current.recordFilterOverride(override({ arxivId: undefined }));
+    });
+    expect(result.current.events).toEqual([]);
+  });
+
+  it('keeps overrides on the same paper from different run days independent', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ briefingDate: '2026-10-16' }));
+      result.current.recordFilterOverride(override({ briefingDate: '2026-10-17' }));
+    });
+    expect(result.current.events).toHaveLength(2);
+  });
+
+  it('a test-run override never replaces a real one for the same paper and day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'MAYBE', testMode: true }));
+    });
+    expect(result.current.events).toHaveLength(2);
+    const real = result.current.events.find((e) => !e.testMode);
+    expect(real.newVerdict).toBe('YES');
+  });
+
+  it('folds duplicate same-key events left by the old append-only logger', () => {
+    const legacy = (id, ts) => ({
+      id,
+      type: 'filter-override',
+      arxivId: '2504.01234',
+      originalVerdict: 'NO',
+      newVerdict: 'MAYBE',
+      timestamp: ts,
+      briefingDate: '2026-10-17',
+    });
+    window.localStorage.setItem(
+      'aparture-feedback',
+      JSON.stringify({ events: [legacy('old-1', 1), legacy('old-2', 2)] })
+    );
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].newVerdict).toBe('YES');
+  });
+});
+
+describe("recordAnswer — answers to the editor's questions", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useAnalyzerStore.setState(initialState());
+  });
+
+  const answer = (value) => ({
+    questionId: 'q1',
+    question: 'Should methods papers need a real-data test?',
+    answer: value,
+    evidence: ['2610.17146'],
+    briefingDate: '2026-10-17',
+  });
+
+  it('keeps the latest answer per question and day, and a repeat tap takes it back', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer(answer('Yes, require one')));
+    act(() => result.current.recordAnswer(answer('No, benchmarks are enough')));
+    let answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers).toHaveLength(1);
+    expect(answers[0]).toMatchObject({
+      questionId: 'q1',
+      answer: 'No, benchmarks are enough',
+      evidence: ['2610.17146'],
+    });
+
+    act(() => result.current.recordAnswer(answer('No, benchmarks are enough')));
+    answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers).toHaveLength(0);
+  });
+
+  it('keeps answers to different questions apart when two briefings share a day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer(answer('Yes, require one')));
+    // A second briefing the same day asks its own q1.
+    act(() =>
+      result.current.recordAnswer({
+        ...answer('Rank them lower'),
+        question: 'Theory-only papers keep scoring high. Rank them lower?',
+      })
+    );
+    const answers = result.current.events.filter((e) => e.type === 'answer');
+    expect(answers.map((e) => e.answer)).toEqual(['Yes, require one', 'Rank them lower']);
+  });
+
+  it('tags an answer given on a test-mode briefing', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => result.current.recordAnswer({ ...answer('Yes'), testMode: true }));
+    expect(result.current.events.at(-1).testMode).toBe(true);
   });
 });

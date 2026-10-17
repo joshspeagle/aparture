@@ -147,9 +147,13 @@ config.local.json
 # Reports
 reports/
 
-# Claude Code related files (CLAUDE.md is tracked and shared; local Claude state is not)
-.claude/
+# Claude Code related files (CLAUDE.md is tracked and shared; local Claude state is not).
+# Project skills under .claude/skills/ are tracked: the aparture skill ships there.
+# Order matters: *.claude also matches the .claude directory itself.
 *.claude
+!/.claude/
+/.claude/*
+!/.claude/skills/
 .claude-code/
 claude-code.json
 .claudecode*

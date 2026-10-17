@@ -165,3 +165,12 @@ describe('applyCap — filter-override passthrough', () => {
     expect(stats.filterOverride).toBe(2);
   });
 });
+
+describe('applyCap — answer passthrough', () => {
+  it('keeps every answer uncapped and counts them', () => {
+    const answers = Array.from({ length: 3 }, (_, i) => ({ type: 'answer', timestamp: i }));
+    const { kept, stats } = applyCap(answers, { commentCap: 1 });
+    expect(kept).toHaveLength(3);
+    expect(stats.answer).toBe(3);
+  });
+});

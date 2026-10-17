@@ -21,7 +21,7 @@ function ChecklistItem({ done, label }) {
       <span
         aria-hidden
         style={{
-          color: done ? '#22c55e' : 'var(--aparture-mute)',
+          color: done ? 'var(--aparture-success-text)' : 'var(--aparture-mute)',
           fontSize: 'var(--aparture-text-xs)',
           opacity: done ? 0.8 : 0.6,
         }}

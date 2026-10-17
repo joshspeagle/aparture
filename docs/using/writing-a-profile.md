@@ -35,7 +35,7 @@ It's worth knowing where your profile actually lands in the pipeline. Every stag
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Stage 2 — quick filter**                 | Triages each paper as <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> from the abstract. The prompt is short, so the profile competes with the paper text for attention; clarity matters most here. |
 | **Stage 3 — abstract scoring**             | Assigns a 0–10 relevance score with a short justification. The profile is the grounds for that judgement. See [how scoring works](/concepts/pipeline#stage-3-score-abstracts) for the rubric.                                                                                     |
-| **Stage 3.5 — post-processing (optional)** | Re-scores top papers in batches for consistency. The profile feeds in indirectly through the Stage 3 justifications.                                                                                                                                                              |
+| **Stage 3.5 — post-processing (optional)** | Re-scores top papers in batches for consistency. The prompt includes your profile alongside each paper's Stage 3 score and justification.                                                                                                                                         |
 | **Stage 4 — PDF analysis**                 | Deep-reads the top N papers. The profile frames the summary and adjusts the score after the model has seen the full content.                                                                                                                                                      |
 | **Stage 5 — briefing synthesis**           | Produces the executive summary, themes, and "why it matters" paragraphs, weighing your profile against your starred, dismissed, and commented papers.                                                                                                                             |
 | **The refinement flow**                    | When you ask the tool to propose profile edits, your current profile is the baseline it diffs against.                                                                                                                                                                            |
@@ -181,19 +181,19 @@ Profiles aren't configuration. Thresholds and categories live in Settings; the p
 
 ## Versioned history and rollback
 
-When you change your profile, the old version isn't lost. Each save — manual edit or accepted suggestion from the refinement flow — creates a new entry in your **profile history**, with the previous version archived. The history keeps the last 20 revisions.
+When you change your profile, the old version isn't lost. Each change (a manual edit, an accepted suggestion, a starter template, a revert, or a switch between named profiles) adds an entry to your **profile history** that archives the text from before it. The history keeps the last 20 changes.
 
 To review or restore an older version:
 
 1. Open <span class="ui-action">Profile</span> in the sidebar.
 2. Expand the <span class="ui-action">History</span> control beneath the profile text box.
-3. Pick a timestamped snapshot to see the full profile content at that revision. Suggested revisions also show the rationale that was accepted.
-4. Click <span class="ui-action">Revert</span> on the snapshot to restore it.
+3. Each entry is one change, newest first: when it happened, a source tag (manual, suggested, template, revert, or switch), how many lines it added and removed, and its rationale. Suggested changes also show how many proposed edits you accepted. Click an entry to see what the change did, line by line, with the full text from before it underneath.
+4. Click <span class="ui-action">Revert</span> on an entry to put back the text from before that change.
 
 There's also a <span class="ui-action">Clear history</span> button for when revisions have accumulated beyond what's useful. It wipes the history list but leaves your current profile intact.
 
 ::: info
-Reverting is non-destructive — the current version moves into history as a new revision before the snapshot takes its place, so you can always flip back.
+Reverting is non-destructive: your current text moves into history as a new entry before the earlier text takes its place, so you can always flip back. It also returns the feedback those later changes had incorporated to pending, so the refinement flow can use it again.
 :::
 
 ## Named profiles
@@ -204,7 +204,11 @@ You can keep several profiles and switch between them — one for your main rese
 
 _The profile switcher sits above the text box. The active profile in the dropdown is what every run reads._
 
-Named profiles are snapshots. <span class="ui-action">Save as…</span> stores the current profile text under a name; switching loads a snapshot into the editor. The active profile is what every run reads — the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one. Switching away doesn't lose anything: the outgoing text is saved back into its own snapshot, and the swap is also recorded in the revision history like any other edit.
+Named profiles are snapshots, and the active one is what every run reads: the pipeline, the refinement flow, and the briefing all use whichever profile is currently loaded, and only that one.
+
+- <span class="ui-action">Save changes</span> writes your edit into the active profile. So does an accepted suggestion or a revert.
+- <span class="ui-action">Save as…</span> copies the current text under a new name and makes the copy active. The profile you were on keeps its own text. A name that another profile already uses is refused rather than overwritten.
+- Switching loads another profile into the editor. Nothing is lost: the outgoing text stays in its own snapshot, and the swap is recorded in the revision history like any other edit.
 
 Two things named profiles are _not_: they aren't run in parallel (one run reads one profile), and they don't each carry their own feedback history — stars, dismisses, and comments accumulate in one shared stream regardless of which profile was active.
 

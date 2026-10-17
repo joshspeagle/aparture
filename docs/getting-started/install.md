@@ -4,7 +4,7 @@ Aparture is a Next.js app that runs locally. This page walks through installing 
 
 ## Prerequisites
 
-- **Node.js.** Version 20 or 22 both work. The examples below use Node 22.
+- **Node.js 22 or newer.** `package.json` requires it, and CI tests Node 22 and 24. The examples below use Node 22.
 - **Git** for cloning the repository.
 - **~1 GB of disk.** `node_modules` is about 500 MB. Another 300 MB if you install Playwright for the reCAPTCHA fallback (optional, see §3).
 - **A shell you're comfortable in.** Bash or zsh on macOS and Linux, PowerShell or WSL2 on Windows. WSL2 is Microsoft's Linux-on-Windows environment; it tends to be faster than native PowerShell for Node-based dev work.
@@ -120,7 +120,9 @@ Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll re
 ACCESS_PASSWORD=pick-anything-memorable
 ```
 
-Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder, which works fine for local-only development, though you should obviously pick something real before exposing the app beyond your own machine.
+Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder.
+
+`npm run dev` listens on 127.0.0.1, so only this machine can open the app, and the placeholder is enough to get started. To reach the app from another device on your network, start it with `npm run dev -- -H 0.0.0.0`, and set a long password first.
 
 You'll also add your LLM API key to this same `.env.local` file on the next page. The dev server starts without one — there's no startup validation — but every pipeline run will fail at its first LLM call until a key is present.
 
@@ -145,7 +147,7 @@ Skipping this step is fine — Aparture will still work — but enabling it redu
 
 Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
 
-Without Playwright, affected papers get a notification in the run log and skip the deep-analysis stage. They still appear in the briefing based on their abstract-level score, with a note that the full PDF wasn't available. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, NotebookLM generation) works regardless.
+Without Playwright, affected papers get a notice in the run log and skip the deep-analysis stage. They stay in the ranking on their abstract score and still reach the briefing, without a full report, and an end-of-run card lists them. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, NotebookLM generation) works regardless.
 
 Install it if you'd like the fallback available:
 
@@ -157,7 +159,7 @@ npx playwright install-deps chromium
 ```
 
 ::: tip Don't delete the Playwright profile
-The first PDF download that hits reCAPTCHA may prompt you to solve it interactively in a headed browser. Once you solve it, Playwright caches the session in `temp/playwright-profile/` and subsequent runs proceed without prompts. Deleting that folder forces a re-solve on the next affected paper.
+The fallback runs a headless browser in the background; you never see a window or solve a challenge yourself. It keeps its cookies in `temp/playwright-profile/`, which is what lets later downloads skip the challenge. Deleting that folder means the next affected download starts from a fresh session, and the first one after that can take 5–10 seconds longer.
 :::
 
 ## 6. Verify the toolchain
@@ -168,7 +170,7 @@ Before moving on, confirm everything installed cleanly:
 node -v                       # v22.x.x
 npm -v                        # 10.x or 11.x
 npm run lint                  # ESLint passes
-npm test                      # Vitest, ~400 tests, ~30s, $0 (fixture-based)
+npm test                      # Vitest, fixture-based: no API calls, $0
 ```
 
 If all four pass, the local setup is ready. `npm run dev` will start and serve the UI now, but pipeline runs will fail at the first LLM call until you've added at least one API key in `.env.local`.

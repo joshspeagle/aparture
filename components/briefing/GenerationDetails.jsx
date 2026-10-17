@@ -39,6 +39,7 @@ export default function GenerationDetails({ generationMetadata }) {
     pauseAfterFilter,
     timestamp,
     hallucinationCheck,
+    hallucinationCheckError,
   } = generationMetadata;
 
   const profilePreview =
@@ -222,10 +223,10 @@ export default function GenerationDetails({ generationMetadata }) {
                       // YES = hallucination found = error red.
                       color:
                         hallucinationCheck.verdict === 'YES'
-                          ? '#ef4444'
+                          ? 'var(--aparture-danger-text)'
                           : hallucinationCheck.verdict === 'MAYBE'
-                            ? '#f59e0b'
-                            : '#22c55e',
+                            ? 'var(--aparture-warning-text)'
+                            : 'var(--aparture-success-text)',
                       background:
                         hallucinationCheck.verdict === 'YES'
                           ? 'rgba(239,68,68,0.08)'
@@ -302,7 +303,11 @@ export default function GenerationDetails({ generationMetadata }) {
                 )}
               </div>
             ) : (
-              <div style={valueStyle}>Hallucination check did not run or result not captured.</div>
+              <div style={valueStyle}>
+                {hallucinationCheckError
+                  ? `The claims check did not run (${hallucinationCheckError}). This briefing is unaudited.`
+                  : 'Hallucination check did not run or result not captured.'}
+              </div>
             )}
           </div>
 

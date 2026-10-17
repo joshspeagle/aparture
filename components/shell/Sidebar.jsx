@@ -7,7 +7,7 @@ import SidebarBriefingList from './SidebarBriefingList.jsx';
 
 const sectionLabel = {
   fontFamily: 'var(--aparture-font-sans)',
-  fontSize: '11px',
+  fontSize: '12px',
   fontWeight: 600,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',

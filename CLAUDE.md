@@ -1,329 +1,223 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents working in this repository.
 
-## Project Overview
+Aparture lets a researcher stop skimming the arXiv without worrying about what they're missing. Every design decision serves one of three requirements. The briefing must be worth reading: synthesis across papers, tuned by a profile the user wrote. It must be checkable: citations validated and claims audited before display. The user stays in control: profile edits are proposed, never silent; expensive steps are gated; everything runs locally on their keys.
 
-Aparture's job is to let a researcher stop skimming the arXiv without worrying about what they're missing. Every design decision serves one of three requirements that job imposes: the briefing must be worth reading (synthesis across papers, tuned by a profile the user wrote), it must be checkable (citations validated, claims audited, before display), and the user must stay in control (edits to the profile are proposed, never silent; expensive steps are gated; everything runs locally on their keys). The profile works like memory: it accumulates what the tool learns about the researcher over time, in a form the researcher can read, edit, and carry forward.
+Mechanically, it is a Next.js app running a staged arXiv pipeline over LLMs. Design principles with code pointers: `docs/concepts/design-principles.md`. Positioning: `POSITIONING.md`, whose §9 voice rules apply to all user-facing prose. User docs, built from `docs/`, are at [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/); check them for questions about behavior.
 
-Mechanically, it is a Next.js web app running a multi-stage arXiv discovery + analysis pipeline over LLMs. Design principles with code pointers: `docs/concepts/design-principles.md`. Positioning, market landscape, and business case: `POSITIONING.md`.
+## Commands and checks
 
-📚 **Full user docs (VitePress):** [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — built from `docs/`. For features, configuration, or usage questions, check there first.
+- `npm run dev | build | lint | test`; one file: `npx vitest run <path>`. `npm run format` checks formatting; `format:fix` writes it. Node 22 or newer. `dev` and `start` bind to 127.0.0.1 (`npm run dev -- -H 0.0.0.0` for the LAN).
+- Docs: `cd docs && npm ci` once, then `npm run docs:dev` or `docs:build`. The build catches dead page links, not dead `#anchors`.
+- **Vitest has two projects**, `node` and `jsdom`, chosen by include globs in `vitest.config.mjs`. A new test file must match a glob in exactly one project, or it silently never runs. A new top-level test directory needs its own glob in one project. A file under a node glob that needs `document`, `DOMParser`, or `localStorage` goes in `NODE_PROJECT_EXCEPTIONS`.
+- `tests/setup.js` deletes the provider keys, `ARXIV_CONTACT_EMAIL`, and `APARTURE_REPORTS_DIR` so the suite stays hermetic; a test that needs one sets it.
+- Hooks: pre-commit runs lint-staged (eslint and prettier); pre-push runs `eslint .` and `npm test`. CI (`.github/workflows/ci.yml`: pushes to main, PRs, weekly) runs lint, `npx prettier --check .`, `npm audit --omit=dev --audit-level=high`, `npm test`, and `npm run build` on Node 22 and 24, `npm test` again at UTC+14 (`TZ=Pacific/Kiritimati`) on Node 22, and a docs build. Briefing days are local calendar days, so run that leg locally after touching date code. Dependabot opens grouped weekly updates.
+- `node scripts/smoke-llm-routes.mjs` calls every LLM route in-process on all three providers. **It bills the user.** Needs `.env.local` keys; flags are in its header. `scripts/probe-arxiv*.mjs` hit arXiv live: by hand only.
 
-## Commands
+## Invariants
 
-Standard scripts are in `package.json` (`npm run dev|build|test|lint|format:fix`, `npm run docs:dev|build`). Non-obvious runners:
+Breaking one of these produces wrong output, an unexpected bill, or lost data.
 
-- `npm run setup` — interactive first-run CLI config
-- `npm run analyze[:report|:document|:podcast]` — unattended browser automation (Playwright-driven, Win/Linux/WSL). Settings persist in browser localStorage; Google auth cached after first podcast run.
-- `npm run test:dryrun` — mock API test (fast, no cost)
-- `npm run test:minimal` — real API test (5 papers, minimal cost)
-- `node scripts/smoke-llm-routes.mjs` — calls every LLM-backed API route in-process against all 3 providers with minimal-cost payloads (1–2 papers, short text). Requires `.env.local` with `ACCESS_PASSWORD` + provider keys. Sets `NODE_ENV=test` so analyze-pdf uses the `_testPdfBase64` escape hatch (no real PDF download). Bills the user — keep payloads small. Flags: `--only=route1,route2`, `--providers=anthropic,google`, `--model-<provider>=<id>` (override both batch + briefing models for a provider, e.g. `--model-anthropic=claude-sonnet-4.6` to test an Opus/Sonnet thinking path), `--batch-model-<provider>=<id>` / `--briefing-model-<provider>=<id>` for split overrides. On Windows Node, must be launched via `file://` URL loader (the script's `importRoute` helper handles this automatically).
+1. **One LLM dispatcher.** Every model call goes through `lib/llm/callModel.js`. The only direct provider calls are the free probes in `lib/llm/validateSetup.js`.
+2. **Cache split.** Routes split each prompt into a stable `cachePrefix` (the template, usually with the profile) and a variable `prompt`; `cachePrefix + prompt` must equal the full rendered prompt byte for byte. `useCaching = provider === 'anthropic' && !isFixture && !promptOverride`. Routes using `loadRubricPrompt` pass `cachePrefix`/`cacheable` as explicit keys (`''`/`false` when off); briefing-style routes spread `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix the styles: fixtures don't transfer.
+3. **Structured-output portability rules.** Route schemas stay in the subset all three providers accept; validators enforce counts, ranges, and lengths server-side.
+   - Every object has `additionalProperties: false` (Anthropic and OpenAI require it; `sanitizeSchemaForGoogle` strips it).
+   - Every property is in `required`; optional fields use `["T", "null"]`, which the Google sanitizer turns into `nullable: true`.
+   - The top level is `type: 'object'`; wrap arrays, as in `{ items: [...] }`.
+   - No `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, `oneOf`, `allOf`, `anyOf`.
+4. **Prompts don't restate the shape.** A prompt says what fields mean; the route's schema carries the shape. A prompt must never describe a JSON shape that contradicts its route's schema.
+5. **Refusals** arrive as successful HTTP responses. The adapter's `parse*` throws `RefusalError`, the route answers 422 with `code: 'CONTENT_REFUSAL'`, `parseRouteError` throws `ContentRefusalError`, and the stage applies `config.refusalPolicy`.
+   - Refusals never enter the retry ladder: they are deterministic, and each attempt bills input tokens.
+   - 422 is shared with `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA`; `code` discriminates. `analyzePDFs.js` reads the body inline because it can be read only once.
+   - Google's `MAX_TOKENS` is truncation, not a refusal; only `GOOGLE_REFUSAL_FINISH_REASONS` count, detected outside the `expectStructured` branch.
+   - Under `fail`, the stage throws `RefusalHaltError` (`fatal: true`), which stops the worker pool and ends the run with a message naming the stage, provider, and policy.
+6. **Bill the model that ran.** Each stage's `makeAPICall(prompt, isCorrection, modelOverride)` resolves `const effectiveModel = modelOverride ?? config.<slot>Model` and uses it for both the request body and `recordUsage`.
+7. **One run, one signal.** `startProcessing` gives each run an id and its own `AbortController`, captures the signal once, and passes it to every stage, pool, fetch, sleep, and gate (`lib/abort.js`). Never re-read `abortControllerRef` mid-run: after Stop then Start it holds the next run's signal. A superseded run skips its end-of-run writes. `callModel` takes no signal, so a request already sent finishes and bills.
+8. **Stages read state at call time:** `store()` and `store().reactContext` inside the returned function, never in the factory closure.
+9. **Fixture mode is test-only.** Client-supplied fixture mode is honored only under `NODE_ENV === 'test'` (`lib/llm/resolveCallModelMode.js`), as is `_testPdfBase64`. The suite makes no live LLM calls.
+10. **arXiv hygiene** (`lib/arxiv/`):
+    - OAI-PMH uses `arXivRaw` and anchors `published` on the v1 date; the `arXiv` format's `<created>` leaks re-announced papers into submitted-only windows.
+    - No `sortBy`/`sortOrder` in Atom URLs; sort after merging.
+    - API requests are 3–5 s apart with jitter (`arxivSpacingMs`), never before the first. Pages and files on arxiv.org, including the server's PDF downloads, are 15 s apart (`ARXIV_PAGE_DELAY_MS`, from robots.txt); a Playwright fallback takes two slots.
+    - The proxies rewrite upstream 5xx to the 429 shape so one retry ladder handles both.
+11. **Dedupe** (`hooks/useSeenPapers.js`, `lib/analyzer/applyDedupe.js`). `applyDedupe` runs in `fetchPapers` after `harvest()` (fill-ups included), before any LLM call. The index is fed on briefing save, not session save, so aborted runs can't poison it. `_`-prefixed keys are metadata; bump `CURRENT_DEDUPE_VERSION` when migration semantics change; keep the hot index `{arxivId → YYYY-MM-DD}`. Briefing cards come from synthesis output, so `components/briefing/PaperCard.jsx` derives the duplicate flag from the index, as any new surface downstream of synthesis must.
+12. **Persistence.** The hot session key `arxivAnalyzerState` keeps its name: renaming it strands every saved session unless a migration moves them. Cold briefing files are removed only by an explicit delete, never by retention.
+13. **Registry discipline.** Update `MODEL_REGISTRY` and `AVAILABLE_MODELS` (`utils/models.js`) together. A removed ID goes into `RETIRED_MODEL_REMAP` (`hooks/useAnalyzerPersistence.js`) with a config version bump; remap targets must be registered (a test asserts it).
+14. **Browser profile.** Never delete `temp/playwright-profile/`: it holds the arXiv reCAPTCHA state the PDF fallback relies on.
 
 ## Architecture
 
-### Tech Stack (non-obvious bits)
+### Map
 
-- **State:** Zustand (`stores/analyzerStore.js`) — central store replacing ~28 useState calls; 11 slices incl. `reactContext`. Pipeline reads via `getState()`. React hooks (`useProfile`, `useBriefing`, `useFeedback`) wrap localStorage persistence.
-- **Typography (briefing view):** Source Serif 4 + Inter + JetBrains Mono via `next/font/google` in `pages/_app.js`.
-- **Structured output:** `zod` schema + provider-native structured output (Anthropic `tool_use`, Google `responseSchema`, OpenAI `response_format` strict).
-- **Testing:** Vitest + @testing-library/react + jsdom, **fully fixture-based — zero real LLM calls**.
+- `pages/api/`: one route per LLM step (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`, `analyze-pdf-quick`, `synthesize`, `check-briefing`, `editor-questions`, `suggest-profile`, `generate-notebooklm`), the arXiv proxies (`harvest-arxiv` for OAI-PMH, `fetch-arxiv` for Atom), persistence (`briefings/*`, `sessions/*`), and `validate-setup` (free probes).
+- `components/shell/App.jsx` owns the hooks, the pipeline, and the layout. It publishes hook-owned values (profile, config, currentBriefing, feedback, saveBriefing, briefingHistory, seenPapersIndex, seenPapersReady) into the `reactContext` slice of the Zustand store (`stores/analyzerStore.js`), which the pipeline reads through `getState()`.
+- `hooks/`: localStorage-backed state. `useAnalyzerPersistence` holds `DEFAULT_CONFIG`, config migrations, and session persistence.
+- `lib/analyzer/` (pipeline), `lib/llm/` (dispatcher, adapters, route auth, typed errors, fixtures, token budget), `lib/arxiv/`, `lib/synthesis/` (briefing schema, checks, repair, audit corpus, reader notes), `lib/profile/` (feedback status, suggestion outcome, suggest prompt, templates).
+- `bin/`, `lib/headless/`, `lib/briefing/v2/`, `.claude/skills/aparture/`: the headless runner and agent skill.
+- `audits/`: point-in-time audit reports kept as provenance; they describe the state before the fixes that followed.
+- `reports/`, `temp/`: gitignored runtime state, resolved from `process.cwd()`, so they stay at the repo root.
 
-### File Structure
+### Pipeline
 
-Conventional Next.js layout. Directories that carry non-obvious responsibilities:
+`App.jsx` creates the pipeline once: `useMemo(() => createAnalysisPipeline({ abortControllerRef, pauseRef, mockAPITesterRef }), [])`. `lib/analyzer/pipeline.js` builds the helpers in `stages/core.js` (`recordUsage`, `waitForResume`, `makeRobustAPICall`) once and passes one `deps` object to every stage factory in `lib/analyzer/stages/`. `startProcessing` drives the stages, passes each the run's `{ signal }`, and returns a `RUN_OUTCOME` (`ignored`, `aborted`, `superseded`, `finished`) that callers branch on. Stage behavior: `docs/concepts/pipeline.md`.
 
-- `pages/api/` — one API route per pipeline stage (see "API Integration" below)
-- `components/shell/App.jsx` — entry point; owns all hook calls, Zustand selectors, pipeline creation, layout
-- `components/ui/` — warm-palette primitives; all inline-styled with `var(--aparture-*)`
-- `lib/analyzer/` — extracted pipeline internals (see "Analyzer module split" below)
-- `lib/llm/` — provider abstraction (callModel, providers, hash, fixtures, tokenBudget, resolveApiKey). `callModel.js` logs every live call + `[<provider> cache] read=N create=N` on cache hits.
-- `lib/llm/structured/` — per-provider request/response shaping (anthropic/google/openai). Each accepts optional `pdfBase64` and `cacheable`/`cachePrefix`.
-- `lib/synthesis/` — briefing schema, validator, repair, renderPrompt
-- `lib/profile/` — profile utilities (migrations, diff, feedbackCap, suggestPrompt, starterTemplates). `starterTemplates.js` owns the four first-run templates AND `BLANK_PROFILE_TEMPLATE`, which is also `DEFAULT_CONFIG.scoringCriteria` — fresh installs ship the neutral bracketed template, never a personal profile.
-- `hooks/` — React hooks, all localStorage-backed. `useProfile.content` is read by every pipeline stage; `useProfile` also owns named profiles (`aparture-profiles` map + `aparture-active-profile` pointer) — snapshots you `saveAs`/`switchTo`/`renameProfile`/`deleteProfile`, while the single working slot (`aparture-profile`) keeps its key and read path unchanged for pipeline/CLI compat. `useBriefing` has a 90-day rolling window, ID-keyed entries. `useFeedback` has 6 event types (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`, `scoped-feedback`); star/dismiss are latest-wins, comments append-only, `scoped-feedback` is latest-wins per scope-dedupe key (scope + briefingDate) with three scopes: `bucket`, `score-review`, `run`.
-- `prompts/` — editable LLM prompt templates (changes live without rebuild). The four `rubric-*.md` files contain a `{{CACHE_BOUNDARY}}` marker that `lib/llm/loadRubricPrompt.js` uses to split each into a cache-stable prefix (rubric + profile) and a variable tail (per-batch papers) for Anthropic caching.
-- `utils/models.js` — **single source of truth for model IDs/names/capabilities** (`MODEL_REGISTRY` + `AVAILABLE_MODELS` — always update together)
-- `styles/` — `tokens.css`, `shell.css`, `briefing.css` (see "Styling conventions")
-- `tests/fixtures/llm/` — cached LLM responses keyed by input hash
-- `cli/` — CLI browser automation **(scheduled for deletion in Phase 2)**
-- `audits/` — point-in-time repository audit reports, kept as provenance (each is the "before picture" for the fixes that followed it, not current state)
-- `reports/`, `temp/` — **runtime state** (gitignored; see below)
+To add a stage: export `create<Stage>(deps)` from `lib/analyzer/stages/<stage>.js`, instantiate it in `createAnalysisPipeline` before `createStartProcessing`, call it from `startProcessing.js` with the run's signal, and add any new hook value to the `reactContext` publish. A pure in-memory transform is a helper inside an existing stage (`applyDedupe` is the model). To test a stage, set state with `useAnalyzerStore.setState(...)` and drive `startProcessing` with mocked API responses.
 
-### Runtime state directories
+- **Concurrency.** Stages 2–4 run through `AnalysisWorkerPool` (`lib/analyzer/rateLimit.js`; default 3, clamped 1–20; dry runs 1). A task error is logged and dropped, so workers record their own failures; an abort or a `fatal` error stops the pool and `run()` rejects with it. On Anthropic slots, `cacheWarmup` runs worker 0's first task alone so the rest read the prompt cache. The refusal-fallback leg fires mid-task, so it uses `CacheWarmupGate` instead; the class comment explains why both exist.
+- **Retries.** `parseRouteError` (`lib/analyzer/RateLimitError.js`) turns 429, 503, and 529 into `RateLimitError`: `makeRobustAPICall` waits for `Retry-After` up to 60 s, else backs off up to 30 s, and `getLLMBarrier(provider)` pauses every worker for that provider. 400, 401, 403, 404, 413, and a 422 without a sentinel `code` become `NonRetryableRouteError` and fail on the first attempt. Other errors are retried up to `config.maxRetries` times.
+- **Review gates.** `startProcessing.js` pauses at `filter-review` (`pauseAfterFilter`), `score-review` (`pauseBeforeDeepAnalysis`), and `pre-briefing-review` (`pauseBeforeBriefing`). Each gate renders `<ReviewGateBanner>` (`components/run/`) at the head of its section (`FilterResultsList`, `ScoreReviewSurface`, `PreBriefingGate`); `ProgressTimeline` hosts no gate controls. The PDF set is `(top maxDeepAnalysis) ∪ starred − dismissed` (`resolveAdditiveSet.js`).
+- **Briefing.** `lib/analyzer/briefingClient.js` runs quick summaries, `/api/synthesize`, `/api/check-briefing`, an optional retry, and `/api/editor-questions`, then saves through `useBriefing` after checking the run's signal. A claims check that fails to run is retried once, then the briefing is saved unaudited with `generationMetadata.hallucinationCheckError`; never let an unaudited briefing look checked. Editor's questions are non-fatal, and `lib/editorQuestions/questions.js` keeps only well-formed questions citing an ID the model saw. Quick summaries are reader-facing only; neither synthesis nor the audit gets them. The day's Gate 3 notes (general comments with `origin: 'pre-briefing'`) reach synthesize as `readerNotes`, appended after the rendered prompt (`lib/synthesis/readerNotes.js`).
+- **Briefing checks** (`lib/synthesis/validator.js`, deterministic): `normalizeBriefing` corrects card titles and scores from the input; `validateBriefing` rejects unknown IDs (cards, themes, prose) and missing, duplicate, or unthemed cards; failures get one LLM repair (`repair.js`), then `salvageBriefing`. The full list is in `docs/concepts/briefing-anatomy.md`. The app doesn't display `corrections` or salvage actions yet.
+- **Audit corpus.** `/api/check-briefing` renders papers with `lib/synthesis/checkCorpus.js`, untruncated. The audit must see what the writer saw: change `mapFinalRankingToBriefingPapers`, `callCheckBriefing`, and `checkCorpus.js` together.
 
-`reports/` and `temp/` are gitignored but pinned to the repo root because API routes resolve them via `process.cwd()`. **Do NOT delete** `temp/playwright-profile/` (arXiv reCAPTCHA bypass state) or `temp/notebooklm-profile/` (Google session cookies) unless willing to re-auth. Phase 2 migrates both to `~/aparture/{reports,cache}/`.
+### Model slots
 
-### API Integration
+Config keys: `filterModel`, `scoringModel`, `postProcessingModel`, `pdfModel`, `briefingModel` (synthesize, check-briefing, editor-questions, suggest-profile), `quickSummaryModel`, `refusalFallbackModel`. `notebookLMModel` lives in the store's `notebookLM` slice. Defaults live only in `DEFAULT_CONFIG`. `postProcessingModel` is the Review Model under Enable Post-Processing (Scoring options) and doesn't follow `scoringModel`.
 
-Each file in `pages/api/` owns one pipeline stage — read the file for its purpose. Exception: `validate-setup.js` is a non-LLM probe route — free pre-flight validation of keys/model IDs/request syntax via provider count-tokens (Anthropic, Google) and model-GET (OpenAI) endpoints (`lib/llm/validateSetup.js`, deliberately not routed through `callModel`). Two cross-cutting patterns:
+### Auth pattern
 
-**Auth pattern.** All routes accept EITHER `apiKey` (for future BYOK flows) OR `password` validated against `process.env.ACCESS_PASSWORD`. When `password` is provided, the route reads the env-var key for the resolved provider (`CLAUDE_API_KEY`, `GOOGLE_AI_API_KEY`, or `OPENAI_API_KEY`). LLM routes share `lib/llm/resolveRouteAuth.js` — a two-phase helper (`checkRoutePassword` password gate, `resolveRouteAuth` full ladder incl. callMode + fixture-aware credential check) with per-route error-message overrides. Web UI uses the password path; Phase 2 Electron will use the apiKey path from OS keychain.
+- LLM routes and `validate-setup` accept `apiKey` (bring your own key; the Phase 2 path) or `password`, checked against `ACCESS_PASSWORD` and swapped for the provider's env key. They share `lib/llm/resolveRouteAuth.js`: `checkRoutePassword` checks the password alone; `resolveRouteAuth` runs the full ladder (password, env key, call mode, fixture-aware credential check).
+- A route that does local work before its LLM call authenticates first: `analyze-pdf` requires the password, or a key with the provider's published shape (`lib/auth/apiKeyShape.js`), before any download or browser launch.
+- The arXiv proxies take `password` in the body. The persistence routes take it in the body on POST and PATCH and in the percent-encoded `x-aparture-password` header on GET and DELETE (`lib/auth/passwordHeader.js`).
+- `checkAccessPassword` fails closed when `ACCESS_PASSWORD` is unset and compares in constant time.
 
-**Model slot separation.** Config has distinct `briefingModel` (drives `/api/synthesize` + `/api/suggest-profile`), `pdfModel` (drives `/api/analyze-pdf`), `filterModel`, `scoringModel`, `quickSummaryModel`, `notebookLMModel`. All default to the same model on first run; tunable independently.
+### Persistence
 
-## Development Notes
+Hot state in localStorage, cold state on disk; both write through `safeSetItem` (`lib/persistence/safeStorage.js`).
 
-### Environment Variables
+- **Briefings.** Hot: `aparture-briefing-current` and the newest-first `aparture-briefing-index`, which keeps `filterBriefings` synchronous. Cold: `reports/briefings/<id>.json` through `/api/briefings[/:id]`, loaded by `useBriefing.loadBriefing(id)`. The index has no entry cap; it is trimmed to `HOT_INDEX_BUDGET_CHARS`, test runs first (`testRun`, set by `buildIndexEntry`), and trimmed briefings stay on disk. Extension points: `MUTABLE_FIELDS` (`pages/api/briefings/[id].js`), `HEAVY_FIELDS` (`hooks/useBriefing.js`), `buildIndexEntry`.
+- **Sessions.** Hot: `arxivAnalyzerState` (`lib/session/buildHotEntry.js`, under about 600 KB, with the top-30 `finalRanking`). Cold: `reports/sessions/<sessionId>.json` through `/api/sessions[/:id]`.
+- `APARTURE_REPORTS_DIR` replaces the `reports/` base for both; it is the Phase 2 seam. `saveBriefingAndSwitch` in `App.jsx` feeds `useSeenPapers.recordRun` after `saveBriefing` resolves (IDs from `lib/seenPapers/papersFromBriefing.js`).
 
-See `docs/reference/environment.md` (authoritative). Minimum: `ACCESS_PASSWORD` + one provider key (`CLAUDE_API_KEY` / `OPENAI_API_KEY` / `GOOGLE_AI_API_KEY`).
+### Profile and feedback
 
-### Analysis Workflow
+- Every stage reads `useProfile().content`. The working slot `aparture-profile` keeps its key; named profiles are snapshots in `aparture-profiles` with an `aparture-active-profile` pointer, and every committed change writes through to the active snapshot. `BLANK_PROFILE_TEMPLATE` is also `DEFAULT_CONFIG.scoringCriteria`, so fresh installs ship a neutral template, never a personal profile.
+- `useFeedback` has seven event types: `star` and `dismiss` (latest wins), `paper-comment` and `general-comment` (append-only), `filter-override` (latest wins per paper and run day, recorded on the pill click, including after a run), `scoped-feedback` (latest wins per scope and briefing date), and `answer` (an editor's-question reply; latest wins per question and day, and re-tapping takes it back). Events may carry `testMode`, `incorporatedAt`, `editedAt`, and `origin`.
+- `lib/profile/feedbackStatus.js` decides status: `test` (made during a Dry Run or Minimal Test; never sent to suggestions or a real briefing), `pending`, or `incorporated`. An edited event is pending again.
+- `resolveSuggestionOutcome` (`lib/profile/suggestOutcome.js`) marks an event incorporated only when an accepted change's rationale cites its arXiv ID or title, or quotes its text; reverting a revision reopens those events (`reopenIncorporatedSince`).
+- `/api/suggest-profile` gets the ticked pending events through `applyCap` (`lib/profile/feedbackCap.js`), which caps only comments and drops any type it doesn't list. Answers get their own "ANSWERS TO THE EDITOR'S QUESTIONS" section. The 10 newest of `useProfile`'s `rejectedSuggestions` ride along as `rejected-suggestion` items, rendered by `suggestPrompt.js` as a "PREVIOUSLY REJECTED SUGGESTIONS" section.
 
-Pipeline stages follow `docs/concepts/pipeline.md` (Stage 1 fetch → Stage 5 briefing, with Stage 3.5 post-processing). Beyond that doc:
+### LLM adapters
 
-- **Filter-override pill (Stage 2).** UI click-cycles YES/MAYBE/NO; each override becomes a `filter-override` feedback event that flows into the suggest-profile prompt as a "too narrow/broad" signal.
-- **Batch parallelism.** Stages 2/3/3.5/4 each have a concurrency knob (`filterConcurrency`, `scoringConcurrency`, `postProcessingConcurrency`, `pdfAnalysisConcurrency`, default 3, clamped 1–20), all routed through `AnalysisWorkerPool` in `lib/analyzer/rateLimit.js`. Anthropic model slots get a single-flight cache-warmup barrier (worker 0 primes the ephemeral cache entry before siblings start). Dry-run forces concurrency=1. Stage 4 also serializes arXiv downloads server-side at ~5s spacing.
-- **Score-review gate (Gate 2).** `pauseBeforeDeepAnalysis: true` (default) fires after Stage 3.5 and before Stage 4. Shows scored papers in three groups (top-N, borderline, low score); ★ guarantees PDF analysis regardless of rank, X (dismiss) excludes from PDF set. Final PDF set = `(top-N) ∪ {starred} − {excluded}`. Free-text "feedback on this scoring round" field flows into suggest-profile as a `scoped-feedback` `score-review`-scope note. A "Skip remaining gates this run" link appears on all three gates; it bypasses subsequent default-on gates for this run only without modifying settings.
-- **Review-gate placement.** All three gates render the shared `<ReviewGateBanner>` (`components/run/`) — one-line summary + Continue button + "Skip remaining gates this run" link — at the _head of their associated section_: filter → `FilterResultsList`, score → `ScoreReviewSurface`, pre-briefing → `PreBriefingGate` (`components/shell/`, mounted by `MainArea` only at stage `'pre-briefing-review'`). `ProgressTimeline` is pure status display and hosts **no** gate controls. The banner also carries a muted "docs ↗" link to the review-gates docs page. While the stage ends in `-review`, `hooks/useGateTitle.js` (called once in `App.jsx`) flips `document.title` to a waiting message and restores it on resume/stop/end.
-- **Feedback opens after Stage 4**, not gated on briefing.
-- **Briefing auto-runs at end** via `lib/analyzer/briefingClient.js`. If `pauseBeforeBriefing` is on (default), pipeline stops at `'pre-briefing-review'` first. Flow: quick summaries (parallel, `quickSummaryConcurrency` default 5) → `/api/synthesize` → `/api/check-briefing` → optional one-shot retry → save via `useBriefing` → render `<BriefingView>`.
-- **Main-area layout order after a run:** Results → Download Report → Briefing → NotebookLM.
+`lib/llm/structured/{anthropic,google,openai}.js` shape requests and parse responses. All three accept `pdfBase64`; only Anthropic uses `cacheable`/`cachePrefix`.
 
-### Styling conventions
+- **Anthropic.** Structured output goes in `output_config.format` (`{type: 'json_schema', schema}`): no tools, no `tool_choice`, valid with thinking on or off. The parser reads JSON from the text block, skips `thinking` blocks, and still accepts `tool_use` blocks from older fixtures. The cacheable prefix is its own text block with `cache_control: {type: 'ephemeral'}`; `callModel` logs `[anthropic cache] read=N create=N`.
+- **Google.** The key goes in the `x-goog-api-key` header, never the URL. `thoughtsTokenCount` counts as output, as Google bills it. `sanitizeSchemaForGoogle` adapts schemas for `responseSchema`. Aparture creates no Google cache objects.
+- **OpenAI.** Text calls use Chat Completions with a strict `response_format` schema. PDF calls use `/v1/responses` (`buildOpenAIResponsesRequest`); the parser takes the `phase: 'final_answer'` message, else the last one.
 
-Four layers, each with a distinct job:
+### arXiv ingestion
 
-| Layer            | File                | Used for                                                             |
-| ---------------- | ------------------- | -------------------------------------------------------------------- |
-| **Tokens**       | `styles/tokens.css` | Palette, typography, spacing — consumed via `var(--aparture-*)`      |
-| **Shell layout** | `styles/shell.css`  | Structural classes (`.shell`, `.shell-sidebar`, `.briefing-surface`) |
+`fetchPapers` wraps `ingest.harvest`; the user-facing model is in `docs/concepts/arxiv-ingestion.md`.
 
-**Responsive breakpoint (768px).** Under 768px `styles/shell.css` turns the sidebar into an off-canvas drawer (`.shell-topbar` hamburger + `.shell-scrim` + `.shell-sidebar--open`; open/close state lives in `App.jsx`, `MobileTopBar.jsx` is the top bar). The same media block provides `.touch-target` (≥40px tap size for gate Continue buttons and verdict/action pills) and `.settings-field-row` (two-up wrap for multi-column settings rows). Desktop ≥768px is untouched by all of these — mobile rules live only inside the media query.
-| **Briefing typography** | `styles/briefing.css` | Reading-surface rules scoped to `.briefing-prose` |
-| **Inline styles** | component files | Component-local visual properties, variant/state switching |
+- `config.arxivIngestion`: `auto` (OAI-PMH, with a per-run circuit breaker to Atom on the first hard failure), `oai-only`, `atom-only`. OAI and Atom have separate arXiv rate-limit buckets.
+- `daysBack` means N days of content. For `submitted-only`, the OAI window widens backward by `ANNOUNCE_LAG_BUFFER_DAYS` (7) and `harvest` anchors on the newest v1 day with content. The constant and window math live in both `stages/fetchPapers.js` and `lib/arxiv/window.js`; change both.
+- The cache (`lib/arxiv/cache.js`) keys on set, from, until, and mode, plus window semantics for fill-ups. `lib/arxiv/sets.js` derives OAI sets from prefix rules, not from `utils/arxivCategories.js`, so a new category may need both.
+- `harvest` and `harvestOai` take injectable `spacingMsImpl`/`sleepImpl`; multi-request tests pass a no-op sleep.
+- `analyze-pdf` checks fetched bytes for `%PDF-` and falls back to Playwright (`temp/playwright-profile/`). Without Playwright it returns 422 `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA`, and the stage records the paper in `skippedDueToRecaptcha`.
 
-**Rules:** always reference `var(--aparture-*)` for colors/typography/spacing (never hardcode palette); use `className` for shell layout, briefing-prose BEM, and Lucide icon sizing (`w-*`, `h-*`, `animate-spin`); use inline `style={{...}}` for everything else. **Avoid adding new Tailwind classes** — utility layer is present in `globals.css` but only Lucide sizing + one legacy `md:grid-cols-3` remain.
+### Headless runner and agent skill (prototype)
 
-#### Semantic status colors (hardcoded by design)
+`bin/aparture.mjs` runs a briefing's mechanical steps from Node without the web app: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest` (`node bin/aparture.mjs help`). It makes no LLM calls. The skill in `.claude/skills/aparture/` does the reading and writing and calls the runner between steps; `.agents/skills/aparture` is a symlink to it, for agents that look there; edit the files under `.claude/`. No user docs yet.
 
-These recur with consistent meaning across components and have no `--aparture-*` token because they are status indicators, not palette:
+- stdout is JSON only: the runner sends `console.log` to stderr because route handlers log. Keep new output off stdout.
+- It calls the arXiv proxy handlers in-process (`lib/headless/inProcessRoute.js`), installs jsdom's `DOMParser` (a devDependency, so it needs a full `npm ci`), and sets a random `ACCESS_PASSWORD` when none is set.
+- Requests to arxiv.org pages and files are 15 s apart (`arxivPageSpacingMs`); `--spacing-ms` is for tests.
+- Skill state lives in `$APARTURE_STATE` (default `./aparture-state`), separate from the web app's storage. Skill briefings use `lib/briefing/v2/` (schema, a grounding validator for cited IDs and verbatim quotes, renderer), not `lib/synthesis/schema.js`.
 
-| Value             | Meaning                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| `#22c55e`         | done / success / added / YES                                                               |
-| `#f59e0b`         | running / MAYBE / warning / test mode                                                      |
-| `#ef4444`         | error / stop / NO / removed                                                                |
-| `#f97316`         | filter-override feedback event; negative score adjustment (paired with `#22c55e` positive) |
-| `#6366f1`         | scoped-feedback event (bucket / score-review / run)                                        |
-| `#a855f7`         | paper-comment feedback event / score badge accent                                          |
-| `#64748b`         | dismissed / muted negative                                                                 |
-| `#3b82f6`         | informational / suggested source                                                           |
-| `rgba(0,0,0,0.5)` | modal overlay scrim                                                                        |
+## Model information
 
-When adding a new status color, document it here rather than introducing a token.
+`utils/models.js` is the source of truth; don't copy model IDs or prices into code or this file. The registry keeps each provider's current and previous generation.
 
-### Profile + Briefing Pipeline
+- **Pricing.** `inputPerMTok`/`outputPerMTok` are USD list prices; an optional `promo` block with an end date applies through `effectivePricing`. `null` means unverified, and `lib/analyzer/costEstimate.js` hides that estimate rather than guess.
+- **Adaptive thinking.** Every Anthropic entry has `supportsAdaptiveThinking` (read by `supportsAdaptiveThinkingByApiId`); when true the request gets `thinking: {type: 'adaptive'}`. `output_config.effort` is sent only with thinking on, and no route sets it. For unregistered IDs the adapter falls back on the name: Fable and Mythos on, Haiku 5+ on, Opus and Sonnet 4.6+ on, everything else off. Register new Anthropic models with the flag.
+- **Output budget.** Anthropic calls default to `maxTokens` 16000, since thinking counts toward it; a structured reply cut off at `max_tokens` throws a named error, not a JSON parse error.
+- **Data retention.** Some Anthropic models 400 on every request unless the organization keeps data 30 days; their registry comments say which.
+- **Token pre-flight.** `lib/llm/tokenBudget.js` assumes about 4 characters per token for every provider; `/api/synthesize` blocks over-threshold prompts unless `allowOverBudget` is set.
 
-"Your Profile" is the single source of research intent. Every pipeline stage reads `profile.content` from `useProfile`. The profile is refined manually or via the LLM-assisted `SuggestDialog` flow.
+## Prompts
 
-**First-run templates + named profiles (2026-07).** `components/profile/StarterTemplatePicker.jsx` renders at the top of the profile view only while `isUneditedProfile(profile)` (content === `BLANK_PROFILE_TEMPLATE`, no revisions) and the `aparture-template-picker-dismissed` flag is unset; choosing a template sets profile content AND `config.selectedCategories`, then dismisses permanently. `components/profile/ProfileSwitcher.jsx` (inside `YourProfile`) manages named-profile snapshots via the `useProfile` API; it is disabled while the draft is dirty so switches can't act on stale committed content. Switching between named profiles always snapshots the outgoing content back into its own entry and archives a revision — nothing is silently lost.
+`prompts/*.md` are read at request time; `synthesis.md` has the most effect on briefing quality. The four `rubric-*.md` files contain `{{CACHE_BOUNDARY}}`, where `lib/llm/loadRubricPrompt.js` splits the cacheable prefix from the per-batch tail. Test overrides (`APARTURE_TEST_*`, `_testPdfBase64`) are listed in `docs/reference/environment.md`; prompt overrides also disable caching so fixture hashes are stable.
 
-**Suggest-improvements flow.** `/api/suggest-profile` accepts current profile + accumulated feedback and returns a revised profile with per-change rationales, or a `noChangeReason` if feedback doesn't point to a gap. All stars/dismisses/overrides are always included in the prompt uncapped; comments are capped at most-recent N per type (default 30) with a transparent trimming notice. `scoped-feedback` and `filter-override` events are also passed through uncapped — both are latest-wins or have no natural numeric accumulation, so capping would silently discard the current state.
+**Harmony rules** for editing any prompt:
 
-**Backend synthesis.** `/api/synthesize` loads `prompts/synthesis.md`, renders placeholders via `lib/synthesis/renderPrompt.js`, dispatches via `lib/llm/callModel.js`, runs zod + citation validation via `lib/synthesis/validator.js`, and falls back to two-pass LLM repair via `lib/synthesis/repair.js`. Every `arxivId` in the output must be in the input list.
-
-**Tuning knobs:**
-
-- **Briefing quality:** edit `prompts/synthesis.md` (highest-impact single knob)
-- **Suggest quality:** edit `prompts/suggest-profile.md`
-- **Briefing visuals:** edit `styles/briefing.css` (palette tokens propagate automatically)
-- **New feedback type:** extend event union in `hooks/useFeedback.js`, add variant in `components/feedback/FeedbackItem.jsx`, add section in `lib/profile/suggestPrompt.js`'s `renderFeedbackSection`
-- **New LLM provider:** add entry to `lib/llm/providers.js`, create `lib/llm/structured/<provider>.js` following anthropic/google/openai templates (incl. optional `pdfBase64` + `cacheable`/`cachePrefix`), add a branch in `lib/llm/callModel.js`, add a unit test file under `tests/unit/llm/structured/`. ~150–200 lines.
-
-**Prompt-harmony rules** (when editing any `prompts/*.md`):
-
-1. **Label the user-written profile as "Research profile:"** in every rubric. Don't drift into "Research Interests", "SCORING CRITERIA", etc. — the term is canonical and signals to the model that this is the user's voice, not a constraint document.
-2. **Quality strictness must be profile-aware.** rubric-scoring/rubric-pdf both contain a "Calibrate Quality strictness to the profile" paragraph. If you tighten quality language, keep the breadth-vs-selectivity escape hatch — otherwise users with breadth profiles get silently downgraded.
-3. **Editorial framing is the briefing's job, not a hallucination.** check-briefing.md treats cross-paper synthesis in `executiveSummary` and `themes.argument` as legitimate (NO-verdict). Per-paper claims (numbers, methodology, author opinions) are still strict. Don't flatten the distinction.
-4. **Filter is permissive by design.** rubric-scoring.md tells the model not to assume filter validated alignment — a paper that survived MAYBE should score 3-5 on Alignment, not 6-7. Preserve this when editing.
-5. **Avoided-words list is global.** `synthesis.md` and `analyze-pdf-quick.md` both ban "novel"/"breakthrough"/"paradigm-shift". If you add a word to one, add it to the other.
-6. **Podcast pruning respects briefing editorial choices.** notebooklm-discussion-guide.md preserves papers the briefing puts at the top of a theme even if their score is below the cutoff. Stars/comments flow into the briefing → the briefing flows into the podcast.
-
-**Testing LLM-backed code:** all tests are fixture-based. `lib/llm/hash.js` produces a deterministic input hash; cached responses live at `tests/fixtures/llm/<hash>.json`. To add a fixture, run `tests/fixtures/synthesis/generate-sample.mjs` or use the `beforeAll` pattern in existing integration tests.
-
-**Test escape hatches:**
-
-- `APARTURE_TEST_PROMPT_OVERRIDE` env var — routes substitute the variable portion of the prompt so fixture hashes are deterministic. Also disables caching (so `cachePrefix`/`cacheable` are absent from the hashed input).
-- `_testPdfBase64` body field on `pages/api/analyze-pdf.js` (active only when `NODE_ENV === 'test'`) — injects PDF bytes directly, bypassing Playwright. Minimal fixture at `tests/fixtures/pdf/minimal.pdf`.
-- Occasional vitest worker-pool timeouts in WSL are infrastructure flakes — the test count + pass/fail summary are authoritative.
-
-### LLM Dispatcher + Prompt Caching
-
-All LLM-calling routes go through `lib/llm/callModel.js` — never call a provider API directly. Per-provider shaping is in `lib/llm/structured/{anthropic,google,openai}.js`; read those files when adding a route or provider.
-
-**Prompt caching (Anthropic only).** Each route splits its prompt into a stable `cachePrefix` (template + profile) and variable `prompt` (per-batch content); when `cacheable: true`, the adapter emits multi-block `content` with `cache_control: {type: 'ephemeral'}` on the prefix. **Invariant:** `cachePrefix + prompt === fullRenderedPrompt` byte-for-byte. OpenAI auto-caches on repeated prefixes; Google caching is not enabled. Hit metrics surface as `cacheReadTok`/`cacheCreateTok`; dispatcher logs `[anthropic cache] read=N create=N`.
-
-**PDF content blocks.** All 3 adapters accept `pdfBase64`. Anthropic emits a `document` block; Google emits `inlineData` in `parts`; OpenAI switches to `/v1/responses` (`buildOpenAIResponsesRequest`) — different shape from Chat Completions, response parsed at `output[].content[].text`, structured output via `text.format.json_schema` not `response_format`.
-
-**Structured-output portability rules.** The three providers disagree on JSON Schema field support; keep schemas in the portable subset and enforce count/range/length in the server-side validator. Concrete rules for new routes:
-
-1. Every object MUST include `additionalProperties: false` (Anthropic+OpenAI strict require it; `sanitizeSchemaForGoogle` strips it cleanly).
-2. Every property MUST appear in `required`. For optional fields use `["T","null"]` so OpenAI strict accepts them; the Google sanitizer auto-converts to `{type: T, nullable: true}`.
-3. Top-level schema MUST be `type: 'object'`. Wrap arrays as `{items: [...]}`.
-4. Do NOT use `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems`, `maxItems`, `multipleOf`, or `oneOf`/`allOf`/`anyOf` — enforce in the validator.
-
-Anthropic adapter additionally emits tools with `strict: true` for grammar-constrained sampling, and gates adaptive thinking via the registry: `supportsAdaptiveThinking` on each Anthropic `MODEL_REGISTRY` entry (looked up through `supportsAdaptiveThinkingByApiId`), with a family+version regex fallback ONLY for apiIds not in the registry (Opus/Sonnet 4.6+ and 5.x on; Haiku and pre-4.6 legacy IDs off — live 400 if forced). When thinking is on, `tool_choice` must be `{type: 'auto'}`; when off, the adapter forces the tool call via `{type: 'tool', name: <schema.name>}`.
-
-**Route-pattern note.** Routes using the rubric template loader (`loadRubricPrompt`) pass `cachePrefix`/`cacheable` as explicit keys (empty `''`/`false` when off); briefing-style routes use the conditional-spread idiom `...(useCaching ? { cachePrefix, cacheable: true } : {})`. Don't mix — fixtures aren't transferable across modes. Compute `useCaching = provider === 'anthropic' && !isFixture && !promptOverride;`. The fixture-mode 401-skip and the `resolveCallModelMode(callModelMode)` resolution are both handled inside `lib/llm/resolveRouteAuth.js` now — routes call `resolveRouteAuth` rather than re-implementing either. The underlying rule is unchanged: client-supplied fixture mode is honored only under `NODE_ENV === 'test'` and forced back to live in production (`lib/llm/resolveCallModelMode.js`).
-
-### Analyzer module split
-
-`App.jsx` creates the pipeline once via `useMemo(() => createAnalysisPipeline({abortControllerRef, pauseRef, mockAPITesterRef}), [])`. The pipeline reads all state from `useAnalyzerStore.getState()` — including the `reactContext` slice, which holds hook-derived values (profile, config, saveBriefing, briefingHistory) that `App.jsx` republishes on every render.
-
-Stage bodies live in `lib/analyzer/stages/*.js`, one module per stage (`fetchPapers`, `quickFilter`, `scoreAbstracts`, `postProcessScores`, `analyzePDFs`, plus the `startProcessing` orchestrator). Each exports a `create<Stage>(deps)` factory; `createAnalysisPipeline` in `lib/analyzer/pipeline.js` is the composition point — it creates the per-run refs (`runBriefingDateRef`, `skipRemainingGatesRef`) and the shared core helpers (`stages/core.js`: `recordUsage`, `waitForResume`, `makeRobustAPICall`, `makeMockRobustAPICall`) ONCE, then passes the same `deps` object to every factory so abort/pause/skip-gates state stays single-instance. `stages/support.js` holds the module-level pure helpers (`providerKeyForModel`, `warnIfFreeTierLikelyToThrottle`). Stages must keep reading `store()`/`store().reactContext` at call time — never capture state at creation.
-
-**To add a new pipeline stage:**
-
-1. Create a new module in `lib/analyzer/stages/` exporting `create<Stage>(deps)`; read runtime state from `store()` and `store().reactContext` inside the returned function, never from the factory closure.
-2. Instantiate it in `createAnalysisPipeline` (`lib/analyzer/pipeline.js`) with the shared `deps` object, before `createStartProcessing`.
-3. Wire it into the orchestrator: add it to the deps passed to `createStartProcessing` and call it from `lib/analyzer/stages/startProcessing.js`.
-4. If it reads a new React-hook value, add the key to the `reactContext` publish in `App.jsx`.
-
-**Sync in-memory passes** (as opposed to async stages): if your new logic is purely transformational on the paper list — no I/O, no progress UI — model it as a pure helper called inside an existing stage rather than a new stage function. `lib/analyzer/applyDedupe.js`, called from `fetchPapers`, is the reference example. This keeps the stage diagram free of pseudo-stages.
-
-**To unit-test a stage:** mock the store via `useAnalyzerStore.setState(...)`, then call `createAnalysisPipeline({...refs})` and invoke the returned handler. Internal stages aren't exported — test via `startProcessing` with mocked API responses.
-
-### ArXiv Ingestion
-
-User-facing model + tuning live in `docs/concepts/arxiv-ingestion.md` and `docs/using/tuning-the-pipeline.md`. Implementation lives entirely under `lib/arxiv/`; the `fetchPapers` stage (`lib/analyzer/stages/fetchPapers.js`) is a thin wrapper around `ingest.harvest`. Live-network probe: `scripts/probe-arxiv.mjs` (manual; never CI). Non-obvious bits:
-
-- **Two paths, one orchestrator.** OAI-PMH (`pages/api/harvest-arxiv.js`) is primary; the legacy Atom (`pages/api/fetch-arxiv.js`) is fallback. They're in **separate rate-limit buckets** at arXiv (verified live 2026-04-29). `config.arxivIngestion: 'auto'|'oai-only'|'atom-only'` (default `'auto'`); auto trips a per-run circuit breaker on the first hard OAI failure and switches the rest of the run to Atom. `result.modeUsed` is surfaced in the run-summary status line.
-- **OAI metadata format = `arXivRaw`.** We do NOT use the `arXiv` format: its `<created>` field is the latest-announcement date, not v1 submission, so re-announced old papers leak into `submitted-only` windows undetectably. `arXivRaw` exposes per-version `<version version="vN"><date>` and `parseOaiRecord` anchors `published` on v1.
-- **`config.arxivWindowSemantics: 'submitted-only'|'submitted-or-updated'`** (default `'submitted-only'`). For `submitted-only`, `ingest.harvest` filters by v1 date in the target window (anchor-derived; see next bullet). For `submitted-or-updated`, all papers in the OAI window pass through untouched.
-- **`config.daysBack: N` is "N days of content", not "N calendar days".** arXiv's announcement schedule means papers submitted on day N typically appear in OAI on day N+1, more on weekends. For `submitted-only`, the `fetchPapers` stage widens the OAI fetch window backward by `ANNOUNCE_LAG_BUFFER_DAYS` (= 7) past the user's target. `ingest.harvest` then anchors on the most recent v1 day with content across the selected subcategories and slices the v1 target to `[anchor − (N−1), anchor]`. For `submitted-or-updated`, no widening or anchor — OAI window equals the user's target.
-- **Fill-up steps mirror this.** Each step's `from`/`until` are v1 target dates anchored to the broad-fetch anchor, not announcement dates. In `submitted-only` mode the fill-up's OAI fetch is widened forward by the lag buffer and post-filtered to v1 in the step's target window; in `submitted-or-updated` it uses the OAI window as-is.
-- **Fill-ups** (`config.minPapersPerSubcategory`, default 5; `config.lookbackExtensions`, default `[3, 7, 14]`) fire narrow per-subcategory requests when a sub is under-served, going through whichever driver the broad fetch is using. Each step fetches only the new outer slice.
-- **Cache** (`config.arxivCacheTtlMinutes`, default 60) is localStorage-backed under `aparture-arxiv-cache`, keyed by `(set, from, until, mode)`. Evicts oldest 50% on `QuotaExceededError`. `0` disables.
-- **Set hierarchy** is hand-mapped in `lib/arxiv/sets.js` (almost `<group>:<archive>:<CATEGORY>` but physics is 3-level). Drives off the same catalog as `utils/arxivCategories.js`.
-- **Atom hygiene rules** (don't regress): no `sortBy`/`sortOrder` in the URL (sort client-side after merge); inter-request spacing is **jittered** 3000–5000 ms via `arxivSpacingMs()` (deterministic 3 s trips arXiv's sliding-window heuristics more often); the proxy rewrites upstream 5xx to a 429 shape so the client retry ladder handles both identically.
-- **Jittered spacing lives in `lib/arxiv/spacing.js`** (`arxivSpacingMs()` = `3000 + Math.floor(Math.random()*2000)`, `arxivSleep`). Applied BETWEEN consecutive requests (never before the first) in `ingest.harvest`'s OAI-prefix loop and both Atom subcategory loops, and on `harvestOai`'s resumption-page sleep. Both `harvest` (`spacingMsImpl`/`sleepImpl` deps) and `harvestOai` (`spacingMsImpl` arg) accept injectable overrides so unit tests don't actually sleep 3–5 s — multi-request tests pass a no-op `sleepImpl`.
-- **Optional `ARXIV_CONTACT_EMAIL`**: when set, sent as HTTP `From` header on proxied requests. Goodwill signal only.
-- **Bulk backfill (out of scope here):** use arXiv's Kaggle dump (`Cornell-University/arxiv`). OAI-PMH is for incremental harvesting only.
-
-### Persistence (tiered: hot localStorage + cold filesystem)
-
-Both briefings and analyzer sessions use the same hot/cold pattern (introduced 2026-04-21 / 2026-05-07 to escape browser localStorage quota). `safeSetItem` in `lib/persistence/safeStorage.js` is shared between them.
-
-- **Briefings.** Hot: `aparture-briefing-current` (full current entry) + `aparture-briefing-index` (newest-first search-capable index — keeps `filterBriefings` synchronous). Cold: `reports/briefings/<id>.json` via `POST/GET/PATCH/DELETE /api/briefings[/:id]`, lazy-loaded by `useBriefing.loadBriefing(id)`. Migration from legacy `aparture-briefing-history` happens once on mount.
-- **Sessions.** Hot: `arxivAnalyzerState` (key unchanged for CLI compat) — `config`, `sessionId`, `results.finalRanking` (top 30 + `deepAnalysis`), reduced `filterResults`, `processingTiming`, `testState`, `notebookLM`, `password`; ≤ 600 KB. Cold: `reports/sessions/<sessionId>.json` via `POST/GET/DELETE /api/sessions[/:id]` carries full `allPapers`, `scoredPapers`, `filterResults.{yes,maybe,no}`. Old single-key blobs read as-is on next save.
-- **Phase 2 seam:** `BRIEFINGS_DIR` / `SESSIONS_DIR` resolve via `getBriefingsDir()` / equivalent — flip the constants to `~/aparture/{briefings,sessions}/` for the desktop build.
-- **Extending mutable fields:** `pages/api/briefings/[id].js` whitelists in `MUTABLE_FIELDS` (currently `['archived']`); add there rather than merging arbitrary bodies. To make a field strippable under quota pressure, add it to `HEAVY_FIELDS` in `hooks/useBriefing.js`; to also drop it from the search index, extend `buildIndexEntry` in `lib/briefing/buildIndexEntry.js`.
-- **CLI compat:** `cli/run-analysis.js` and `cli/setup.js` still read `localStorage.getItem('arxivAnalyzerState')` and access `.config` and `.results.finalRanking` — both are preserved in the hot tier.
-- **Dedupe-index feed:** `useSeenPapers.recordRun` is called from the `saveBriefingAndSwitch` wrapper in `App.jsx` AFTER `saveBriefing` resolves, with the paper-id union extracted via `lib/seenPapers/papersFromBriefing.js` (briefed papers + `pipelineArchive.filterResults.{yes,maybe,no}`). Anchoring dedupe to briefing-save (not session-save) is what prevents aborted Stage 1 runs from poisoning the index. `useAnalyzerPersistence` still emits `onColdSessionSaved(allPapers, timestamp)` for any future consumer, but nothing in the dedupe path subscribes to it.
-
-### Paper duplicate detection
-
-Cross-run paper memory: stops the LLM pipeline from re-reading work it's already seen. Always-on detection, default-on removal. Introduced 2026-05-16; the full spec is local-only (`docs/superpowers/specs/2026-05-16-paper-dedupe-design.md`, gitignored — absent from fresh clones). The load-bearing decisions are inlined below.
-
-- **Hot index:** `aparture-seen-papers-index` in localStorage — `{ arxivId → ISO date (YYYY-MM-DD) }` with `_migratedAt` (millis) and `_dedupeVersion` (int) sentinels. Owned by `hooks/useSeenPapers.js`. Earliest-date-wins (first-seen) merge, pruned to a 90-day rolling window on every write via `safeSetItem`. Keys starting with `_` are reserved metadata and skipped by both prune and dedupe lookups.
-- **Cold seed (v3, briefing-anchored, auth-aware):** migration scans `reports/briefings/*.json` via the existing `/api/briefings` endpoints (concurrency cap 4 in `migrateFromBriefings`). Each briefing's paper-id union is extracted via `lib/seenPapers/papersFromBriefing.js` — briefed papers plus `pipelineArchive.filterResults.{yes,maybe,no}` so cost-anchoring is preserved without leaking on aborted runs. The effect depends on `[password]` and uses a `migrationSuccessRef` guard so failed attempts (401, fetch threw, signal aborted) leave sentinels unset and let the next password change retry — v2's "fire-once-on-mount with empty password" pattern marked migrations complete with empty indexes when the store hadn't hydrated yet, permanently stuck. Existing v1/v2 indexes trigger a one-time rebuild: `isVersionUpgrade` resets in-memory state to `{}` and clears localStorage inside the migration effect so the pipeline can't dedupe against poisoned data during the rebuild window. Bump `CURRENT_DEDUPE_VERSION` when migration semantics change again. Phase 2's filesystem-first migration will pick this index up automatically.
-- **Pipeline placement:** single synchronous `applyDedupe` pass in the `fetchPapers` stage (`lib/analyzer/stages/fetchPapers.js`), AFTER `harvest()` returns (after any fill-up steps inside it) and BEFORE the LLM filter. Reads the index from `store().reactContext.seenPapersIndex`; reads `seenPapersReady` to distinguish "empty index" from "migration in flight". See `lib/analyzer/applyDedupe.js` for the pure-helper contract.
-- **Setting:** `config.removeDuplicates` (Settings panel label: "Remove duplicate papers"; default `true`, seeded by the v6→v7 config migration in `useAnalyzerPersistence.js`). When `true`, matched papers are dropped before any LLM call. When `false`, they're kept with `paper.isDuplicate = true` and `paper.firstSeenDate = "YYYY-MM-DD"` decorations.
-- **Decoration carry-through:** `paper.isDuplicate` rides along through Stage 2 filter, Stage 3 scoring, Stage 3.5 post-processing, and Stage 4 PDF analysis because each of these stages spreads `...batch[paperIdx]` (or passes the same paper refs) when building their outputs. No additional plumbing required for the analyzer-side card UIs.
-- **Briefing-side caveat:** briefing PaperCards do NOT get the decoration that way — briefing papers come from LLM synthesis output, not from the original paper objects. `components/briefing/PaperCard.jsx` reads `seenPapersIndex` from the store at render time and derives the flag from `arxivId` presence. Keep this in mind if you ever add another UI surface downstream of synthesis.
-- **UI:** `<DuplicateBadge>` (in `components/ui/`) renders next to the paper title on three sites — filter (`FilterResultsList.FilterResultRow`), scoring/top-30 (`components/results/RankedPaperCard.jsx`), briefing (`components/briefing/PaperCard.jsx`). Muted styling: `var(--aparture-mute)` text on a hairline border, with the Lucide `History` icon. This is informational, NOT a status indicator — the semantic colors (`#22c55e/#f59e0b/#ef4444/#f97316/#3b82f6`) are reserved for verdicts and feedback events.
-- **Status line:** the existing run-summary line in `fetchPapers` is extended with `removed N duplicates` (Remove mode) or `flagged N duplicates` (Flag mode). When `seenPapersReady === false` AND `matched === 0`, the line appends `seen-papers index still loading` so the absence of dedupes is explained on the first run after the feature ships.
-- **Known limitations (v1):** (1) Profile drift + Remove mode means a paper filtered NO under an old profile won't re-surface within the 90-day window; the rolloff is the escape hatch. (2) Fill-up requests are not dedupe-aware: if a subcategory hits `minPapersPerSubcategory` organically with mostly-duplicate papers, no extra fill-up fires. Making fill-up dedupe-aware requires restructuring `lib/arxiv/ingest.js` and is out of scope.
-- **Extending the index data:** the body of the index is intentionally minimal (just dates). If you want to surface prior-verdict click-through or any other per-paper history in the badge, add a separate cold-tier read path against the sessions on disk — do NOT bloat the hot index, which is sized to stay under ~1.25 MB at steady state (50k entries × 25 bytes).
-
-### LLM rate-limit handling
-
-All LLM-backed routes propagate HTTP status + `Retry-After` end-to-end. `callModel.js` throws a typed `ProviderError` on non-2xx; `lib/llm/retryAfter.js` parses headers (Anthropic, OpenAI) and Google body-form `RetryInfo.retryDelay`. Routes forward via `sendProviderErrorResponse(res, err)`; `parseRouteError` (`lib/analyzer/RateLimitError.js`, called by the stage modules) translates 429/503 into `RateLimitError` so `makeRobustAPICall` honors `Retry-After` (cap 60 s) instead of the default exponential ladder (cap 30 s). The per-provider `LLMRateLimitBarrier` in `lib/analyzer/rateLimit.js` (`getLLMBarrier(provider)`) is wired into `AnalysisWorkerPool` via `barrierFor`: when any worker hits 429, every concurrent worker for that provider pauses on `barrier.acquire()` before its next call. Default `config.maxRetries: 4` (5 attempts). Pre-flight warning fires when free-tier Gemini Flash-Lite × concurrency × est. RPM > 60.
-
-### Safety-classifier refusals
-
-Providers can decline on content grounds with a **successful HTTP response**: Anthropic `stop_reason: 'refusal'` (+ `stop_details.category`), OpenAI `finish_reason: 'content_filter'` or a non-null `message.refusal` (Responses API: a `refusal` content block / `incomplete_details.reason`), Google `promptFeedback.blockReason` or a safety `finishReason`. Untyped, all three land downstream as an opaque "Unexpected end of JSON input".
-
-Detection lives in the three `parse*` adapters and throws `RefusalError` (`lib/llm/RefusalError.js`), which also owns `REFUSAL_CATEGORIES` + `normalizeRefusalCategory` (provider vocabulary → canonical category; unmapped degrades to `'unknown'` rather than throwing, with the original kept in `raw`). Flow mirrors `ProviderError` → `RateLimitError`:
-
-`adapter parse*` throws `RefusalError` → route `sendRefusalErrorResponse` (HTTP **422 + `code: 'CONTENT_REFUSAL'`**) → client `parseRouteError` throws `ContentRefusalError` (`lib/analyzer/ContentRefusalError.js`) → `makeRobustAPICall` short-circuits → stage applies `config.refusalPolicy`.
-
-**Invariants when touching this:**
-
-1. **Refusals must never enter the retry ladder.** They're deterministic; each wasted attempt still bills input tokens. `makeRobustAPICall` short-circuits via `isContentRefusal`, exactly like the `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA` sentinel.
-2. **422 is shared** with `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA` — the `code` field is the discriminator, not the status. `analyze-pdf.js` is the one route emitting both, and `analyzePDFs.js` dispatches on the body inline (it can only be read once, so it can't delegate to `parseRouteError`).
-3. **Google's `MAX_TOKENS` is NOT a refusal.** It's truncation — retryable with a bigger budget. Only `GOOGLE_REFUSAL_FINISH_REASONS` (SAFETY / PROHIBITED_CONTENT / BLOCKLIST / SPII / IMAGE_SAFETY / RECITATION) count. Misclassifying it would skip a retry that would have worked.
-4. **Google detection sits outside the `expectStructured` branch** — a safety block is a refusal whether or not JSON was requested.
-
-**Policy** (`config.refusalPolicy`, default `'skip'`; `config.refusalFallbackModel`, default `''`): `'skip'` records + drops the paper/batch and continues, `'fallback'` re-issues once against `refusalFallbackModel` (may be a different provider — the route resolves provider + key from the model id), `'fail'` halts. `makeRobustAPICall` owns the fallback leg and sets `error.refusalFatal` for the skip-vs-fail decision; stage catches (which otherwise swallow failures to keep the run alive) check that flag to know when to re-throw.
-
-The fallback leg passes a third `modelOverride` argument to each stage's `makeAPICall(correctionPrompt, isCorrection, modelOverride)` closure; every stage resolves `const effectiveModel = modelOverride ?? config.<slot>Model` and uses it for both the request body **and** `recordUsage`, so cost tracking bills the model that actually ran. A new LLM-calling stage should follow that shape.
-
-**Cross-provider fallback: two coordination points, both provider-correct.** `makeRobustAPICall` acquires the fallback provider's `LLMBarrier` before re-issuing when the fallback crosses providers (the 429 _signal_ path was always correct — it reads `apiError.provider`), and it runs the fallback call through a `CacheWarmupGate` (`lib/analyzer/rateLimit.js`) so N concurrent fallbacks to Anthropic don't each pay a cache-create.
-
-The gate is **additive to**, not a replacement for, `AnalysisWorkerPool`'s `cacheWarmup`. The two cover different call shapes and neither subsumes the other:
-
-|               | Pool `cacheWarmup`                                                          | `CacheWarmupGate`                                                         |
-| ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Gates         | worker _start_ (workers 1..N-1 block until worker 0's first task completes) | a single _call_                                                           |
-| Provider from | the stage's slot model, fixed at pool construction                          | the model actually being dispatched                                       |
-| Covers        | every task's first call — the hot path                                      | the refusal-fallback leg, which fires mid-task after workers are released |
-
-Pushing warmup selection into the pool per-_attempt_ is the wrong layer: the pool acquires once and then hands control to `workerFn`, so retry and fallback attempts are invisible to it by design. Attempt-level concerns belong in `makeRobustAPICall`. The gate is per-pipeline and reset at run start via `resetWarmupGate()` (the primed ephemeral entry has a ~5 min TTL, so a later run must warm again).
-
-Aggregation is the `refusals` store slice (`addRefusal`/`clearRefusals`, cleared at run start alongside `skippedDueToRecaptcha`), surfaced by `components/run/RefusalSummaryCard.jsx`. Under the default `'skip'` policy the card is the only signal that anything was dropped — a refusal otherwise produces a silently shorter briefing. The briefing stage can't skip (synthesis is one call for the whole briefing), so it records via the `onRefusal` callback and fails with an explicit message.
-
-### ArXiv PDF Download Handling
-
-`pages/api/analyze-pdf.js` tries direct fetch first; if the response lacks `%PDF-` magic bytes, it falls back to Playwright with a persistent profile at `temp/playwright-profile/` that caches arXiv cookies + reCAPTCHA bypass state. Fallback adds ~5–10s/paper.
-
-Concurrency in `lib/analyzer/rateLimit.js`:
-
-- **`ArxivDownloadThrottle`** — module-level singleton in the API route; serializes arXiv fetches to ~5s spacing across concurrent POSTs, honors `Retry-After` on 429/503 (cap 60s). Only the download step is throttled; the LLM call runs in parallel.
-- **`AnalysisWorkerPool`** — client-side N-wide queue. Optional `cacheWarmup` barrier runs worker 0's first task alone so Anthropic's ephemeral cache is primed before siblings start. Google/OpenAI skip warmup (OpenAI auto-caches; Google has no caching).
-
-If Playwright is unavailable (e.g. Vercel), route returns HTTP 422 `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA` and the pipeline aggregates skips into `skippedDueToRecaptcha` without halting.
-
-### Refactor Context
-
-Specs + plans for recent refactors live in `docs/superpowers/specs/` and `docs/superpowers/plans/` (gitignored, local-only — they do NOT exist in fresh clones; never treat them as required reading). Anything load-bearing from a spec must be inlined here or in `docs/` — the dedupe and feedback-mechanisms sections above already carry their own decisions.
-
-**Phase 2 (committed definition).** Phase 2 is the planned desktop packaging: an Electron app with filesystem-first state (`~/aparture/{reports,cache}/` replacing repo-local dirs), API keys in the OS keychain (using the existing `apiKey` auth path instead of `ACCESS_PASSWORD`), a first-run wizard, a daily scheduler, full NotebookLM ZIP export, HTML export, and installers. `cli/` is deleted once its dry-run/minimal-test entry points move into the app. Until then the code keeps explicit seams for it: the `BRIEFINGS_DIR`/`SESSIONS_DIR` indirection, the dual `apiKey`/`password` route auth, and the frozen `arxivAnalyzerState` localStorage key.
-
-## Model Information
-
-**Source of truth:** `utils/models.js` (`MODEL_REGISTRY` + `AVAILABLE_MODELS`). Don't duplicate IDs/pricing here — they rot fast.
-
-**Anthropic adaptive thinking + strict tool use (non-obvious).** Tool definitions are emitted with `strict: true` for grammar-constrained sampling. Adaptive thinking (`thinking: {type: "adaptive"}`) is registry-driven: every Anthropic `MODEL_REGISTRY` entry carries a `supportsAdaptiveThinking` flag (true for Opus/Sonnet 4.6+ including the 5.x line, and for Fable 5; false for Haiku, which 400s on adaptive), consulted by the adapter via `supportsAdaptiveThinkingByApiId(apiId)`. A family+version regex fallback applies only to apiIds absent from the registry (smoke-script overrides, unregistered IDs); pre-4.6 Opus/Sonnet IDs fall through to off there (they require the older `{type: "enabled", budget_tokens}` shape).
-
-**Registering a non-Opus/Sonnet Anthropic model is load-bearing.** The regex fallback only matches `claude-opus-*` / `claude-sonnet-*`, so any other Anthropic ID that reaches the adapter unregistered is treated as non-thinking — and the adapter then forces `tool_choice: {type: "tool"}`. `claude-fable-5` rejects that outright: its thinking is always on (an explicit `{type: "disabled"}` 400s at any effort), and forced tool_choice is invalid whenever thinking is enabled. Fable 5 also requires the org's data retention to be 30 days; under ZDR every request 400s regardless of payload. When thinking is on, `tool_choice` must be `{type: "auto"}` (forced `tool`/`any` are rejected); when off, the adapter forces the tool call via `{type: "tool", name: <schema.name>}`. `parseAnthropicResponse` skips `thinking` content blocks. Default `maxTokens` is raised to 16000 to accommodate thinking overhead.
-
-**Not in the registry:** OpenAI o-series (`o3`, `o4-mini`) and xAI Grok. Adding Grok would need a new `lib/llm/structured/xai.js` adapter — xAI's OpenAI-compatible endpoint may not honor `response_format: json_schema` strict mode the same way.
-
-Provider docs: [Anthropic](https://platform.claude.com/docs/en/docs/about-claude/models) · [OpenAI](https://developers.openai.com/api/docs/models) · [Google](https://ai.google.dev/gemini-api/docs/models)
-
-## Documentation maintenance
-
-Two user-facing doc surfaces: README + VitePress docs at `docs/`.
-
-**Split rule.** README is thin (one-paragraph pitch, screenshot, 5-line Quickstart, links into `docs/`). `docs/` is source of truth for everything else. Change one → check the other.
-
-**Trigger → impacted docs:**
-
-| Code area                                                                                                     | Impacted docs                                                                                                                                     |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `utils/models.js`                                                                                             | `concepts/model-selection.md`, `getting-started/api-keys.md`                                                                                      |
-| `lib/analyzer/pipeline.js`, `lib/analyzer/stages/*`                                                           | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`                                                                   |
-| `lib/arxiv/*`                                                                                                 | `concepts/pipeline.md`, `concepts/arxiv-ingestion.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md`, `reference/environment.md` |
-| `hooks/useSeenPapers.js`, `lib/analyzer/applyDedupe.js`, `lib/analyzer/stages/fetchPapers.js` dedupe block    | `using/tuning-the-pipeline.md`, `concepts/pipeline.md`                                                                                            |
-| `prompts/synthesis.md`                                                                                        | `concepts/briefing-anatomy.md`, `reference/prompts.md`                                                                                            |
-| Any `prompts/*.md`                                                                                            | `reference/prompts.md`                                                                                                                            |
-| `lib/synthesis/validator.js`                                                                                  | `concepts/briefing-anatomy.md`                                                                                                                    |
-| `pages/api/*` env usage, any new `process.env.*`                                                              | `reference/environment.md`                                                                                                                        |
-| `components/briefing/*`                                                                                       | `using/reading-a-briefing.md`                                                                                                                     |
-| `components/feedback/*`                                                                                       | `using/giving-feedback.md`                                                                                                                        |
-| `components/profile/*`, `DiffPreview.jsx`, `/api/suggest-profile`                                             | `using/writing-a-profile.md`, `using/refining-over-time.md`                                                                                       |
-| `components/run/*` + review-gate UIs, `components/score-review/*`                                             | `using/review-gates.md`                                                                                                                           |
-| Settings panel                                                                                                | `using/tuning-the-pipeline.md`                                                                                                                    |
-| `lib/notebooklm/*`                                                                                            | `add-ons/podcast.md`                                                                                                                              |
-| `pages/api/analyze-pdf.js` Playwright changes                                                                 | `getting-started/install.md`, `reference/troubleshooting.md`                                                                                      |
-| `pages/api/fetch-arxiv.js` query-shape or retry changes                                                       | `getting-started/install.md` (§4 contact email), `reference/troubleshooting.md` (arXiv rate limits)                                               |
-| `hooks/useBriefing.js`, `pages/api/briefings/*`                                                               | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (briefing disk-write failures)                                |
-| `hooks/useAnalyzerPersistence.js`, `pages/api/sessions/*`                                                     | `reference/environment.md` (`APARTURE_REPORTS_DIR`), `reference/troubleshooting.md` (session disk-write failures, browser localStorage quota)     |
-| `lib/llm/callModel.js`, `lib/llm/ProviderError.js`, `lib/llm/retryAfter.js`, `lib/analyzer/RateLimitError.js` | `reference/troubleshooting.md` (provider rate limits), `using/tuning-the-pipeline.md` (`maxRetries`, rate-limit barrier)                          |
-| `lib/llm/RefusalError.js`, `lib/analyzer/ContentRefusalError.js`, adapter `parse*` refusal branches           | `using/tuning-the-pipeline.md` (refusal policy), `reference/troubleshooting.md`                                                                   |
-
-**Skip docs for:** internal refactors, bug fixes for hidden behavior, test additions, `docs/superpowers/**` changes (gitignored).
-
-**Screenshots:** user-doc screenshots live in `docs/public/screenshots/` (embedded as `/screenshots/<name>.png`), captured at 1440×900 in light theme; retake when the UI changes materially.
+1. **Label the profile "Research profile:"** in every rubric (and in `editor-questions.md`) and call it the research profile: the user's voice, not a constraint document.
+2. **Quality strictness is profile-aware.** `rubric-scoring.md`, `rubric-pdf.md`, and `rubric-rescoring.md` each have a "Calibrate Quality strictness to the profile" paragraph. Keep its breadth-versus-selectivity escape hatch, or breadth profiles get downgraded silently.
+3. **One claims standard for writer and auditor.** A factual claim about a paper (a number, a named method or dataset, a comparative result, an attribution) needs support in that paper's abstract or full report; cross-paper synthesis in `executiveSummary` and `themes[].argument` is legitimate unless it contradicts a source. `synthesis.md` ("Sourcing discipline") and `check-briefing.md` ("What counts as a hallucination") state it identically; change them together.
+4. **The filter is permissive.** A paper that survived as MAYBE should score 3–5 on Alignment, not 6–7 (`rubric-scoring.md`).
+5. **Demonstrate, don't promote.** "novel", "breakthrough", and "paradigm-shift" are the named banned words in `synthesis.md`, `analyze-pdf-quick.md`, `rubric-pdf.md`, and `notebooklm-discussion-guide.md`; change all four or none.
+6. **The podcast follows the briefing.** `notebooklm-discussion-guide.md` keeps the paper the briefing puts first in a theme even below the score cutoff.
+7. **Caveats are content.** Report a paper's stated limitations as facts; ban only hedging about the model's own certainty.
+8. **Describe meaning, not shape:** no example JSON, no "respond only with" lines.
+9. **No shouting.** Current models over-apply emphasized rules. State each constraint once, with its reason.
+10. **Don't ask the model for what code holds.** Cards still carry `title` and `score`, which the validator overwrites; new fields should take an `arxivId` and let code fill the rest.
+11. **Don't present unaudited text as checked.** Quick summaries and full reports are model-written and unaudited.
+12. **Suggest rationales are parsed.** `suggest-profile.md` must keep asking each rationale to name papers by arXiv ID and quote the comments it used; incorporation tracking reads them.
+
+The agent skill reads prompts by heading: "Style and voice" and "Sourcing discipline" in `synthesis.md`; "What counts as a hallucination" and "Output schema" in `check-briefing.md`; the verdict rules in `rubric-filter.md`; the score formula and calibration paragraph in `rubric-scoring.md` and `rubric-pdf.md`. Renaming them breaks the skill.
+
+## UI conventions
+
+- Styling layers: tokens in `styles/tokens.css`, consumed as `var(--aparture-*)`; structural classes and the mobile rules in `styles/shell.css`; reading-surface rules scoped to `.briefing-prose` in `styles/briefing.css`; everything else inline in the component.
+- Never hardcode the palette. Use `className` for shell layout, briefing-prose BEM, and Lucide sizing (`w-*`, `h-*`, `animate-spin`); inline `style={{...}}` for the rest. Don't add Tailwind classes.
+- Render model-written text as React elements, never through `dangerouslySetInnerHTML`; `components/briefing/MarkdownLite.jsx` handles the Markdown in reports.
+- Mobile rules live only inside the under-768px media query in `shell.css`: the off-canvas drawer (`.shell-topbar`, `.shell-scrim`, `.shell-sidebar--open`), `.touch-target` (40px minimum), `.settings-field-row`.
+- `components/shell/MainArea.jsx`: the pipeline view stacks results, Download Report, the reCAPTCHA and refusal cards, and the briefing card; the briefing view stacks `BriefingView`, `GenerationDetails`, `FeedbackPanel`, and `NotebookLMCard`. Put a new card in the view it belongs to.
+
+**Semantic status colors** are hardcoded by design for fills, borders, tints, and dots: they mark status and aren't palette. Add new ones here, not as tokens. As text or icons the raw hues fall under 4.5:1 on the light surfaces, so status-coloured text uses the theme-aware `--aparture-{success,warning,danger,override,comment}-text` tokens (`--aparture-info-text` for blue), and text on a filled hue uses `--aparture-on-status`. Keep UI text at 12px or larger, and dim with colour rather than opacity below 0.7. Informational markers such as `DuplicateBadge` use muted tokens.
+
+<!-- prettier-ignore -->
+| Value | Meaning |
+| --- | --- |
+| `#22c55e` | done, success, added, YES; positive score adjustment |
+| `#f59e0b` | running, MAYBE, warning, test mode; star events |
+| `#ef4444` | error, stop, NO, removed |
+| `#f97316` | filter-override events; negative score adjustment |
+| `#6366f1` | scoped-feedback events |
+| `#a855f7` | paper-comment events; score badge accent |
+| `#3b82f6` | informational, suggested source; general-comment and answer events |
+| `#64748b` | dismissed, muted negative |
+| `rgba(0,0,0,0.5)` | modal overlay scrim |
+
+## Recipes
+
+- **New feedback type.** Extend the union in `hooks/useFeedback.js`; add a variant in `components/feedback/FeedbackItem.jsx` and a color in `eventMeta.js`; add it to `applyCap` in `lib/profile/feedbackCap.js` (unknown types are silently dropped there) and a section in `renderFeedbackSection` (`lib/profile/suggestPrompt.js`); decide whether `isEditableFeedback` allows edits and how `resolveSuggestionOutcome` attributes it.
+- **New LLM provider.** Add it to `lib/llm/providers.js`; write `lib/llm/structured/<provider>.js` like the others (`pdfBase64`, refusal detection in `parse*`, token counts); add a branch in `callModel.js`, a probe in `validateSetup.js`, a key shape in `apiKeyShape.js`, and tests in `tests/unit/llm/structured/`.
+- **New config key.** Add it to `DEFAULT_CONFIG`, bump `version`, and seed existing configs in `migrateLegacyConfig` (with `??`, so explicit values survive). Integer keys go in `INTEGER_CONFIG_KEYS`. Add the Settings control and grep `docs/`.
+- **Registry refresh.** Edit both registry tables; move removed IDs into `RETIRED_MODEL_REMAP` with a version bump; check `DEFAULT_CONFIG` and `DEFAULT_MODEL_ID`; grep `docs/`, where model IDs appear on many pages.
+- **New mutable briefing field.** Whitelist it in `MUTABLE_FIELDS`; add it to `HEAVY_FIELDS` if quota pressure may strip it, and to `buildIndexEntry` if search needs it.
+- **New LLM-backed test.** Use fixtures: `lib/llm/hash.js` hashes the input, responses live at `tests/fixtures/llm/<hash>.json`, and `tests/fixtures/synthesis/generate-sample.mjs` or the `beforeAll` pattern in existing integration tests creates them. Vitest worker timeouts under WSL are infrastructure flakes; trust the final count.
+
+## Writing conventions
+
+- User-facing prose (docs, UI strings, prompts) follows `POSITIONING.md` §9.
+- Comments explain why. No plan labels ("Phase B", "Task 4b"), dates, provenance ("introduced", "verified live"), or pointers to gitignored specs.
+- "Phase 2" means only the desktop packaging below. (`resolveRouteAuth.js` calls its two steps "Phase 1" and "Phase 2"; don't extend that.)
+- Docs headings avoid em-dashes: VitePress keeps them in slugs, which breaks links to the heading.
+- CLAUDE.md is curated by hand. `next.config.mjs` sets `agentRules: false` so `next dev` doesn't append its own agent-rules block here; keep it.
+- `docs/superpowers/` is gitignored and local-only. Never treat it as required reading; anything load-bearing goes here or in `docs/`.
+
+## Docs upkeep
+
+The README is thin; `docs/` is the source of truth. After changing a default, Settings label, model ID, config key, or user-visible error or log string, grep `docs/` and `README.md` for the old value and fix every hit. Skip docs for internal refactors, hidden-behavior fixes, and tests. The doc-trigger table lists the mappings a grep won't find:
+
+<!-- prettier-ignore -->
+| Code | Pages to check (under `docs/`) |
+| --- | --- |
+| `utils/models.js`, model defaults | `concepts/model-selection.md`, `getting-started/api-keys*.md`, `using/tuning-the-pipeline.md` |
+| `lib/analyzer/stages/*`, retry and rate-limit code | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md` |
+| `lib/arxiv/*`, the arXiv proxies | `concepts/arxiv-ingestion.md`, `concepts/pipeline.md`, `reference/troubleshooting.md`, `reference/environment.md`, `getting-started/install.md` |
+| any `prompts/*.md` | `reference/prompts.md`; `synthesis.md` and `check-briefing.md` also `concepts/briefing-anatomy.md` |
+| `lib/synthesis/*`, `briefingClient.js`, `components/briefing/*` | `concepts/briefing-anatomy.md`, `concepts/pipeline.md`, `using/reading-a-briefing.md` |
+| `useFeedback.js`, `components/feedback/*` | `using/giving-feedback.md`, `using/feedback-in-practice.md` |
+| `useProfile.js`, `components/profile/*`, `lib/profile/*` | `using/writing-a-profile.md`, `using/refining-over-time.md` |
+| gate UIs, `components/run/*`, `components/score-review/*` | `using/review-gates.md` |
+| Settings panel, dedupe | `using/tuning-the-pipeline.md` |
+| `lib/notebooklm/*` | `add-ons/podcast.md` |
+| persistence hooks and routes, auth, `process.env.*`, `package.json` scripts | `reference/environment.md`, `reference/troubleshooting.md`, `getting-started/install.md` |
+
+Screenshots live in `docs/public/screenshots/`, captured at 1440×900 in the light theme; retake them when the UI changes materially.
+
+## Phase 2
+
+Phase 2 is the planned desktop packaging: an Electron app with state under `~/aparture/` (`reports/` through `APARTURE_REPORTS_DIR`, and `cache/` for the Playwright profile now in `temp/`), API keys in the OS keychain sent through the `apiKey` route path, a first-run wizard, a daily scheduler, NotebookLM ZIP and HTML export, and installers. Until then the code keeps three seams: `APARTURE_REPORTS_DIR`, dual `apiKey`/`password` auth, and the frozen `arxivAnalyzerState` key.

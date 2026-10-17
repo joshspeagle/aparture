@@ -21,7 +21,7 @@ The **Check API Setup** button probes each provider you've configured, without s
 
 ### What it validates
 
-- **Anthropic.** The probe sends a complete Messages request — built by the same adapter the pipeline uses, including strict tool schemas and thinking configuration — to the `count_tokens` endpoint. That endpoint returns the same 400/401/404 errors a real call would, so the key, the model ID, and the exact request syntax all get checked. Nothing is billed.
+- **Anthropic.** The probe sends a complete Messages request, built by the same adapter the pipeline uses (structured-output schema and thinking setting included), to the `count_tokens` endpoint. That endpoint returns the same 400/401/404 errors a real call would, so the key, the model ID, and the exact request syntax all get checked. Nothing is billed.
 - **Google.** The probe sends the adapter's message contents to the `countTokens` endpoint, which validates the key, the model ID, and the message syntax for free.
 - **OpenAI.** OpenAI has no count-tokens endpoint. The probe fetches the model's metadata, which verifies the key and the model ID; request shape is only exercised by the Minimal API Test below.
 
@@ -95,7 +95,7 @@ The Minimal Test button unlocks only after a successful Dry Run — the enforcem
 
 ### What it validates
 
-- **API key authentication.** A bad key surfaces as `401 - Unauthorized` (or `UNAUTHENTICATED` on Google) immediately.
+- **API key authentication.** A missing key surfaces as `no API key for <provider>`, which names the variable to set; a bad one as the provider's own authentication error.
 - **Billing and quota.** Insufficient credits or hit quotas return `402` or provider-specific errors.
 - **Provider latency, rate limits, and the retry path.** Real round-trip times; the pipeline's backoff behaviour if you're throttled.
 - **Real LLM response parsing.** The provider's output actually parses against Aparture's schemas, including structured-output (tool_use / responseSchema / response_format).
@@ -113,14 +113,16 @@ Cost: ~$0.20–$1 on paid tiers depending on your model choices, since the PDF a
 You'll see:
 
 - Status messages: `"Starting minimal test with real API calls"`, `"Filter batch 1/1"`, `"initial-scoring"`, `"pdf-analysis"`, `"synthesizing"`, and finally `"Minimal test completed successfully"`.
-- No TEST MODE badges — the run uses real data and produces a real briefing.
+- No TEST MODE badges — the run makes real API calls on a fixed set of five papers. Aparture still files the briefing as a test run, and any feedback you give during it is tagged as test feedback, so it never reaches your profile suggestions.
 - A timestamp on the test card showing when it last completed.
 
 Open the terminal where `npm run dev` is running to watch the real-time log:
 
 ```
-Sending request to Google: { model: 'gemini-3-flash', promptLength: 4821, structured: true, cacheable: false, hasPdf: false }
+Sending request to Google: { model: 'gemini-3.5-flash-lite', promptLength: 4821, structured: true }
 ```
+
+The line names the provider's model ID and adds `cacheable: true` or `hasPdf: true` only when they apply.
 
 Cache-hit metrics on Anthropic and OpenAI show as `[anthropic cache] read=N create=N` lines. A `read` value greater than 0 on call 2+ means caching is working.
 
@@ -131,7 +133,7 @@ The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the orig
 When the pipeline pauses at the filter-review gate:
 
 1. Look at the three buckets. If <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span> together are empty or sparse, you'll need to intervene.
-2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event — the same signal the pipeline uses during daily runs to learn what your profile got wrong.
+2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event. During a test run the event is tagged as test feedback and kept out of profile suggestions; in daily runs the same event tells the refinement flow what your profile got wrong.
 3. Aim for **at least 2–3 papers in <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so the rest of the pipeline has something to chew on.
 4. Click **Continue to scoring →** once you're happy with the buckets.
 
@@ -141,17 +143,17 @@ This is also your first encounter with the filter-override mechanic, which becom
 
 The error surface here is real — most failures indicate a real issue with keys or billing.
 
-| Symptom                                                                 | Likely cause                                    | Fix                                                                                                                                                    |
-| ----------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Filter API error: 401 - Invalid password`                              | Password mismatch in `.env.local`               | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
-| `Filter API error: 401 - Unauthorized` (or `UNAUTHENTICATED` on Google) | Bad or missing API key                          | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
-| `429 insufficient_quota` (OpenAI)                                       | No credit balance                               | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
-| `429 rate_limit_exceeded`                                               | Provider throttled your request                 | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
-| `402` / `billing_error` (Anthropic)                                     | Billing issue or unpaid invoice                 | Log into console, fix billing                                                                                                                          |
-| `PERMISSION_DENIED` (Google)                                            | Model gated (e.g., Gemini 3.1 Pro on free tier) | Either enable billing or switch the affected slots to a Flash model in Settings                                                                        |
-| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`               | arXiv blocked a PDF download                    | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
-| `Initial parse failed: JSON.parse error`                                | Provider returned malformed JSON                | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
-| Hangs on "Filter batch 1/1" with no terminal output                     | Route stuck; network blocked; firewall          | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
+| Symptom                                                               | Likely cause                                                                                                 | Fix                                                                                                                                                    |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Filter batch 1 failed: … Invalid password`                           | Password mismatch in `.env.local`                                                                            | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
+| `… no API key for <provider>`, or the provider's authentication error | Missing or bad API key                                                                                       | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
+| `429 insufficient_quota` (OpenAI)                                     | No credit balance                                                                                            | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
+| `429 rate_limit_exceeded`                                             | Provider throttled your request                                                                              | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
+| `402` / `billing_error` (Anthropic)                                   | Billing issue or unpaid invoice                                                                              | Log into console, fix billing                                                                                                                          |
+| Google refuses one model while the others work                        | A model the project can't use: Gemini 4 Argon without billing, or a legacy Gemini 2.5 model on a new project | Set up billing for Argon, or switch the affected slots to a current Flash model in Settings                                                            |
+| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`             | arXiv blocked a PDF download                                                                                 | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
+| `Initial parse failed: JSON.parse error`                              | Provider returned malformed JSON                                                                             | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
+| Hangs on "Filter batch 1/1" with no terminal output                   | Route stuck; network blocked; firewall                                                                       | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
 
 Deep dives for each of these live on the [troubleshooting page](/reference/troubleshooting).
 

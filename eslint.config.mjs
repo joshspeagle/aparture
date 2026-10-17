@@ -22,6 +22,8 @@ export default [
       'docs/.vitepress/dist/**',
       'docs/.vitepress/.temp/**',
       'docs/node_modules/**',
+      // Claude Code agent worktrees (each a full checkout of the repo)
+      '.claude/worktrees/**',
     ],
   },
 
@@ -90,18 +92,6 @@ export default [
     },
   },
 
-  // Overrides for CLI scripts (non-React files)
-  {
-    files: ['cli/**/*.js', 'cli/tests/**/*.js'],
-    rules: {
-      'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
-      'react-hooks/rules-of-hooks': 'off',
-      'react/display-name': 'off',
-      'no-unused-vars': 'warn',
-    },
-  },
-
   // Overrides for config files
   {
     files: ['*.config.js', '*.config.mjs'],
@@ -123,6 +113,12 @@ export default [
       globals: {
         console: 'readonly',
         process: 'readonly',
+        // Node 20+ runtime globals used by the headless runner (bin/).
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
       },
     },
   },

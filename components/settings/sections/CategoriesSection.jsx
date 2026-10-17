@@ -47,7 +47,7 @@ export default function CategoriesSection({ config, setConfig, processing }) {
 
   return (
     <div>
-      <label
+      <p
         style={{
           display: 'block',
           fontFamily: 'var(--aparture-font-sans)',
@@ -58,7 +58,7 @@ export default function CategoriesSection({ config, setConfig, processing }) {
         }}
       >
         ArXiv Categories
-      </label>
+      </p>
 
       <div
         style={{
@@ -102,6 +102,7 @@ export default function CategoriesSection({ config, setConfig, processing }) {
                   }}
                   disabled={processing.isRunning}
                   title={getCategoryDisplayName(category)}
+                  aria-label={`Remove ${category}`}
                 >
                   ×
                 </button>

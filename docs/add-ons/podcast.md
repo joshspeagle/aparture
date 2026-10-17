@@ -27,14 +27,14 @@ Everything is plain markdown or text, so you can inspect the bundle before uploa
 Inside the NotebookLM card:
 
 1. **Duration.** Drop-down with 5, 10, 15, 20, and 30 minute options. The discussion guide scales to the chosen length — a five-minute episode covers one theme and 2–3 papers at headline depth, a thirty-minute episode covers 3–4 themes with meaningful dives on the top papers. The scaling rules live in `lib/notebooklm/buildFocusPrompt.js` if you want to see the exact budget per tier.
-2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` — pick a capable one, since this is a synthesis task. `claude-sonnet-4.6` or `gemini-3.1-pro` are reasonable defaults.
+2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` and starts on the app's default model. Pick a capable one, since this is a synthesis task; [Model selection](/concepts/model-selection) lists the stronger options.
 3. **Generate.** Click <span class="ui-action">Generate NotebookLM bundle</span>. Takes roughly 30–60 seconds; progress shows inline.
 
 When it's done, a ZIP file downloads with a name like `aparture-notebooklm-2026-04-17.zip`.
 
 ## Uploading to NotebookLM
 
-NotebookLM doesn't offer an API for notebook creation or audio generation, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
+The NotebookLM app at notebooklm.google.com has no public API for creating notebooks or generating audio, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
 
 1. Unzip the bundle locally. NotebookLM doesn't accept ZIPs as sources.
 2. Open [notebooklm.google.com](https://notebooklm.google.com) and sign in with a Google account if needed.
@@ -76,13 +76,13 @@ The focus prompt is generated when you build the bundle, so it already reflects 
 
 Two places shape the output, and they behave differently.
 
-### `prompts/notebooklm-discussion-guide.md` — the outline template
+### `prompts/notebooklm-discussion-guide.md`: the outline template
 
 This is the prompt that produces `discussion-guide.md`. It controls how themes are ordered and weighted in the outline, which papers get deep-dive coverage versus brief mentions, the overall conversation arc (open, themes, transitions, close), and the pruning rules when the outline would overrun the duration budget.
 
 Edit this file and the next bundle you generate will use the new template — the server re-reads it on each call, no rebuild needed. This is usually the right place to experiment with podcast structure.
 
-### `lib/notebooklm/buildFocusPrompt.js` — the focus prompt builder
+### `lib/notebooklm/buildFocusPrompt.js`: the focus prompt builder
 
 This is a JavaScript function (not a markdown template) that produces `focus-prompt.txt`. It controls the duration-scaled depth strategy — how time is allocated across deep-dives versus brief mentions at each duration tier — along with theme-count scaling and the conversation-style directives embedded in the focus prompt.
 
@@ -104,7 +104,7 @@ For the full prompt reference, see [Reference: prompts](/reference/prompts).
 
 **NotebookLM hits a context limit or truncates.** Too many sources can do this. Try uploading only `briefing.md` and `discussion-guide.md`, dropping the per-paper reports. NotebookLM can usually infer enough from the briefing alone.
 
-**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (Gemini 3 Flash, Claude Sonnet 4.6) cuts this noticeably.
+**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (a Gemini Flash or Claude Sonnet model) cuts this noticeably.
 
 ## Next
 

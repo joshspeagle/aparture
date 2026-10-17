@@ -3,6 +3,14 @@ import Card from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import TestModeBadge from '../ui/TestModeBadge.jsx';
 
+// The audit's verdict answers "did it find a hallucination?", so a bare
+// "NO" read as a failure. Say what the verdict means instead.
+const CHECK_LABELS = {
+  NO: 'Claims check: passed',
+  MAYBE: 'Claims check: some claims unclear',
+  YES: 'Claims check: found unsupported claims',
+};
+
 export default function BriefingCard({
   results,
   testState,
@@ -19,16 +27,16 @@ export default function BriefingCard({
     if (verdict === 'NO')
       return {
         background: 'rgba(34,197,94,0.12)',
-        color: '#22c55e',
+        color: 'var(--aparture-success-text)',
       };
     if (verdict === 'MAYBE')
       return {
         background: 'rgba(245,158,11,0.12)',
-        color: '#f59e0b',
+        color: 'var(--aparture-warning-text)',
       };
     return {
       background: 'rgba(239,68,68,0.12)',
-      color: '#ef4444',
+      color: 'var(--aparture-danger-text)',
     };
   };
 
@@ -74,7 +82,8 @@ export default function BriefingCard({
               ...verdictStyle(briefingCheckResult.verdict),
             }}
           >
-            Hallucination check: {briefingCheckResult.verdict}
+            {CHECK_LABELS[briefingCheckResult.verdict] ??
+              `Claims check: ${briefingCheckResult.verdict}`}
             {briefingCheckResult.retried && ' (after retry)'}
           </span>
         )}
@@ -105,7 +114,9 @@ export default function BriefingCard({
               ? 'Auditing briefing\u2026'
               : briefingStage === 'retrying'
                 ? 'Retrying\u2026'
-                : 'Generating\u2026'}
+                : briefingStage === 'asking'
+                  ? 'Preparing questions\u2026'
+                  : 'Generating\u2026'}
           </>
         ) : (
           <>
@@ -136,7 +147,7 @@ export default function BriefingCard({
               marginTop: 'var(--aparture-space-3)',
               fontFamily: 'var(--aparture-font-sans)',
               fontSize: 'var(--aparture-text-xs)',
-              color: '#f59e0b',
+              color: 'var(--aparture-warning-text)',
             }}
           >
             <summary style={{ cursor: 'pointer' }}>

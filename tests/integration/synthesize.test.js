@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import handler from '../../pages/api/synthesize.js';
 import { renderSynthesisPrompt } from '../../lib/synthesis/renderPrompt.js';
+import { renderReaderNotesSection } from '../../lib/synthesis/readerNotes.js';
 import { toJsonSchema } from '../../lib/synthesis/schema.js';
 import { hashInput } from '../../lib/llm/hash.js';
 
@@ -149,6 +150,210 @@ describe('synthesize API route — $-pattern profile does not corrupt the prompt
     expect(jsonBody?.error).toBeUndefined();
     expect(statusCode).toBe(200);
     expect(jsonBody.briefing.papers).toHaveLength(2);
+  });
+});
+
+describe('synthesize API route — deterministic trust checks (P1-4)', () => {
+  // Fixture-mode responses seeded per test under the hash of the overridden
+  // prompt. Only the first synthesis call has a fixture: any LLM repair the
+  // route attempts misses ("no fixture found"), which is exactly the
+  // repair-failed path the salvage step exists for.
+  const PROMPT = 'SYNTHESIS_TRUST_CHECK_FIXTURE';
+  const papers = [
+    {
+      arxivId: '2504.01234',
+      title: 'Circuit-level analysis of reasoning',
+      abstract: 'a',
+      score: 9.2,
+    },
+    {
+      arxivId: '2504.02345',
+      title: 'Head pruning ablations',
+      abstract: 'b',
+      score: 8.5,
+      engagement: { starred: true, dismissed: false },
+    },
+  ];
+  let tmpDir;
+
+  const seed = async (structured) => {
+    const hash = hashInput({
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      prompt: PROMPT,
+      apiKey: 'test-key',
+      structuredOutput: {
+        name: 'briefing',
+        description: 'Aparture daily research briefing',
+        schema: toJsonSchema(),
+      },
+    });
+    await fs.writeFile(
+      path.join(tmpDir, `${hash}.json`),
+      JSON.stringify({ response: { text: '', structured, tokensIn: 100, tokensOut: 200 } }),
+      'utf8'
+    );
+  };
+
+  const run = async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      profile: 'I study interpretability.',
+      papers,
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      apiKey: 'test-key',
+      callModelMode: { mode: 'fixture', fixturesDir: tmpDir },
+    });
+    process.env.APARTURE_TEST_PROMPT_OVERRIDE = PROMPT;
+    try {
+      await handler(req, res);
+    } finally {
+      delete process.env.APARTURE_TEST_PROMPT_OVERRIDE;
+    }
+    return getResponse();
+  };
+
+  beforeAll(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aparture-synth-trust-'));
+  });
+
+  afterAll(async () => {
+    if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("overwrites a card's model-copied title and score from the input, and reports it", async () => {
+    await seed({
+      executiveSummary: 'Make it 2504.02345 today.',
+      themes: [{ title: 't', argument: 'a', paperIds: ['2504.01234', '2504.02345'] }],
+      papers: [
+        // The auditor's swap: a valid id carrying another paper's title/score.
+        {
+          arxivId: '2504.01234',
+          title: 'Head pruning ablations',
+          score: 9.9,
+          onelinePitch: 'p',
+          whyMatters: 'w',
+        },
+        {
+          arxivId: '2504.02345',
+          title: 'Head pruning ablations',
+          score: 8.5,
+          onelinePitch: 'p',
+          whyMatters: 'w',
+        },
+      ],
+    });
+    const { statusCode, jsonBody } = await run();
+    expect(statusCode).toBe(200);
+    expect(jsonBody.repaired).toBe(false);
+    expect(jsonBody.briefing.papers[0]).toMatchObject({
+      title: 'Circuit-level analysis of reasoning',
+      score: 9.2,
+    });
+    expect(jsonBody.corrections).toHaveLength(2);
+  });
+
+  it('salvages instead of failing when the repair cannot fix an orphan card and a fake id', async () => {
+    await seed({
+      executiveSummary: 'If you read one paper today, make it 2504.99999.',
+      themes: [{ title: 't', argument: 'a', paperIds: ['2504.01234'] }],
+      papers: [
+        {
+          arxivId: '2504.01234',
+          title: 'Circuit-level analysis of reasoning',
+          score: 9.2,
+          onelinePitch: 'p',
+          whyMatters: 'w',
+        },
+        {
+          arxivId: '2504.02345',
+          title: 'Head pruning ablations',
+          score: 8.5,
+          onelinePitch: 'p',
+          whyMatters: 'w',
+        },
+      ],
+    });
+    const { statusCode, jsonBody } = await run();
+
+    // Before: validation passed (only cited ids were checked), the starred
+    // card sat in no theme and never rendered, and the fake id shipped.
+    expect(statusCode).toBe(200);
+    expect(jsonBody.originalValidationErrors).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/"2504\.02345" is not in any theme/),
+        expect.stringMatching(/executiveSummary mentions arXiv id "2504\.99999"/),
+      ])
+    );
+    expect(jsonBody.repairError).toMatch(/no fixture found/);
+    expect(jsonBody.salvaged.length).toBeGreaterThan(0);
+    const themed = jsonBody.briefing.themes.flatMap((t) => t.paperIds);
+    expect(themed).toContain('2504.02345');
+    expect(jsonBody.briefing.executiveSummary).not.toContain('2504.99999');
+  });
+});
+
+describe("synthesize API route — the reader's pre-briefing notes reach the prompt (P1-7)", () => {
+  // Same technique as the $-pattern test: seed the fixture under the hash of
+  // the prompt the route SHOULD build (template + profile + papers + the
+  // reader-notes section). If the route dropped the notes, the hash would
+  // miss and the route would 500.
+  const profile = 'I study mechanistic interpretability of large language models.';
+  const papers = [
+    { arxivId: '2504.01234', title: 'Circuit-level analysis of reasoning', abstract: '...' },
+    { arxivId: '2504.02345', title: 'Head pruning ablations', abstract: '...' },
+  ];
+  const readerNotes = ['Lead with the circuit-analysis paper.'];
+  let tmpFixturesDir;
+
+  beforeAll(async () => {
+    const template = await fs.readFile(
+      path.resolve(process.cwd(), 'prompts', 'synthesis.md'),
+      'utf8'
+    );
+    const prompt =
+      renderSynthesisPrompt(template, { profile, papers }) + renderReaderNotesSection(readerNotes);
+    expect(prompt).toContain('- "Lead with the circuit-analysis paper."');
+    const hash = hashInput({
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      prompt,
+      apiKey: 'test-key',
+      structuredOutput: {
+        name: 'briefing',
+        description: 'Aparture daily research briefing',
+        schema: toJsonSchema(),
+      },
+    });
+    const existing = JSON.parse(
+      await fs.readFile(path.resolve(fixturesDir, '0b950173ec403b0723e42fdcbcc83b4f.json'), 'utf8')
+    );
+    tmpFixturesDir = await fs.mkdtemp(path.join(os.tmpdir(), 'aparture-synth-notes-'));
+    await fs.writeFile(
+      path.join(tmpFixturesDir, `${hash}.json`),
+      JSON.stringify({ response: existing.response }),
+      'utf8'
+    );
+  });
+
+  afterAll(async () => {
+    if (tmpFixturesDir) await fs.rm(tmpFixturesDir, { recursive: true, force: true });
+  });
+
+  it('appends the notes section to the prompt sent to the model', async () => {
+    const { req, res, getResponse } = createMockReqRes({
+      profile,
+      papers,
+      readerNotes,
+      provider: 'anthropic',
+      model: 'claude-opus-4-6',
+      apiKey: 'test-key',
+      callModelMode: { mode: 'fixture', fixturesDir: tmpFixturesDir },
+    });
+    await handler(req, res);
+    const { statusCode, jsonBody } = getResponse();
+    expect(jsonBody?.error).toBeUndefined();
+    expect(statusCode).toBe(200);
   });
 });
 

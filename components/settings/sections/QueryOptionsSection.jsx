@@ -18,19 +18,27 @@ export default function QueryOptionsSection({ config, setConfig, processing }) {
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Days to Look Back</label>
+          <label htmlFor="setting-daysBack" style={FIELD_LABEL_STYLE}>
+            Days to Look Back
+          </label>
           {/* defaultVal must track DEFAULT_CONFIG.daysBack in
                         hooks/useAnalyzerPersistence.js */}
           <Input {...integerInputProps('daysBack', 1, 1, 30)} />
-          <p style={HELP_TEXT_STYLE}>ArXiv search range</p>
+          <p style={HELP_TEXT_STYLE}>
+            Days of new submissions, ending on the newest day with papers
+          </p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Correction Attempts</label>
+          <label htmlFor="setting-maxCorrections" style={FIELD_LABEL_STYLE}>
+            Correction Attempts
+          </label>
           <Input {...integerInputProps('maxCorrections', 1, 0, 5)} />
           <p style={HELP_TEXT_STYLE}>Fix malformed responses</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Retry Attempts</label>
+          <label htmlFor="setting-maxRetries" style={FIELD_LABEL_STYLE}>
+            Retry Attempts
+          </label>
           {/* defaultVal must track DEFAULT_CONFIG.maxRetries in
                         hooks/useAnalyzerPersistence.js */}
           <Input {...integerInputProps('maxRetries', 4, 0, 10)} />
@@ -50,10 +58,13 @@ export default function QueryOptionsSection({ config, setConfig, processing }) {
         }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>On Safety Refusal</label>
+          <label htmlFor="setting-refusalPolicy" style={FIELD_LABEL_STYLE}>
+            On Safety Refusal
+          </label>
           {/* default must track DEFAULT_CONFIG.refusalPolicy in
                         hooks/useAnalyzerPersistence.js */}
           <Select
+            id="setting-refusalPolicy"
             value={config.refusalPolicy ?? 'skip'}
             onChange={(e) => setConfig((prev) => ({ ...prev, refusalPolicy: e.target.value }))}
             disabled={processing.isRunning}
@@ -65,8 +76,11 @@ export default function QueryOptionsSection({ config, setConfig, processing }) {
           <p style={HELP_TEXT_STYLE}>When a provider declines on content grounds</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Fallback Model</label>
+          <label htmlFor="setting-refusalFallbackModel" style={FIELD_LABEL_STYLE}>
+            Fallback Model
+          </label>
           <Select
+            id="setting-refusalFallbackModel"
             value={config.refusalFallbackModel ?? ''}
             onChange={(e) =>
               setConfig((prev) => ({ ...prev, refusalFallbackModel: e.target.value }))

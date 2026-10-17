@@ -19,7 +19,10 @@ export default function ReCaptchaSummaryCard({ skipped }) {
           alignItems: 'flex-start',
         }}
       >
-        <Info className="w-5 h-5" style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+        <Info
+          className="w-5 h-5"
+          style={{ color: 'var(--aparture-warning-text)', flexShrink: 0, marginTop: '2px' }}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{

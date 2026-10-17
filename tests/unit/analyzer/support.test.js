@@ -11,8 +11,8 @@ import { providerForModel, MODEL_REGISTRY } from '../../../utils/models.js';
 describe('providerForModel (utils/models.js)', () => {
   it('returns the registry provider for registered ids', () => {
     expect(providerForModel('claude-haiku-4.5')).toBe('Anthropic');
-    expect(providerForModel('gemini-3.5-flash')).toBe('Google');
-    expect(providerForModel('gpt-5.4-nano')).toBe('OpenAI');
+    expect(providerForModel('gemini-3.8-flash')).toBe('Google');
+    expect(providerForModel('gpt-6-luna')).toBe('OpenAI');
   });
 
   it('returns null for unregistered ids', () => {
@@ -25,8 +25,8 @@ describe('providerForModel (utils/models.js)', () => {
 describe('providerKeyForModel (stages/support.js)', () => {
   it('lowercases the registry provider for registered ids', () => {
     expect(providerKeyForModel('claude-haiku-4.5')).toBe('anthropic');
-    expect(providerKeyForModel('gemini-3.5-flash')).toBe('google');
-    expect(providerKeyForModel('gpt-5.4-nano')).toBe('openai');
+    expect(providerKeyForModel('gemini-3.8-flash')).toBe('google');
+    expect(providerKeyForModel('gpt-6-luna')).toBe('openai');
   });
 
   it("falls back to 'google' for unregistered ids — matching the routes' ?? 'Google'", () => {

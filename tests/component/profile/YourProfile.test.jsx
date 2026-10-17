@@ -105,15 +105,33 @@ describe('YourProfile', () => {
 
   it('shows feedback breakdown in the suggest section', () => {
     render(<Harness {...defaultProps} />);
-    expect(screen.getByText(/3 new interactions/)).toBeInTheDocument();
+    expect(screen.getByText(/3 interactions/)).toBeInTheDocument();
+    expect(screen.getByText(/not yet incorporated into your profile/)).toBeInTheDocument();
     expect(screen.getByText(/1 star/)).toBeInTheDocument();
     expect(screen.getByText(/1 dismiss/)).toBeInTheDocument();
     expect(screen.getByText(/1 comment/)).toBeInTheDocument();
   });
 
+  it('shows the suggestion acceptance rate once changes have been decided (P1-5)', () => {
+    const { rerender } = render(<Harness {...defaultProps} />);
+    expect(screen.queryByTestId('suggestion-acceptance')).toBeNull();
+    rerender(
+      <Harness
+        {...defaultProps}
+        profile={{
+          ...defaultProps.profile,
+          suggestionStats: { accepted: 7, rejected: 3, noChange: 2 },
+        }}
+      />
+    );
+    expect(screen.getByTestId('suggestion-acceptance')).toHaveTextContent(
+      'Suggested changes so far: 7 accepted, 3 rejected (70% accepted).'
+    );
+  });
+
   it('shows no-feedback message when newFeedback is empty', () => {
     render(<Harness {...defaultProps} newFeedback={[]} />);
-    expect(screen.getByText(/no new feedback/i)).toBeInTheDocument();
+    expect(screen.getByText(/no pending feedback/i)).toBeInTheDocument();
   });
 
   it('renders MigrationNotice when notice prop is non-null', () => {

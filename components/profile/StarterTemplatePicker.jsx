@@ -43,13 +43,16 @@ export default function StarterTemplatePicker({
   };
 
   const applyTemplate = (template) => {
-    updateProfile(template.profileText);
+    updateProfile(template.profileText, {
+      source: 'template',
+      rationale: `Started from the "${template.name}" template`,
+    });
     setConfig?.((prev) => ({ ...prev, selectedCategories: [...template.categories] }));
     dismiss();
   };
 
   const startFromScratch = () => {
-    updateProfile('');
+    updateProfile('', { source: 'template', rationale: 'Started from a blank profile' });
     dismiss();
   };
 

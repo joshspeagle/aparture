@@ -2,25 +2,18 @@
   "name": "aparture",
   "version": "2.0.0",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=22"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "docs:dev": "cd docs && npm run dev",
     "docs:build": "cd docs && npm run build",
     "docs:preview": "cd docs && npm run preview",
-    "setup": "node cli/setup.js",
-    "analyze": "node cli/run-analysis.js",
-    "analyze:report": "node cli/run-analysis.js --skip-notebooklm --skip-podcast",
-    "analyze:document": "node cli/run-analysis.js --skip-podcast",
-    "analyze:podcast": "node cli/run-analysis.js --podcast-only",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:minimal": "node cli/tests/test-browser-minimal.js",
-    "test:dryrun": "node cli/tests/test-browser-dryrun.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --check .",
@@ -39,17 +32,11 @@
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",
-    "chalk": "^5.6.2",
-    "commander": "^14.0.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.263.1",
-    "next": "^16.2.10",
-    "node-fetch": "^3.3.2",
-    "ora": "^9.0.0",
-    "prompts": "^2.4.2",
+    "next": "^16.3.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "tiktoken": "^1.0.22",
     "zod": "^4.3.6",
     "zustand": "^5.0.12"
   },
@@ -59,7 +46,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
@@ -67,11 +54,11 @@
     "eslint-plugin-react-hooks": "^7.0.0",
     "husky": "^9.1.7",
     "jsdom": "^29.0.2",
-    "lint-staged": "^16.2.4",
+    "lint-staged": "^16.3.4",
     "playwright": "^1.56.0",
     "postcss": "^8.4.0",
     "prettier": "^3.6.2",
     "tailwindcss": "^3.4.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.11"
   }
 }

@@ -59,8 +59,10 @@ describe('analyze-pdf — Playwright unavailable', () => {
         scoringCriteria: 'anything',
         originalScore: 5.5,
         // Supply an apiKey directly so auth passes without needing the
-        // provider env key to be set in the test runner's environment.
-        apiKey: 'test-api-key',
+        // provider env key to be set in the test runner's environment. It must
+        // have the provider's key shape: implausible keys are rejected before
+        // any download.
+        apiKey: 'sk-ant-api03-test-key-not-real-0000000000',
         model: 'claude-haiku-4.5',
       },
     };

@@ -8,7 +8,7 @@ The examples follow the **Focused: Bayesian cosmology** starter template. Substi
 
 Nothing in Aparture learns silently. Feedback accumulates locally as you react; when you run **Suggest improvements**, it reads everything you've marked and proposes profile edits, each with a written rationale, and you accept or reject each edit individually; the next run reads the edited profile. So the loop is only as good as two things: the quality of the feedback you give, and the judgment you apply to the proposed edits. Most of this page is about the first; the [last sections](#turning-feedback-into-profile-edits) cover the second.
 
-## Stars and dismissals — the one-click signals
+## Stars and dismissals: the one-click signals
 
 Available on any paper card from the score-review gate onward, including inside a rendered briefing. Both are toggles: only the current state counts, so there is no cost to changing your mind.
 
@@ -22,7 +22,7 @@ The bar for a dismissal is _"this should not have made the page"_ — it is a re
 - ✓ **Good dismissal:** a detector-characterization paper that scored well on technical quality but has nothing to do with inference methods. That's a profile leak, and the dismissal marks it.
 - ✗ **Bad dismissal:** dismissing a relevant paper because you already saw it on Slack, or because you've read the preprint. The suggest step reads dismissals as "not my area" — using them as "already seen" quietly teaches the profile to exclude work you actually care about.
 
-## Paper comments — when a click can't carry the reason
+## Paper comments: when a click can't carry the reason
 
 The <span class="ui-action">+ comment</span> button on any paper card (and the 💬 button on Gate 1 filter rows). Comments are where nuance lives, and they're the strongest per-event signal the suggest step sees. Compare:
 
@@ -38,16 +38,18 @@ Comments work on starred papers too:
 
 Unlike stars and dismissals, comments accumulate — each one is a separate entry, and the suggest prompt includes the most recent 30 per type. One specific comment outperforms a week of silent stars.
 
-## Gate 1 verdict overrides — correcting the filter
+## Gate 1 verdict overrides: correcting the filter
 
 At the filter-review gate, clicking a different verdict pill moves the paper and records an override: <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> is a "profile too narrow here" signal, <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span> a "too broad" one.
 
 - ✓ **Good override:** the filter said NO to a nested-sampling methods paper because the abstract framed it as an exoplanet study. Flipping it to YES both rescues the paper for this run and tells the loop the profile under-weights method papers wearing application clothing.
 - ✗ **Bad override:** flipping fifteen papers one at a time because the whole MAYBE bucket has the same problem. Overrides are per-paper corrections; when the pattern is bucket-wide, one bucket note (next section) says it better and doesn't drown the signal in repetition.
 
+The pills stay live after the run, so you can come back to the filter results in the Pipeline view and correct a verdict later. A change then is recorded for the profile and leaves the finished briefing alone.
+
 One caution: an override is a _profile_ signal, not just a run edit. If you want to read an off-profile paper out of one-off curiosity, don't flip its verdict — you'd be teaching the profile that this is your area. Star it at the score-review gate instead, which guarantees it a deep read for this run without recording a relevance correction.
 
-## Scoped notes — when the pattern is bigger than a paper
+## Scoped notes: when the pattern is bigger than a paper
 
 Three free-text fields attach observations to a scope rather than a paper. These are the highest-leverage feedback in the system: one sentence can carry what a dozen clicks can't.
 
@@ -70,7 +72,7 @@ And the failure modes:
 
 Scoped notes are latest-wins per scope per run day: writing a second scoring-round note for the same run replaces the first. So refine the note rather than appending to it — it should read as your current assessment of that scope.
 
-## General comments — stating intent directly
+## General comments: stating intent directly
 
 The <span class="ui-action">+ Add a comment</span> box in the Feedback panel is for profile-level guidance that isn't a reaction to any specific paper or stage:
 
@@ -92,7 +94,7 @@ Read the proposed diff the way you'd read a referee report on your own abstract:
 - **Reject** edits that overfit a single event. One dismissed neutrino-cosmology paper does not mean you never want neutrinos; if the edit is that aggressive, reject it and leave a comment on the next such paper instead.
 - **A "no change" response is honesty, not failure.** Thin or contradictory feedback legitimately yields no defensible edit, and the dialog says why.
 
-Accepted edits become the new profile; the old version stays in revision history, so nothing here is destructive.
+Accepted edits become the new profile; the old version stays in revision history, so nothing here is destructive. Rejecting is cheap too: a rejected edit is remembered and kept out of later suggestions unless new feedback makes the case again, and the feedback behind it stays pending.
 
 ## What improvement looks like
 
@@ -109,7 +111,7 @@ What "done" looks like: you stop editing the profile weekly and start editing it
 
 **Overfitting.** If you accept every proposed exclusion, the profile converges to "only papers exactly like the ones I starred" and you lose the discovery function — the paper that matters is often adjacent to your interests, not inside them. Keep at least one sentence of genuine breadth in the profile (_"I also want occasional exposure to major results in neighboring areas"_), and be suspicious of any suggested edit that deletes it. The scoring rubric explicitly calibrates strictness to the profile's breadth, so that sentence does real work.
 
-**Under-feeding.** Stars, dismissals, and overrides are always included in the suggest prompt, but they're blunt on their own. If you only ever click and never say why, the proposed edits will be blunt too. When a proposal feels light, the fix is usually one good comment or scoped note, not more clicks.
+**Under-feeding.** Stars, dismissals, and overrides go into the suggest prompt uncapped until an accepted change cites them, but they're blunt on their own. If you only ever click and never say why, the proposed edits will be blunt too. When a proposal feels light, the fix is usually one good comment or scoped note, not more clicks.
 
 ## Related pages
 

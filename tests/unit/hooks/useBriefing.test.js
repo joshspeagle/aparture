@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useBriefing } from '../../../hooks/useBriefing.js';
+import { useBriefing, fitHotIndex } from '../../../hooks/useBriefing.js';
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -88,7 +88,7 @@ describe('useBriefing', () => {
     expect(entriesForDate[1].briefing.executiveSummary).toBe('First');
   });
 
-  it('keeps at most 90 past briefings in history', async () => {
+  it('does not cap history at 90 entries (the old count cap deleted real briefings)', async () => {
     const { result } = renderHook(() => useBriefing());
     const empty = makeBriefing('x');
     await act(async () => {
@@ -99,7 +99,24 @@ describe('useBriefing', () => {
         await result.current.saveBriefing(iso, empty);
       }
     });
-    expect(result.current.history.length).toBe(90);
+    expect(result.current.history.length).toBe(100);
+    expect(JSON.parse(window.localStorage.getItem('aparture-briefing-index'))).toHaveLength(100);
+  });
+
+  it('flags dry-run and minimal-test briefings as test runs in the index', async () => {
+    const { result } = renderHook(() => useBriefing());
+    await act(async () => {
+      await result.current.saveBriefing('2026-04-13', makeBriefing('real'), { testMode: false });
+      await result.current.saveBriefing('2026-04-13', makeBriefing('dry'), { testMode: true });
+      await result.current.saveBriefing('2026-04-13', makeBriefing('min'), {
+        testMode: false,
+        minimalTest: true,
+      });
+    });
+    const bySummary = Object.fromEntries(
+      result.current.history.map((e) => [e.briefing.executiveSummary, e.testRun === true])
+    );
+    expect(bySummary).toEqual({ real: false, dry: true, min: true });
   });
 
   it('persists generationMetadata on each saved entry', async () => {
@@ -444,9 +461,8 @@ describe('useBriefing', () => {
       ).rejects.toThrow(/permission denied/);
     });
 
-    it('unlinks the cold file for an entry dropped by a quota-prune', async () => {
-      // Quota mock: the index write succeeds only when it holds ≤1 entry, so
-      // saving a 2nd briefing forces a prune that drops the oldest entry.
+    // Quota mock: the index write succeeds only while it holds ≤ `max` entries.
+    const indexHoldsAtMost = (max) =>
       setItemSpy.mockImplementation(function (key, value) {
         if (key === 'aparture-briefing-index') {
           let parsed;
@@ -455,7 +471,7 @@ describe('useBriefing', () => {
           } catch {
             parsed = null;
           }
-          if (Array.isArray(parsed) && parsed.length > 1) {
+          if (Array.isArray(parsed) && parsed.length > max) {
             const err = new Error('mock quota');
             err.name = 'QuotaExceededError';
             throw err;
@@ -464,6 +480,8 @@ describe('useBriefing', () => {
         return realSetItem.call(this, key, value);
       });
 
+    it('a quota-prune trims only the hot index and never deletes the cold file', async () => {
+      indexHoldsAtMost(1);
       const deleteCalls = [];
       vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
         if (opts?.method === 'DELETE') deleteCalls.push(url);
@@ -471,23 +489,40 @@ describe('useBriefing', () => {
       });
 
       const { result } = renderHook(() => useBriefing({ password: 'pw' }));
-
-      let firstId;
       await act(async () => {
-        firstId = await result.current.saveBriefing('2026-04-15', makeBriefing('old'));
+        await result.current.saveBriefing('2026-04-15', makeBriefing('old'));
       });
       await act(async () => {
         await result.current.saveBriefing('2026-04-16', makeBriefing('new'));
       });
 
-      // The oldest entry was pruned from the index → its cold file must be
-      // unlinked so disk + index stay consistent.
-      expect(deleteCalls.some((url) => url.includes(encodeURIComponent(firstId)))).toBe(true);
+      // The briefing trimmed from the sidebar index stays on disk.
+      expect(deleteCalls).toEqual([]);
       // In-memory history keeps both (live session not disrupted), but the
       // PERSISTED index holds only the newest briefing.
       const persisted = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
       expect(persisted).toHaveLength(1);
       expect(persisted[0].date).toBe('2026-04-16');
+    });
+
+    it('under quota pressure a test run is trimmed before any real briefing', async () => {
+      indexHoldsAtMost(2);
+      const { result } = renderHook(() => useBriefing({ password: 'pw' }));
+      await act(async () => {
+        await result.current.saveBriefing('2026-04-14', makeBriefing('real-old'), {
+          testMode: false,
+        });
+        await result.current.saveBriefing('2026-04-15', makeBriefing('dry-run'), {
+          testMode: true,
+        });
+        await result.current.saveBriefing('2026-04-16', makeBriefing('real-new'), {
+          testMode: false,
+        });
+      });
+
+      const persisted = JSON.parse(window.localStorage.getItem('aparture-briefing-index'));
+      // Before: the oldest REAL briefing was dropped (and deleted from disk).
+      expect(persisted.map((e) => e.briefing.executiveSummary)).toEqual(['real-new', 'real-old']);
     });
   });
 
@@ -709,9 +744,9 @@ describe('useBriefing', () => {
     });
   });
 
-  // --- MAX_HISTORY rotation unlinks cold files ---
+  // --- Retention never deletes cold files ---
 
-  it('unlinks the cold file of the entry rotated off the 90-entry cap', async () => {
+  it('saving many briefings (test runs included) never deletes a cold file', async () => {
     const deleteCalls = [];
     vi.spyOn(global, 'fetch').mockImplementation(async (url, opts) => {
       if (opts?.method === 'DELETE') deleteCalls.push(String(url));
@@ -719,20 +754,48 @@ describe('useBriefing', () => {
     });
 
     const { result } = renderHook(() => useBriefing({ password: 'pw' }));
-    let firstId;
     await act(async () => {
-      firstId = await result.current.saveBriefing('2025-01-01', makeBriefing('oldest'));
-      for (let i = 1; i < 91; i++) {
+      for (let i = 0; i < 95; i++) {
         const d = new Date(Date.UTC(2025, 0, 1));
         d.setUTCDate(d.getUTCDate() + i);
-        await result.current.saveBriefing(d.toISOString().slice(0, 10), makeBriefing('x'));
+        await result.current.saveBriefing(d.toISOString().slice(0, 10), makeBriefing('x'), {
+          testMode: i % 3 === 0,
+        });
       }
     });
 
-    expect(result.current.history.length).toBe(90);
-    // The oldest entry was rotated off the cap → its cold file must be
-    // unlinked so disk and index stay consistent (no orphans).
-    expect(deleteCalls.some((url) => url.includes(encodeURIComponent(firstId)))).toBe(true);
+    // Before: the 91st save rotated the oldest briefing off a 90-entry cap
+    // and DELETEd its file — so dry runs permanently erased real briefings.
+    expect(result.current.history.length).toBe(95);
+    expect(deleteCalls).toEqual([]);
+  });
+
+  describe('fitHotIndex — the storage budget', () => {
+    const entry = (id, testRun = false) => ({
+      id,
+      date: '2026-04-01',
+      timestamp: 0,
+      archived: false,
+      ...(testRun ? { testRun: true } : {}),
+      briefing: { executiveSummary: 'x'.repeat(100), papers: [] },
+    });
+
+    it('leaves an index that fits untouched', () => {
+      const entries = [entry('a'), entry('b')];
+      expect(fitHotIndex(entries, 10_000)).toBe(entries);
+    });
+
+    it('trims test runs (oldest first) before real briefings, then the oldest real', () => {
+      // newest-first: r3, t2, r2, t1, r1
+      const entries = [entry('r3'), entry('t2', true), entry('r2'), entry('t1', true), entry('r1')];
+      const one = JSON.stringify(entry('r1')).length + 1;
+      expect(fitHotIndex(entries, one * 3 + 1).map((e) => e.id)).toEqual(['r3', 'r2', 'r1']);
+      expect(fitHotIndex(entries, one * 2 + 1).map((e) => e.id)).toEqual(['r3', 'r2']);
+    });
+
+    it('never trims below one entry', () => {
+      expect(fitHotIndex([entry('a'), entry('b')], 1).map((e) => e.id)).toEqual(['a']);
+    });
   });
 
   // --- Reindex retry on transient failure ---

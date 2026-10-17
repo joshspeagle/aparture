@@ -28,7 +28,10 @@ export default function AnalysisResultsList({
       <div
         style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-4)' }}
       >
-        <FileText className="w-5 h-5" style={{ marginRight: '8px', color: '#22c55e' }} />
+        <FileText
+          className="w-5 h-5"
+          style={{ marginRight: '8px', color: 'var(--aparture-success-text)' }}
+        />
         <h2
           style={{
             fontFamily: 'var(--aparture-font-sans)',
@@ -51,7 +54,7 @@ export default function AnalysisResultsList({
                 fontSize: 'var(--aparture-text-lg)',
                 fontWeight: 500,
                 marginBottom: 'var(--aparture-space-3)',
-                color: '#3b82f6',
+                color: 'var(--aparture-info-text)',
               }}
             >
               Papers with Deep PDF Analysis ({results.finalRanking.length})

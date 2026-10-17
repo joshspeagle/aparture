@@ -4,19 +4,29 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Weekly run on main: catches date-dependent tests and upstream breakage
+  # (new advisories, registry changes) even when nobody pushes.
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Lint, test, build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22]
+        # Node 20 reached end of life in April 2026.
+        node-version: [22, 24]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,8 +46,20 @@ jobs:
       - name: Check formatting
         run: npx prettier --check .
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Test
         run: npm test
+
+      # A briefing day is a local calendar day. Under UTC the local and UTC
+      # dates always agree, so a date bug passes; at UTC+14 they disagree
+      # for most of the day.
+      - name: Test at UTC+14
+        if: matrix.node-version == 22
+        run: npm test
+        env:
+          TZ: Pacific/Kiritimati
 
       - name: Build
         run: npm run build
@@ -45,6 +67,7 @@ jobs:
   docs:
     name: Docs build (VitePress)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,7 +75,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: docs/package-lock.json
 

@@ -58,11 +58,11 @@ Edit the bracketed placeholders to match your actual work, then click <span clas
 Open the <span class="ui-action">Settings</span> view. Two things to check, one to leave alone, everything else to skip for now:
 
 - **ArXiv Categories** — if you picked a starter template, its categories are already set and you can move on. Otherwise pick two or three to start: `cs.LG` + `stat.ML` for machine learning, `cs.CL` + `cs.LG` for NLP, `astro-ph.CO` + `astro-ph.IM` for astrophysics, `stat.ME` + `stat.ML` for statistics. You can expand later once you see how many papers land on a typical day. If none of those match your field, see [arXiv categories](/concepts/arxiv-categories).
-- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Flash-Lite for filter and quick summaries, Gemini 3.5 Flash for scoring, PDF analysis, and briefing), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
+- **Model slots** — match the slots to the provider key(s) you set up. Aparture ships with all-Google defaults (Gemini Flash-Lite for the filter and quick summaries, Gemini Flash for scoring, PDF analysis, and the briefing; Settings shows the exact versions), so a Google-only setup can leave them as-is. If you set up only an Anthropic or OpenAI key, switch the slots to that provider's recommended lineup — the tables on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [Google](/getting-started/api-keys-google#_5-recommended-models), and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) pages list exact picks. Mixing providers across slots works fine too, as long as every slot has a valid key. [Model selection](/concepts/model-selection) goes into the trade-offs.
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.
 
-## 4. Start the run — and expect three pauses
+## 4. Start the run and expect three pauses
 
 The Pipeline view shows the Progress Timeline (six stages, all empty) next to a <span class="ui-action">Start Analysis</span> button. One thing worth knowing before you click it: the default run stops and waits for you three times along the way.
 
@@ -106,7 +106,7 @@ A quick scan is plenty on this run. If something's obviously in the wrong bucket
 
 ## 6. Scoring, then the second pause
 
-The pipeline moves through abstract scoring and an optional post-processing consistency pass, then parks at its second review gate — _"Score review"_ with a <span class="ui-action">Continue to PDF analysis →</span> button — before any PDF is read. This is the cheapest moment to adjust which papers get the expensive full-text treatment.
+The pipeline moves through abstract scoring and an optional post-processing consistency pass, then parks at its second review gate — _"Score review"_ with a <span class="ui-action">Continue to PDF analysis →</span> button — before any PDF is read. This is where you decide which papers get the full-text read.
 
 The scored list appears in three groups: the top-N papers that will be PDF-analysed as things stand, a borderline band just below the cutoff, and everything else. Each row carries a **STAR** button (guarantees the paper gets PDF-analysed regardless of its score) and a **DISMISS** button (drops it from the PDF set for this run). A free-text _"feedback on this scoring round"_ field takes observations about the round as a whole.
 
@@ -122,7 +122,7 @@ Stage 4 reads the selected papers in full. PDF analysis is the slowest stretch o
 
 This is a good point to step away from the browser for a bit. The timeline and activity log continue updating as each stage completes, and the run survives browser navigation, so you can switch tabs or come back later without losing progress.
 
-## 8. Third pause — before the briefing writes
+## 8. Third pause: before the briefing writes
 
 Once PDF analysis finishes, the pipeline parks at its third review gate with the Analysis Results rendered in the main area. Each paper card carries three feedback controls:
 
@@ -163,4 +163,4 @@ Also worth reading:
 - [**Writing a good profile**](/using/writing-a-profile) — rewriting the starter template once you know what you want.
 - [**Refining over time**](/using/refining-over-time) — when to use Suggest Improvements to let the tool propose profile edits from accumulated feedback.
 
-If the run failed anywhere — no papers fetched, a stage 429'd, a PDF download blocked — the [troubleshooting page](/reference/troubleshooting) groups symptoms by stage, and [Verify setup](/getting-started/verify-setup) has the two sanity-check buttons if you want to isolate whether it's the pipeline or your configuration.
+If the run failed anywhere — no papers fetched, a stage 429'd, a PDF download blocked — the [troubleshooting page](/reference/troubleshooting) groups symptoms by stage, and [Verify setup](/getting-started/verify-setup) has the three setup checks if you want to isolate whether it's the pipeline or your configuration.

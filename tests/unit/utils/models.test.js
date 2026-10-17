@@ -9,9 +9,11 @@ import {
   MODEL_REGISTRY,
   AVAILABLE_MODELS,
   DEFAULT_MODEL_ID,
+  effectivePricing,
   getModel,
   supportsAdaptiveThinkingByApiId,
 } from '../../../utils/models.js';
+import { RETIRED_MODEL_REMAP } from '../../../hooks/useAnalyzerPersistence.js';
 
 describe('utils/models.js — registry ↔ UI-list consistency', () => {
   it('every AVAILABLE_MODELS id has a MODEL_REGISTRY entry', () => {
@@ -105,15 +107,16 @@ describe('utils/models.js — per-entry required fields', () => {
 
 describe('utils/models.js — supportsAdaptiveThinkingByApiId', () => {
   it('resolves registered Anthropic apiIds to their flag', () => {
-    expect(supportsAdaptiveThinkingByApiId('claude-opus-4-8')).toBe(true);
-    expect(supportsAdaptiveThinkingByApiId('claude-sonnet-4-6')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-opus-5-5')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-sonnet-5-5')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-haiku-5-5')).toBe(true);
     expect(supportsAdaptiveThinkingByApiId('claude-haiku-4-5')).toBe(false);
   });
 
   it('accepts dotted user-facing registry keys as a fallback', () => {
-    // 'claude-opus-4.7' is a registry KEY whose apiId is 'claude-opus-4-7';
+    // 'claude-opus-5.5' is a registry KEY whose apiId is 'claude-opus-5-5';
     // callers occasionally pass the user-facing form straight through.
-    expect(supportsAdaptiveThinkingByApiId('claude-opus-4.7')).toBe(true);
+    expect(supportsAdaptiveThinkingByApiId('claude-opus-5.5')).toBe(true);
     expect(supportsAdaptiveThinkingByApiId('claude-haiku-4.5')).toBe(false);
   });
 
@@ -129,5 +132,48 @@ describe('utils/models.js — DEFAULT_MODEL_ID', () => {
   it('is a registered model', () => {
     expect(MODEL_REGISTRY[DEFAULT_MODEL_ID]).toBeDefined();
     expect(getModel(DEFAULT_MODEL_ID)).toBeDefined();
+  });
+});
+
+describe('utils/models.js — promo pricing', () => {
+  it('every promo block is well-formed and cheaper than list price', () => {
+    for (const [id, entry] of Object.entries(MODEL_REGISTRY)) {
+      if (!entry.promo) continue;
+      expect(entry.promo.until, `promo.until for "${id}"`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(entry.promo.inputPerMTok).toBeLessThanOrEqual(entry.inputPerMTok);
+      expect(entry.promo.outputPerMTok).toBeLessThanOrEqual(entry.outputPerMTok);
+    }
+  });
+
+  it('applies the promo price through its end date and list price after', () => {
+    const entry = {
+      inputPerMTok: 4,
+      outputPerMTok: 20,
+      promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-11-30' },
+    };
+    expect(effectivePricing(entry, new Date('2026-11-30T23:00:00Z'))).toEqual({
+      inputPerMTok: 2,
+      outputPerMTok: 10,
+      promo: true,
+    });
+    expect(effectivePricing(entry, new Date('2026-12-01T00:00:00Z'))).toEqual({
+      inputPerMTok: 4,
+      outputPerMTok: 20,
+      promo: false,
+    });
+    expect(effectivePricing({ inputPerMTok: null, outputPerMTok: 1 })).toBeNull();
+    expect(effectivePricing(undefined)).toBeNull();
+  });
+});
+
+describe('RETIRED_MODEL_REMAP', () => {
+  it('maps only unregistered ids, and only to registered ones', () => {
+    for (const [from, to] of Object.entries(RETIRED_MODEL_REMAP)) {
+      expect(
+        MODEL_REGISTRY[from],
+        `"${from}" is still registered; drop it from the remap`
+      ).toBeUndefined();
+      expect(MODEL_REGISTRY[to], `"${from}" maps to unregistered "${to}"`).toBeDefined();
+    }
   });
 });

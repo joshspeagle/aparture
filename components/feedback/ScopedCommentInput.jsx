@@ -93,6 +93,13 @@ export default function ScopedCommentInput({
   return (
     <div>
       <TextArea
+        aria-label={
+          scope?.kind === 'bucket'
+            ? `Feedback on the ${scope.bucket} bucket`
+            : scope?.kind === 'score-review'
+              ? 'Feedback on this scoring round'
+              : 'Feedback on this run'
+        }
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={placeholder}
@@ -128,7 +135,7 @@ export default function ScopedCommentInput({
             fontSize: 'var(--aparture-text-xs, 12px)',
             borderRadius: '6px',
             background: '#f59e0b',
-            color: 'white',
+            color: 'var(--aparture-on-status)',
             border: 'none',
             cursor: 'pointer',
           }}

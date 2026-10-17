@@ -14,7 +14,7 @@ export default function DuplicateBadge({ isDuplicate, firstSeenDate }) {
         alignItems: 'center',
         gap: '4px',
         padding: '2px 6px',
-        fontSize: '11px',
+        fontSize: '12px',
         fontFamily: 'var(--aparture-font-sans)',
         color: 'var(--aparture-mute)',
         border: '1px solid var(--aparture-hairline)',
