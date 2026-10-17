@@ -372,3 +372,81 @@ describe('harvestOai', () => {
     expect(records.length).toBeGreaterThan(0);
   });
 });
+
+// Stop must end a harvest promptly. Before the fix the proxy fetch carried no
+// signal, the backoff sleeps ignored Stop, and the last page exited the loop
+// before the abort check — so a stopped run finished its harvest and went on
+// to reset results and bill the LLM stages (audit P1-1).
+describe('harvestOai — Stop', () => {
+  const okPage = (id) => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ xml: buildPageXml(sampleRecord(id)), resumptionToken: '' }),
+  });
+
+  it('forwards the run signal to the proxy fetch, so Stop cancels an in-flight page', async () => {
+    const controller = new AbortController();
+    let seenSignal = null;
+    // Behaves like real fetch: rejects with an AbortError DOMException when
+    // its signal fires, otherwise the page would take 60 s to arrive.
+    const fetchImpl = vi.fn(
+      (url, opts) =>
+        new Promise((resolve, reject) => {
+          seenSignal = opts.signal;
+          const timer = setTimeout(() => resolve(okPage('late')), 60_000);
+          opts.signal?.addEventListener('abort', () => {
+            clearTimeout(timer);
+            reject(new DOMException('This operation was aborted', 'AbortError'));
+          });
+        })
+    );
+
+    const started = Date.now();
+    const pending = harvestOai({ ...baseArgs, abortSignal: controller.signal, fetchImpl });
+    setTimeout(() => controller.abort(), 20);
+
+    await expect(pending).rejects.toThrow('Operation aborted');
+    expect(seenSignal).toBe(controller.signal);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('a Stop during a 429 backoff ends the harvest without waiting the backoff out', async () => {
+    const controller = new AbortController();
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: 'rate limit', upstreamStatus: 429, retryAfter: 60 }),
+    });
+    // The injected sleep would hold for the full 60 s Retry-After.
+    const sleepImpl = vi.fn((ms) => new Promise((r) => setTimeout(r, ms)));
+
+    const started = Date.now();
+    const pending = harvestOai({
+      ...baseArgs,
+      abortSignal: controller.signal,
+      fetchImpl,
+      sleepImpl,
+    });
+    setTimeout(() => controller.abort(), 20);
+
+    await expect(pending).rejects.toThrow('Operation aborted');
+    expect(sleepImpl).toHaveBeenCalledWith(60_000);
+    expect(Date.now() - started).toBeLessThan(5_000);
+    // No further page request after the stop.
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not hand back the last page when Stop landed while it was in flight', async () => {
+    const controller = new AbortController();
+    // A fetch that ignores its signal (the pre-fix proxy call): the final page
+    // resolves in the same tick the user clicked Stop.
+    const fetchImpl = vi.fn(async () => {
+      controller.abort();
+      return okPage('2604.0001');
+    });
+
+    await expect(
+      harvestOai({ ...baseArgs, abortSignal: controller.signal, fetchImpl })
+    ).rejects.toThrow('Operation aborted');
+  });
+});
