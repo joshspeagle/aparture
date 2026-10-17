@@ -271,6 +271,70 @@ describe('useFeedback', () => {
   });
 });
 
+describe('per-event incorporation (P1-4)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const seed = (events) =>
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events }));
+  const ev = (id, timestamp, extra = {}) => ({
+    id,
+    type: 'star',
+    arxivId: `2610.${id}`,
+    timestamp,
+    briefingDate: '2026-10-17',
+    ...extra,
+  });
+
+  it('markIncorporated removes exactly the given events from the pending set', () => {
+    seed([ev('a', 10), ev('b', 20), ev('c', 30)]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      // Only the newest event motivated an accepted change. Under the old
+      // max-timestamp cutoff, a and b would have been "incorporated" too.
+      result.current.markIncorporated(['c'], 1000);
+    });
+    expect(result.current.getNewSince(0).map((e) => e.id)).toEqual(['a', 'b']);
+    expect(result.current.events.find((e) => e.id === 'c').incorporatedAt).toBe(1000);
+    // Persisted.
+    const stored = JSON.parse(window.localStorage.getItem('aparture-feedback')).events;
+    expect(stored.find((e) => e.id === 'c').incorporatedAt).toBe(1000);
+  });
+
+  it('keeps the first incorporatedAt when an event is marked twice', () => {
+    seed([ev('a', 10)]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.markIncorporated(['a'], 1000);
+    });
+    act(() => {
+      result.current.markIncorporated(['a'], 2000);
+    });
+    expect(result.current.events[0].incorporatedAt).toBe(1000);
+  });
+
+  it('reopenIncorporatedSince re-opens events incorporated at or after a reverted revision', () => {
+    seed([
+      ev('early', 10, { incorporatedAt: 500 }),
+      ev('reverted', 20, { incorporatedAt: 1000 }),
+      ev('later', 30, { incorporatedAt: 1500 }),
+    ]);
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.reopenIncorporatedSince(1000);
+    });
+    expect(result.current.getNewSince(0).map((e) => e.id)).toEqual(['reverted', 'later']);
+    expect(result.current.events.find((e) => e.id === 'early').incorporatedAt).toBe(500);
+  });
+
+  it('the legacy cutoff still labels pre-upgrade events as incorporated', () => {
+    seed([ev('old', 10), ev('new', 30)]);
+    const { result } = renderHook(() => useFeedback());
+    expect(result.current.getNewSince(20).map((e) => e.id)).toEqual(['new']);
+  });
+});
+
 describe('ensureStar / ensureDismiss (non-toggling, gate handlers)', () => {
   beforeEach(() => {
     window.localStorage.clear();

@@ -283,6 +283,47 @@ export function useProfile(config = {}) {
     [commitProfile]
   );
 
+  // The Suggest dialog's single exit point. outcome = {
+  //   kind: 'applied' | 'rejected' | 'no-change',
+  //   content, rationale,            // 'applied' only: the new profile text
+  //   accepted, rejected,            // the model's change objects, split by the user
+  //   appliedAt,                     // shared with useFeedback.markIncorporated
+  // }
+  // Only an applied outcome with a real content change creates a revision;
+  // its createdAt is `appliedAt`, so reverting it can re-open exactly the
+  // feedback that revision incorporated. The legacy lastFeedbackCutoff is
+  // left alone: incorporation is tracked per event now (feedbackStatus.js).
+  const recordSuggestionOutcome = useCallback(
+    (outcome) => {
+      if (!outcome) return;
+      setState((prev) => {
+        if (
+          outcome.kind !== 'applied' ||
+          typeof outcome.content !== 'string' ||
+          outcome.content === prev.profile.content
+        ) {
+          return prev;
+        }
+        const now = outcome.appliedAt ?? Date.now();
+        const revision = {
+          content: prev.profile.content,
+          createdAt: now,
+          source: 'suggested',
+          lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
+          rationale: outcome.rationale,
+        };
+        const nextProfile = {
+          ...prev.profile,
+          content: outcome.content,
+          updatedAt: now,
+          revisions: [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS),
+        };
+        return commitProfile(prev, nextProfile);
+      });
+    },
+    [commitProfile]
+  );
+
   const revertToRevision = useCallback(
     (createdAt) => {
       setState((prev) => {
@@ -480,6 +521,7 @@ export function useProfile(config = {}) {
     profile: state.profile,
     updateProfile,
     saveSuggested,
+    recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
     migrationNotice: state.notice,

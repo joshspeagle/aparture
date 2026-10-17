@@ -205,9 +205,9 @@ export default function YourProfile({
                 }}
               >
                 <span style={{ color: 'var(--aparture-accent)', fontWeight: 600 }}>
-                  {totalNew} new interaction{totalNew === 1 ? '' : 's'}
+                  {totalNew} interaction{totalNew === 1 ? '' : 's'}
                 </span>{' '}
-                since your last revision
+                not yet incorporated into your profile
                 {feedbackCounts.stars > 0 ||
                 feedbackCounts.dismisses > 0 ||
                 feedbackCounts.comments > 0 ||
@@ -242,8 +242,7 @@ export default function YourProfile({
                   marginBottom: 'var(--aparture-space-3)',
                 }}
               >
-                No new feedback since your last revision — you can still suggest improvements via
-                written guidance.
+                No pending feedback. You can still suggest improvements from written guidance.
               </p>
             )}
 

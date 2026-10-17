@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { applyCap } from '../../lib/profile/feedbackCap.js';
+import { resolveSuggestionOutcome } from '../../lib/profile/suggestOutcome.js';
 import { iconFor } from '../feedback/eventMeta.js';
 import Button from '../ui/Button.jsx';
 import TextArea from '../ui/TextArea.jsx';
@@ -143,6 +144,10 @@ export default function SuggestDialog({
   const [state, setState] = useState('selection');
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
+  // The feedback events actually POSTed for the current result (selected,
+  // then comment-capped). Attribution on Apply is computed over these only:
+  // an unticked or cap-trimmed event was never seen, so it stays pending.
+  const [sentEvents, setSentEvents] = useState([]);
 
   if (feedbackSignature !== lastSignature) {
     setLastSignature(feedbackSignature);
@@ -228,6 +233,7 @@ export default function SuggestDialog({
       // without this, the trimming notice was display-only and the dropped
       // comments were still sent, inflating token cost.
       const cappedEvents = applyCap(selectedEvents, cap).kept;
+      setSentEvents(cappedEvents);
       // Collect briefings referenced by general-comment events so the
       // suggest-profile prompt can cite the content the comment was
       // written against. Only include the editorial layer (executive
@@ -280,33 +286,39 @@ export default function SuggestDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, response]);
 
-  function computeCutoff() {
-    const selectedEvents = newFeedback.filter((e) => selectedIds.has(e.id));
-    return selectedEvents.length > 0 ? Math.max(...selectedEvents.map((e) => e.timestamp)) : 0;
-  }
-
+  // Both exits hand App one outcome object (see useProfile
+  // recordSuggestionOutcome). There is no feedback cutoff any more: only the
+  // events behind an ACCEPTED change are marked incorporated
+  // (resolveSuggestionOutcome). Unticked events, events behind rejected
+  // changes, and everything after a "no change" result stay pending.
   function handleApply({ acceptedIds, resultText }) {
-    const acceptedChanges = response.changes.filter((c) => acceptedIds.includes(c.id));
-    const joinedRationale = acceptedChanges.map((c) => `\u2022 ${c.rationale}`).join('\n');
-    // Log acceptance metadata for future telemetry (no-op when window is absent).
-    if (typeof window !== 'undefined' && window.__aparture?.logEvent) {
-      try {
-        window.__aparture.logEvent('suggest-profile.accepted', {
-          totalChanges: response.changes.length,
-          acceptedCount: acceptedIds.length,
-          acceptedIds,
-        });
-      } catch {
-        // Swallow telemetry errors — never block the apply flow.
-      }
-    }
-    onAccept(resultText, joinedRationale, computeCutoff());
+    const appliedAt = Date.now();
+    const { accepted, rejected, incorporatedEventIds } = resolveSuggestionOutcome({
+      sentEvents,
+      changes: response.changes,
+      acceptedIds,
+    });
+    onAccept({
+      kind: accepted.length > 0 ? 'applied' : 'rejected',
+      content: accepted.length > 0 ? resultText : profile,
+      rationale: accepted.map((c) => `• ${c.rationale}`).join('\n'),
+      accepted,
+      rejected,
+      incorporatedEventIds,
+      appliedAt,
+    });
     onClose();
   }
 
   function handleNoChangeDismiss() {
-    const rationale = `No changes warranted: ${response.noChangeReason}`;
-    onAccept(profile, rationale, computeCutoff());
+    onAccept({
+      kind: 'no-change',
+      noChangeReason: response.noChangeReason ?? '',
+      accepted: [],
+      rejected: [],
+      incorporatedEventIds: [],
+      appliedAt: Date.now(),
+    });
     onClose();
   }
 
@@ -369,8 +381,8 @@ export default function SuggestDialog({
                 color: 'var(--aparture-mute)',
               }}
             >
-              Select which feedback events should inform the suggestion. All are included by default
-              — uncheck any you want to exclude.
+              Choose which feedback informs this suggestion. All pending events are included by
+              default. Unchecked events stay pending for a later suggestion.
             </Dialog.Description>
           </div>
 

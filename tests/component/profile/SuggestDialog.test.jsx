@@ -489,7 +489,7 @@ describe('SuggestDialog — accept/reject/dismiss', () => {
     profile: 'original profile text',
     newFeedback: [starEvent, dismissEvent, generalEvent],
     cap: { commentCap: 30 },
-    briefingModel: 'gemini-3.1-pro',
+    briefingModel: 'gemini-3.6-flash',
     provider: 'google',
     password: 'test',
     onAccept: vi.fn(),
@@ -499,118 +499,105 @@ describe('SuggestDialog — accept/reject/dismiss', () => {
     vi.restoreAllMocks();
   });
 
-  it('Apply on diff view calls onAccept with applied profile, joined rationale, and max cutoff', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        changes: [
-          {
-            id: 'c1',
-            rationale: 'based on star on 2504.01234',
-            edit: {
-              type: 'insert',
-              anchor: 'profile text',
-              content: ' with added bullet',
-            },
-          },
-        ],
-      }),
-    });
+  const respondWith = (body) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => body });
     vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  // c1 cites the star; c2 cites the dismiss.
+  const twoChanges = {
+    changes: [
+      {
+        id: 'c1',
+        rationale: 'Based on the star on 2504.01234, added the bullet.',
+        edit: { type: 'insert', anchor: 'profile text', content: ' with added bullet' },
+      },
+      {
+        id: 'c2',
+        rationale: 'The dismiss on 2504.02345 suggests dropping "original".',
+        edit: { type: 'delete', anchor: 'original ', content: '' },
+      },
+    ],
+  };
+
+  async function generate(props = {}) {
+    render(<SuggestDialog {...baseProps} {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+  }
+
+  it('Apply hands App one outcome: new content, accepted rationale, cited events only', async () => {
+    respondWith(twoChanges);
     const onAccept = vi.fn();
     const onClose = vi.fn();
-    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await generate({ onAccept, onClose });
     await screen.findByText(/proposed changes/i);
-    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
-    expect(onAccept).toHaveBeenCalled();
-    const [applied, rationale, cutoff] = onAccept.mock.calls[0];
-    expect(applied).toBe('original profile text with added bullet');
-    expect(rationale).toContain('based on star on 2504.01234');
-    expect(cutoff).toBe(1700000000500);
+    // Reject c2, keep c1.
+    const changeBoxes = screen.getAllByRole('checkbox');
+    fireEvent.click(changeBoxes[1]);
+    fireEvent.click(screen.getByRole('button', { name: /apply 1 of 2/i }));
+
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    const outcome = onAccept.mock.calls[0][0];
+    expect(outcome.kind).toBe('applied');
+    expect(outcome.content).toBe('original profile text with added bullet');
+    expect(outcome.rationale).toContain('star on 2504.01234');
+    expect(outcome.accepted.map((c) => c.id)).toEqual(['c1']);
+    expect(outcome.rejected.map((c) => c.id)).toEqual(['c2']);
+    // The star motivated the accepted change; the dismiss sits behind the
+    // REJECTED change and stays pending. The general comment informed a
+    // revision the user accepted and no rejected rationale quotes it.
+    expect(outcome.incorporatedEventIds.sort()).toEqual(['e1', 'e3']);
+    expect(typeof outcome.appliedAt).toBe('number');
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('an unticked event is never sent and never marked incorporated (P1-4)', async () => {
+    const fetchMock = respondWith(twoChanges);
+    const onAccept = vi.fn();
+    render(<SuggestDialog {...baseProps} onAccept={onAccept} />);
+    // Untick the star (an OLDER event than the dismiss): with the old
+    // max-timestamp cutoff it was marked "Already incorporated" forever.
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await screen.findByText(/proposed changes/i);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).feedback.map((e) => e.id)).toEqual([
+      'e2',
+      'e3',
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: /apply 2 of 2/i }));
+    const outcome = onAccept.mock.calls[0][0];
+    // c1 still cites 2504.01234, but that event wasn't sent this time.
+    expect(outcome.incorporatedEventIds).not.toContain('e1');
+    expect(outcome.incorporatedEventIds.sort()).toEqual(['e2', 'e3']);
+  });
+
   it('Cancel on diff view closes without calling onAccept', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        changes: [
-          {
-            id: 'c1',
-            rationale: 'y',
-            edit: {
-              type: 'insert',
-              anchor: 'original profile text',
-              content: ' updated',
-            },
-          },
-        ],
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    respondWith(twoChanges);
     const onAccept = vi.fn();
     const onClose = vi.fn();
-    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await generate({ onAccept, onClose });
     await screen.findByText(/proposed changes/i);
     fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
     expect(onAccept).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('Dismiss on noChangeReason view advances the cutoff with unchanged profile', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        changes: [],
-        noChangeReason: 'Profile already covers these areas.',
-      }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+  it('Dismiss on the no-change view incorporates nothing and keeps the profile', async () => {
+    respondWith({ changes: [], noChangeReason: 'Profile already covers these areas.' });
     const onAccept = vi.fn();
     const onClose = vi.fn();
-    render(<SuggestDialog {...baseProps} onAccept={onAccept} onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
+    await generate({ onAccept, onClose });
     await screen.findByText(/no profile changes suggested/i);
     fireEvent.click(screen.getByRole('button', { name: /^dismiss$/i }));
-    expect(onAccept).toHaveBeenCalledWith(
-      'original profile text', // UNCHANGED profile
-      expect.stringContaining('No changes warranted'),
-      1700000000500 // newest timestamp still advances cutoff
-    );
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('Apply uses only the timestamps of selected events (not all events)', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        changes: [
-          {
-            id: 'c1',
-            rationale: 'y',
-            edit: {
-              type: 'insert',
-              anchor: 'original profile text',
-              content: ' updated',
-            },
-          },
-        ],
-      }),
+    const outcome = onAccept.mock.calls[0][0];
+    expect(outcome).toMatchObject({
+      kind: 'no-change',
+      noChangeReason: 'Profile already covers these areas.',
+      incorporatedEventIds: [],
     });
-    vi.stubGlobal('fetch', fetchMock);
-    const onAccept = vi.fn();
-    render(<SuggestDialog {...baseProps} onAccept={onAccept} />);
-    // Uncheck the newest event (dismissEvent, timestamp 1700000000500)
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[1]); // uncheck dismiss
-    fireEvent.click(screen.getByRole('button', { name: /generate suggestion/i }));
-    await screen.findByText(/proposed changes/i);
-    fireEvent.click(screen.getByRole('button', { name: /apply/i }));
-    // Newest cutoff should now be from the remaining selected events,
-    // not 1700000000500 which was unchecked
-    const [, , cutoff] = onAccept.mock.calls[0];
-    expect(cutoff).toBe(1700000000001);
+    // No new content: nothing for App to save as a revision.
+    expect(outcome.content).toBeUndefined();
+    expect(onClose).toHaveBeenCalled();
   });
 });

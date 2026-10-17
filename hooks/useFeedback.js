@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
-import { isFilterVerdict, isTestFeedback } from '../lib/profile/feedbackStatus.js';
+import {
+  isFilterVerdict,
+  isPendingFeedback,
+  isTestFeedback,
+} from '../lib/profile/feedbackStatus.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
 
 const FEEDBACK_KEY = 'aparture-feedback';
@@ -290,10 +294,50 @@ export function useFeedback() {
     });
   }, []);
 
-  // Events that can still inform a profile suggestion. Test-run feedback is
-  // never included (see isTestFeedback).
+  // Mark the events behind an ACCEPTED suggested change as incorporated
+  // (SuggestDialog → resolveSuggestionOutcome decides which). `at` is the
+  // suggested revision's createdAt, so reverting that revision can find
+  // them again. An event already incorporated keeps its original stamp.
+  const markIncorporated = useCallback((ids, at = Date.now()) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const wanted = new Set(ids);
+    setEvents((prev) => {
+      let changed = false;
+      const next = prev.map((e) => {
+        if (!wanted.has(e.id) || e.incorporatedAt) return e;
+        changed = true;
+        return { ...e, incorporatedAt: at };
+      });
+      if (!changed) return prev;
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  // Reverting to the profile revision created at `since` undoes every change
+  // made at or after it, so the events those changes incorporated become
+  // pending again.
+  const reopenIncorporatedSince = useCallback((since) => {
+    if (!Number.isFinite(since)) return;
+    setEvents((prev) => {
+      let changed = false;
+      const next = prev.map((e) => {
+        if (!e.incorporatedAt || e.incorporatedAt < since) return e;
+        changed = true;
+        const { incorporatedAt: _reopened, ...rest } = e;
+        return rest;
+      });
+      if (!changed) return prev;
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  // Events that can still inform a profile suggestion: pending ones only.
+  // Test-run feedback and incorporated events are never included; `cutoff`
+  // is the legacy profile.lastFeedbackCutoff (see feedbackStatus).
   const getNewSince = useCallback(
-    (cutoff) => events.filter((e) => e.timestamp > cutoff && !isTestFeedback(e)),
+    (cutoff) => events.filter((e) => isPendingFeedback(e, cutoff)),
     [events]
   );
 
@@ -312,6 +356,8 @@ export function useFeedback() {
       recordFilterOverride,
       addScopedFeedback,
       clearTestEvents,
+      markIncorporated,
+      reopenIncorporatedSince,
       getNewSince,
     }),
     [
@@ -325,6 +371,8 @@ export function useFeedback() {
       recordFilterOverride,
       addScopedFeedback,
       clearTestEvents,
+      markIncorporated,
+      reopenIncorporatedSince,
       getNewSince,
     ]
   );

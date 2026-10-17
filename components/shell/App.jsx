@@ -54,7 +54,7 @@ export default function App() {
   const {
     profile,
     updateProfile,
-    saveSuggested,
+    recordSuggestionOutcome,
     revertToRevision,
     clearHistory,
     migrationNotice,
@@ -79,6 +79,17 @@ export default function App() {
   } = useBriefing({ password });
   const feedback = useFeedback();
   const seenPapers = useSeenPapers({ password });
+
+  // Reverting to a revision undoes every change made at or after it, so the
+  // feedback those changes incorporated is pending again.
+  const reopenIncorporatedSince = feedback.reopenIncorporatedSince;
+  const handleRevertToRevision = useCallback(
+    (createdAt) => {
+      revertToRevision(createdAt);
+      reopenIncorporatedSince(createdAt);
+    },
+    [revertToRevision, reopenIncorporatedSince]
+  );
 
   // Resolve the active briefing entry. Current briefing returns synchronously
   // via loadBriefing's fast path; archived briefings trigger an async fetch
@@ -1134,7 +1145,7 @@ export default function App() {
           // Profile view
           profile={profile}
           updateProfile={updateProfile}
-          revertToRevision={revertToRevision}
+          revertToRevision={handleRevertToRevision}
           clearHistory={clearHistory}
           migrationNotice={migrationNotice}
           dismissMigrationNotice={dismissMigrationNotice}
@@ -1224,8 +1235,12 @@ export default function App() {
           MODEL_REGISTRY[config.briefingModel ?? config.pdfModel]?.provider ?? 'Google'
         ).toLowerCase()}
         password={password}
-        onAccept={(revisedProfile, rationale, newCutoff) => {
-          saveSuggested(revisedProfile, newCutoff, rationale);
+        onAccept={(outcome) => {
+          // Profile side: content + revision for accepted changes. Feedback
+          // side: only the events behind accepted changes become
+          // incorporated, stamped with the same appliedAt as the revision.
+          recordSuggestionOutcome(outcome);
+          feedback.markIncorporated(outcome.incorporatedEventIds, outcome.appliedAt);
           setShowSuggestDialog(false);
         }}
       />

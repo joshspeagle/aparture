@@ -39,7 +39,7 @@ export default function FeedbackHeader({
             marginTop: '2px',
           }}
         >
-          {newCount} new since last revision · {totalCount} total
+          {newCount} not yet incorporated · {totalCount} total
           {testCount > 0 ? ` · ${testCount} from test runs` : ''}
         </p>
       </div>

@@ -45,8 +45,8 @@ describe('FeedbackPanel', () => {
       makeStar('s3', 'p3', 4000), // newer
     ];
     render(<FeedbackPanel {...defaultProps} events={events} cutoff={2000} />);
-    // Header should say "2 new since last revision · 3 total"
-    expect(screen.getByText(/2 new/i)).toBeInTheDocument();
+    // Header should say "2 not yet incorporated · 3 total"
+    expect(screen.getByText(/2 not yet incorporated/i)).toBeInTheDocument();
     expect(screen.getByText(/3 total/i)).toBeInTheDocument();
   });
 
@@ -123,7 +123,7 @@ describe('FeedbackPanel', () => {
     it('leaves test-run events out of the new and total counts', () => {
       render(<FeedbackPanel {...defaultProps} events={events} cutoff={2000} />);
       expect(
-        screen.getByText(/1 new since last revision · 1 total · 2 from test runs/i)
+        screen.getByText(/1 not yet incorporated · 1 total · 2 from test runs/i)
       ).toBeInTheDocument();
     });
 

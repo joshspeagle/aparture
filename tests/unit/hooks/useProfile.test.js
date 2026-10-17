@@ -49,6 +49,55 @@ describe('useProfile', () => {
     expect(result.current.profile.revisions[0].rationale).toBe('rationale text');
   });
 
+  it('recordSuggestionOutcome: an applied outcome saves content as a suggested revision at appliedAt', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('base profile');
+    });
+    const cutoffBefore = result.current.profile.lastFeedbackCutoff;
+    act(() => {
+      result.current.recordSuggestionOutcome({
+        kind: 'applied',
+        content: 'base profile, revised',
+        rationale: '• because',
+        accepted: [{ id: 'c1' }],
+        rejected: [],
+        appliedAt: 1_800_000_000_000,
+      });
+    });
+    expect(result.current.profile.content).toBe('base profile, revised');
+    expect(result.current.profile.revisions[0]).toMatchObject({
+      content: 'base profile',
+      source: 'suggested',
+      rationale: '• because',
+      createdAt: 1_800_000_000_000,
+    });
+    // Incorporation is per event now; the legacy cutoff is not advanced.
+    expect(result.current.profile.lastFeedbackCutoff).toBe(cutoffBefore);
+    // Written through to the active named profile like any committed change.
+    expect(result.current.profiles.Default.content).toBe('base profile, revised');
+  });
+
+  it('recordSuggestionOutcome: rejected and no-change outcomes leave content and history alone', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('base profile');
+    });
+    const revisionsBefore = result.current.profile.revisions.length;
+    act(() => {
+      result.current.recordSuggestionOutcome({
+        kind: 'rejected',
+        content: 'base profile',
+        accepted: [],
+        rejected: [{ id: 'c1' }],
+      });
+      result.current.recordSuggestionOutcome({ kind: 'no-change', noChangeReason: 'covered' });
+    });
+    expect(result.current.profile.content).toBe('base profile');
+    // The old flow wrote a bogus "No changes warranted" revision here.
+    expect(result.current.profile.revisions).toHaveLength(revisionsBefore);
+  });
+
   it('revertToRevision restores earlier content with a new manual revision entry', () => {
     const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
     act(() => {

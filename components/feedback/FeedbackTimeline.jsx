@@ -143,11 +143,15 @@ export default function FeedbackTimeline({ events, filters, cutoff, onClearTestE
   const newGroups = groupByPaper(byStatus.pending);
   const oldGroups = groupByPaper(byStatus.incorporated);
 
+  // "Pending" is not "newer than the last revision": an older event the user
+  // unticked, or one behind a change they rejected, is still pending.
   return (
     <div>
       {newGroups.length > 0 && (
         <div>
-          {cutoff > 0 && <p style={GROUP_LABEL_STYLE}>New since last revision</p>}
+          {(oldGroups.length > 0 || byStatus.test.length > 0) && (
+            <p style={GROUP_LABEL_STYLE}>Not yet incorporated</p>
+          )}
           {renderGroups(newGroups)}
         </div>
       )}
@@ -160,7 +164,7 @@ export default function FeedbackTimeline({ events, filters, cutoff, onClearTestE
             opacity: 0.6,
           }}
         >
-          <p style={GROUP_LABEL_STYLE}>Already incorporated in previous profile revision</p>
+          <p style={GROUP_LABEL_STYLE}>Incorporated into your profile</p>
           {renderGroups(oldGroups)}
         </div>
       )}

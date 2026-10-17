@@ -177,3 +177,78 @@ describe('App — filter overrides are recorded at click time (P1-6)', () => {
     expect(storedEvents()).toEqual([]);
   });
 });
+
+describe('App — Suggest outcome and revert keep feedback status honest (P1-4)', () => {
+  const storedProfile = () => JSON.parse(window.localStorage.getItem('aparture-profile'));
+  const star = (id, timestamp) => ({
+    id,
+    type: 'star',
+    arxivId: `2610.${id}`,
+    paperTitle: `Paper ${id}`,
+    timestamp,
+    briefingDate: '2026-10-17',
+  });
+
+  beforeEach(() => {
+    window.localStorage.setItem(
+      'aparture-profile',
+      JSON.stringify({ content: 'my profile', updatedAt: 1, lastFeedbackCutoff: 0, revisions: [] })
+    );
+    window.localStorage.setItem(
+      'aparture-feedback',
+      JSON.stringify({ events: [star('used', 100), star('unused', 200)] })
+    );
+  });
+
+  it('an accepted change saves the profile and incorporates only its events; reverting re-opens them', () => {
+    seedStore();
+    render(<App />);
+    const appliedAt = Date.now();
+
+    act(() => {
+      captured.suggestDialog.onAccept({
+        kind: 'applied',
+        content: 'my profile, sharpened',
+        rationale: '• Based on the star on 2610.used',
+        accepted: [{ id: 'c1' }],
+        rejected: [],
+        incorporatedEventIds: ['used'],
+        appliedAt,
+      });
+    });
+
+    expect(storedProfile().content).toBe('my profile, sharpened');
+    let events = storedEvents();
+    expect(events.find((e) => e.id === 'used').incorporatedAt).toBe(appliedAt);
+    expect(events.find((e) => e.id === 'unused').incorporatedAt).toBeUndefined();
+    // The dialog's pending list now holds only the unused event.
+    expect(captured.suggestDialog.newFeedback.map((e) => e.id)).toEqual(['unused']);
+
+    // Revert to the revision the suggestion archived (createdAt = appliedAt).
+    act(() => {
+      captured.mainArea.revertToRevision(appliedAt);
+    });
+    expect(storedProfile().content).toBe('my profile');
+    events = storedEvents();
+    expect(events.find((e) => e.id === 'used').incorporatedAt).toBeUndefined();
+    expect(captured.suggestDialog.newFeedback.map((e) => e.id).sort()).toEqual(['unused', 'used']);
+  });
+
+  it('a no-change result marks nothing incorporated', () => {
+    seedStore();
+    render(<App />);
+    act(() => {
+      captured.suggestDialog.onAccept({
+        kind: 'no-change',
+        noChangeReason: 'covered',
+        accepted: [],
+        rejected: [],
+        incorporatedEventIds: [],
+        appliedAt: Date.now(),
+      });
+    });
+    expect(storedProfile().content).toBe('my profile');
+    expect(storedEvents().every((e) => e.incorporatedAt === undefined)).toBe(true);
+    expect(captured.suggestDialog.newFeedback).toHaveLength(2);
+  });
+});
