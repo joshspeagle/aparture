@@ -75,10 +75,10 @@ OPENAI_API_KEY=sk-proj-...
 
 ### `GOOGLE_AI_API_KEY`
 
-Google AI Studio (Gemini) API key. Prefix: `AIzaSy`. Used when any slot is set to a Gemini model. The env var is specifically `GOOGLE_AI_API_KEY` — not `GEMINI_API_KEY` or `GOOGLE_API_KEY`. See [Google setup](/getting-started/api-keys-google).
+Google AI Studio (Gemini) API key. Standard keys start with `AIza` and must be restricted to the Gemini API; Google doesn't document the format of the auth keys AI Studio has issued since 2026-05-28. Used when any slot is set to a Gemini model. The env var is specifically `GOOGLE_AI_API_KEY` — not `GEMINI_API_KEY` or `GOOGLE_API_KEY`. See [Google setup](/getting-started/api-keys-google).
 
 ```bash
-GOOGLE_AI_API_KEY=AIzaSy...
+GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
 ## Optional

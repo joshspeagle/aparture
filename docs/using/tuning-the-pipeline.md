@@ -19,7 +19,7 @@ Each stage narrows the set of papers before the next stage runs, so cheap models
 
 Tuning comes down to: get the right papers into Stage 4, don't overspend on the stages before it, and don't let the wrong papers through. The rest of this page goes through the knobs.
 
-You don't have to do this arithmetic yourself. The score-review and pre-briefing gates show the projected spend of the stage they hold back, and after a run the Download Report card shows an estimated cost per stage, computed from the token counts each stage actually used. Both use the pricing snapshot in the model registry (`utils/models.js`) — planning figures at list price, not a bill. If the registry has no price for a model, the estimate for that stage is hidden rather than guessed.
+You don't have to do this arithmetic yourself. The score-review and pre-briefing gates show the projected spend of the stage they hold back, and after a run the Download Report card shows an estimated cost per stage, computed from the token counts each stage actually used. Both use the pricing in the model registry (`utils/models.js`): the list price, or a provider's published promotional price until its end date. They are planning figures, not a bill. If the registry has no price for a model, the estimate for that stage is hidden rather than guessed.
 
 ## Per-stage model slots
 
@@ -30,12 +30,12 @@ Each stage has its own model slot. Current defaults are all Google:
 | `filterModel`         | Quick Filter Model                   | `gemini-3.5-flash-lite` | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
 | `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`      | Stage 3 scoring                                                                                                                            |
 | `postProcessingModel` | (config-only, no Settings control)   | `gemini-3.6-flash`      | Stage 3.5 consistency pass                                                                                                                 |
-| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.6-flash`      | Stage 4 full-text read                                                                                                                     |
-| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.6-flash`      | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
+| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.8-flash`      | Stage 4 full-text read                                                                                                                     |
+| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.8-flash`      | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
 | `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite` | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
-| `notebookLMModel`     | (chosen on the NotebookLM card)      | `gemini-3.6-flash`      | Optional NotebookLM document bundle                                                                                                        |
+| `notebookLMModel`     | (chosen on the NotebookLM card)      | `gemini-3.8-flash`      | Optional NotebookLM document bundle                                                                                                        |
 
-The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config and defaults to the same model as the scoring slot. `notebookLMModel` is picked on the NotebookLM card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
+The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` is the one slot with no Settings control: it lives only in the saved config, and it stays on `gemini-3.6-flash` when you change the scoring slot. Without a Google key, turn off **Enable Post-Processing**. `notebookLMModel` is picked on the NotebookLM card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
 
 Three rules of thumb for model selection:
 
@@ -47,7 +47,7 @@ Synthesis reads all the final-round papers plus your profile. It benefits from a
 
 ### Don't spend on what filters
 
-The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." Any Flash-Lite, Haiku, or Nano-class model works; the default is `gemini-3.5-flash-lite`.
+The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." Any Flash-Lite, Haiku, or Luna-class model works; the default is `gemini-3.5-flash-lite`.
 
 Scoring is similar: dozens to hundreds of abstracts, and most of what the model is doing is ranking within them. A mid-tier model is usually enough. [Model selection](/concepts/model-selection) has the current picks for each slot.
 
@@ -90,9 +90,9 @@ Same Anthropic cache-warmup behavior as filter.
 
 ### Tuning guidance
 
-Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI Tier 3+); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google has aggressive RPM caps on Flash-Lite, so start at 2–3 if you're relying on the free tier for filtering.
+Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI's Launch tier and up); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google projects have the lowest limits, so start at 2–3 if you're relying on the free tier for filtering.
 
-Aparture self-heals on transient 429s: when one batch hits a rate limit, every concurrent worker for the same provider pauses for the `Retry-After` window (or up to 60 s if the provider doesn't tell us), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If your filter model is a free-tier Gemini Flash-Lite slot and your concurrency × batch count is likely to exceed 60 RPM, Aparture also emits a pre-flight warning before the stage starts.
+Aparture self-heals on transient 429s: when one batch hits a rate limit, every concurrent worker for the same provider pauses for the `Retry-After` window (capped at 60 s, or 5 s when the provider doesn't send one), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If a stage runs on a Gemini Flash-Lite model with enough batches and parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight warning before the stage starts.
 
 ### When a provider declines on content grounds
 
@@ -155,7 +155,9 @@ Aparture doesn't currently expose a "minimum score to advance" setting — the c
 
 The reason it exists: Stage 3 scores each paper independently, which sometimes produces inconsistencies — two papers of similar quality can land a point apart just because they were in different batches. The post-processing pass irons that out.
 
-Turn it off if run-time matters more than ranking quality, or if you're rapidly iterating on profile changes and want faster feedback. Leave it on for most production runs.
+The pass runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and has no Settings control. With no Google key, every batch fails after its retries and the run keeps the Stage 3 scores, so turn the pass off.
+
+Turn it off as well if run-time matters more than ranking quality, or if you're rapidly iterating on profile changes and want faster feedback. Leave it on for most production runs.
 
 ### Quick filter
 
@@ -214,7 +216,7 @@ Two limits to know about:
 
 The defaults ship tuned sensibly — all-Google models, all three pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
 
-**Cost-sensitive.** Switch filter and scoring to the cheapest Flash-Lite or Nano tier. Drop Papers to Analyze to 10–15. Turn off post-processing. Turn off retry-on-<span class="verdict is-maybe">MAYBE</span> if it isn't already.
+**Cost-sensitive.** Switch filter and scoring to a Flash-Lite, Haiku, or Luna-class model. Drop Papers to Analyze to 10–15. Turn off post-processing. Turn off retry-on-<span class="verdict is-maybe">MAYBE</span> if it isn't already.
 
 **Highest quality.** Put a top-tier model on `pdfModel` and `briefingModel`, and keep `scoringModel` on a mid-tier model; [Model selection](/concepts/model-selection) names the current options. Keep post-processing on. Raise Papers to Analyze to 50+. Turn both retry checkboxes on.
 

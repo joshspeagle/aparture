@@ -144,9 +144,9 @@ The stage runs with a worker pool. PDF downloads are serialised server-side (~5 
 
 On **Anthropic** providers, the pool applies a cache-warmup barrier: the first worker finishes its call alone so the ephemeral prompt-cache entry is primed once, and the remaining workers then start and hit the cache on every subsequent paper. This costs a few extra seconds on the first paper in exchange for a large input-token discount on the rest. Google and OpenAI have no warmup — all workers start immediately.
 
-Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's RPM cap — Gemini's free-tier 60 RPM in particular.
+Across all LLM stages (filter, score, post-process, PDF analysis, briefing), Aparture maintains a per-provider rate-limit barrier: when any worker catches a 429 or 503, all concurrent workers for that provider pause until the provider-signaled `Retry-After` elapses (capped at 60 s). This prevents cascading 429s when one of N parallel batches trips the project's per-minute cap, which is easiest to hit on a free-tier Gemini project.
 
-**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.6-flash`), `pdfAnalysisConcurrency` (default 3).
+**Inputs.** Top N papers from Stage 3.5, `profile.content`, `pdfModel` (default `gemini-3.8-flash`), `pdfAnalysisConcurrency` (default 3).
 
 **Output.** `finalRanking` — papers augmented with `deepAnalysis`, `finalScore`, `preAnalysisScore`, and `pdfScoreAdjustment`.
 
@@ -160,12 +160,12 @@ After PDF analysis, the pipeline orchestrates the full briefing flow in one go:
 
 1. **Map** each paper in `finalRanking` to a briefing-formatted entry, attaching engagement metadata (stars, dismissals, and comments from your feedback events).
 2. **Generate quick summaries** in parallel via `/api/analyze-pdf-quick` — ~300-word pre-reading summaries for the inline-expansion panels. Default concurrency is 5 (`quickSummaryConcurrency`, clamped 1–20).
-3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, full report, and any stars, dismissals, or comments). The `briefingModel` (default `gemini-3.6-flash`) gets the main synthesis prompt. Output is validated against a zod schema and the input paper IDs; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
+3. **Call `/api/synthesize`** to produce the structured briefing from your profile and the final-round papers (each with its abstract, score, full report, and any stars, dismissals, or comments). The `briefingModel` (default `gemini-3.8-flash`) gets the main synthesis prompt. Output is validated against a zod schema and the input paper IDs; if validation fails, a two-pass repair call attempts to fix the structure without re-inferring content.
 4. **Call `/api/check-briefing`** to audit the briefing against the source corpus. A second LLM call, on the same `briefingModel`, checks the briefing's claims against each paper's abstract, quick summary, and full report.
 5. **Optionally retry** if the audit flags hallucinations (see the next section).
 6. **Save** the briefing and its generation metadata. The full entry is written to `reports/briefings/<id>.json` on disk; the browser's localStorage keeps the current briefing and a search index for the sidebar.
 
-Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model (no caching), and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
+Unlike Stage 4's parallel PDF analysis, the quick-summary fan-out doesn't apply an Anthropic cache-warmup barrier: the default `quickSummaryModel` is a Google model, which gets no cache markers, and even on an Anthropic model the per-paper input is small enough that racing cache-creates isn't worth an extra serialised first call.
 
 **Inputs.** `finalRanking`, `profile.content`, `briefingModel` (synthesis + hallucination check), `quickSummaryModel` (per-paper compression), `quickSummaryConcurrency`, `briefingRetryOnYes` / `briefingRetryOnMaybe`, accumulated feedback events.
 

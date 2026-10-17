@@ -214,9 +214,9 @@ Expected prefixes:
 | --------- | ------------------- | ------------------------- |
 | Anthropic | `CLAUDE_API_KEY`    | `sk-ant-api03-...`        |
 | OpenAI    | `OPENAI_API_KEY`    | `sk-proj-...` or `sk-...` |
-| Google    | `GOOGLE_AI_API_KEY` | `AIzaSy...`               |
+| Google    | `GOOGLE_AI_API_KEY` | `AIza...` (standard keys) |
 
-A wrong prefix usually means you pasted the wrong kind of secret — a Google OAuth token instead of an AI Studio key, for example. See the per-provider pages: [Anthropic](/getting-started/api-keys-anthropic) · [OpenAI](/getting-started/api-keys-openai) · [Google](/getting-started/api-keys-google).
+A wrong prefix usually means you pasted the wrong kind of secret, such as an OAuth token or an organization ID. Google is the exception: it doesn't document the format of the auth keys AI Studio has issued since 2026-05-28, so a Google key that doesn't start with `AIza` isn't wrong for that reason alone. A Google key with the right shape can still be refused: the Gemini API rejects unrestricted standard keys, so an older key that AI Studio labels Unrestricted needs a restriction to the Gemini API first ([Google setup](/getting-started/api-keys-google#_2-create-an-api-key) has the steps). See the per-provider pages: [Anthropic](/getting-started/api-keys-anthropic) · [OpenAI](/getting-started/api-keys-openai) · [Google](/getting-started/api-keys-google).
 
 If the prefix looks right but the key still fails, run the [Minimal API Test](/getting-started/verify-setup#minimal-api-test). Its error message is usually more specific than the generic `401`.
 
@@ -338,9 +338,10 @@ the ladder honors that value first (capped at 60 s). End-of-stage activity-log
 lines call out how many batches were rate-limited so you know whether to
 adjust concurrency or upgrade tier.
 
-If you're on a free-tier Google key, Aparture also emits a pre-flight warning
-when the configured concurrency × batch count is likely to exceed 60 RPM —
-the run still proceeds and self-heals via the barrier, but expect more retries.
+When a stage runs on a Gemini Flash-Lite model with enough batches and
+parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight
+warning before the stage starts. The run still proceeds and self-heals via the
+barrier, but expect more retries.
 
 Each provider has several flavours of 429, each with its own fix. The activity log shows a 429 as `<provider>: rate limited (429)`, followed by `— retry in Ns` when the provider sent a retry time; the terminal shows the provider's raw error body.
 
@@ -357,7 +358,7 @@ Each provider has several flavours of 429, each with its own fix. The activity l
 
 New OpenAI accounts start on the lowest usage tier, and its per-minute limits are easy to exceed on a full run. Lower the concurrency settings until OpenAI moves the account up a tier as spend accumulates.
 
-**Google 429** (`google: rate limited (429)`, with `RESOURCE_EXHAUSTED` in the raw error). The error body names the exhausted quota. Google's free tier is 60 RPM across all models per API key — the default pipeline (filter batches + scoring + PDF analysis + quick-summary fan-out) can exceed this on a medium run. Enable quick-filter to reduce downstream calls, reduce batch sizes, or move to a paid tier.
+**Google 429** (`google: rate limited (429)`, with `RESOURCE_EXHAUSTED` in the raw error). The error body names the exhausted quota. Google applies rate limits per project, not per API key, and each model has its own limits; the free tier's are the lowest, and your current numbers are on the [AI Studio](https://aistudio.google.com/) dashboard. The default pipeline (filter batches + scoring + PDF analysis + quick-summary fan-out) can exceed free-tier limits on a medium run. Enable quick-filter to reduce downstream calls, reduce batch sizes, or move to a paid tier.
 
 **429 specifically during Stage 4 (PDF analysis).** Aparture runs PDF analyses in parallel with a default concurrency of 3 (`pdfAnalysisConcurrency`). If 429s land on PDF calls specifically, drop Settings → **Parallel PDF Calls** from 3 to 2 or 1. If your tier is generous and the stage feels slow, you can raise it up to 20.
 
@@ -382,7 +383,7 @@ If it keeps happening:
 
 Note the briefing stage can't skip: synthesis is a single call for the whole briefing, so a refusal there fails the briefing with an explicit message. Your papers and their analyses are unaffected — regenerate on a different `briefingModel`.
 
-**A Fable 5 request that always 400s is a different problem.** `claude-fable-5` requires your Anthropic organization's data retention to be set to 30 days; under zero data retention every request fails with a 400 that looks like a malformed payload. Check the org setting before debugging the request.
+**A Claude Fable request that always 400s is a different problem.** `claude-fable-5.1` and `claude-fable-5` require your Anthropic organization's data retention to be set to 30 days; under zero data retention every request fails with a 400 that looks like a malformed payload. Check the org setting before debugging the request.
 
 ### Context overflow
 

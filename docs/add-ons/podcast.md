@@ -104,7 +104,7 @@ For the full prompt reference, see [Reference: prompts](/reference/prompts).
 
 **NotebookLM hits a context limit or truncates.** Too many sources can do this. Try uploading only `briefing.md` and `discussion-guide.md`, dropping the per-paper reports. NotebookLM can usually infer enough from the briefing alone.
 
-**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (Gemini 3 Flash, Claude Sonnet 4.6) cuts this noticeably.
+**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (a Gemini Flash or Claude Sonnet model) cuts this noticeably.
 
 ## Next
 
