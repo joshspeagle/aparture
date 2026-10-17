@@ -407,6 +407,7 @@ function MainArea({
           }
           quickSummariesById={{ ...entry.quickSummariesById, ...quickSummariesById }}
           fullReportsById={{ ...entry.fullReportsById, ...fullReportsById }}
+          figuresById={entry.figuresById}
           feedbackEvents={feedbackEvents}
           onStar={onStar}
           onDismiss={onDismiss}

@@ -53,7 +53,7 @@ Breaking one of these produces wrong output, an unexpected bill, or lost data.
 - `pages/api/`: one route per LLM step (`quick-filter`, `score-abstracts`, `rescore-abstracts`, `analyze-pdf`, `analyze-pdf-quick`, `synthesize`, `check-briefing`, `editor-questions`, `suggest-profile`, `generate-notebooklm`), the arXiv proxies (`harvest-arxiv` for OAI-PMH, `fetch-arxiv` for Atom), persistence (`briefings/*`, `sessions/*`), and `validate-setup` (free probes).
 - `components/shell/App.jsx` owns the hooks, the pipeline, and the layout. It publishes hook-owned values (profile, config, currentBriefing, feedback, saveBriefing, briefingHistory, seenPapersIndex, seenPapersReady) into the `reactContext` slice of the Zustand store (`stores/analyzerStore.js`), which the pipeline reads through `getState()`.
 - `hooks/`: localStorage-backed state. `useAnalyzerPersistence` holds `DEFAULT_CONFIG`, config migrations, and session persistence.
-- `lib/analyzer/` (pipeline), `lib/llm/` (dispatcher, adapters, route auth, typed errors, fixtures, token budget), `lib/arxiv/`, `lib/synthesis/` (briefing schema, checks, repair, audit corpus, reader notes), `lib/profile/` (feedback status, suggestion outcome, suggest prompt, templates).
+- `lib/analyzer/` (pipeline), `lib/llm/` (dispatcher, adapters, route auth, typed errors, fixtures, token budget), `lib/arxiv/`, `lib/figures/` (key-figure crop and store), `lib/synthesis/` (briefing schema, checks, repair, audit corpus, reader notes), `lib/profile/` (feedback status, suggestion outcome, suggest prompt, templates).
 - `bin/`, `lib/headless/`, `lib/briefing/v2/`, `.claude/skills/aparture/`: the headless runner and agent skill.
 - `audits/`: point-in-time audit reports kept as provenance; they describe the state before the fixes that followed.
 - `reports/`, `temp/`: gitignored runtime state, resolved from `process.cwd()`, so they stay at the repo root.
@@ -88,7 +88,8 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 
 - **Briefings.** Hot: `aparture-briefing-current` and the newest-first `aparture-briefing-index`, which keeps `filterBriefings` synchronous. Cold: `reports/briefings/<id>.json` through `/api/briefings[/:id]`, loaded by `useBriefing.loadBriefing(id)`. The index has no entry cap; it is trimmed to `HOT_INDEX_BUDGET_CHARS`, test runs first (`testRun`, set by `buildIndexEntry`), and trimmed briefings stay on disk. Extension points: `MUTABLE_FIELDS` (`pages/api/briefings/[id].js`), `HEAVY_FIELDS` (`hooks/useBriefing.js`), `buildIndexEntry`.
 - **Sessions.** Hot: `arxivAnalyzerState` (`lib/session/buildHotEntry.js`, under about 600 KB, with the top-30 `finalRanking`). Cold: `reports/sessions/<sessionId>.json` through `/api/sessions[/:id]`.
-- `APARTURE_REPORTS_DIR` replaces the `reports/` base for both; it is the Phase 2 seam. `saveBriefingAndSwitch` in `App.jsx` feeds `useSeenPapers.recordRun` after `saveBriefing` resolves (IDs from `lib/seenPapers/papersFromBriefing.js`).
+- **Key figures.** `/api/analyze-pdf` crops the figure the full read names from the PDF it already holds (`lib/figures/cropFigure.js`: pdf.js plus `@napi-rs/canvas`, both in `serverExternalPackages`) and writes `reports/figures/<arxivId>.png` and `.json`; `/api/figures/[id]` serves it behind the password header. The model picks only the label; the caption shown is the PDF's text. A failed crop leaves the analysis intact. Briefings record `figuresById` (a heavy field). The runner's `figure` command and `render` use the same crop for PDF-only papers.
+- `APARTURE_REPORTS_DIR` replaces the `reports/` base for all three; it is the Phase 2 seam. `saveBriefingAndSwitch` in `App.jsx` feeds `useSeenPapers.recordRun` after `saveBriefing` resolves (IDs from `lib/seenPapers/papersFromBriefing.js`).
 
 ### Profile and feedback
 
@@ -118,7 +119,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 
 ### Headless runner and agent skill (prototype)
 
-`bin/aparture.mjs` runs a briefing's mechanical steps from Node without the web app: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest` (`node bin/aparture.mjs help`). It makes no LLM calls. The skill in `.claude/skills/aparture/` does the reading and writing and calls the runner between steps; `.agents/skills/aparture` is a symlink to it, for agents that look there; edit the files under `.claude/`. No user docs yet.
+`bin/aparture.mjs` runs a briefing's mechanical steps from Node without the web app: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest`, `figure` (`node bin/aparture.mjs help`). It makes no LLM calls. The skill in `.claude/skills/aparture/` does the reading and writing and calls the runner between steps; `.agents/skills/aparture` is a symlink to it, for agents that look there; edit the files under `.claude/`. No user docs yet.
 
 - stdout is JSON only: the runner sends `console.log` to stderr because route handlers log. Keep new output off stdout.
 - It calls the arXiv proxy handlers in-process (`lib/headless/inProcessRoute.js`), installs jsdom's `DOMParser` (a devDependency, so it needs a full `npm ci`), and sets a random `ACCESS_PASSWORD` when none is set.

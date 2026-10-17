@@ -112,6 +112,8 @@ npm install
 
 `npm install` pulls roughly 700 packages (~500 MB) and takes 1–3 minutes on a clean machine.
 
+Key figures on briefing cards are cropped from each paper's PDF with pdf.js and a prebuilt native canvas module (`@napi-rs/canvas`), which `npm install` fetches for macOS, Windows and Linux. If the module can't load on your machine, cards simply show no figure.
+
 ## 3. Set a local access password
 
 Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll remember:

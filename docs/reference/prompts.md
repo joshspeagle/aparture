@@ -72,7 +72,7 @@ Stage 3.5 post-processing pass — comparative re-scoring across a batch for con
 
 ### `prompts/rubric-pdf.md`
 
-Stage 4 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score. Fires for every paper that reaches Stage 4, via `/api/analyze-pdf`.
+Stage 4 full-PDF analysis — structured summary, key findings, methodology, limitations, updated score, and the key figure's label with a clause on what it shows. Fires for every paper that reaches Stage 4, via `/api/analyze-pdf`. The route crops the named figure from the PDF; the prompt only picks it.
 
 **Variables:** `profile`, `originalScore`
 

@@ -48,3 +48,5 @@ Now that you have the full paper, return these fields:
 4. `limitations`: one paragraph on limitations or areas for future work.
 5. `relevanceAssessment`: one paragraph assessing relevance to the research profile. End it with one sentence comparing your full-paper assessment to the original abstract-based score of {{originalScore}}/10.
 6. `updatedScore`: the updated relevance score, 0.0-10.0 with one decimal place.
+7. `keyFigure`: the one figure a reader should look at first to see the paper's main result, named exactly as the paper labels it ("Figure 3", "Fig. 2"). Use null when no figure carries the result, as in a purely theoretical paper.
+8. `keyFigureReason`: one clause on what that figure shows, or null when there is no key figure.

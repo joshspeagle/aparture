@@ -45,6 +45,9 @@
   --aparture-override-text: #9a3412;
   --aparture-comment-text: #7e22ce;
   --aparture-on-status: #1a1a1a;
+  /* Ground for figures cropped from papers, which are drawn on white; the
+     same in both themes, so it is not redefined below. */
+  --aparture-figure-ground: #fff;
 
   /* Typography.
    * --font-serif/--font-sans/--font-mono carry the hashed next/font family

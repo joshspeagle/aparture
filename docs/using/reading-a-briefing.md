@@ -80,6 +80,8 @@ Paper cards are short by design — they're a triage tool, not a replacement for
 
 **Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. They're written for you to read; the briefing writer and the audit don't use them. Click again to collapse.
 
+**Key figure** — when the full read picked a figure, the card shows it, cropped from the paper's PDF, with the paper's own caption underneath. Papers without one (a purely theoretical paper, or a PDF whose caption the crop couldn't find) just show no figure.
+
 **Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment, with its headings and lists rendered. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
 
 ::: tip Expansions are free at read time

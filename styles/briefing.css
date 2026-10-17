@@ -269,3 +269,32 @@
     align-items: center;
   }
 }
+
+/* Key figure, cropped from the paper's PDF. Figures are drawn on white,
+   so the frame keeps a white ground in both themes. */
+.briefing-prose .key-figure {
+  margin: var(--aparture-space-4) 0;
+}
+
+.briefing-prose .key-figure img {
+  display: block;
+  max-width: 100%;
+  max-height: 420px;
+  margin: 0 auto;
+  object-fit: contain;
+  background: var(--aparture-figure-ground);
+  border: 1px solid var(--aparture-hairline);
+  border-radius: 4px;
+  padding: var(--aparture-space-2);
+}
+
+.briefing-prose .key-figure figcaption {
+  margin-top: var(--aparture-space-2);
+  font-family: var(--aparture-font-sans);
+  font-size: var(--aparture-text-xs);
+  color: var(--aparture-mute);
+}
+
+.briefing-prose .key-figure-source {
+  font-style: italic;
+}

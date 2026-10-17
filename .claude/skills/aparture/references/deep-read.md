@@ -7,7 +7,7 @@ The deep read turns a paper into material an editor can write from: what it does
 You will receive the reader's profile (plus `learned.md`), the paper's triage entry (score and one-line reason), and either:
 
 - `<run>/papers/<id>.md` — the full text from arXiv's HTML rendering, with math as `$LaTeX$`, a figure list with captions, and appendices omitted; or
-- `<run>/papers/<id>.pdf` — when arXiv has no HTML version. Read it with the Read tool, using the `pages` parameter for long papers (methods, results and conclusions matter most).
+- `<run>/papers/<id>.pdf` — when arXiv has no HTML version. Read it with the Read tool, using the `pages` parameter for long papers (methods, results and conclusions matter most). Its figure list in `<run>/papers/<id>.json` comes from the PDF's captions (ids like `Figure 3`); `render` crops the one you pick out of the PDF, the same crop the app uses.
 
 Read the paper properly: the introduction for the claim, the method for what was actually done, the results for what was actually shown, and the conclusion for what the authors think it means. Abstracts oversell; a report that only paraphrases the abstract has failed.
 

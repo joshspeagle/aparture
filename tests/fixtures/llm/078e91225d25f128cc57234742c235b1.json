@@ -1,0 +1,71 @@
+{
+  "hash": "078e91225d25f128cc57234742c235b1",
+  "input": {
+    "apiKey": "test-key",
+    "cacheable": false,
+    "cachePrefix": "",
+    "model": "claude-haiku-4-5",
+    "pdfBase64": "ANALYZE_PDF_TEST_PDF_FIXTURE",
+    "prompt": "ANALYZE_PDF_FIGURE_MISSING_FIXTURE",
+    "provider": "anthropic",
+    "structuredOutput": {
+      "name": "pdf_analysis",
+      "description": "Aparture PDF deep-analysis result",
+      "schema": {
+        "type": "object",
+        "required": [
+          "summary",
+          "keyFindings",
+          "methodology",
+          "limitations",
+          "relevanceAssessment",
+          "updatedScore",
+          "keyFigure",
+          "keyFigureReason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "keyFindings": {
+            "type": "string"
+          },
+          "methodology": {
+            "type": "string"
+          },
+          "limitations": {
+            "type": "string"
+          },
+          "relevanceAssessment": {
+            "type": "string"
+          },
+          "updatedScore": {
+            "type": "number"
+          },
+          "keyFigure": {
+            "type": ["string", "null"]
+          },
+          "keyFigureReason": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "text": "",
+    "structured": {
+      "summary": "This paper introduces a novel approach to interpretability in deep neural networks.\n\nThe authors propose a method that decomposes model weights into interpretable components using sparse coding.\n\nExperiments on standard benchmarks demonstrate that the approach achieves strong performance while maintaining interpretability.",
+      "keyFindings": "The proposed sparse decomposition method recovers interpretable features that correlate with human-understandable concepts across multiple architectures.",
+      "methodology": "The authors apply dictionary learning to intermediate layer activations, fitting a sparse overcomplete basis that minimizes reconstruction error with L1 regularization.",
+      "limitations": "The method requires manual inspection to label discovered features, which does not scale well to very large models with millions of parameters.",
+      "relevanceAssessment": "This work is highly relevant to mechanistic interpretability research and provides practical tools for understanding model internals, representing an improvement over the abstract-based score of 7.5/10.",
+      "updatedScore": 7.2,
+      "keyFigure": "Figure 9",
+      "keyFigureReason": "a figure the PDF does not have"
+    },
+    "tokensIn": 500,
+    "tokensOut": 100
+  }
+}
