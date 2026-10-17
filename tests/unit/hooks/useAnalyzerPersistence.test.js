@@ -301,6 +301,31 @@ describe('useAnalyzerPersistence — load effect', () => {
     expect(getCall).toBeUndefined();
   });
 
+  it('a blob saved mid test run restores with no test in progress', async () => {
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        config: DEFAULT_CONFIG,
+        testState: {
+          dryRunCompleted: true,
+          dryRunInProgress: true,
+          minimalTestInProgress: true,
+          lastDryRunTime: '2026-10-17T16:39:00.000Z',
+        },
+      })
+    );
+    const props = makeProps();
+    renderHook(() => useAnalyzerPersistence(props));
+    await waitFor(() => expect(props.setTestState).toHaveBeenCalled());
+    const restored = props.setTestState.mock.calls.at(-1)[0];
+    expect(restored).toMatchObject({
+      dryRunCompleted: true,
+      dryRunInProgress: false,
+      minimalTestInProgress: false,
+    });
+    expect(restored.lastDryRunTime).toBeInstanceOf(Date);
+  });
+
   it('lazy-loads cold tier when hot blob has sessionId but no allPapers', async () => {
     window.localStorage.setItem(
       STORAGE_KEY,

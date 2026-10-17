@@ -539,7 +539,14 @@ export function useAnalyzerPersistence({
       // Revive Date fields — JSON round-trips them as ISO strings, and
       // ControlPanel calls `.toLocaleString()` expecting real Dates (on a
       // string that renders the raw ISO text).
-      const revivedTestState = { ...parsed.testState };
+      // A test run lives in the page, so none survives a reload. A blob saved
+      // mid-run would otherwise restore "Testing..." with both test buttons
+      // disabled until the user resets.
+      const revivedTestState = {
+        ...parsed.testState,
+        dryRunInProgress: false,
+        minimalTestInProgress: false,
+      };
       for (const key of ['lastDryRunTime', 'lastMinimalTestTime']) {
         if (revivedTestState[key]) {
           const revived = new Date(revivedTestState[key]);
