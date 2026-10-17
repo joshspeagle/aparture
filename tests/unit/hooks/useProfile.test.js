@@ -172,7 +172,22 @@ describe('useProfile', () => {
     expect(rejectedSuggestions[0].rationale.endsWith('…')).toBe(true);
   });
 
-  it('revertToRevision restores earlier content with a new manual revision entry', () => {
+  it('updateProfile records the source and rationale the caller gives', () => {
+    const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
+    act(() => {
+      result.current.updateProfile('template text', {
+        source: 'template',
+        rationale: 'Started from the "Focused" template',
+      });
+    });
+    expect(result.current.profile.revisions[0]).toMatchObject({
+      content: '',
+      source: 'template',
+      rationale: 'Started from the "Focused" template',
+    });
+  });
+
+  it('revertToRevision restores earlier content with a new revert revision entry', () => {
     const { result } = renderHook(() => useProfile({ scoringCriteria: '' }));
     act(() => {
       result.current.updateProfile('v1');
@@ -187,6 +202,11 @@ describe('useProfile', () => {
       result.current.revertToRevision(v1RevisionId);
     });
     expect(result.current.profile.content).toBe('v1');
+    // The revert is its own change: it archives v2 and says what it undid.
+    expect(result.current.profile.revisions[0]).toMatchObject({ content: 'v2', source: 'revert' });
+    expect(result.current.profile.revisions[0].rationale).toMatch(
+      /^Reverted to the text from before the \d{4}-\d{2}-\d{2} change$/
+    );
   });
 
   it('bounds revisions[] to 20 entries', () => {
@@ -439,6 +459,7 @@ describe('useProfile — named profiles', () => {
     expect(result.current.profiles.B.content).toBe('profile B, edited');
     // Pre-switch content is also archived as a revision.
     expect(result.current.profile.revisions[0].content).toBe('profile B, edited');
+    expect(result.current.profile.revisions[0].source).toBe('switch');
   });
 
   it('switchTo to a nonexistent name is a no-op', () => {

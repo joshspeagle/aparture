@@ -291,6 +291,7 @@ export default function YourProfile({
 
           <HistoryDropdown
             revisions={profile?.revisions ?? []}
+            currentContent={profile?.content ?? ''}
             onRevert={revertToRevision}
             onClearHistory={clearHistory}
           />

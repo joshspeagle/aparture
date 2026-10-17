@@ -105,11 +105,11 @@ Close the dialog, keep giving feedback (or refine the guidance note), and try ag
 
 ## Versioned history and rollback
 
-Every accepted suggestion creates a new entry in your profile history, tagged **suggested** to distinguish it from a manual edit. The previous profile is archived with its own timestamp.
+Every accepted suggestion creates a new entry in your profile history, tagged **suggested** to distinguish it from a manual edit. The entry archives the text from before the change.
 
-To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each revision shows a timestamp, a source tag (manual or suggested), and — for suggested revisions — how many of the proposed changes you accepted (_"3 of 5 changes accepted"_) and the concatenated rationales of the accepted ones. Click a revision to expand its full content, then <span class="ui-action">Revert</span> to restore it.
+To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each entry is one change: a timestamp, a source tag, how many lines it added and removed, and its rationale. For a suggested change, the rationale collects the edits you accepted, and the entry says how many of the proposed edits that was (_"3 of 5 changes accepted"_). Click an entry to see what it changed, line by line, then <span class="ui-action">Revert</span> to put back the text from before it.
 
-Reverting is safe: your current profile is itself archived before the target revision is restored, so you can always flip back. Reverting also undoes the bookkeeping: feedback incorporated by the revisions you reverted past becomes pending again, so the next suggestion can use it. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
+Reverting is safe: your current profile is itself archived before the earlier text is restored, so you can always flip back. Reverting also undoes the bookkeeping: feedback incorporated by the revisions you reverted past becomes pending again, so the next suggestion can use it. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
 
 ## When to run it
 

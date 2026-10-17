@@ -181,19 +181,19 @@ Profiles aren't configuration. Thresholds and categories live in Settings; the p
 
 ## Versioned history and rollback
 
-When you change your profile, the old version isn't lost. Each save — manual edit or accepted suggestion from the refinement flow — creates a new entry in your **profile history**, with the previous version archived. The history keeps the last 20 revisions.
+When you change your profile, the old version isn't lost. Each change (a manual edit, an accepted suggestion, a starter template, a revert, or a switch between named profiles) adds an entry to your **profile history** that archives the text from before it. The history keeps the last 20 changes.
 
 To review or restore an older version:
 
 1. Open <span class="ui-action">Profile</span> in the sidebar.
 2. Expand the <span class="ui-action">History</span> control beneath the profile text box.
-3. Pick a timestamped snapshot to see the full profile content at that revision. Suggested revisions also show how many proposed changes you accepted and the accepted rationales.
-4. Click <span class="ui-action">Revert</span> on the snapshot to restore it.
+3. Each entry is one change, newest first: when it happened, a source tag (manual, suggested, template, revert, or switch), how many lines it added and removed, and its rationale. Suggested changes also show how many proposed edits you accepted. Click an entry to see what the change did, line by line, with the full text from before it underneath.
+4. Click <span class="ui-action">Revert</span> on an entry to put back the text from before that change.
 
 There's also a <span class="ui-action">Clear history</span> button for when revisions have accumulated beyond what's useful. It wipes the history list but leaves your current profile intact.
 
 ::: info
-Reverting is non-destructive — the current version moves into history as a new revision before the snapshot takes its place, so you can always flip back. It also returns the feedback those later revisions had incorporated to pending, so the refinement flow can use it again.
+Reverting is non-destructive: your current text moves into history as a new entry before the earlier text takes its place, so you can always flip back. It also returns the feedback those later changes had incorporated to pending, so the refinement flow can use it again.
 :::
 
 ## Named profiles

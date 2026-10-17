@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { migrateFromPhase1 } from '../lib/profile/migrations.js';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { localDateStr } from '../lib/dates.js';
 
 const PROFILE_KEY = 'aparture-profile';
 const MIGRATION_DISMISSED_KEY = 'aparture-migration-notice-dismissed';
@@ -248,8 +249,12 @@ export function useProfile(config = {}) {
     [persist, persistProfiles]
   );
 
+  // Revisions archive the text from BEFORE a change; `source` and
+  // `rationale` describe the change itself ('manual' edit, 'suggested',
+  // 'template', 'revert', 'switch'). HistoryDropdown diffs each revision
+  // against the next newer text to show what the change did.
   const updateProfile = useCallback(
-    (newContent) => {
+    (newContent, { source = 'manual', rationale } = {}) => {
       setState((prev) => {
         // No-op when content is unchanged — prevents bloating the revisions
         // history with spurious entries from callers that don't de-duplicate.
@@ -258,8 +263,9 @@ export function useProfile(config = {}) {
         const revision = {
           content: prev.profile.content,
           createdAt: now,
-          source: 'manual',
+          source,
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
+          ...(rationale ? { rationale } : {}),
         };
         const revisions = [revision, ...prev.profile.revisions].slice(0, MAX_REVISIONS);
         const nextProfile = {
@@ -385,9 +391,9 @@ export function useProfile(config = {}) {
         const revertRevision = {
           content: prev.profile.content,
           createdAt: now,
-          source: 'manual',
+          source: 'revert',
           lastFeedbackCutoff: prev.profile.lastFeedbackCutoff,
-          rationale: `Reverted to revision from ${new Date(createdAt).toISOString().slice(0, 10)}`,
+          rationale: `Reverted to the text from before the ${localDateStr(new Date(createdAt))} change`,
         };
         const revisions = [revertRevision, ...prev.profile.revisions].slice(0, MAX_REVISIONS);
         const nextProfile = {
@@ -421,14 +427,14 @@ export function useProfile(config = {}) {
   // last thing the user saved under that name.
 
   // Build the next working profile with `content` loaded and the outgoing
-  // content archived as a manual revision. No-op shape when content is equal.
+  // content archived as a 'switch' revision. No-op shape when content is equal.
   const loadContentIntoProfile = useCallback((profile, content, rationale) => {
     if (profile.content === content) return profile;
     const now = Date.now();
     const revision = {
       content: profile.content,
       createdAt: now,
-      source: 'manual',
+      source: 'switch',
       lastFeedbackCutoff: profile.lastFeedbackCutoff,
       ...(rationale ? { rationale } : {}),
     };

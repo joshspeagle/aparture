@@ -55,6 +55,56 @@ describe('HistoryDropdown', () => {
     expect(onRevert).toHaveBeenCalledWith(1700000000000);
   });
 
+  // Each revision stores the text from BEFORE its change. The entry must show
+  // the change it records: from its own text to the next newer one (the
+  // current profile, for the newest).
+  it('shows what each change did, not the text it replaced', () => {
+    const { container } = render(
+      <HistoryDropdown
+        revisions={sampleRevisions}
+        currentContent="v3 content"
+        onRevert={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /history/i }));
+    const lineOf = (type) =>
+      [...container.querySelectorAll(`[data-change="${type}"]`)].map((el) => el.textContent);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /expand change/i })[0]);
+    expect(screen.getByText('What this change did')).toBeInTheDocument();
+    expect(lineOf('removed')).toEqual(['−v2 content']);
+    expect(lineOf('added')).toEqual(['+v3 content']);
+
+    // The suggested change (rationale: "Added bullet…") turned v1 into v2.
+    fireEvent.click(screen.getAllByRole('button', { name: /collapse change/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /expand change/i })[1]);
+    expect(lineOf('removed')).toEqual(['−v1 content']);
+    expect(lineOf('added')).toEqual(['+v2 content']);
+  });
+
+  it('summarizes each change and labels template, revert, and switch sources', () => {
+    const revisions = [
+      { content: 'a', createdAt: 3, source: 'revert', rationale: 'Reverted…' },
+      { content: 'b', createdAt: 2, source: 'switch' },
+      { content: '', createdAt: 1, source: 'template', rationale: 'Started from…' },
+    ];
+    render(<HistoryDropdown revisions={revisions} currentContent="a2" onRevert={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /history/i }));
+    expect(screen.getByText('revert')).toBeInTheDocument();
+    expect(screen.getByText('switch')).toBeInTheDocument();
+    expect(screen.getByText('template')).toBeInTheDocument();
+    // The template entry turned an empty profile into "b".
+    expect(screen.getByText('1 line added')).toBeInTheDocument();
+  });
+
+  it('falls back to the earlier text when the newer text is unknown', () => {
+    render(<HistoryDropdown revisions={sampleRevisions.slice(0, 1)} onRevert={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /history/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand change/i }));
+    expect(screen.getByText('Text before this change')).toBeInTheDocument();
+    expect(screen.getByText('v2 content')).toBeInTheDocument();
+  });
+
   it('shows empty state when revisions is empty', () => {
     render(<HistoryDropdown revisions={[]} onRevert={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: /history/i }));
