@@ -1,4 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
+import MarkdownLite from './MarkdownLite.jsx';
 
 export default function FullReportSidePanel({ open, onOpenChange, title, content }) {
   return (
@@ -41,11 +42,10 @@ export default function FullReportSidePanel({ open, onOpenChange, title, content
             className="briefing-prose"
             style={{ padding: 'var(--aparture-space-6) 0', maxWidth: 'none' }}
           >
-            {String(content ?? '')
-              .split('\n\n')
-              .map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+            {/* The report is Markdown ("## Summary" sections from
+                composeFullReport); render its structure instead of printing
+                the raw syntax. React elements only — no HTML injection. */}
+            <MarkdownLite text={content} />
           </article>
           <Dialog.Close asChild>
             <button
