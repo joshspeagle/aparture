@@ -3,6 +3,11 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSeenPapers } from '../../../hooks/useSeenPapers.js';
 
 beforeEach(() => {
+  // These tests use fixed May-2026 dates and the hook prunes entries older
+  // than 90 days, so an unpinned clock fails them once the dates age out.
+  // Only Date is faked; waitFor still needs real timers.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-05-20T12:00:00Z'));
   window.localStorage.clear();
   // Default fetch mock — migration test will override per case.
   vi.spyOn(global, 'fetch').mockResolvedValue({
@@ -13,6 +18,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
