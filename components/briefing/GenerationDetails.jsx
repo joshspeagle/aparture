@@ -39,6 +39,7 @@ export default function GenerationDetails({ generationMetadata }) {
     pauseAfterFilter,
     timestamp,
     hallucinationCheck,
+    hallucinationCheckError,
   } = generationMetadata;
 
   const profilePreview =
@@ -302,7 +303,11 @@ export default function GenerationDetails({ generationMetadata }) {
                 )}
               </div>
             ) : (
-              <div style={valueStyle}>Hallucination check did not run or result not captured.</div>
+              <div style={valueStyle}>
+                {hallucinationCheckError
+                  ? `The claims check did not run (${hallucinationCheckError}). This briefing is unaudited.`
+                  : 'Hallucination check did not run or result not captured.'}
+              </div>
             )}
           </div>
 

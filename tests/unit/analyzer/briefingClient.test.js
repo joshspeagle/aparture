@@ -76,6 +76,69 @@ describe('callCheckBriefing — non-fatal contract', () => {
   });
 });
 
+describe('callCheckBriefing — failure reasons and corpus', () => {
+  it('reports why a check did not run', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'check failed' }),
+    });
+    const onFailure = vi.fn();
+    await expect(callCheckBriefing({ ...baseArgs, onFailure })).resolves.toBeNull();
+    expect(onFailure).toHaveBeenCalledWith('HTTP 500: check failed');
+  });
+
+  it('treats a network error as a check that did not run, not a failed briefing', async () => {
+    vi.spyOn(global, 'fetch').mockRejectedValue(new TypeError('fetch failed'));
+    const onFailure = vi.fn();
+    await expect(callCheckBriefing({ ...baseArgs, onFailure })).resolves.toBeNull();
+    expect(onFailure).toHaveBeenCalledWith('network error: fetch failed');
+  });
+
+  it('rethrows an abort instead of reporting it', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    vi.spyOn(global, 'fetch').mockRejectedValue(
+      Object.assign(new Error('aborted'), { name: 'AbortError' })
+    );
+    await expect(callCheckBriefing({ ...baseArgs, signal: controller.signal })).rejects.toThrow(
+      'aborted'
+    );
+  });
+
+  it("sends the writer's paper fields and no quick summaries", async () => {
+    const spy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ verdict: 'NO' }),
+    });
+    await callCheckBriefing({
+      ...baseArgs,
+      papers: [
+        {
+          arxivId: '2605.0001',
+          title: 'T',
+          abstract: 'A',
+          score: 7.5,
+          scoringJustification: 'J',
+          fullReport: 'R',
+          engagement: { starred: true, dismissed: false },
+        },
+      ],
+    });
+    const sent = JSON.parse(spy.mock.calls[0][1].body).papers[0];
+    expect(sent).toEqual({
+      arxivId: '2605.0001',
+      title: 'T',
+      abstract: 'A',
+      score: 7.5,
+      scoringJustification: 'J',
+      fullReport: 'R',
+      engagement: { starred: true, dismissed: false },
+    });
+  });
+});
+
 describe('callSynthesize — no-structured-output retry', () => {
   const synthArgs = {
     profile: 'my profile',
@@ -512,8 +575,9 @@ function makeLiveSetters() {
   };
 }
 
-function routeFetch() {
+function routeFetch({ checkResponses = null } = {}) {
   const bodies = { quick: [], synthesize: [], check: [] };
+  const pendingChecks = checkResponses ? [...checkResponses] : null;
   vi.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
     const body = JSON.parse(options.body);
     if (url === '/api/analyze-pdf-quick') {
@@ -547,6 +611,7 @@ function routeFetch() {
     }
     if (url === '/api/check-briefing') {
       bodies.check.push(body);
+      if (pendingChecks && pendingChecks.length > 0) return pendingChecks.shift();
       return { ok: true, status: 200, json: async () => ({ verdict: 'NO', justification: 'ok' }) };
     }
     throw new Error(`unexpected fetch: ${url}`);
@@ -573,10 +638,10 @@ const liveRanking = [
   },
 ];
 
-async function runLive(overrides = {}) {
+async function runLive({ checkResponses, ...overrides } = {}) {
   // cacheLastAnalysisRun warns in the node env (no window) — silence it.
   vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const bodies = routeFetch();
+  const bodies = routeFetch({ checkResponses });
   const saveBriefing = vi.fn();
   await runBriefingGeneration({
     results: { finalRanking: liveRanking },
@@ -742,5 +807,33 @@ describe('runBriefingGeneration — test-run feedback never shapes a real briefi
       dismissed: false,
       comments: ['said during a dry run'],
     });
+  });
+});
+
+describe('runBriefingGeneration — a claims check that does not run is reported (B7)', () => {
+  const failed = { ok: false, status: 502, json: async () => ({ error: 'upstream timeout' }) };
+
+  it('retries once, then warns and records why the briefing is unaudited', async () => {
+    const addStatus = vi.fn();
+    const { bodies, saveBriefing } = await runLive({
+      checkResponses: [failed, failed],
+      addStatus,
+      generationMetadata: { briefingModel: 'gemini-3.6-flash' },
+    });
+    expect(bodies.check).toHaveLength(2);
+    expect(addStatus).toHaveBeenCalledWith(
+      expect.stringContaining('Claims check did not run (HTTP 502: upstream timeout)')
+    );
+    // saveBriefing(date, briefing, generationMetadata, extras)
+    const metadata = saveBriefing.mock.calls[0][2];
+    expect(metadata.hallucinationCheck).toBeNull();
+    expect(metadata.hallucinationCheckError).toBe('HTTP 502: upstream timeout');
+  });
+
+  it('keeps quiet when the second attempt succeeds', async () => {
+    const addStatus = vi.fn();
+    const { bodies } = await runLive({ checkResponses: [failed], addStatus });
+    expect(bodies.check).toHaveLength(2);
+    expect(addStatus).not.toHaveBeenCalledWith(expect.stringContaining('did not run'));
   });
 });

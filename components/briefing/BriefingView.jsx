@@ -62,6 +62,8 @@ export default function BriefingView({
   // "· N screened" segment rather than rendering a misleading 0.
   papersScreened = null,
   testMode = false,
+  // { kind, text } from summarizeAudit(generationMetadata), or null.
+  audit = null,
   quickSummariesById = {},
   fullReportsById = {},
   feedbackEvents,
@@ -113,6 +115,7 @@ export default function BriefingView({
         papersScreened={papersScreened}
         readingTimeMinutes={readingTimeMinutes}
         testMode={testMode}
+        audit={audit}
       />
       <ExecutiveSummary text={briefing.executiveSummary} />
 
