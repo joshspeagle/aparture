@@ -77,7 +77,8 @@ Edits to any file in `prompts/` take effect on the next API call that reads it. 
 Variables are rendered as simple string substitution. A few are worth noting:
 
 - `profile` is the exact profile text stored in `scoringCriteria` in your config. It's inserted verbatim, so the profile's formatting (headings, bullets, section breaks) carries through to the prompt.
-- `papers` in `synthesis.md` and `check-briefing.md` is a JSON-serialised list of the per-paper objects — including titles, scores, quick summaries, full reports, and any stars/dismisses/comments attached to the paper.
+- `papers` in `synthesis.md` is a JSON-serialised list of the final-round papers: arXiv ID, title, abstract, score, the scoring justification, the full report, and an `engagement` object when you starred, dismissed, or commented on the paper. Quick summaries are not part of it.
+- `papers` in `check-briefing.md` is rendered text, one block per paper: title, abstract, quick summary, and the full report cut at 4,000 characters. `briefing` is a text rendering of the executive summary, themes, and paper cards.
 - `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups events by type.
 - `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
 
@@ -87,18 +88,26 @@ The four `rubric-*.md` files contain a single `{{CACHE_BOUNDARY}}` line that spl
 
 Keep the marker as a single `{{CACHE_BOUNDARY}}` line with blank lines before and after. Removing it will raise a load error on the next call.
 
+### Output format lives in the route, not the prompt
+
+Every LLM route except quick summaries and the podcast outline sends a JSON schema with the request, and the provider's structured output fills it. The prompts describe what each output field means; they don't restate the shape. When you edit a prompt, don't add a JSON example or a "respond only with…" instruction: if it disagrees with the route's schema (an array where the schema expects an object, a renamed field), the model gets two conflicting instructions. To change the output itself, change the schema in the route under `pages/api/`.
+
 ## Embedded prompts (require server restart)
 
 A smaller set of prompts still lives in the source code. Each is either too short or too programmatic to move cleanly to a template file.
 
-| Location                             | What it controls                                                                | When it runs                                                         |
-| ------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `lib/notebooklm/buildFocusPrompt.js` | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets | During podcast bundle generation; output lands in `focus-prompt.txt` |
-| `lib/synthesis/repair.js`            | Synthesis schema-repair template                                                | Only when `/api/synthesize` output fails zod validation              |
-| `pages/api/check-briefing.js`        | Hallucination-check schema-repair template                                      | Only when `/api/check-briefing` output fails validation              |
-| `pages/api/suggest-profile.js`       | Suggest-profile schema-repair template                                          | Only when `/api/suggest-profile` output fails validation             |
+| Location                                                                    | What it controls                                                                | When it runs                                                         |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `lib/notebooklm/buildFocusPrompt.js`                                        | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets | During podcast bundle generation; output lands in `focus-prompt.txt` |
+| `lib/synthesis/repair.js`                                                   | Synthesis schema-repair template                                                | Only when `/api/synthesize` output fails zod validation              |
+| `pages/api/check-briefing.js`                                               | Hallucination-check schema-repair template                                      | Only when `/api/check-briefing` output fails validation              |
+| `pages/api/suggest-profile.js`                                              | Suggest-profile schema-repair template and the overlap-retry hint               | Only when `/api/suggest-profile` output fails validation             |
+| `pages/api/{quick-filter,score-abstracts,rescore-abstracts,analyze-pdf}.js` | The `# RETRY NOTICE` hint appended to the rubric prompt                         | When the first response fails the route's validation                 |
+| `lib/analyzer/stages/core.js`                                               | The client-side correction prompt                                               | When a route's 200 response still fails to parse in the browser      |
+| `lib/analyzer/briefingClient.js`                                            | The retry hint for a flagged briefing                                           | When the audit returns a verdict that the retry settings act on      |
+| `lib/profile/suggestPrompt.js`                                              | The `USER GUIDANCE FOR THIS CALL` block                                         | When you type guidance into the Suggest dialog                       |
 
-The focus-prompt builder is a JavaScript function that computes paper and theme budgets from the podcast duration (not a static template). The three repair templates are short and tightly coupled to the zod schema they're repairing — moving them to files would gain nothing since they're only rarely tuned.
+The focus-prompt builder is a JavaScript function that computes paper and theme budgets from the podcast duration (not a static template). The repair templates and retry hints are short and tightly coupled to the schema or validator they serve, so they stay next to that code.
 
 ## What to tune for which quality knob
 
@@ -108,16 +117,16 @@ Match the symptom to a file.
 
 **Quick summaries come out too long, too short, or too hedged.** Edit `prompts/analyze-pdf-quick.md`. Controls the compression ratio, the ordering (finding vs. caveats), and the voice.
 
-**The hallucination audit fires too often or misses genuine issues.** Edit `prompts/check-briefing.md`. The prompt has explicit <span class="verdict is-no">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-yes">NO</span> categories describing what counts as each verdict (YES = hallucinations detected, NO = clean); adjusting those boundaries shifts sensitivity. Pair with the `briefingRetryOnYes` and `briefingRetryOnMaybe` checkboxes in Settings, which control what the pipeline does after the audit returns.
+**The hallucination audit fires too often or misses genuine issues.** Edit `prompts/check-briefing.md`. The prompt separates factual claims about a paper (held to its sources) from editorial synthesis across papers (allowed unless it contradicts them), then lists explicit <span class="verdict is-no">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-yes">NO</span> categories (YES = hallucinations detected, NO = clean); adjusting those boundaries shifts sensitivity. The "Sourcing discipline" section of `prompts/synthesis.md` uses the same split, so change the two together. Pair with the `briefingRetryOnYes` and `briefingRetryOnMaybe` checkboxes in Settings, which control what the pipeline does after the audit returns.
 
 **The refinement flow proposes changes that feel off-target or too aggressive.** Edit `prompts/suggest-profile.md`. This is where the weighting across stars, dismisses, comments, and filter overrides is described, along with the "return no changes if signal is thin" guidance.
 
 **Podcasts drift off-topic or cover too many papers shallowly.** Edit `prompts/notebooklm-discussion-guide.md` for the outline itself, or `lib/notebooklm/buildFocusPrompt.js` for the per-duration budget table NotebookLM receives in `focus-prompt.txt`.
 
-**Scoring doesn't match your profile.** This is usually a profile problem, not a prompt problem. The scoring rubrics in `prompts/rubric-filter.md`, `rubric-scoring.md`, and `rubric-pdf.md` describe the 0–10 scale itself; they don't describe what's relevant to you. Edit your profile, then run the refinement flow. Only edit the rubric files if you want to recalibrate the scale — which invalidates score comparisons against older briefings.
+**Scoring doesn't match your profile.** This is usually a profile problem, not a prompt problem. The rubrics in `prompts/rubric-filter.md`, `rubric-scoring.md`, `rubric-rescoring.md`, and `rubric-pdf.md` describe the verdicts and the 0–10 scale itself; they don't describe what's relevant to you. Edit your profile, then run the refinement flow. Only edit the rubric files if you want to recalibrate the scale — which invalidates score comparisons against older briefings.
 
 ::: warning Editing scoring rubrics is a breaking change
-The rubric defines what a 7 means versus a 9. Edits change the score distribution of every subsequent briefing, which invalidates cross-date comparisons. Generation metadata captures the prompt filename but not its contents, so an old briefing with "score 8.2" and a new briefing with "score 8.2" aren't automatically comparable if the rubric changed in between. Treat rubric edits as calibration events worth noting separately.
+The rubric defines what a 7 means versus a 9. Edits change the score distribution of every subsequent briefing, which invalidates cross-date comparisons. Generation metadata records the models and the profile snapshot but not the rubric text, so an old briefing with "score 8.2" and a new briefing with "score 8.2" aren't automatically comparable if the rubric changed in between. Treat rubric edits as calibration events worth noting separately.
 :::
 
 ## See also

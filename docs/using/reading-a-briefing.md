@@ -37,7 +37,7 @@ The first paragraph carries the headline — what's the most notable thing in to
 
 ### Themes
 
-Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension; every paper lands in exactly one theme, and no paper is left out.
+Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension, and every paper appears in at least one theme.
 
 A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. _"1. Interpretability converges on attention heads"_, not _"Interpretability papers"_). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
 
@@ -59,9 +59,9 @@ The "why it matters" paragraph is where your feedback shapes the output most vis
 
 Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.
 
-**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`) in parallel during briefing synthesis. Click again to collapse.
+**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. Click again to collapse.
 
-**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4, usually around 700–1000 words of key findings, methodology notes, and limitations. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
+**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
 
 ::: tip Expansions are free at read time
 Both the quick summary and the full report are generated once during the pipeline run and cached. Opening either costs nothing — no API calls, no waiting — so there's no reason to hesitate before clicking.
@@ -73,7 +73,7 @@ Below the briefing body sit two small sections that are easy to miss but worth o
 
 ### Hallucination audit
 
-After synthesis, Aparture runs a second independent LLM pass that audits the briefing's claims against the source papers. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
+After synthesis, Aparture makes a second LLM call, on the same briefing model, that audits the briefing's claims against each paper's abstract, quick summary, and full report. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
 
 | Verdict                                     | Meaning                                                                                                                            |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -96,10 +96,10 @@ Below the audit is a small expandable link: <span class="ui-action">Generation d
 | Field                   | What it carries                                                                                                                                                  |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Profile snapshot**    | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable)                                                            |
-| **Models**              | Model IDs used at each stage: filter, scoring, PDF analysis, briefing, quick summary                                                                             |
+| **Models**              | Model IDs used for the filter, scoring, PDF analysis, and briefing stages                                                                                        |
 | **Categories**          | arXiv categories selected for the run, as small badges                                                                                                           |
 | **Filter verdicts**     | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> counts from the quick-filter stage |
-| **Settings flags**      | Whether pause gates and retry checks were on or off                                                                                                              |
+| **Settings flags**      | Whether the filter gate (`pauseAfterFilter`) and the two retry checks were on or off                                                                             |
 | **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                                                                              |
 | **Generated at**        | ISO timestamp                                                                                                                                                    |
 
