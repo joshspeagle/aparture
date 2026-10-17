@@ -144,6 +144,19 @@ describe('App — filter overrides are recorded at click time (P1-6)', () => {
     expect(overrides).toEqual([]);
   });
 
+  it("tags a post-run override on a dry run's buckets as test feedback", () => {
+    // The dry run has ended (dryRunInProgress false), but the buckets still
+    // hold its mock verdicts — results.fromDryRun says so.
+    seedStore({ results: { ...initialState().results, fromDryRun: true } });
+    render(<App />);
+    act(() => {
+      captured.mainArea.onSetVerdict('n1', 'NO', 'YES');
+    });
+    const [event] = storedEvents();
+    expect(event.type).toBe('filter-override');
+    expect(event.testMode).toBe(true);
+  });
+
   it('never records an override for a paper whose stored verdict is invalid', () => {
     seedStore({
       filterResults: {

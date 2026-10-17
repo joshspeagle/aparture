@@ -469,9 +469,10 @@ export default function App() {
     (paperId, currentVerdict, nextVerdict) => {
       if (currentVerdict === nextVerdict) return;
       const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
-      const livePaper = useAnalyzerStore
-        .getState()
-        .filterResults[BUCKET_BY_VERDICT[currentVerdict]]?.find((p) => p.id === paperId);
+      const live = useAnalyzerStore.getState();
+      const livePaper = live.filterResults[BUCKET_BY_VERDICT[currentVerdict]]?.find(
+        (p) => p.id === paperId
+      );
       if (livePaper) {
         recordFilterOverride({
           arxivId: livePaper.arxivId ?? livePaper.id,
@@ -481,6 +482,10 @@ export default function App() {
           originalVerdict: livePaper.originalVerdict,
           newVerdict: nextVerdict,
           briefingDate: todayStr(),
+          // The buckets always belong to the current run; after a dry run
+          // has ended they still hold its mock verdicts. (During a test run
+          // useFeedback tags the event on its own.)
+          testMode: Boolean(live.results?.fromDryRun),
         });
       }
       setFilterResults((prev) => {
@@ -503,10 +508,18 @@ export default function App() {
   // Shared filter pass: all scoped-feedback events for today. Three derived
   // memos (bucketFeedbackByBucket, runFeedbackSavedText, scoreReviewFeedbackSavedText)
   // source from this single array so feedback.events is only iterated once.
+  // Test-run notes and real notes are kept apart (useFeedback never lets one
+  // replace the other), so show the ones matching the current run's mode.
+  const testRunActive = Boolean(testState?.dryRunInProgress || testState?.minimalTestInProgress);
   const todayScopedEvents = useMemo(() => {
     const today = todayStr();
-    return feedback.events.filter((e) => e.type === 'scoped-feedback' && e.briefingDate === today);
-  }, [feedback.events]);
+    return feedback.events.filter(
+      (e) =>
+        e.type === 'scoped-feedback' &&
+        e.briefingDate === today &&
+        Boolean(e.testMode) === testRunActive
+    );
+  }, [feedback.events, testRunActive]);
 
   // --- Bucket feedback ---
   const bucketFeedbackByBucket = useMemo(

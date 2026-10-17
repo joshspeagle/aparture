@@ -1,9 +1,137 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useFeedback } from '../../../hooks/useFeedback.js';
+import { useAnalyzerStore, initialState } from '../../../stores/analyzerStore.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  useAnalyzerStore.setState(initialState());
+});
+
+describe('test-run feedback is tagged and kept out of suggestions (P0-2)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    useAnalyzerStore.setState(initialState());
+  });
+
+  const paper = {
+    arxivId: '2610.00001',
+    paperTitle: 'A paper seen in a dry run',
+    quickSummary: 'Mock evaluation for test paper 1.',
+    score: 7.3,
+    briefingDate: '2026-10-17',
+  };
+
+  const setTestState = (patch) =>
+    useAnalyzerStore.setState({
+      testState: { ...useAnalyzerStore.getState().testState, ...patch },
+    });
+
+  it('stamps testMode on every event type created while a Dry Run is running', () => {
+    setTestState({ dryRunInProgress: true });
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(paper);
+      result.current.addPaperComment({ ...paper, arxivId: '2610.00002' }, 'looks great');
+      result.current.addGeneralComment('lead with the flows cluster', '2026-10-17');
+      result.current.recordFilterOverride({
+        arxivId: '2610.00003',
+        originalVerdict: 'NO',
+        newVerdict: 'YES',
+        briefingDate: '2026-10-17',
+      });
+      result.current.addScopedFeedback({
+        scope: { kind: 'score-review' },
+        text: 'too lenient',
+        briefingDate: '2026-10-17',
+      });
+    });
+    expect(result.current.events).toHaveLength(5);
+    result.current.events.forEach((e) => expect(e.testMode).toBe(true));
+    // None of it reaches the Suggest dialog.
+    expect(result.current.getNewSince(0)).toEqual([]);
+  });
+
+  it('tags Minimal Test feedback the same way', () => {
+    setTestState({ minimalTestInProgress: true });
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.ensureStar(paper);
+    });
+    expect(result.current.events[0].testMode).toBe(true);
+  });
+
+  it('leaves real-run feedback untagged and honours an explicit testMode flag', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addStar(paper);
+      result.current.addPaperComment({ ...paper, testMode: true }, 'from a dry-run artifact');
+    });
+    const star = result.current.events.find((e) => e.type === 'star');
+    const comment = result.current.events.find((e) => e.type === 'paper-comment');
+    expect(star.testMode).toBeUndefined();
+    expect(comment.testMode).toBe(true);
+    expect(result.current.getNewSince(0).map((e) => e.type)).toEqual(['star']);
+  });
+
+  it('a test-run reaction never replaces or deletes a real one', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.addDismiss(paper); // real
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addStar(paper); // test: must not flip the real dismiss
+    });
+    act(() => {
+      result.current.addDismiss(paper); // test: must not toggle the real dismiss off
+    });
+    const real = result.current.events.filter((e) => !e.testMode);
+    expect(real).toHaveLength(1);
+    expect(real[0].type).toBe('dismiss');
+  });
+
+  it('a test-run scoped note never overwrites the real note for the same scope and day', () => {
+    const { result } = renderHook(() => useFeedback());
+    const note = (text) => ({ scope: { kind: 'run' }, text, briefingDate: '2026-10-17' });
+    act(() => {
+      result.current.addScopedFeedback(note('real run note'));
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addScopedFeedback(note('dry-run note'));
+    });
+    expect(result.current.events).toHaveLength(2);
+    expect(result.current.events.find((e) => !e.testMode).text).toBe('real run note');
+  });
+
+  it('clearTestEvents removes test-run events and legacy "filter said 123" junk only', () => {
+    const legacyJunk = {
+      id: 'junk',
+      type: 'filter-override',
+      arxivId: '2610.00009',
+      originalVerdict: 123,
+      newVerdict: 'NO',
+      timestamp: 5,
+      briefingDate: '2026-10-01',
+    };
+    window.localStorage.setItem('aparture-feedback', JSON.stringify({ events: [legacyJunk] }));
+    const { result } = renderHook(() => useFeedback());
+    // Legacy junk is already excluded from suggestions…
+    expect(result.current.getNewSince(0)).toEqual([]);
+    act(() => {
+      result.current.addStar(paper); // real
+    });
+    setTestState({ dryRunInProgress: true });
+    act(() => {
+      result.current.addPaperComment(paper, 'test-run comment');
+    });
+    act(() => {
+      result.current.clearTestEvents();
+    });
+    expect(result.current.events.map((e) => e.type)).toEqual(['star']);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toHaveLength(1);
+  });
 });
 
 describe('useFeedback', () => {
@@ -500,6 +628,19 @@ describe('recordFilterOverride — click-time, latest-wins, validated (P0-2 / P1
       result.current.recordFilterOverride(override({ briefingDate: '2026-10-17' }));
     });
     expect(result.current.events).toHaveLength(2);
+  });
+
+  it('a test-run override never replaces a real one for the same paper and day', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'MAYBE', testMode: true }));
+    });
+    expect(result.current.events).toHaveLength(2);
+    const real = result.current.events.find((e) => !e.testMode);
+    expect(real.newVerdict).toBe('YES');
   });
 
   it('folds duplicate same-key events left by the old append-only logger', () => {

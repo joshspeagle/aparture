@@ -625,3 +625,53 @@ describe('runBriefingGeneration — paper comments reach the synthesizer (P0-1)'
     expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: false });
   });
 });
+
+describe('runBriefingGeneration — test-run feedback never shapes a real briefing (P0-2)', () => {
+  const testEvents = [
+    { id: 't1', type: 'star', arxivId: '2605.0001', timestamp: 1, testMode: true },
+    {
+      id: 't2',
+      type: 'paper-comment',
+      arxivId: '2605.0001',
+      text: 'said during a dry run',
+      timestamp: 2,
+      testMode: true,
+    },
+    { id: 'r1', type: 'dismiss', arxivId: '2605.0002', timestamp: 3 },
+  ];
+
+  it('drops testMode engagement on a live run', async () => {
+    const { bodies } = await runLive({ feedbackEvents: testEvents });
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    expect(byId['2605.0001'].engagement).toBeUndefined();
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: true });
+  });
+
+  it('keeps it for a mock (dry-run) generation, so the mock flow mirrors the UI', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tester = new MockAPITester({
+      abortControllerRef: { current: null },
+      pauseRef: { current: false },
+      waitForResume: async () => {},
+    });
+    tester.sleepWithAbortCheck = async () => {};
+    const synthSpy = vi.spyOn(tester, 'mockSynthesize');
+    await runBriefingGeneration({
+      results: { finalRanking: liveRanking },
+      briefingModel: 'gemini-3.6-flash',
+      profile: { content: 'profile' },
+      password: 'pw',
+      feedbackEvents: testEvents,
+      saveBriefing: vi.fn(),
+      mockTester: tester,
+      ...makeLiveSetters(),
+    });
+    const papers = synthSpy.mock.calls[0][0];
+    expect(papers.find((p) => p.arxivId === '2605.0001').engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['said during a dry run'],
+    });
+  });
+});

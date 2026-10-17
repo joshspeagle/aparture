@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
-import { isFilterVerdict } from '../lib/profile/feedbackStatus.js';
+import { isFilterVerdict, isTestFeedback } from '../lib/profile/feedbackStatus.js';
+import { useAnalyzerStore } from '../stores/analyzerStore.js';
 
 const FEEDBACK_KEY = 'aparture-feedback';
 
@@ -37,38 +38,70 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// --- Test-run feedback ---
+// A Dry Run reacts to mock LLM output (random verdicts and scores,
+// placeholder summaries) and a Minimal Test to hard-coded test papers, so
+// feedback given while either is running must not steer the real profile.
+// Every event created during one is stamped `testMode: true`; the Suggest
+// dialog, the "new" counts and real briefings skip it (lib/profile/
+// feedbackStatus.js isTestFeedback). Callers that know they are acting on
+// test artifacts after the run has ended (e.g. a post-run verdict click on
+// a dry run's filter buckets) pass `testMode: true` explicitly.
+function testRunActive() {
+  const testState = useAnalyzerStore.getState().testState;
+  return Boolean(testState?.dryRunInProgress || testState?.minimalTestInProgress);
+}
+
+function resolveTestMode(explicit) {
+  return explicit === true || testRunActive();
+}
+
+function withTestFlag(event, testMode) {
+  return testMode ? { ...event, testMode: true } : event;
+}
+
+// Latest-wins replacement (stars/dismisses, scoped notes, overrides) only
+// ever replaces an event from the SAME partition: a test-run action never
+// overwrites or deletes a real event, and vice versa.
+function samePartition(event, testMode) {
+  return Boolean(event.testMode) === testMode;
+}
+
 // The single star/dismiss event literal — both the toggling (addStar/
 // addDismiss) and non-toggling (ensureStar/ensureDismiss) paths build their
 // replacement event here.
-function makeReactionEvent(type, paper) {
-  return {
-    id: makeId(),
-    type,
-    arxivId: paper.arxivId,
-    paperTitle: paper.paperTitle,
-    quickSummary: paper.quickSummary,
-    score: paper.score,
-    timestamp: Date.now(),
-    briefingDate: paper.briefingDate,
-  };
+function makeReactionEvent(type, paper, testMode) {
+  return withTestFlag(
+    {
+      id: makeId(),
+      type,
+      arxivId: paper.arxivId,
+      paperTitle: paper.paperTitle,
+      quickSummary: paper.quickSummary,
+      score: paper.score,
+      timestamp: Date.now(),
+      briefingDate: paper.briefingDate,
+    },
+    testMode
+  );
 }
 
 export function useFeedback() {
   const [events, setEvents] = useState(() => readInitialEvents());
 
-  const replaceStarOrDismiss = useCallback((arxivId, buildNext) => {
+  const replaceStarOrDismiss = useCallback((arxivId, testMode, buildNext) => {
     setEvents((prev) => {
-      const existing = prev.find(
-        (e) => (e.type === 'star' || e.type === 'dismiss') && e.arxivId === arxivId
-      );
+      const isReaction = (e) =>
+        (e.type === 'star' || e.type === 'dismiss') &&
+        e.arxivId === arxivId &&
+        samePartition(e, testMode);
+      const existing = prev.find(isReaction);
       const next = buildNext(existing);
       // Keep-unchanged shortcircuit: buildNext returning the EXISTING event
       // means "leave the log as-is" — no persist round-trip, no reorder
       // (splice-and-reappend would move the event to the tail).
       if (next && next === existing) return prev;
-      const filtered = prev.filter(
-        (e) => !((e.type === 'star' || e.type === 'dismiss') && e.arxivId === arxivId)
-      );
+      const filtered = prev.filter((e) => !isReaction(e));
       const result = next ? [...filtered, next] : filtered;
       persist(result);
       return result;
@@ -77,9 +110,10 @@ export function useFeedback() {
 
   const toggleReaction = useCallback(
     (type, paper) => {
-      replaceStarOrDismiss(paper.arxivId, (existing) => {
+      const testMode = resolveTestMode(paper.testMode);
+      replaceStarOrDismiss(paper.arxivId, testMode, (existing) => {
         if (existing?.type === type) return null;
-        return makeReactionEvent(type, paper);
+        return makeReactionEvent(type, paper, testMode);
       });
     },
     [replaceStarOrDismiss]
@@ -98,9 +132,10 @@ export function useFeedback() {
   // (latest-wins, like addStar).
   const ensureReaction = useCallback(
     (type, paper) => {
-      replaceStarOrDismiss(paper.arxivId, (existing) => {
+      const testMode = resolveTestMode(paper.testMode);
+      replaceStarOrDismiss(paper.arxivId, testMode, (existing) => {
         if (existing?.type === type) return existing; // already in the desired state
-        return makeReactionEvent(type, paper);
+        return makeReactionEvent(type, paper, testMode);
       });
     },
     [replaceStarOrDismiss]
@@ -110,34 +145,42 @@ export function useFeedback() {
   const ensureDismiss = useCallback((paper) => ensureReaction('dismiss', paper), [ensureReaction]);
 
   const addPaperComment = useCallback((paper, text) => {
+    const testMode = resolveTestMode(paper.testMode);
     setEvents((prev) => {
-      const event = {
-        id: makeId(),
-        type: 'paper-comment',
-        arxivId: paper.arxivId,
-        paperTitle: paper.paperTitle,
-        quickSummary: paper.quickSummary,
-        score: paper.score,
-        text,
-        timestamp: Date.now(),
-        briefingDate: paper.briefingDate,
-      };
+      const event = withTestFlag(
+        {
+          id: makeId(),
+          type: 'paper-comment',
+          arxivId: paper.arxivId,
+          paperTitle: paper.paperTitle,
+          quickSummary: paper.quickSummary,
+          score: paper.score,
+          text,
+          timestamp: Date.now(),
+          briefingDate: paper.briefingDate,
+        },
+        testMode
+      );
       const next = [...prev, event];
       persist(next);
       return next;
     });
   }, []);
 
-  const addGeneralComment = useCallback((text, briefingDate, briefingId) => {
+  const addGeneralComment = useCallback((text, briefingDate, briefingId, options = {}) => {
+    const testMode = resolveTestMode(options?.testMode);
     setEvents((prev) => {
-      const event = {
-        id: makeId(),
-        type: 'general-comment',
-        text,
-        timestamp: Date.now(),
-        briefingDate,
-        ...(briefingId ? { briefingId } : {}),
-      };
+      const event = withTestFlag(
+        {
+          id: makeId(),
+          type: 'general-comment',
+          text,
+          timestamp: Date.now(),
+          briefingDate,
+          ...(briefingId ? { briefingId } : {}),
+        },
+        testMode
+      );
       const next = [...prev, event];
       persist(next);
       return next;
@@ -156,11 +199,13 @@ export function useFeedback() {
   const recordFilterOverride = useCallback((paper) => {
     if (!paper?.arxivId) return;
     if (!isFilterVerdict(paper.originalVerdict) || !isFilterVerdict(paper.newVerdict)) return;
+    const testMode = resolveTestMode(paper.testMode);
     setEvents((prev) => {
       const sameKey = (e) =>
         e.type === 'filter-override' &&
         e.arxivId === paper.arxivId &&
-        e.briefingDate === paper.briefingDate;
+        e.briefingDate === paper.briefingDate &&
+        samePartition(e, testMode);
       const existing = prev.filter(sameKey);
       if (paper.originalVerdict === paper.newVerdict) {
         if (existing.length === 0) return prev;
@@ -175,18 +220,21 @@ export function useFeedback() {
       ) {
         return prev; // already recorded exactly this override
       }
-      const event = {
-        id: makeId(),
-        type: 'filter-override',
-        arxivId: paper.arxivId,
-        paperTitle: paper.paperTitle,
-        summary: paper.summary ?? '',
-        justification: paper.justification ?? '',
-        originalVerdict: paper.originalVerdict,
-        newVerdict: paper.newVerdict,
-        timestamp: Date.now(),
-        briefingDate: paper.briefingDate,
-      };
+      const event = withTestFlag(
+        {
+          id: makeId(),
+          type: 'filter-override',
+          arxivId: paper.arxivId,
+          paperTitle: paper.paperTitle,
+          summary: paper.summary ?? '',
+          justification: paper.justification ?? '',
+          originalVerdict: paper.originalVerdict,
+          newVerdict: paper.newVerdict,
+          timestamp: Date.now(),
+          briefingDate: paper.briefingDate,
+        },
+        testMode
+      );
       // Dropping every same-key event also folds duplicates left by the
       // old append-only logger into the single latest one.
       const next = [...prev.filter((e) => !sameKey(e)), event];
@@ -195,8 +243,9 @@ export function useFeedback() {
     });
   }, []);
 
-  const addScopedFeedback = useCallback(({ scope, text, briefingDate }) => {
+  const addScopedFeedback = useCallback(({ scope, text, briefingDate, testMode: explicit }) => {
     if (!text || !text.trim()) return;
+    const testMode = resolveTestMode(explicit);
     setEvents((prev) => {
       const dedupeKey =
         scope.kind === 'bucket'
@@ -204,6 +253,7 @@ export function useFeedback() {
           : `${scope.kind}:${briefingDate}`;
       const matches = (e) => {
         if (e.type !== 'scoped-feedback') return false;
+        if (!samePartition(e, testMode)) return false;
         const k =
           e.scope.kind === 'bucket'
             ? `bucket:${e.scope.bucket}:${e.briefingDate}`
@@ -211,21 +261,41 @@ export function useFeedback() {
         return k === dedupeKey;
       };
       const filtered = prev.filter((e) => !matches(e));
-      const event = {
-        id: makeId(),
-        type: 'scoped-feedback',
-        scope,
-        text: text.trim(),
-        timestamp: Date.now(),
-        briefingDate,
-      };
+      const event = withTestFlag(
+        {
+          id: makeId(),
+          type: 'scoped-feedback',
+          scope,
+          text: text.trim(),
+          timestamp: Date.now(),
+          briefingDate,
+        },
+        testMode
+      );
       const next = [...filtered, event];
       persist(next);
       return next;
     });
   }, []);
 
-  const getNewSince = useCallback((cutoff) => events.filter((e) => e.timestamp > cutoff), [events]);
+  // Remove every test-run event (and legacy dry-run junk such as
+  // "filter said 123" overrides) in one go — the Feedback panel's
+  // "Clear test feedback" action.
+  const clearTestEvents = useCallback(() => {
+    setEvents((prev) => {
+      if (!prev.some(isTestFeedback)) return prev;
+      const next = prev.filter((e) => !isTestFeedback(e));
+      persist(next);
+      return next;
+    });
+  }, []);
+
+  // Events that can still inform a profile suggestion. Test-run feedback is
+  // never included (see isTestFeedback).
+  const getNewSince = useCallback(
+    (cutoff) => events.filter((e) => e.timestamp > cutoff && !isTestFeedback(e)),
+    [events]
+  );
 
   // Memoized so the returned object is referentially stable across unrelated
   // renders (App.jsx publishes it into the store's reactContext on every
@@ -241,6 +311,7 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      clearTestEvents,
       getNewSince,
     }),
     [
@@ -253,6 +324,7 @@ export function useFeedback() {
       addGeneralComment,
       recordFilterOverride,
       addScopedFeedback,
+      clearTestEvents,
       getNewSince,
     ]
   );

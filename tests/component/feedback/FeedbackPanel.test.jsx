@@ -103,4 +103,50 @@ describe('FeedbackPanel', () => {
       expect(screen.getByText('+ feedback on this run')).toBeInTheDocument();
     });
   });
+
+  describe('test-run feedback (P0-2)', () => {
+    const events = [
+      makeStar('real', 'p1', 3000),
+      { ...makeStar('dry', 'p2', 3500), testMode: true },
+      {
+        id: 'junk',
+        type: 'filter-override',
+        arxivId: 'p3',
+        paperTitle: 'Old dry-run paper',
+        originalVerdict: 123,
+        newVerdict: 'NO',
+        timestamp: 3600,
+        briefingDate: '2026-04-10',
+      },
+    ];
+
+    it('leaves test-run events out of the new and total counts', () => {
+      render(<FeedbackPanel {...defaultProps} events={events} cutoff={2000} />);
+      expect(
+        screen.getByText(/1 new since last revision · 1 total · 2 from test runs/i)
+      ).toBeInTheDocument();
+    });
+
+    it('groups them, collapsed, under "From test runs" and clears them on request', () => {
+      const onClearTestEvents = vi.fn();
+      const { container } = render(
+        <FeedbackPanel
+          {...defaultProps}
+          events={events}
+          cutoff={2000}
+          onClearTestEvents={onClearTestEvents}
+        />
+      );
+      const group = screen.getByTestId('test-feedback-group');
+      expect(group).toHaveTextContent(/from test runs \(2\) · not used for suggestions/i);
+      // Collapsed: only the real star renders until "Show".
+      expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Show' }));
+      expect(container.querySelectorAll('[data-event-type="star"]')).toHaveLength(2);
+      expect(container.querySelector('[data-event-type="filter-override"]')).not.toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: /clear test feedback/i }));
+      expect(onClearTestEvents).toHaveBeenCalledOnce();
+    });
+  });
 });
