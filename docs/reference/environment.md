@@ -29,10 +29,10 @@ Next.js reads `.env.local` once at dev-server startup. If you edit the file whil
 | `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | OpenAI models unavailable if unset    |
 | `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper | Google models unavailable if unset    |
 | `PORT`                                  | No                        | Next.js CLI (not read from source)                                          | `3000`                                |
-| `NODE_ENV`                              | No                        | `pages/api/analyze-pdf.js` (test escape hatch)                              | `development` (set by Next)           |
-| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/fetch-arxiv.js`                                                  | Unset — no `From` header sent         |
+| `NODE_ENV`                              | No                        | `lib/llm/resolveCallModelMode.js` · `pages/api/analyze-pdf.js` (test gates) | `development` (set by Next)           |
+| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/harvest-arxiv.js` · `fetch-arxiv.js` · `bin/aparture.mjs`        | Unset — no `From` header sent         |
 | `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js`                      | `<cwd>/reports`                       |
-| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/callModel.js`                            | Unset                                 |
+| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/loadRubricPrompt.js`                     | Unset                                 |
 | `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                      | Unset                                 |
 | `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                              | Unset                                 |
 | `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                               | Unset                                 |
@@ -48,6 +48,8 @@ ACCESS_PASSWORD=correct-horse-battery-staple
 ```
 
 A long random string (12+ characters) is enough for the intended use case — a single-tenant dev or self-hosted instance. Aparture is not designed to sit on the public internet unprotected; for that, wrap it behind a real auth layer.
+
+The headless runner (`node bin/aparture.mjs`) calls the arXiv proxy routes in-process rather than over HTTP. When `ACCESS_PASSWORD` is unset it generates a random one for its own process, so it needs no password configured.
 
 ## API keys (at least one required)
 
@@ -65,7 +67,7 @@ CLAUDE_API_KEY=sk-ant-api03-...
 
 ### `OPENAI_API_KEY`
 
-OpenAI (GPT) API key. Prefix: `sk-proj-` for project keys (current) or `sk-` for legacy user keys. Used when any slot is set to a GPT-5.4 model. See [OpenAI setup](/getting-started/api-keys-openai).
+OpenAI (GPT) API key. Prefix: `sk-proj-` for project keys (current) or `sk-` for legacy user keys. Used when any slot is set to an OpenAI model. See [OpenAI setup](/getting-started/api-keys-openai).
 
 ```bash
 OPENAI_API_KEY=sk-proj-...
@@ -91,11 +93,11 @@ PORT=3001
 
 ### `NODE_ENV`
 
-Set automatically by `next dev` (`development`), `next start` (`production`), and `vitest` (`test`). You usually don't set this in `.env.local`. One source-level effect: when `NODE_ENV === 'test'`, `pages/api/analyze-pdf.js` honors the `_testPdfBase64` request body field (see below) and skips the download path. In any other environment that field is ignored.
+Set automatically by `next dev` (`development`), `next start` (`production`), and `vitest` (`test`). You usually don't set this in `.env.local`. Two source-level effects, both test gates: when `NODE_ENV === 'test'`, `pages/api/analyze-pdf.js` honors the `_testPdfBase64` request body field (see below) and skips the download path, and `lib/llm/resolveCallModelMode.js` honors a client-requested fixture mode. In any other environment both are ignored and every LLM call is live.
 
 ### `ARXIV_CONTACT_EMAIL`
 
-Contact email sent as an HTTP `From` header on every request proxied through `pages/api/fetch-arxiv.js`. arXiv's API user manual politely asks clients to identify themselves so their ops team can reach the maintainer if the traffic pattern causes issues. Not authenticated — arXiv has no API-key or account system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics. If unset, no `From` header is sent (the request still works; it's just anonymous).
+Contact email sent as an HTTP `From` header on every arXiv request: the OAI-PMH proxy (`pages/api/harvest-arxiv.js`), the Atom proxy (`pages/api/fetch-arxiv.js`), and the headless runner's page and PDF fetches (`bin/aparture.mjs`). arXiv's API user manual politely asks clients to identify themselves so their ops team can reach the maintainer if the traffic pattern causes issues. Not authenticated — arXiv has no API-key or account system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics. If unset, no `From` header is sent (the request still works; it's just anonymous).
 
 ```bash
 ARXIV_CONTACT_EMAIL=you@example.edu
@@ -129,7 +131,7 @@ These variables exist so the Vitest integration suite can produce deterministic 
 
 When set, replaces the variable tail of each LLM prompt with this literal string before hashing. Makes fixture keys deterministic regardless of paper content. Also disables Anthropic prompt caching (the `cachePrefix` / `cacheable` fields are omitted from the request), so fixture behaviour doesn't depend on cache state.
 
-Read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, and `generate-notebooklm.js`, and also by `lib/llm/callModel.js` for some mode-specific handling. Used via `beforeEach` in the integration tests at `tests/integration/`.
+Read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, and `generate-notebooklm.js`, and by `lib/llm/loadRubricPrompt.js` when it builds a validation-retry prompt. Used via `beforeEach` in the integration tests at `tests/integration/`.
 
 ### `APARTURE_TEST_PDF_OVERRIDE`
 
@@ -167,5 +169,5 @@ A few things about `.env.local` that bite reliably:
 
 - [API keys hub](/getting-started/api-keys) — pricing and provider comparison
 - [Install](/getting-started/install) — Node setup and creating `.env.local`
-- [Verify setup](/getting-started/verify-setup) — the two sanity-check buttons that confirm keys authenticate
+- [Verify setup](/getting-started/verify-setup) — the three setup checks that confirm keys authenticate and the pipeline runs
 - [Troubleshooting](/reference/troubleshooting) — symptoms caused by `.env.local` format issues

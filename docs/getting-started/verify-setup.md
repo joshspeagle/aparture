@@ -95,7 +95,7 @@ The Minimal Test button unlocks only after a successful Dry Run — the enforcem
 
 ### What it validates
 
-- **API key authentication.** A bad key surfaces as `401 - Unauthorized` (or `UNAUTHENTICATED` on Google) immediately.
+- **API key authentication.** A missing key surfaces as `missing credentials`; a bad one as the provider's own authentication error.
 - **Billing and quota.** Insufficient credits or hit quotas return `402` or provider-specific errors.
 - **Provider latency, rate limits, and the retry path.** Real round-trip times; the pipeline's backoff behaviour if you're throttled.
 - **Real LLM response parsing.** The provider's output actually parses against Aparture's schemas, including structured-output (tool_use / responseSchema / response_format).
@@ -119,8 +119,10 @@ You'll see:
 Open the terminal where `npm run dev` is running to watch the real-time log:
 
 ```
-Sending request to Google: { model: 'gemini-3-flash', promptLength: 4821, structured: true, cacheable: false, hasPdf: false }
+Sending request to Google: { model: 'gemini-3.5-flash-lite', promptLength: 4821, structured: true }
 ```
+
+The line names the provider's model ID and adds `cacheable: true` or `hasPdf: true` only when they apply.
 
 Cache-hit metrics on Anthropic and OpenAI show as `[anthropic cache] read=N create=N` lines. A `read` value greater than 0 on call 2+ means caching is working.
 
@@ -141,17 +143,17 @@ This is also your first encounter with the filter-override mechanic, which becom
 
 The error surface here is real — most failures indicate a real issue with keys or billing.
 
-| Symptom                                                                 | Likely cause                                    | Fix                                                                                                                                                    |
-| ----------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Filter API error: 401 - Invalid password`                              | Password mismatch in `.env.local`               | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
-| `Filter API error: 401 - Unauthorized` (or `UNAUTHENTICATED` on Google) | Bad or missing API key                          | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
-| `429 insufficient_quota` (OpenAI)                                       | No credit balance                               | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
-| `429 rate_limit_exceeded`                                               | Provider throttled your request                 | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
-| `402` / `billing_error` (Anthropic)                                     | Billing issue or unpaid invoice                 | Log into console, fix billing                                                                                                                          |
-| `PERMISSION_DENIED` (Google)                                            | Model gated (e.g., Gemini 3.1 Pro on free tier) | Either enable billing or switch the affected slots to a Flash model in Settings                                                                        |
-| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`               | arXiv blocked a PDF download                    | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
-| `Initial parse failed: JSON.parse error`                                | Provider returned malformed JSON                | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
-| Hangs on "Filter batch 1/1" with no terminal output                     | Route stuck; network blocked; firewall          | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
+| Symptom                                                         | Likely cause                                 | Fix                                                                                                                                                    |
+| --------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Filter batch 1 failed: … Invalid password`                     | Password mismatch in `.env.local`            | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
+| `… missing credentials`, or the provider's authentication error | Missing or bad API key                       | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
+| `429 insufficient_quota` (OpenAI)                               | No credit balance                            | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
+| `429 rate_limit_exceeded`                                       | Provider throttled your request              | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
+| `402` / `billing_error` (Anthropic)                             | Billing issue or unpaid invoice              | Log into console, fix billing                                                                                                                          |
+| `PERMISSION_DENIED` (Google)                                    | Model gated (e.g., a Pro model on free tier) | Either enable billing or switch the affected slots to a Flash model in Settings                                                                        |
+| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`       | arXiv blocked a PDF download                 | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
+| `Initial parse failed: JSON.parse error`                        | Provider returned malformed JSON             | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
+| Hangs on "Filter batch 1/1" with no terminal output             | Route stuck; network blocked; firewall       | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
 
 Deep dives for each of these live on the [troubleshooting page](/reference/troubleshooting).
 

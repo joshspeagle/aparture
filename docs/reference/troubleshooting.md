@@ -53,7 +53,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | Symptom                                                              | Likely cause                                                           | Jump to                                                                   |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install             | [npm install failures](#npm-install-failures)                             |
-| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or Apple Silicon without Rosetta      | [Playwright install failures](#playwright-install-failures)               |
+| `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or a corporate proxy                  | [Playwright install failures](#playwright-install-failures)               |
 | `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                               | [Port 3000 already in use](#port-3000-already-in-use)                     |
 | Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access-password-mismatch)                     |
 | `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                        |
@@ -63,7 +63,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | `Failed to download PDF: HTTP 403` (or 404 / timeout)                | Genuine download failure — retried, then reported with the real status | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
 | `reCAPTCHA detected` / Playwright fallback firing                    | ArXiv served a reCAPTCHA interstitial instead of PDF bytes             | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                 |
 | End-of-run notice: "N papers skipped deep analysis due to reCAPTCHA" | Playwright not installed; fallback unavailable                         | [reCAPTCHA without Playwright](#recaptcha-without-playwright)             |
-| `Filter/Score/PDF API error: 429`                                    | Provider rate-limit                                                    | [Provider rate limits](#provider-rate-limits)                             |
+| `google: rate limited (429) — retry in 23s` (any provider)           | Provider rate-limit                                                    | [Provider rate limits](#provider-rate-limits)                             |
 | `context_length_exceeded` / `FAILED_PRECONDITION`                    | Prompt + content exceeded the model's context window                   | [Context overflow](#context-overflow)                                     |
 | Costs are higher than expected mid-run                               | Expensive model, large batches, or runaway correction loops            | [Cost spike mid-run](#cost-spike-mid-run)                                 |
 | Pipeline frozen for > 5 minutes                                      | Hung network request, unrecognised pause, or orphaned browser tab      | [Stuck stage](#stuck-stage)                                               |
@@ -77,7 +77,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 
 ### Node version too old
 
-Next.js 14 requires Node 18.17+, but Node 18 is end-of-life and Node 20 hits EOL at the end of April 2026. Use Node 22 LTS unless you have a reason not to.
+Aparture runs on Next.js 16, which needs Node 20.9 or newer (the `engines` field in `package.json`). Node 20 reached end of life on 2026-04-30, so use Node 22 LTS.
 
 ```bash
 node -v   # should print v22.x.x
@@ -135,15 +135,7 @@ rm -rf node_modules package-lock.json && npm install
 npx playwright install-deps chromium
 ```
 
-This uses sudo to install everything Chromium needs. macOS and Windows don't need this step.
-
-**Apple Silicon hangs.** Check that Rosetta is installed:
-
-```bash
-softwareupdate --install-rosetta --agree-to-license
-```
-
-Then retry the Playwright install.
+This uses sudo to install everything Chromium needs. macOS and Windows don't need this step. Playwright ships native builds for Apple Silicon, so Rosetta isn't needed.
 
 **Corporate proxy.** Point the Playwright downloader at your mirror:
 
@@ -179,10 +171,10 @@ Either kill that process or set `PORT=3001` in `.env.local` and restart `npm run
 
 ### `.env.local` not loading
 
-Edits to `.env.local` often don't hot-reload on Next.js 14. The dev server reads the file once at startup and keeps the values cached; edits go unnoticed until restart.
+A running dev server may not pick up edits to `.env.local`, and nothing tells you when it hasn't.
 
 ::: warning Always restart after editing `.env.local`
-Ctrl-C in the terminal running `npm run dev`, then re-run. Env-file hot-reload is unreliable on Next 14.
+Ctrl-C in the terminal running `npm run dev`, then re-run. Don't rely on env-file hot reload.
 :::
 
 Location rules:
@@ -195,10 +187,10 @@ Quick diagnostic — does the file actually parse?
 
 ```bash
 # From the project root
-node -e "require('dotenv').config({ path: '.env.local' }); console.log(process.env.CLAUDE_API_KEY?.slice(0, 10))"
+node --env-file=.env.local -e "console.log(process.env.CLAUDE_API_KEY?.slice(0, 10))"
 ```
 
-If this prints the first 10 characters of your key, the file is readable. If it prints `undefined`, the file is in the wrong place, misnamed, or doesn't contain the variable.
+`--env-file` is built into Node 20.6 and later, so this needs no extra package. If it prints the first 10 characters of your key, the file is readable. If it prints `undefined`, the file is in the wrong place, misnamed, or doesn't contain the variable.
 
 ### ACCESS_PASSWORD mismatch
 
@@ -238,7 +230,7 @@ If the prefix looks right but the key still fails, run the [Minimal API Test](/g
 [useBriefing] failed to persist briefing to disk: <reason>
 ```
 
-Since 2026-04-21, each briefing is written to `reports/briefings/<id>.json` via `POST /api/briefings`. The in-memory state is preserved even when disk writes fail — the live briefing renders normally. The only symptom is that opening the briefing after a page refresh or in a later session returns a "briefing not available" placeholder (the file is missing).
+Each briefing is written to `reports/briefings/<id>.json` via `POST /api/briefings`. The in-memory state is preserved even when disk writes fail — the live briefing renders normally. The only symptom is that opening the briefing after a page refresh or in a later session returns a "briefing not available" placeholder (the file is missing).
 
 Common causes:
 
@@ -259,7 +251,7 @@ Same fixes as briefings disk writes (permissions, disk full, `APARTURE_REPORTS_D
 
 ### Browser localStorage quota
 
-Symptom (pre-2026-05-07 builds): a `QuotaExceededError` from `useAnalyzerPersistence` would surface as a Next.js red box and abort the run. Current builds catch this transparently via the `safeSetItem` ladder shared with the briefings tier — heavy session fields live on the filesystem, the localStorage hot blob stays under ~600 KB, and quota pressure logs a single `console.warn` without disrupting the run.
+A full browser quota doesn't abort a run. Heavy session fields live on the filesystem, the localStorage hot entry stays under ~600 KB, and when the quota is hit anyway the `safeSetItem` ladder (shared with the briefings tier) logs a single `console.warn` and keeps going.
 
 If you still see the warning repeatedly, you likely have a very old `arxivAnalyzerState` blob from a previous Aparture install that's not being shrunk. Clear it: in DevTools console run `localStorage.removeItem('arxivAnalyzerState')` and refresh.
 
@@ -267,9 +259,10 @@ If you still see the warning repeatedly, you likely have a very old `arxivAnalyz
 
 ```
 arXiv rate limit: exhausted 3 retries
+OAI rate limit exhausted after 3 retries
 ```
 
-ArXiv caps metadata fetches at roughly one request per 3 seconds across all clients on your IP. Aparture serialises at that rate (with 3–5s jitter between consecutive requests) and back-off for 5 / 15 / 45 seconds on a 429, so a single run in isolation rarely trips the cap. Parallelising across categories doesn't help — the fetch path already serialises.
+The first comes from the Atom path, the second from OAI-PMH. ArXiv caps metadata fetches at roughly one request per 3 seconds across all clients on your IP. Aparture serialises at that rate (with 3–5s jitter between consecutive requests) and back-off for 5 / 15 / 45 seconds on a 429, so a single run in isolation rarely trips the cap. Parallelising across categories doesn't help — the fetch path already serialises.
 
 You'll hit this when:
 
@@ -285,7 +278,7 @@ Set `ARXIV_CONTACT_EMAIL` in `.env.local` ([Environment](/reference/environment#
 
 ### arXiv rate-limited
 
-Symptoms: `npm run dev` logs show `arXiv 429` repeatedly, run reports `arXiv: auto-atom`, much slower than usual. Cause: arXiv has throttled `/api/query` (the Atom fallback). Fix: wait 30-60 minutes; verify with the manual probe `node scripts/probe-arxiv.mjs`. See [arXiv ingestion](../concepts/arxiv-ingestion.md#troubleshooting) for full diagnosis steps.
+Symptoms: `npm run dev` logs show `OAI 429` or `arXiv 429` repeatedly, run reports `arXiv: auto-atom`, much slower than usual. Cause: OAI-PMH failed or was throttled, so Auto mode fell back to Atom, whose `/api/query` endpoint arXiv throttles more aggressively. Fix: wait 30-60 minutes; verify with the manual probe `node scripts/probe-arxiv.mjs`. See [arXiv ingestion](../concepts/arxiv-ingestion.md#troubleshooting) for full diagnosis steps.
 
 ### reCAPTCHA on PDF downloads
 
@@ -326,7 +319,7 @@ At the end of the run a summary card appears below the results:
 
 > 3 papers skipped deep analysis due to reCAPTCHA. Run `npx playwright install chromium` to enable the workaround.
 
-The papers aren't lost — they stay in the briefing ranked by their abstract score, with a note that deep analysis was unavailable. To enable deep analysis on them, install Playwright and rerun:
+The papers aren't lost. They stay in the ranking on their abstract score and still reach the briefing, without a full report. To enable deep analysis on them, install Playwright and rerun:
 
 ```bash
 npx playwright install chromium
@@ -349,26 +342,26 @@ If you're on a free-tier Google key, Aparture also emits a pre-flight warning
 when the configured concurrency × batch count is likely to exceed 60 RPM —
 the run still proceeds and self-heals via the barrier, but expect more retries.
 
-Each provider has several flavours of 429, each with its own fix.
+Each provider has several flavours of 429, each with its own fix. The activity log shows a 429 as `<provider>: rate limited (429)`, followed by `— retry in Ns` when the provider sent a retry time; the terminal shows the provider's raw error body.
 
-**Anthropic 429** (`anthropic request failed (429)`).
+**Anthropic 429** (`anthropic: rate limited (429)`).
 
 - _Input/output token limit_ — you burned through the tokens-per-minute cap. Wait 60 seconds, reduce `filterBatchSize` or `scoringBatchSize`, or move to a higher tier.
 - _Requests-per-minute_ — fewer, larger calls help; increase batch sizes.
 - _Acceleration limit_ — Anthropic throttles sharp usage spikes. Ramp up slowly, small runs before large ones.
 
-**OpenAI 429** (`openai request failed (429)`).
+**OpenAI 429** (`openai: rate limited (429)`).
 
 - _"Rate limit reached for requests"_ — transient. Aparture's client-side retry loop handles this automatically up to `maxRetries` times (default 4) with exponential backoff + provider `Retry-After` honoring.
 - _"You exceeded your current quota"_ — billing issue, not transient. Check usage limits and billing status at [platform.openai.com](https://platform.openai.com).
 
-Free-tier OpenAI accounts (approximately 3 RPM on GPT-5.4-class models) will 429 on almost any real run. Move to a paid tier before attempting more than the Minimal API Test.
+New OpenAI accounts start on the lowest usage tier, and its per-minute limits are easy to exceed on a full run. Lower the concurrency settings until OpenAI moves the account up a tier as spend accumulates.
 
-**Google 429** (`google request failed (429)` with `RESOURCE_EXHAUSTED`). The error body names the exhausted quota. Google's free tier is 60 RPM across all models per API key — the default pipeline (filter batches + scoring + PDF analysis + quick-summary fan-out) can exceed this on a medium run. Enable quick-filter to reduce downstream calls, reduce batch sizes, or move to a paid tier.
+**Google 429** (`google: rate limited (429)`, with `RESOURCE_EXHAUSTED` in the raw error). The error body names the exhausted quota. Google's free tier is 60 RPM across all models per API key — the default pipeline (filter batches + scoring + PDF analysis + quick-summary fan-out) can exceed this on a medium run. Enable quick-filter to reduce downstream calls, reduce batch sizes, or move to a paid tier.
 
-**429 specifically during Stage 4 (PDF analysis).** Aparture runs PDF analyses in parallel with a default concurrency of 3 (`pdfAnalysisConcurrency`). If 429s land on PDF calls specifically, drop Settings → Parallel PDF analyses from 3 to 2 or 1. If your tier is generous and the stage feels slow, you can raise it up to 20.
+**429 specifically during Stage 4 (PDF analysis).** Aparture runs PDF analyses in parallel with a default concurrency of 3 (`pdfAnalysisConcurrency`). If 429s land on PDF calls specifically, drop Settings → **Parallel PDF Calls** from 3 to 2 or 1. If your tier is generous and the stage feels slow, you can raise it up to 20.
 
-**429 during briefing prep (quick-summary fan-out).** The briefing stage fans out quick-summary calls with default concurrency 5 (`quickSummaryConcurrency`). If 429s land there, drop Settings → Parallel calls in the Briefing section.
+**429 during briefing prep (quick-summary fan-out).** The briefing stage fans out quick-summary calls with default concurrency 5 (`quickSummaryConcurrency`). If 429s land there, lower **Parallel Quick-Summary Calls** under Settings → Advanced Options → Briefing Options.
 
 ### A provider declined the content (safety refusal)
 
@@ -400,17 +393,11 @@ Note the briefing stage can't skip: synthesis is a single call for the whole bri
 
 Prompt + content exceeded the model's context window. Most common on Stage 4 PDF analysis with large papers and a small-context model.
 
-Switch `pdfModel` in Settings to a larger-context model:
-
-- Claude Opus 4.x / Sonnet 4.x (1M context)
-- Gemini 3.1 Pro (2M context)
-- GPT-5.4 (1M context)
-
-For other stages, also reduce `scoringBatchSize` (default 3) and shorten your profile if it runs to multiple paragraphs of prose.
+Switch `pdfModel` in Settings to a model with a larger context window; [Model selection](/concepts/model-selection) lists the current options. For other stages, also reduce `scoringBatchSize` (default 3) and shorten your profile if it runs to multiple paragraphs of prose.
 
 ### Cost spike mid-run
 
-Aparture doesn't yet surface real-time spend. To check during a run:
+Aparture estimates spend but doesn't read your provider bill. The score-review and pre-briefing gates show the projected cost of the stage they hold back, and after a run the Download Report card shows an estimated cost per stage from the tokens each stage used (list prices from the model registry, not a bill). For actual spend during a run, check the provider console:
 
 - **Anthropic:** [console.anthropic.com](https://console.anthropic.com) → Usage.
 - **OpenAI:** [platform.openai.com/usage](https://platform.openai.com/usage).
@@ -418,15 +405,15 @@ Aparture doesn't yet surface real-time spend. To check during a run:
 
 Common drivers:
 
-- **Correction loops.** A malformed-JSON response can trigger up to 12 LLM calls per batch in the worst case (2 backend corrections × 3 client retries × 2 extra backend calls). Repeated `validation failed` in the terminal suggests the model is struggling — switch to a stronger slot for that stage.
-- **Expensive model on Stage 4.** Claude Opus or GPT-5.4 on 100 PDFs adds up fast. [Model selection](/concepts/model-selection) has cheaper per-stage picks.
+- **Correction loops.** A batch whose responses keep failing validation is retried, not dropped. The route makes one correction call before it gives up on a request, and the client re-sends the request up to `maxRetries` times (default 4), so one stubborn batch can cost about ten LLM calls. Repeated `validation failed` in the terminal suggests the model is struggling with the schema, so switch that stage to a stronger model.
+- **Expensive model on Stage 4.** A top-tier model on 100 PDFs adds up fast. [Model selection](/concepts/model-selection) has cheaper per-stage picks.
 - **Deep analysis on too many papers.** Lower `maxDeepAnalysis` (default 30).
 
 ### Stuck stage
 
 The pipeline appears frozen for more than 5 minutes with no terminal output.
 
-**First, check whether you're at a review gate.** The Pause after filter and Pause before briefing checkboxes (both on by default) stop the pipeline and wait for you to continue. The UI shows a pause banner; the terminal goes quiet. Click Continue to proceed, or see [Review gates](/using/review-gates) for the gate UX.
+**First, check whether you're at a review gate.** Three checkboxes, all on by default, stop the pipeline and wait for you: Pause after filter, Pause before deep analysis, and Pause before briefing. The UI shows a banner with a Continue button at the head of the section under review, the browser tab title changes to a waiting message, and the terminal goes quiet. Click Continue to proceed, or see [Review gates](/using/review-gates) for the gate UX.
 
 **If not paused:** open browser devtools → Network tab. Look for a pending request to `/api/*`:
 
@@ -479,16 +466,13 @@ Most of the signal lives in the terminal running `npm run dev`. The browser cons
 
 ### Browser console (devtools)
 
-Open devtools (F12 or Cmd-Option-I) → Console. During a run, useful prefixes:
+Open devtools (F12 or Cmd-Option-I) → Console. During a run, useful lines:
 
-- `Fetching papers for N categories:` — fetch stage entered.
-- `  Query: (cat:astro-ph.*) AND submittedDate:[... TO ...]` — arXiv query, per category, indented.
-- `=== FILTER SUMMARY ===` / `=== SCORING SUMMARY ===` / `=== POST-PROCESSING SUMMARY ===` / `=== SELECTION SUMMARY ===` — end-of-stage summaries with counts.
-- `Downloading PDF from: <url>` — per paper.
-- `PDF downloaded via direct fetch: { sizeBytes: N, sizeKB: X }` — direct-fetch success.
-- `Direct fetch returned HTML/reCAPTCHA page, attempting Playwright fallback...` — expected occasionally; not an error.
-- `PDF downloaded via Playwright: <bytes> bytes` — Playwright-fallback success.
-- `[Phase 1.5.1] Hallucination check failed:` — non-fatal; briefing still renders without a badge.
+- `=== FILTER SUMMARY ===` / `=== SCORING SUMMARY ===` / `=== POST-PROCESSING SUMMARY ===` / `=== SELECTION SUMMARY ===`: end-of-stage summaries with counts.
+- `harvest-arxiv proxy unreachable` / `fetch-arxiv proxy unreachable`: the page couldn't reach the local arXiv proxy route.
+- `Hallucination check failed:` or `Hallucination check returned a non-JSON body`: non-fatal; the briefing still renders, and Generation details says the check did not run.
+
+Stage progress (fetching, batches, retries, skipped papers) goes to the activity log in the Pipeline view rather than the console.
 
 Worth worrying about:
 
@@ -507,11 +491,12 @@ Per-request LLM dispatch:
 
 Per-route logs:
 
-- `Proxying arXiv request: <query>` — every arXiv metadata fetch.
-- `arXiv 429, Retry-After: X` / `arXiv 503, Retry-After: X` — rate limit or upstream 5xx with the server's backoff value. Both trigger the same 5 / 15 / 45-second client retry ladder.
-- `[anthropic] API error 429` / `[openai] API error 400` / `[google] API error 503` — raw provider error (server-side only; the browser sees a sanitised `<provider> request failed (<status>)`).
-- `Initial PDF analysis response validation failed: [<errors>]` — backend correction pass triggered.
-- `PDF analysis response still invalid after correction: [<errors>]` — backend correction failed; the client has 3 more retries.
+- `Proxying OAI-PMH request: <url>`: every OAI-PMH page (the primary path). `Proxying arXiv request: <query>` is the same for the Atom fallback.
+- `OAI 429 retry-after=X` / `arXiv 429, Retry-After: X` (or a 5xx status): arXiv rate-limited or failed upstream, with the server's backoff value. Both trigger the same 5 / 15 / 45-second client retry ladder.
+- `Downloading PDF from: <url>`, then `PDF downloaded via direct fetch: { ... }`: per-paper PDF download.
+- `Direct fetch returned HTML/reCAPTCHA page, attempting Playwright fallback...` and `PDF downloaded via Playwright: <bytes> bytes`: the reCAPTCHA fallback. Expected occasionally; not an error.
+- `[anthropic] API error 429` / `[openai] API error 400` / `[google] API error 503`: the raw provider error body. In the activity log, a 429 or 503 shows as `<provider>: rate limited (<status>)` and other statuses show the provider's error text.
+- `Initial PDF analysis response validation failed: [<errors>]` (and the matching filter, scoring, and rescore lines): the route's one backend correction call was triggered. If the corrected response also fails, the route returns a 502 (`PDF analysis validation failed after correction`) and the client retries the request up to `maxRetries` times (default 4).
 
 Useful greps when debugging (pipe the dev server into a file: `npm run dev 2>&1 | tee run.log`):
 
@@ -526,9 +511,9 @@ grep "=== .* SUMMARY"      # stage transitions
 
 ### What a healthy run looks like
 
-Rough order for a standard run on a single provider:
+Rough order for a standard run on a single provider, with the terminal and the browser console read side by side:
 
-1. `Proxying arXiv request:` × N (one per selected category).
+1. `Proxying OAI-PMH request:` once per top-level group and results page (or `Proxying arXiv request:` once per category on the Atom fallback).
 2. `Sending request to <Provider>: { ..., cacheable: true }` × filter batches.
 3. `[anthropic cache] read=<big number>` from call 2 onward — cache is warming.
 4. `=== FILTER SUMMARY ===` with YES / MAYBE / NO counts.
