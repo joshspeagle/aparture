@@ -79,7 +79,7 @@ The cumulative preview is the thing to watch here — it's the only place that s
 
 The Apply button at the bottom reflects your current selection — <span class="ui-action">Apply 3 of 5 changes</span>, and so on. <span class="ui-action">Select all</span> and <span class="ui-action">Select none</span> helpers sit next to it. Clicking Apply commits the cumulative preview as your new profile and archives the previous version in history with a rationale composed from the accepted changes' rationales.
 
-## "No clear change" — when feedback is ambiguous
+## "No clear change": when feedback is ambiguous
 
 Sometimes the model can't find a clear improvement. When that happens, the dialog shows a single _"No profile changes suggested"_ panel with a short explanation — a `noChangeReason` — rather than a change list.
 

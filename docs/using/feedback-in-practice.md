@@ -8,7 +8,7 @@ The examples follow the **Focused: Bayesian cosmology** starter template. Substi
 
 Nothing in Aparture learns silently. Feedback accumulates locally as you react; when you run **Suggest improvements**, it reads everything you've marked and proposes profile edits, each with a written rationale, and you accept or reject each edit individually; the next run reads the edited profile. So the loop is only as good as two things: the quality of the feedback you give, and the judgment you apply to the proposed edits. Most of this page is about the first; the [last sections](#turning-feedback-into-profile-edits) cover the second.
 
-## Stars and dismissals — the one-click signals
+## Stars and dismissals: the one-click signals
 
 Available on any paper card from the score-review gate onward, including inside a rendered briefing. Both are toggles: only the current state counts, so there is no cost to changing your mind.
 
@@ -22,7 +22,7 @@ The bar for a dismissal is _"this should not have made the page"_ — it is a re
 - ✓ **Good dismissal:** a detector-characterization paper that scored well on technical quality but has nothing to do with inference methods. That's a profile leak, and the dismissal marks it.
 - ✗ **Bad dismissal:** dismissing a relevant paper because you already saw it on Slack, or because you've read the preprint. The suggest step reads dismissals as "not my area" — using them as "already seen" quietly teaches the profile to exclude work you actually care about.
 
-## Paper comments — when a click can't carry the reason
+## Paper comments: when a click can't carry the reason
 
 The <span class="ui-action">+ comment</span> button on any paper card (and the 💬 button on Gate 1 filter rows). Comments are where nuance lives, and they're the strongest per-event signal the suggest step sees. Compare:
 
@@ -38,7 +38,7 @@ Comments work on starred papers too:
 
 Unlike stars and dismissals, comments accumulate — each one is a separate entry, and the suggest prompt includes the most recent 30 per type. One specific comment outperforms a week of silent stars.
 
-## Gate 1 verdict overrides — correcting the filter
+## Gate 1 verdict overrides: correcting the filter
 
 At the filter-review gate, clicking a different verdict pill moves the paper and records an override: <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> is a "profile too narrow here" signal, <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span> a "too broad" one.
 
@@ -47,7 +47,7 @@ At the filter-review gate, clicking a different verdict pill moves the paper and
 
 One caution: an override is a _profile_ signal, not just a run edit. If you want to read an off-profile paper out of one-off curiosity, don't flip its verdict — you'd be teaching the profile that this is your area. Star it at the score-review gate instead, which guarantees it a deep read for this run without recording a relevance correction.
 
-## Scoped notes — when the pattern is bigger than a paper
+## Scoped notes: when the pattern is bigger than a paper
 
 Three free-text fields attach observations to a scope rather than a paper. These are the highest-leverage feedback in the system: one sentence can carry what a dozen clicks can't.
 
@@ -70,7 +70,7 @@ And the failure modes:
 
 Scoped notes are latest-wins per scope per run day: writing a second scoring-round note for the same run replaces the first. So refine the note rather than appending to it — it should read as your current assessment of that scope.
 
-## General comments — stating intent directly
+## General comments: stating intent directly
 
 The <span class="ui-action">+ Add a comment</span> box in the Feedback panel is for profile-level guidance that isn't a reaction to any specific paper or stage:
 

@@ -76,13 +76,13 @@ The focus prompt is generated when you build the bundle, so it already reflects 
 
 Two places shape the output, and they behave differently.
 
-### `prompts/notebooklm-discussion-guide.md` — the outline template
+### `prompts/notebooklm-discussion-guide.md`: the outline template
 
 This is the prompt that produces `discussion-guide.md`. It controls how themes are ordered and weighted in the outline, which papers get deep-dive coverage versus brief mentions, the overall conversation arc (open, themes, transitions, close), and the pruning rules when the outline would overrun the duration budget.
 
 Edit this file and the next bundle you generate will use the new template — the server re-reads it on each call, no rebuild needed. This is usually the right place to experiment with podcast structure.
 
-### `lib/notebooklm/buildFocusPrompt.js` — the focus prompt builder
+### `lib/notebooklm/buildFocusPrompt.js`: the focus prompt builder
 
 This is a JavaScript function (not a markdown template) that produces `focus-prompt.txt`. It controls the duration-scaled depth strategy — how time is allocated across deep-dives versus brief mentions at each duration tier — along with theme-count scaling and the conversation-style directives embedded in the focus prompt.
 

@@ -55,7 +55,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | `npm install` fails with `gyp ERR!` or `EACCES`                      | Node version mismatch, missing build deps, or sudo install             | [npm install failures](#npm-install-failures)                             |
 | `npx playwright install chromium` hangs or fails                     | Disk space, missing system libs, or Apple Silicon without Rosetta      | [Playwright install failures](#playwright-install-failures)               |
 | `Error: listen EADDRINUSE :::3000`                                   | Port 3000 already in use                                               | [Port 3000 already in use](#port-3000-already-in-use)                     |
-| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access_password-mismatch)                     |
+| Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access-password-mismatch)                     |
 | `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                        |
 | `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                           |
 | `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                                 | [arXiv rate limits](#arxiv-rate-limits)                                   |
@@ -280,7 +280,7 @@ You'll hit this when:
 Wait five minutes or so, then rerun with fewer categories and no concurrent runs. Persistent 503s surface as the same `arXiv rate limit` error — Aparture maps upstream 5xx onto the same retry path as 429 because arXiv's `Retry-After` semantics are identical — with the upstream status logged alongside. Sustained 5xx rather than 429 suggests arXiv-side maintenance; check [arxiv.org](https://arxiv.org) for announcements.
 
 ::: tip Reduce your chance of being throttled
-Set `ARXIV_CONTACT_EMAIL` in `.env.local` ([environment.md](/reference/environment#arxiv_contact_email)) — arXiv weights requests from identified clients more leniently in their abuse heuristics. Academic `.edu`/`.ac.*` addresses tend to get the best treatment. Not a fix once you're already blocked, but a meaningful reduction in how often you hit this to begin with.
+Set `ARXIV_CONTACT_EMAIL` in `.env.local` ([Environment](/reference/environment#arxiv-contact-email)) — arXiv weights requests from identified clients more leniently in their abuse heuristics. Academic `.edu`/`.ac.*` addresses tend to get the best treatment. Not a fix once you're already blocked, but a meaningful reduction in how often you hit this to begin with.
 :::
 
 ### arXiv rate-limited

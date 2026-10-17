@@ -62,7 +62,7 @@ Open the <span class="ui-action">Settings</span> view. Two things to check, one 
 
 Click back to the <span class="ui-action">Pipeline</span> view when you're done.
 
-## 4. Start the run — and expect three pauses
+## 4. Start the run and expect three pauses
 
 The Pipeline view shows the Progress Timeline (six stages, all empty) next to a <span class="ui-action">Start Analysis</span> button. One thing worth knowing before you click it: the default run stops and waits for you three times along the way.
 
@@ -122,7 +122,7 @@ Stage 4 reads the selected papers in full. PDF analysis is the slowest stretch o
 
 This is a good point to step away from the browser for a bit. The timeline and activity log continue updating as each stage completes, and the run survives browser navigation, so you can switch tabs or come back later without losing progress.
 
-## 8. Third pause — before the briefing writes
+## 8. Third pause: before the briefing writes
 
 Once PDF analysis finishes, the pipeline parks at its third review gate with the Analysis Results rendered in the main area. Each paper card carries three feedback controls:
 

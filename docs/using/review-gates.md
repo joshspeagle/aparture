@@ -29,7 +29,7 @@ All three gates pause a running pipeline until you click a <span class="ui-actio
 
 Gates 2 and 3 also show the projected spend of the stage they hold back. The score-review banner shows how many papers will be deep-read and a rough cost on your PDF model, updating live as you star and exclude; the pre-briefing banner does the same for the briefing. The numbers come from average token counts and the pricing snapshot in the model registry — planning figures, not a bill. If the registry has no price for the selected model, the line is hidden. Each gate presents the same banner — a one-line summary, a <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link — at the head of the section it gates. While a gate is waiting, the browser tab title changes to _"⏸ Waiting for your review — Aparture"_, so a backgrounded run signals when it needs you; the title restores when the run resumes.
 
-## Gate 1 — after the quick filter
+## Gate 1: after the quick filter
 
 ### What it does
 
@@ -65,7 +65,7 @@ A few patterns come up repeatedly:
 
 You don't have to review every paper. Overrides usually happen in the <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> buckets; the <span class="verdict is-no">NO</span> bucket can often be left alone unless something specific catches your eye.
 
-## Gate 2 — before PDF analysis (score review)
+## Gate 2: before PDF analysis (score review)
 
 ### What it does
 
@@ -113,7 +113,7 @@ A small <span class="ui-action">Skip remaining gates this run</span> link sits i
 
 Click <span class="ui-action">Continue to PDF analysis →</span> when you're done. Stage 4 starts immediately with the adjusted paper set.
 
-## Gate 3 — before briefing synthesis
+## Gate 3: before briefing synthesis
 
 ### What it does
 
