@@ -11,6 +11,8 @@ You will receive the reader's profile (plus `learned.md`), the paper's triage en
 
 Read the paper properly: the introduction for the claim, the method for what was actually done, the results for what was actually shown, and the conclusion for what the authors think it means. Abstracts oversell; a report that only paraphrases the abstract has failed.
 
+Your report is what the briefing writer works from, so imprecision here travels. State the scope of every result (which datasets, experiments or regimes it was measured on) and describe the method as the paper does, not as a simplified gloss: "a two-pass network" is not "one pass", and "one estimator per kind of block" is not "one estimator for all blocks".
+
 Score the paper again with the rubric in `prompts/rubric-pdf.md` (Research Alignment × 0.5 + Paper Quality × 0.5, profile-aware quality calibration). Ignore that file's `{{...}}` placeholders and its output format; use the format below.
 
 ### Quotes are the audit trail

@@ -4,6 +4,8 @@ The briefing is a morning newsletter written for one reader. It should take unde
 
 Read the "Style and voice" and "Sourcing discipline" sections of `prompts/synthesis.md` before writing. They apply here unchanged: write like a serious editor, ground every claim about a paper in its report, and avoid "novel", "breakthrough" and "paradigm-shift".
 
+**Keep the qualifiers when you compress.** On the first live run, most of what the audit flagged was not invented; it was scope lost in shortening. A timing measured on six of eight benchmarks was stated for all eight. "The robustness tests named in the main text" became "the robustness tests". A network shared among blocks of one kind became one network for every block. When a report says which datasets, which experiments, which blocks or which sections a claim covers, the briefing says so too, or drops the claim. Where the report's one-line summary and its method section disagree, trust the method section, and check the paper text when it matters.
+
 ## What each part is for
 
 **Headline** (`headline`, 12 words or fewer). The day's argument as a sentence, not a label. "Simulation-based inference stops being a toy" beats "SBI papers".
@@ -96,6 +98,6 @@ Rules the validator enforces:
 After the validator passes, launch one checker worker with: `briefing.json`, every `reports/<id>.json`, the paper texts, and `prompts/check-briefing.md` (apply its definitions of hallucination; ignore its placeholders; return its output schema). It writes `<run>/audit.json`.
 
 - Verdict `NO`: publish.
-- `MAYBE` or `YES`: fix or delete every flagged claim (prefer deleting a specific over softening it), re-run the validator, and if the verdict was `YES`, audit once more. Record the outcome in the final report.
+- `MAYBE` or `YES`: fix or delete every flagged claim (prefer deleting a specific over softening it), re-run the validator, and audit once more if the verdict was `YES` or more than three claims were flagged. One round is not exhaustive: on the first live run the second round found two errors the first had missed. Resume the same checker for the second round (it already has the papers in context) and tell it which fields changed. Before a new round, rename the previous `audit.json` to `audit-round<N>.json` (1, 2, ...) so the run keeps every round; `render` reports the claims flagged and revised across all of them. Record the outcome in the final report.
 
 Cross-paper editorial framing in the lede and theme arguments is the briefing's job and is not a hallucination. Invented specifics about a single paper always are.
