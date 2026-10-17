@@ -18,7 +18,7 @@ Each question has:
 - `options`: two to four short answers (eight words or fewer each) that would change selections differently.
 - `evidence`: the arXiv IDs from the lists below that prompted the question (at least one).
 
-Zero questions is a normal answer on a day with no real ambiguity. Return `{"questions": []}` then.
+Zero questions is a normal answer on a day with no real ambiguity. Return an empty `questions` list then.
 
 Research profile:
 {{profile}}

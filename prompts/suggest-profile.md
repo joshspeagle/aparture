@@ -24,6 +24,7 @@ Propose **surgical edits** to the current profile based on this feedback. Your g
    - **Score-review notes** are calibration concerns about scoring. Use them to adjust strictness or scoring criteria.
    - **Run-level observations** describe pipeline behavior at scale (filter aggressiveness, subcategory mix, scoring distribution). Use them as background for the changes you propose.
    - **General comments** are editorial reactions to specific briefings. Use them to adjust framing and synthesis preferences. When the briefing a comment was written against is shown beneath it, read the comment against that briefing, not in isolation.
+   - **Answers to the editor's questions** settle an ambiguity that a day's papers exposed: the reader picked one of the offered answers. Treat each as a direct statement of preference about the papers it cites, and let it decide between readings of the profile that the other feedback leaves open.
    - **Previously rejected suggestions**, when that section appears, are edits the user turned down in earlier rounds. Don't propose them, or an equivalent edit, again unless the feedback above gives a new reason.
 
    **If a USER GUIDANCE block appears at the top of this prompt, it is the highest-priority signal.** Let it shape the direction and emphasis of your proposed edits, and use the feedback events to ground concrete, cited changes that implement it.
