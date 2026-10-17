@@ -484,7 +484,9 @@ async function cmdRender(flags) {
   }
   const candidates = readJson(path.join(runDir, 'candidates.json'), { papers: [] });
   const selection = readJson(path.join(runDir, 'selection.json'), {});
-  const { readAuditRounds, summarizeAuditRounds } = await import('../lib/briefing/v2/auditSummary.js');
+  const { readAuditRounds, summarizeAuditRounds } = await import(
+    '../lib/briefing/v2/auditSummary.js'
+  );
   const auditSummary = summarizeAuditRounds(readAuditRounds(runDir));
   const config = readJson(path.join(stateDir, 'config.json'), {});
   const papersDir = path.join(runDir, 'papers');
