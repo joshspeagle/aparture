@@ -123,6 +123,12 @@ export default [
       globals: {
         console: 'readonly',
         process: 'readonly',
+        // Node 20+ runtime globals used by the headless runner (bin/).
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        setTimeout: 'readonly',
       },
     },
   },

@@ -22,6 +22,7 @@ const NODE_PROJECT_EXCEPTIONS = [
   'tests/unit/analyzer/exportReport.test.js', // document.createElement anchor download
   'tests/unit/arxiv/cache.test.js', // localStorage-backed cache
   'tests/unit/arxiv/parseOaiRecord.test.js', // global DOMParser
+  'tests/unit/arxiv/html.test.js', // global DOMParser
   'tests/unit/persistence/safeStorage.test.js', // window.localStorage
   'tests/integration/briefings-end-to-end.test.js', // renderHook + localStorage
   'tests/integration/arxiv/fetchAtom.test.js', // fetchAtom uses global DOMParser
