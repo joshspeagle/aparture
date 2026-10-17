@@ -48,7 +48,7 @@ export function groupByPaper(events) {
 }
 
 const GROUP_LABEL_STYLE = {
-  fontSize: '10px',
+  fontSize: '12px',
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
@@ -176,7 +176,7 @@ export default function FeedbackTimeline({
             paddingTop: 'var(--aparture-space-3)',
             borderTop: '1px dashed var(--aparture-hairline)',
             marginTop: 'var(--aparture-space-3)',
-            opacity: 0.6,
+            opacity: 0.7,
           }}
         >
           <p style={GROUP_LABEL_STYLE}>Incorporated into your profile</p>

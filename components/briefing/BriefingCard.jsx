@@ -19,16 +19,16 @@ export default function BriefingCard({
     if (verdict === 'NO')
       return {
         background: 'rgba(34,197,94,0.12)',
-        color: '#22c55e',
+        color: 'var(--aparture-success-text)',
       };
     if (verdict === 'MAYBE')
       return {
         background: 'rgba(245,158,11,0.12)',
-        color: '#f59e0b',
+        color: 'var(--aparture-warning-text)',
       };
     return {
       background: 'rgba(239,68,68,0.12)',
-      color: '#ef4444',
+      color: 'var(--aparture-danger-text)',
     };
   };
 
@@ -138,7 +138,7 @@ export default function BriefingCard({
               marginTop: 'var(--aparture-space-3)',
               fontFamily: 'var(--aparture-font-sans)',
               fontSize: 'var(--aparture-text-xs)',
-              color: '#f59e0b',
+              color: 'var(--aparture-warning-text)',
             }}
           >
             <summary style={{ cursor: 'pointer' }}>

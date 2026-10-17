@@ -152,7 +152,7 @@ function MetaLine({ event, date }) {
     <p
       style={{
         marginTop: '4px',
-        fontSize: '10px',
+        fontSize: '12px',
         color: 'var(--aparture-mute)',
       }}
     >
@@ -257,7 +257,7 @@ export default function FeedbackItem({ event, onRemove, onUpdateText }) {
             style={{
               marginTop: '4px',
               fontSize: 'var(--aparture-text-xs)',
-              color: '#f97316',
+              color: 'var(--aparture-override-text)',
             }}
           >
             filter said <span style={{ fontWeight: 500 }}>{event.originalVerdict}</span>, user

@@ -115,7 +115,7 @@ function FeedbackRow({ event, checked, onToggle }) {
         <div
           style={{
             fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '10px',
+            fontSize: '12px',
             color: 'var(--aparture-mute)',
           }}
         >
@@ -420,7 +420,7 @@ export default function SuggestDialog({
                       padding: '8px 12px',
                       fontFamily: 'var(--aparture-font-sans)',
                       fontSize: 'var(--aparture-text-xs)',
-                      color: '#ef4444',
+                      color: 'var(--aparture-danger-text)',
                     }}
                   >
                     Suggestion failed: {error}. Retry?
@@ -435,7 +435,7 @@ export default function SuggestDialog({
                       padding: '8px 12px',
                       fontFamily: 'var(--aparture-font-sans)',
                       fontSize: 'var(--aparture-text-xs)',
-                      color: '#f59e0b',
+                      color: 'var(--aparture-warning-text)',
                     }}
                   >
                     {droppedCount} older comments will not be included in this suggestion. Visit the
@@ -516,6 +516,7 @@ export default function SuggestDialog({
                     </span>
                   </label>
                   <TextArea
+                    aria-label="Guidance for this suggestion"
                     id="suggest-guidance"
                     rows={3}
                     value={guidance}

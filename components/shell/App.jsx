@@ -1101,7 +1101,7 @@ export default function App() {
                 style={{
                   fontFamily: 'var(--aparture-font-sans)',
                   fontSize: 'var(--aparture-text-sm)',
-                  color: '#ef4444',
+                  color: 'var(--aparture-danger-text)',
                 }}
               >
                 {processing.errors[processing.errors.length - 1]}

@@ -29,7 +29,10 @@ export default function DownloadReportCard({
       <div
         style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--aparture-space-3)' }}
       >
-        <Download className="w-5 h-5" style={{ marginRight: '8px', color: '#22c55e' }} />
+        <Download
+          className="w-5 h-5"
+          style={{ marginRight: '8px', color: 'var(--aparture-success-text)' }}
+        />
         <h2
           style={{
             fontFamily: 'var(--aparture-font-sans)',
@@ -109,7 +112,11 @@ export default function DownloadReportCard({
         variant={hasReport ? 'primary' : 'secondary'}
         onClick={onExport}
         disabled={!hasReport}
-        style={hasReport ? { background: '#22c55e', borderColor: '#22c55e' } : undefined}
+        style={
+          hasReport
+            ? { background: '#22c55e', borderColor: '#22c55e', color: 'var(--aparture-on-status)' }
+            : undefined
+        }
       >
         <Download className="w-4 h-4" />
         {hasReport ? 'Download Report' : 'No Report Available'}

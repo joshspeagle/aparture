@@ -29,7 +29,7 @@ export default function PlaywrightNotice({ arxivId, title }) {
     >
       <AlertTriangle
         className="w-4 h-4"
-        style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }}
+        style={{ color: 'var(--aparture-warning-text)', flexShrink: 0, marginTop: '2px' }}
       />
       <div>
         <div style={{ fontWeight: 600 }}>{title}</div>

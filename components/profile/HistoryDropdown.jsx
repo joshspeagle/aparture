@@ -32,7 +32,7 @@ function SourceBadge({ source }) {
       ? {
           background: 'rgba(59, 130, 246, 0.15)',
           // Documented informational blue — #93c5fd was unreadable in light mode.
-          color: '#3b82f6',
+          color: 'var(--aparture-info-text)',
           borderColor: 'rgba(59, 130, 246, 0.3)',
         }
       : {

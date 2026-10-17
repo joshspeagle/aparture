@@ -4,7 +4,7 @@ import Select from '../../ui/Select.jsx';
 export default function ModelSelectionSection({ config, setConfig, processing }) {
   return (
     <>
-      <label
+      <p
         style={{
           display: 'block',
           fontFamily: 'var(--aparture-font-sans)',
@@ -15,7 +15,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
         }}
       >
         AI Model Configuration
-      </label>
+      </p>
 
       <div
         style={{
@@ -27,6 +27,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
       >
         <div>
           <label
+            htmlFor="setting-filterModel"
             style={{
               display: 'block',
               fontFamily: 'var(--aparture-font-sans)',
@@ -41,7 +42,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: '0 0 8px 0',
               lineHeight: 1.5,
@@ -51,6 +52,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
             batches (configurable under Advanced Options) so even lightweight models work well here.
           </p>
           <Select
+            id="setting-filterModel"
             value={config.filterModel}
             onChange={(e) => setConfig((prev) => ({ ...prev, filterModel: e.target.value }))}
             disabled={processing.isRunning}
@@ -84,6 +86,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
 
         <div>
           <label
+            htmlFor="setting-scoringModel"
             style={{
               display: 'block',
               fontFamily: 'var(--aparture-font-sans)',
@@ -98,7 +101,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: '0 0 8px 0',
               lineHeight: 1.5,
@@ -108,6 +111,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
             profile has the most influence on paper ranking.
           </p>
           <Select
+            id="setting-scoringModel"
             value={config.scoringModel}
             onChange={(e) => setConfig((prev) => ({ ...prev, scoringModel: e.target.value }))}
             disabled={processing.isRunning}
@@ -141,6 +145,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
 
         <div>
           <label
+            htmlFor="setting-pdfModel"
             style={{
               display: 'block',
               fontFamily: 'var(--aparture-font-sans)',
@@ -155,7 +160,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: '0 0 8px 0',
               lineHeight: 1.5,
@@ -165,6 +170,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
             key findings, and methodology assessments. Benefits from a capable model.
           </p>
           <Select
+            id="setting-pdfModel"
             value={config.pdfModel}
             onChange={(e) => setConfig((prev) => ({ ...prev, pdfModel: e.target.value }))}
             disabled={processing.isRunning}
@@ -198,6 +204,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
 
         <div>
           <label
+            htmlFor="setting-quickSummaryModel"
             style={{
               display: 'block',
               fontFamily: 'var(--aparture-font-sans)',
@@ -212,7 +219,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: '0 0 8px 0',
               lineHeight: 1.5,
@@ -222,6 +229,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
             Independent of the briefing model — lightweight models work well here.
           </p>
           <Select
+            id="setting-quickSummaryModel"
             value={config.quickSummaryModel ?? 'gemini-3.1-flash-lite'}
             onChange={(e) => setConfig((prev) => ({ ...prev, quickSummaryModel: e.target.value }))}
             disabled={processing.isRunning}
@@ -255,6 +263,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
 
         <div>
           <label
+            htmlFor="setting-briefingModel"
             style={{
               display: 'block',
               fontFamily: 'var(--aparture-font-sans)',
@@ -269,7 +278,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
           <p
             style={{
               fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '11px',
+              fontSize: '12px',
               color: 'var(--aparture-mute)',
               margin: '0 0 8px 0',
               lineHeight: 1.5,
@@ -279,6 +288,7 @@ export default function ModelSelectionSection({ config, setConfig, processing })
             Improvements flow on the Profile page.
           </p>
           <Select
+            id="setting-briefingModel"
             value={config.briefingModel ?? config.pdfModel}
             onChange={(e) => setConfig((prev) => ({ ...prev, briefingModel: e.target.value }))}
             disabled={processing.isRunning}

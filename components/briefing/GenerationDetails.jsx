@@ -223,10 +223,10 @@ export default function GenerationDetails({ generationMetadata }) {
                       // YES = hallucination found = error red.
                       color:
                         hallucinationCheck.verdict === 'YES'
-                          ? '#ef4444'
+                          ? 'var(--aparture-danger-text)'
                           : hallucinationCheck.verdict === 'MAYBE'
-                            ? '#f59e0b'
-                            : '#22c55e',
+                            ? 'var(--aparture-warning-text)'
+                            : 'var(--aparture-success-text)',
                       background:
                         hallucinationCheck.verdict === 'YES'
                           ? 'rgba(239,68,68,0.08)'

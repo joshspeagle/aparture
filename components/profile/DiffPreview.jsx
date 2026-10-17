@@ -84,7 +84,7 @@ function ChangeCard({ change, checked, onToggle }) {
         <div
           style={{
             fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             color: 'var(--aparture-mute)',
             textTransform: 'uppercase',
@@ -107,7 +107,7 @@ function ChangeCard({ change, checked, onToggle }) {
             <div
               style={{
                 background: 'rgba(239, 68, 68, 0.12)',
-                color: '#ef4444',
+                color: 'var(--aparture-danger-text)',
                 textDecoration: edit.type === 'delete' ? 'line-through' : 'none',
                 padding: '2px 4px',
                 borderRadius: '2px',
@@ -120,7 +120,7 @@ function ChangeCard({ change, checked, onToggle }) {
           {edit.type === 'insert' && (
             <div
               style={{
-                fontSize: '10px',
+                fontSize: '12px',
                 color: 'var(--aparture-mute)',
                 marginBottom: '3px',
                 fontStyle: 'italic',
@@ -133,7 +133,7 @@ function ChangeCard({ change, checked, onToggle }) {
             <div
               style={{
                 background: 'rgba(34, 197, 94, 0.12)',
-                color: '#22c55e',
+                color: 'var(--aparture-success-text)',
                 padding: '2px 4px',
                 borderRadius: '2px',
               }}
@@ -254,7 +254,7 @@ export default function DiffPreview({ currentProfile, changes, onApply, onCancel
         <div
           style={{
             fontFamily: 'var(--aparture-font-sans)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             color: 'var(--aparture-mute)',
             textTransform: 'uppercase',

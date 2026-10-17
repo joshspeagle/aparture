@@ -158,7 +158,7 @@ export default function ProfileSwitcher({
           style={{
             fontFamily: 'var(--aparture-font-sans)',
             fontSize: 'var(--aparture-text-xs)',
-            color: '#ef4444',
+            color: 'var(--aparture-danger-text)',
             margin: 0,
             marginTop: 'var(--aparture-space-1)',
           }}

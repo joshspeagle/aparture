@@ -180,6 +180,7 @@ export default function PaperCard({
       {showCommentInput && (
         <div className="comment-input">
           <textarea
+            aria-label="Comment on this paper"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             rows={6}

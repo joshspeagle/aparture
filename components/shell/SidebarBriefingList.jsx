@@ -100,6 +100,21 @@ export default function SidebarBriefingList({
     transition: 'background 100ms ease',
   });
 
+  const labelBtnStyle = {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    textAlign: 'left',
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    font: 'inherit',
+    color: 'inherit',
+    cursor: 'pointer',
+  };
+
   const actionBtnStyle = {
     background: 'transparent',
     border: 'none',
@@ -185,23 +200,15 @@ export default function SidebarBriefingList({
             e.currentTarget.style.background =
               activeView === entry.viewId ? 'var(--aparture-sidebar-active)' : 'transparent';
           }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onSelectView(entry.viewId);
-            }
-          }}
         >
-          <span
-            style={{
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+          {/* The row's label is its keyboard control: a real button whose
+              click bubbles to the row. The row itself is only a mouse
+              target, so the Archive and Delete buttons are siblings of the
+              label, not controls nested inside another control. */}
+          <button
+            type="button"
+            aria-current={activeView === entry.viewId ? 'page' : undefined}
+            style={labelBtnStyle}
           >
             {entry.label}
             {entry.archived && (
@@ -215,7 +222,7 @@ export default function SidebarBriefingList({
                 (archived)
               </span>
             )}
-          </span>
+          </button>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
             {entry.starCount > 0 && (
               <span
@@ -228,7 +235,7 @@ export default function SidebarBriefingList({
                   marginRight: '4px',
                 }}
               >
-                <span style={{ fontSize: '11px' }}>{'\u2605'}</span>
+                <span style={{ fontSize: '12px' }}>{'\u2605'}</span>
                 {entry.starCount}
               </span>
             )}
@@ -237,6 +244,7 @@ export default function SidebarBriefingList({
               <button
                 type="button"
                 title={entry.archived ? 'Unarchive' : 'Archive'}
+                aria-label={`${entry.archived ? 'Unarchive' : 'Archive'} ${entry.label}`}
                 style={actionBtnStyle}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -257,6 +265,7 @@ export default function SidebarBriefingList({
               <button
                 type="button"
                 title="Delete briefing"
+                aria-label={`Delete ${entry.label}`}
                 style={actionBtnStyle}
                 onClick={(e) => {
                   e.stopPropagation();

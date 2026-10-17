@@ -180,8 +180,16 @@ export default function PipelineArchive({ pipelineArchive }) {
       {filterResults && (
         <div style={sectionStyle}>
           <div style={labelStyle}>Filter stage</div>
-          <FilterBucket label="YES" papers={filterResults.yes} color="#22c55e" />
-          <FilterBucket label="MAYBE" papers={filterResults.maybe} color="#f59e0b" />
+          <FilterBucket
+            label="YES"
+            papers={filterResults.yes}
+            color="var(--aparture-success-text)"
+          />
+          <FilterBucket
+            label="MAYBE"
+            papers={filterResults.maybe}
+            color="var(--aparture-warning-text)"
+          />
           <FilterBucket label="NO" papers={filterResults.no} color="var(--aparture-mute)" />
         </div>
       )}

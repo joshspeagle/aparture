@@ -46,9 +46,11 @@ export default function BriefingHeader({
             {' · '}
             <span
               data-audit={audit.kind}
-              // #f59e0b = warning (CLAUDE.md semantic status colours): an
+              // Warning text (CLAUDE.md semantic status colours): an
               // unaudited or flagged briefing should catch the eye.
-              style={audit.kind === 'passed' ? undefined : { color: '#f59e0b' }}
+              style={
+                audit.kind === 'passed' ? undefined : { color: 'var(--aparture-warning-text)' }
+              }
             >
               {audit.text}
             </span>

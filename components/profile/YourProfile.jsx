@@ -113,7 +113,7 @@ export default function YourProfile({
             <span
               style={{
                 fontSize: 'var(--aparture-text-xs)',
-                color: '#f59e0b',
+                color: 'var(--aparture-warning-text)',
               }}
               aria-label="unsaved changes"
             >
@@ -158,6 +158,7 @@ export default function YourProfile({
           </div>
 
           <TextArea
+            aria-label="Research profile"
             value={currentDraft}
             onChange={(e) => setDraftContent(e.target.value)}
             readOnly={disabled}

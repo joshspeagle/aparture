@@ -50,29 +50,39 @@ export default function ScoringOptionsSection({ config, setConfig, processing })
         style={{ display: 'flex', gap: 'var(--aparture-space-4)' }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Scoring Batch Size</label>
+          <label htmlFor="setting-scoringBatchSize" style={FIELD_LABEL_STYLE}>
+            Scoring Batch Size
+          </label>
           <Input {...integerInputProps('scoringBatchSize', 3, 1, 10)} />
           <p style={HELP_TEXT_STYLE}>Papers per API call</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Parallel Scoring Calls</label>
+          <label htmlFor="setting-scoringConcurrency" style={FIELD_LABEL_STYLE}>
+            Parallel Scoring Calls
+          </label>
           <Input {...integerInputProps('scoringConcurrency', 3, 1, 20)} />
           <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
         </div>
         {config.enableScorePostProcessing && (
           <>
             <div style={{ flex: 1 }}>
-              <label style={FIELD_LABEL_STYLE}>Review Batch Size</label>
+              <label htmlFor="setting-postProcessingBatchSize" style={FIELD_LABEL_STYLE}>
+                Review Batch Size
+              </label>
               <Input {...integerInputProps('postProcessingBatchSize', 5, 3, 10)} />
               <p style={HELP_TEXT_STYLE}>Papers per comparison</p>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={FIELD_LABEL_STYLE}>Parallel Review Calls</label>
+              <label htmlFor="setting-postProcessingConcurrency" style={FIELD_LABEL_STYLE}>
+                Parallel Review Calls
+              </label>
               <Input {...integerInputProps('postProcessingConcurrency', 3, 1, 20)} />
               <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
             </div>
             <div style={{ flex: 1 }}>
-              <label style={FIELD_LABEL_STYLE}>Papers to Review</label>
+              <label htmlFor="setting-postProcessingCount" style={FIELD_LABEL_STYLE}>
+                Papers to Review
+              </label>
               <Input {...integerInputProps('postProcessingCount', 50, 5, 200)} />
               <p style={HELP_TEXT_STYLE}>Top papers to post-process</p>
             </div>

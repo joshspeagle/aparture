@@ -49,17 +49,17 @@ function stageStatus(stageIndex, currentIndex, isRunning, isReview) {
 function StageIcon({ status }) {
   const styles = {
     done: {
-      color: '#22c55e', // green
+      color: 'var(--aparture-success-text)', // green
       fontSize: 'var(--aparture-text-lg)',
       lineHeight: 1,
     },
     running: {
-      color: '#f59e0b', // amber
+      color: 'var(--aparture-warning-text)', // amber
       fontSize: 'var(--aparture-text-lg)',
       lineHeight: 1,
     },
     waiting: {
-      color: '#f59e0b', // amber: needs the reader's attention
+      color: 'var(--aparture-warning-text)', // amber: needs the reader's attention
       fontSize: 'var(--aparture-text-lg)',
       lineHeight: 1,
     },
@@ -192,7 +192,7 @@ export default function ProgressTimeline({ children }) {
       status === 'done'
         ? 'var(--aparture-ink)'
         : status === 'running' || status === 'waiting'
-          ? '#f59e0b'
+          ? 'var(--aparture-warning-text)'
           : 'var(--aparture-mute)',
     fontWeight: status === 'running' || status === 'waiting' ? 600 : 400,
     padding: 'var(--aparture-space-1) 0',

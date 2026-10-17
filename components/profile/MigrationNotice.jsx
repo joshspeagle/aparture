@@ -32,7 +32,7 @@ export default function MigrationNotice({ notice, onDismiss }) {
                 border: '1px solid rgba(245, 158, 11, 0.4)',
                 padding: '4px 12px',
                 fontSize: 'var(--aparture-text-xs)',
-                color: '#f59e0b',
+                color: 'var(--aparture-warning-text)',
                 background: 'transparent',
                 cursor: 'pointer',
               }}
@@ -119,7 +119,7 @@ export default function MigrationNotice({ notice, onDismiss }) {
             border: '1px solid rgba(245, 158, 11, 0.4)',
             padding: '4px 12px',
             fontSize: 'var(--aparture-text-xs)',
-            color: '#f59e0b',
+            color: 'var(--aparture-warning-text)',
             background: 'transparent',
             cursor: 'pointer',
           }}

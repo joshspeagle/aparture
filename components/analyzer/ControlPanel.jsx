@@ -17,11 +17,16 @@ import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import Button from '../ui/Button.jsx';
 import Card from '../ui/Card.jsx';
 
-// Per-check chip for the API Setup Check results. Uses the shared semantic
-// status colors (#22c55e done / #ef4444 error); a null check means "not
-// validated by this probe" and renders muted.
+// Per-check chip for the API Setup Check results. Uses the status text
+// tokens (done / error); a null check means "not validated by this probe"
+// and renders muted.
 function CheckChip({ label, value }) {
-  const color = value === true ? '#22c55e' : value === false ? '#ef4444' : 'var(--aparture-mute)';
+  const color =
+    value === true
+      ? 'var(--aparture-success-text)'
+      : value === false
+        ? 'var(--aparture-danger-text)'
+        : 'var(--aparture-mute)';
   const symbol = value === true ? '✓' : value === false ? '✗' : '—';
   return (
     <span
@@ -147,7 +152,7 @@ export default function ControlPanel({
             <Button
               variant="secondary"
               onClick={onPause}
-              style={{ borderColor: '#f59e0b', color: '#f59e0b' }}
+              style={{ borderColor: '#f59e0b', color: 'var(--aparture-warning-text)' }}
             >
               <Pause className="w-4 h-4" />
               Pause
@@ -158,7 +163,7 @@ export default function ControlPanel({
             <Button
               variant="secondary"
               onClick={onResume}
-              style={{ borderColor: '#22c55e', color: '#22c55e' }}
+              style={{ borderColor: '#22c55e', color: 'var(--aparture-success-text)' }}
             >
               <Play className="w-4 h-4" />
               Resume
@@ -169,7 +174,7 @@ export default function ControlPanel({
             <Button
               variant="secondary"
               onClick={onStop}
-              style={{ borderColor: '#ef4444', color: '#ef4444' }}
+              style={{ borderColor: '#ef4444', color: 'var(--aparture-danger-text)' }}
             >
               <Square className="w-4 h-4" />
               Stop
@@ -284,7 +289,7 @@ export default function ControlPanel({
                     style={{
                       fontFamily: 'var(--aparture-font-sans)',
                       fontSize: 'var(--aparture-text-xs)',
-                      color: '#ef4444',
+                      color: 'var(--aparture-danger-text)',
                       marginTop: 'var(--aparture-space-3)',
                     }}
                   >
@@ -321,7 +326,9 @@ export default function ControlPanel({
                             style={{
                               fontFamily: 'var(--aparture-font-sans)',
                               fontSize: 'var(--aparture-text-xs)',
-                              color: group.ok ? 'var(--aparture-mute)' : '#ef4444',
+                              color: group.ok
+                                ? 'var(--aparture-mute)'
+                                : 'var(--aparture-danger-text)',
                               marginTop: '2px',
                             }}
                           >

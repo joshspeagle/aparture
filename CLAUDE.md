@@ -165,7 +165,7 @@ The agent skill reads prompts by heading: "Style and voice" and "Sourcing discip
 - Mobile rules live only inside the under-768px media query in `shell.css`: the off-canvas drawer (`.shell-topbar`, `.shell-scrim`, `.shell-sidebar--open`), `.touch-target` (40px minimum), `.settings-field-row`.
 - `components/shell/MainArea.jsx`: the pipeline view stacks results, Download Report, the reCAPTCHA and refusal cards, and the briefing card; the briefing view stacks `BriefingView`, `GenerationDetails`, `FeedbackPanel`, and `NotebookLMCard`. Put a new card in the view it belongs to.
 
-**Semantic status colors** are hardcoded by design: they mark status and aren't palette. Add new ones here, not as tokens. Informational markers such as `DuplicateBadge` use muted tokens.
+**Semantic status colors** are hardcoded by design for fills, borders, tints, and dots: they mark status and aren't palette. Add new ones here, not as tokens. As text or icons the raw hues fall under 4.5:1 on the light surfaces, so status-coloured text uses the theme-aware `--aparture-{success,warning,danger,override}-text` tokens (`--aparture-info-text` for blue), and text on a filled hue uses `--aparture-on-status`. Keep UI text at 12px or larger, and dim with colour rather than opacity below 0.7. Informational markers such as `DuplicateBadge` use muted tokens.
 
 <!-- prettier-ignore -->
 | Value | Meaning |

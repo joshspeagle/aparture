@@ -34,6 +34,8 @@ export const HELP_TEXT_STYLE = {
 export const integerInputPropsFor =
   ({ config, setConfig, processing }) =>
   (configKey, defaultVal, min, max) => ({
+    // Pairs with <label htmlFor={`setting-${configKey}`}> in the sections.
+    id: `setting-${configKey}`,
     type: 'text',
     inputMode: 'numeric',
     value: config[configKey] ?? defaultVal,

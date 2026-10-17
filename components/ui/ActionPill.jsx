@@ -8,9 +8,9 @@
 // tint over the dark theme's near-black surfaces is invisible, whereas
 // --aparture-surface-2 / --aparture-hover shift correctly in both themes.
 export const SEMANTIC_COLORS = {
-  green: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '#22c55e' },
-  amber: { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '#f59e0b' },
-  red: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '#ef4444' },
+  green: { bg: 'rgba(34,197,94,0.12)', color: 'var(--aparture-success-text)', border: '#22c55e' },
+  amber: { bg: 'rgba(245,158,11,0.12)', color: 'var(--aparture-warning-text)', border: '#f59e0b' },
+  red: { bg: 'rgba(239,68,68,0.12)', color: 'var(--aparture-danger-text)', border: '#ef4444' },
   mute: {
     bg: 'var(--aparture-surface-2)',
     color: 'var(--aparture-ink)',
@@ -49,7 +49,7 @@ export default function ActionPill({
       aria-pressed={Boolean(active)}
       style={{
         padding: '2px 8px',
-        fontSize: '10px',
+        fontSize: '12px',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         borderRadius: '9999px',

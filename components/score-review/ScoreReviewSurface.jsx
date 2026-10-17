@@ -46,6 +46,7 @@ function RowComment({ arxivId, onAddPaperComment }) {
   return (
     <div style={{ marginTop: '6px' }}>
       <TextArea
+        aria-label="Comment on this paper"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={2}
@@ -99,7 +100,7 @@ const ScoreRow = memo(function ScoreRow({
         borderTop: '1px solid var(--aparture-border-light)',
         borderLeft: isInTopN ? '3px solid #22c55e' : '3px solid transparent',
         background: rowBg,
-        opacity: isDismissed ? 0.55 : 1,
+        opacity: isDismissed ? 0.7 : 1,
         transition: 'background 150ms ease, opacity 150ms ease',
       }}
     >
@@ -112,7 +113,7 @@ const ScoreRow = memo(function ScoreRow({
             opacity: 0.65,
           }}
         >
-          {paper.arxivId} · score {paper.relevanceScore?.toFixed(1)}
+          {paper.arxivId ?? paper.id} · score {paper.relevanceScore?.toFixed(1)}
         </div>
         {paper.scoreJustification && (
           <div

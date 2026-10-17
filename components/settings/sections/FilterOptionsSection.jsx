@@ -27,18 +27,26 @@ export default function FilterOptionsSection({ config, setConfig, processing }) 
         }}
       >
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Filter Batch Size</label>
+          <label htmlFor="setting-filterBatchSize" style={FIELD_LABEL_STYLE}>
+            Filter Batch Size
+          </label>
           <Input {...integerInputProps('filterBatchSize', 3, 1, 20)} />
           <p style={HELP_TEXT_STYLE}>Papers per API call</p>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={FIELD_LABEL_STYLE}>Parallel Filter Calls</label>
+          <label htmlFor="setting-filterConcurrency" style={FIELD_LABEL_STYLE}>
+            Parallel Filter Calls
+          </label>
           <Input {...integerInputProps('filterConcurrency', 3, 1, 20)} />
           <p style={HELP_TEXT_STYLE}>Max concurrent calls</p>
         </div>
         <div style={{ flex: 2 }}>
-          <label style={FIELD_LABEL_STYLE}>Categories to Process</label>
+          <label id="setting-categoriesToScore-label" style={FIELD_LABEL_STYLE}>
+            Categories to Process
+          </label>
           <div
+            role="group"
+            aria-labelledby="setting-categoriesToScore-label"
             style={{
               display: 'flex',
               // Wrap so YES/MAYBE/NO checkboxes never force horizontal
