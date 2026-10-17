@@ -158,6 +158,8 @@ npx playwright install chromium
 npx playwright install-deps chromium
 ```
 
+Run `npx playwright install chromium` again after an update that moves Playwright to a new version: each release looks for its own Chromium build, and until it's downloaded the fallback fails to launch.
+
 ::: tip Don't delete the Playwright profile
 The fallback runs a headless browser in the background; you never see a window or solve a challenge yourself. It keeps its cookies in `temp/playwright-profile/`, which is what lets later downloads skip the challenge. Deleting that folder means the next affected download starts from a fresh session, and the first one after that can take 5–10 seconds longer.
 :::
