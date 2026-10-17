@@ -124,6 +124,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 - It calls the arXiv proxy handlers in-process (`lib/headless/inProcessRoute.js`), installs jsdom's `DOMParser` (a devDependency, so it needs a full `npm ci`), and sets a random `ACCESS_PASSWORD` when none is set.
 - Requests to arxiv.org pages and files are 15 s apart (`arxivPageSpacingMs`); `--spacing-ms` is for tests.
 - Skill state lives in `$APARTURE_STATE` (default `./aparture-state`), separate from the web app's storage. Skill briefings use `lib/briefing/v2/` (schema, a grounding validator for cited IDs and verbatim quotes, renderer), not `lib/synthesis/schema.js`.
+- **Keeping the skill in step is part of maintenance.** The app and the skill share prompts, arXiv code, and the briefing's rules. A change to what a briefing contains, how feedback turns into proposals, a prompt section the skill quotes, or a runner command or flag updates `.claude/skills/aparture/` in the same PR, or the PR says why the two should differ. New mechanics go in `lib/`, where the runner can call them in-process, not in skill prose or a component. `tests/unit/skillParity.test.js` checks the names the skill relies on: prompt headings and restated rules, runner commands and flags, and reference files.
 
 ## Model information
 
@@ -145,7 +146,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 2. **Quality strictness is profile-aware.** `rubric-scoring.md`, `rubric-pdf.md`, and `rubric-rescoring.md` each have a "Calibrate Quality strictness to the profile" paragraph. Keep its breadth-versus-selectivity escape hatch, or breadth profiles get downgraded silently.
 3. **One claims standard for writer and auditor.** A factual claim about a paper (a number, a named method or dataset, a comparative result, an attribution) needs support in that paper's abstract or full report; cross-paper synthesis in `executiveSummary` and `themes[].argument` is legitimate unless it contradicts a source. `synthesis.md` ("Sourcing discipline") and `check-briefing.md` ("What counts as a hallucination") state it identically; change them together.
 4. **The filter is permissive.** A paper that survived as MAYBE should score 3–5 on Alignment, not 6–7 (`rubric-scoring.md`).
-5. **Demonstrate, don't promote.** "novel", "breakthrough", and "paradigm-shift" are the named banned words in `synthesis.md`, `analyze-pdf-quick.md`, `rubric-pdf.md`, and `notebooklm-discussion-guide.md`; change all four or none.
+5. **Demonstrate, don't promote.** "novel", "breakthrough", and "paradigm-shift" are the named banned words in `synthesis.md`, `analyze-pdf-quick.md`, `rubric-pdf.md`, `notebooklm-discussion-guide.md`, and the skill's `references/briefing.md`; change all five or none.
 6. **The podcast follows the briefing.** `notebooklm-discussion-guide.md` keeps the paper the briefing puts first in a theme even below the score cutoff.
 7. **Caveats are content.** Report a paper's stated limitations as facts; ban only hedging about the model's own certainty.
 8. **Describe meaning, not shape:** no example JSON, no "respond only with" lines.
@@ -154,7 +155,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 11. **Don't present unaudited text as checked.** Quick summaries and full reports are model-written and unaudited.
 12. **Suggest rationales are parsed.** `suggest-profile.md` must keep asking each rationale to name papers by arXiv ID and quote the comments it used; incorporation tracking reads them.
 
-The agent skill reads prompts by heading: "Style and voice" and "Sourcing discipline" in `synthesis.md`; "What counts as a hallucination" and "Output schema" in `check-briefing.md`; the verdict rules in `rubric-filter.md`; the score formula and calibration paragraph in `rubric-scoring.md` and `rubric-pdf.md`. Renaming them breaks the skill.
+The agent skill reads prompts by heading: "Style and voice" and "Sourcing discipline" in `synthesis.md`; "What counts as a hallucination" and "Output schema" in `check-briefing.md`; the verdict rules in `rubric-filter.md`; the score formula and calibration paragraph in `rubric-scoring.md` and `rubric-pdf.md`. Renaming them breaks the skill; `tests/unit/skillParity.test.js` fails first.
 
 ## UI conventions
 
@@ -199,10 +200,10 @@ The agent skill reads prompts by heading: "Style and voice" and "Sourcing discip
 
 ## Docs upkeep
 
-The README is thin; `docs/` is the source of truth. After changing a default, Settings label, model ID, config key, or user-visible error or log string, grep `docs/` and `README.md` for the old value and fix every hit. Skip docs for internal refactors, hidden-behavior fixes, and tests. The doc-trigger table lists the mappings a grep won't find:
+The README is thin; `docs/` is the source of truth. After changing a default, Settings label, model ID, config key, or user-visible error or log string, grep `docs/` and `README.md` for the old value and fix every hit. Skip docs for internal refactors, hidden-behavior fixes, and tests. The doc-trigger table lists the mappings a grep won't find. Pages are under `docs/`, except in the skill's row:
 
 <!-- prettier-ignore -->
-| Code | Pages to check (under `docs/`) |
+| Code | Pages to check |
 | --- | --- |
 | `utils/models.js`, model defaults | `concepts/model-selection.md`, `getting-started/api-keys*.md`, `using/tuning-the-pipeline.md` |
 | `lib/analyzer/stages/*`, retry and rate-limit code | `concepts/pipeline.md`, `using/review-gates.md`, `using/tuning-the-pipeline.md`, `reference/troubleshooting.md` |
@@ -215,6 +216,7 @@ The README is thin; `docs/` is the source of truth. After changing a default, Se
 | Settings panel, dedupe | `using/tuning-the-pipeline.md` |
 | `lib/notebooklm/*` | `add-ons/podcast.md` |
 | persistence hooks and routes, auth, `process.env.*`, `package.json` scripts | `reference/environment.md`, `reference/troubleshooting.md`, `getting-started/install.md` |
+| prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md` |
 
 Screenshots live in `docs/public/screenshots/`, captured at 1440×900 in the light theme; retake them when the UI changes materially.
 

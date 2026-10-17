@@ -737,6 +737,9 @@ Commands:
   render    Render briefing.json as a self-contained HTML page with the
             figures inlined and feedback controls.
             --run <run dir> [--state <dir>] [--out <file>]
+            --model <name>      the writing model, named in the colophon
+            --standalone        a full HTML document that opens directly
+                                in a browser (default: the page body only)
   record    Add harvested ids to seen.json (90-day window), archive the
             briefing into <state>/briefings/. Refuses a failed validation.
             --run <run dir> [--state <dir>] [--prune-run]
