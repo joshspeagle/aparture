@@ -97,12 +97,15 @@ describe('generate-notebooklm API route (fixture mode)', () => {
     );
 
     const focus = await zip.file('focus-prompt.txt').async('string');
-    expect(focus).toContain('Target length: 20 minutes');
+    // A minute count from an older client maps onto its preset.
+    expect(focus).toContain('Target length: Default, about 10–15 minutes');
+    const instructions = await zip.file('INSTRUCTIONS.md').async('string');
+    expect(instructions).toContain('choose **Default**');
     // Focus prompt should point at the uploaded sources rather than
     // re-enumerating them.
     expect(focus).toContain('discussion-guide.md');
     expect(focus).toContain('briefing.md');
-    // Depth-strategy language scaled to 20 minutes
+    // Depth-strategy language scaled to the preset
     expect(focus.toLowerCase()).toMatch(/deep-dive|prune|drop/);
 
     const guide = await zip.file('discussion-guide.md').async('string');

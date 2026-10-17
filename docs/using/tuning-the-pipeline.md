@@ -33,9 +33,9 @@ Each stage has its own model slot. Current defaults are all Google:
 | `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.8-flash`      | Stage 4 full-text read                                                                                                                     |
 | `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.8-flash`      | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
 | `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite` | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
-| `notebookLMModel`     | (chosen on the NotebookLM card)      | `gemini-3.8-flash`      | Optional NotebookLM document bundle                                                                                                        |
+| `notebookLMModel`     | (chosen on the Podcast card)         | `gemini-3.8-flash`      | Optional podcast bundle                                                                                                                    |
 
-The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` (**Review Model**) appears only while **Enable Post-Processing** is on, and it stays on `gemini-3.6-flash` when you change the scoring slot: without a Google key, change it too or turn the pass off. `notebookLMModel` is picked on the NotebookLM card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
+The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` (**Review Model**) appears only while **Enable Post-Processing** is on, and it stays on `gemini-3.6-flash` when you change the scoring slot: without a Google key, change it too or turn the pass off. `notebookLMModel` is picked on the Podcast card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
 
 Three rules of thumb for model selection:
 

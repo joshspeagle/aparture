@@ -59,7 +59,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | PDF analysis (`pdfModel`)           | `claude-opus-5.5`   |
 | Briefing (`briefingModel`)          | `claude-opus-5.5`   |
 | Quick summary (`quickSummaryModel`) | `claude-haiku-5.5`  |
-| NotebookLM doc (`notebookLMModel`)  | `claude-opus-5.5`   |
+| Podcast outline (`notebookLMModel`) | `claude-opus-5.5`   |
 
 ::: warning Post-processing stays on Google unless you change it
 Stage 3.5 runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and doesn't follow your other choices. With no Google key, pick a Claude model as the **Review Model** under **Enable Post-Processing** in Settings, or turn post-processing off; otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.

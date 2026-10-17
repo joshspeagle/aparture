@@ -21,6 +21,7 @@ import { encodePasswordHeader } from '../lib/auth/passwordHeader.js';
 import { buildHotEntry, buildColdEntry } from '../lib/session/buildHotEntry.js';
 import { BLANK_PROFILE_TEMPLATE } from '../lib/profile/starterTemplates.js';
 import { useAnalyzerStore } from '../stores/analyzerStore.js';
+import { resolvePodcastLength } from '../lib/notebooklm/podcastLength.js';
 
 const STORAGE_KEY = 'arxivAnalyzerState';
 const SAVE_DEBOUNCE_MS = 400;
@@ -568,7 +569,10 @@ export function useAnalyzerPersistence({
       setTestState(revivedTestState);
     }
     if (parsed.notebookLM) {
-      if (parsed.notebookLM.duration) setPodcastDuration(parsed.notebookLM.duration);
+      if (parsed.notebookLM.duration) {
+        // Older sessions saved a minute count; map it onto a length preset.
+        setPodcastDuration(resolvePodcastLength(parsed.notebookLM.duration));
+      }
       if (parsed.notebookLM.model) {
         // The notebookLM model persists OUTSIDE config (hotEntry.notebookLM),
         // so the v8→v9 config migration never sees it. Remap retired IDs here

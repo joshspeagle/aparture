@@ -48,7 +48,7 @@ Profile refinement proposals from accumulated feedback: edits to the profile tex
 
 ### `prompts/notebooklm-discussion-guide.md`
 
-Podcast outline for NotebookLM — themes, pruning, duration-scaled depth. Fires when the user clicks Generate podcast via `/api/generate-notebooklm`.
+Podcast outline for Gemini Notebook (formerly NotebookLM): themes, pruning, and depth scaled to the length preset (Short, Default, Long). Fires when the user clicks Generate podcast via `/api/generate-notebooklm`.
 
 **Variables:** `themes`, `papers`, `duration`, `date`
 
@@ -90,7 +90,7 @@ Variables are rendered as simple string substitution. A few are worth noting:
 - `papers` in `check-briefing.md` is rendered text, one block per paper (`lib/synthesis/checkCorpus.js`), holding what the writer saw: title, relevance score, your engagement, abstract, scoring justification, and the full report, untruncated. Quick summaries are left out because the writer never sees them. `briefing` is a text rendering of the executive summary, themes, and paper cards.
 - `feedback` in `suggest-profile.md` is a pre-formatted block built by `lib/profile/suggestPrompt.js` that groups the pending events you ticked by type. It includes an `ANSWERS TO THE EDITOR'S QUESTIONS` section when you've answered any, and ends with a `PREVIOUSLY REJECTED SUGGESTIONS` section when you've turned changes down before (the 10 most recent). The rationales the model writes matter beyond the dialog: Aparture marks feedback as incorporated only when an accepted change's rationale cites it by arXiv ID or quotes it.
 - In `editor-questions.md`, `papers` lists the briefing's cards (ID, title, score, pitch) and `nearMisses` the highest-scored papers left out of it. `feedback` is your recent stars, dismissals, comments, and earlier answers, so the model doesn't repeat a question you've answered.
-- `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to NotebookLM as separate source files.
+- `themes` and `papers` in `notebooklm-discussion-guide.md` carry only briefing-level information (theme arguments, paper indices, scores) — the prompt deliberately doesn't include full reports because those get uploaded to the notebook as separate source files.
 
 ### The cache-boundary marker
 
@@ -106,17 +106,17 @@ Every LLM route except quick summaries and the podcast outline sends a JSON sche
 
 A smaller set of prompts still lives in the source code. Each is either too short or too programmatic to move cleanly to a template file.
 
-| Location                                                                    | What it controls                                                                | When it runs                                                               |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `lib/notebooklm/buildFocusPrompt.js`                                        | Focus-prompt generator for NotebookLM — duration-scaled theme and paper budgets | During podcast bundle generation; output lands in `focus-prompt.txt`       |
-| `lib/synthesis/repair.js`                                                   | Synthesis repair template                                                       | Only when `/api/synthesize` output fails the schema or the briefing checks |
-| `lib/synthesis/readerNotes.js`                                              | The reader's-notes section appended to the synthesis prompt                     | When you left a note at Gate 3 that day                                    |
-| `pages/api/check-briefing.js`                                               | Hallucination-check schema-repair template                                      | Only when `/api/check-briefing` output fails validation                    |
-| `pages/api/suggest-profile.js`                                              | Suggest-profile schema-repair template and the overlap-retry hint               | Only when `/api/suggest-profile` output fails validation                   |
-| `pages/api/{quick-filter,score-abstracts,rescore-abstracts,analyze-pdf}.js` | The `# RETRY NOTICE` hint appended to the rubric prompt                         | When the first response fails the route's validation                       |
-| `lib/analyzer/stages/core.js`                                               | The client-side correction prompt                                               | When a route's 200 response still fails to parse in the browser            |
-| `lib/analyzer/briefingClient.js`                                            | The retry hint for a flagged briefing                                           | When the audit returns a verdict that the retry settings act on            |
-| `lib/profile/suggestPrompt.js`                                              | The `USER GUIDANCE FOR THIS CALL` block and the rejected-suggestions section    | When you type guidance, or have rejected changes before                    |
+| Location                                                                    | What it controls                                                                                     | When it runs                                                               |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `lib/notebooklm/buildFocusPrompt.js`                                        | Focus-prompt generator for Gemini Notebook; per-preset theme and paper budgets in `podcastLength.js` | During podcast bundle generation; output lands in `focus-prompt.txt`       |
+| `lib/synthesis/repair.js`                                                   | Synthesis repair template                                                                            | Only when `/api/synthesize` output fails the schema or the briefing checks |
+| `lib/synthesis/readerNotes.js`                                              | The reader's-notes section appended to the synthesis prompt                                          | When you left a note at Gate 3 that day                                    |
+| `pages/api/check-briefing.js`                                               | Hallucination-check schema-repair template                                                           | Only when `/api/check-briefing` output fails validation                    |
+| `pages/api/suggest-profile.js`                                              | Suggest-profile schema-repair template and the overlap-retry hint                                    | Only when `/api/suggest-profile` output fails validation                   |
+| `pages/api/{quick-filter,score-abstracts,rescore-abstracts,analyze-pdf}.js` | The `# RETRY NOTICE` hint appended to the rubric prompt                                              | When the first response fails the route's validation                       |
+| `lib/analyzer/stages/core.js`                                               | The client-side correction prompt                                                                    | When a route's 200 response still fails to parse in the browser            |
+| `lib/analyzer/briefingClient.js`                                            | The retry hint for a flagged briefing                                                                | When the audit returns a verdict that the retry settings act on            |
+| `lib/profile/suggestPrompt.js`                                              | The `USER GUIDANCE FOR THIS CALL` block and the rejected-suggestions section                         | When you type guidance, or have rejected changes before                    |
 
 The focus-prompt builder is a JavaScript function that computes paper and theme budgets from the podcast duration (not a static template). The repair templates and retry hints are short and tightly coupled to the schema or validator they serve, so they stay next to that code.
 
@@ -134,7 +134,7 @@ Match the symptom to a file.
 
 **The editor asks questions that miss, or asks too often.** Edit `prompts/editor-questions.md`. Its list of good reasons to ask is what keeps the questions rare; the validator in `lib/editorQuestions/questions.js` enforces the format.
 
-**Podcasts drift off-topic or cover too many papers shallowly.** Edit `prompts/notebooklm-discussion-guide.md` for the outline itself, or `lib/notebooklm/buildFocusPrompt.js` for the per-duration budget table NotebookLM receives in `focus-prompt.txt`.
+**Podcasts drift off-topic or cover too many papers shallowly.** Edit `prompts/notebooklm-discussion-guide.md` for the outline itself, or `lib/notebooklm/buildFocusPrompt.js` for the focus prompt the notebook receives (the per-preset budgets are in `lib/notebooklm/podcastLength.js`) in `focus-prompt.txt`.
 
 **Scoring doesn't match your profile.** This is usually a profile problem, not a prompt problem. The rubrics in `prompts/rubric-filter.md`, `rubric-scoring.md`, `rubric-rescoring.md`, and `rubric-pdf.md` describe the verdicts and the 0–10 scale itself; they don't describe what's relevant to you. Edit your profile, then run the refinement flow. Only edit the rubric files if you want to recalibrate the scale — which invalidates score comparisons against older briefings.
 

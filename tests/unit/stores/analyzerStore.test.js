@@ -127,7 +127,7 @@ describe('analyzerStore — testState slice', () => {
 describe('analyzerStore — notebookLM slice', () => {
   it('starts with defaults (20 minutes, DEFAULT_MODEL_ID)', () => {
     const { notebookLM } = useAnalyzerStore.getState();
-    expect(notebookLM.podcastDuration).toBe(20);
+    expect(notebookLM.podcastDuration).toBe('default');
     expect(notebookLM.notebookLMModel).toBe(DEFAULT_MODEL_ID);
     expect(notebookLM.notebookLMStatus).toBe('');
     expect(notebookLM.notebookLMContent).toBeNull();
@@ -136,13 +136,13 @@ describe('analyzerStore — notebookLM slice', () => {
 
   it('has per-field setters', () => {
     const s = useAnalyzerStore.getState();
-    s.setPodcastDuration(30);
+    s.setPodcastDuration('long');
     s.setNotebookLMModel('claude-opus-4.6');
     s.setNotebookLMStatus('running');
     s.setNotebookLMContent('markdown');
     s.setNotebookLMGenerating(true);
     const s2 = useAnalyzerStore.getState();
-    expect(s2.notebookLM.podcastDuration).toBe(30);
+    expect(s2.notebookLM.podcastDuration).toBe('long');
     expect(s2.notebookLM.notebookLMModel).toBe('claude-opus-4.6');
     expect(s2.notebookLM.notebookLMStatus).toBe('running');
     expect(s2.notebookLM.notebookLMContent).toBe('markdown');
@@ -246,7 +246,7 @@ describe('analyzerStore — resetStore', () => {
     s.setFilterResults({ yes: [{ id: 'y' }] });
     s.setProcessingTiming({ startTime: new Date() });
     s.setTestState({ dryRunInProgress: true });
-    s.setPodcastDuration(99);
+    s.setPodcastDuration('short');
     s.setSynthesizing(true);
     s.setPassword('leaked');
     s.setIsAuthenticated(true);
@@ -263,7 +263,7 @@ describe('analyzerStore — resetStore', () => {
     expect(out.filterResults.yes).toEqual([]);
     expect(out.processingTiming.startTime).toBeNull();
     expect(out.testState.dryRunInProgress).toBe(false);
-    expect(out.notebookLM.podcastDuration).toBe(20);
+    expect(out.notebookLM.podcastDuration).toBe('default');
     expect(out.briefingUI.synthesizing).toBe(false);
     expect(out.password).toBe('');
     expect(out.isAuthenticated).toBe(false);

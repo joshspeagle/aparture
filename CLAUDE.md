@@ -9,7 +9,7 @@ Mechanically, it is a Next.js app running a staged arXiv pipeline over LLMs. Des
 ## Commands and checks
 
 - `npm run dev | build | lint | test`; one file: `npx vitest run <path>`. `npm run format` checks formatting; `format:fix` writes it. Node 22 or newer. `dev` and `start` bind to 127.0.0.1 (`npm run dev -- -H 0.0.0.0` for the LAN).
-- Docs: `cd docs && npm ci` once, then `npm run docs:dev` or `docs:build`. The build catches dead page links, not dead `#anchors`.
+- Docs: `cd docs && npm ci` once, then `npm run docs:dev` or `docs:build` from the repo root. The build catches dead page links, not dead `#anchors`.
 - **Vitest has two projects**, `node` and `jsdom`, chosen by include globs in `vitest.config.mjs`. A new test file must match a glob in exactly one project, or it silently never runs. A new top-level test directory needs its own glob in one project. A file under a node glob that needs `document`, `DOMParser`, or `localStorage` goes in `NODE_PROJECT_EXCEPTIONS`.
 - `tests/setup.js` deletes the provider keys, `ARXIV_CONTACT_EMAIL`, and `APARTURE_REPORTS_DIR` so the suite stays hermetic; a test that needs one sets it.
 - Hooks: pre-commit runs lint-staged (eslint and prettier); pre-push runs `eslint .` and `npm test`. CI (`.github/workflows/ci.yml`: pushes to main, PRs, weekly) runs lint, `npx prettier --check .`, `npm audit --omit=dev --audit-level=high`, `npm test`, and `npm run build` on Node 22 and 24, `npm test` again at UTC+14 (`TZ=Pacific/Kiritimati`) on Node 22, and a docs build. Briefing days are local calendar days, so run that leg locally after touching date code. Dependabot opens grouped weekly updates.
@@ -150,7 +150,7 @@ Hot state in localStorage, cold state on disk; both write through `safeSetItem` 
 3. **One claims standard for writer and auditor.** A factual claim about a paper (a number, a named method or dataset, a comparative result, an attribution) needs support in that paper's abstract or full report; cross-paper synthesis in `executiveSummary` and `themes[].argument` is legitimate unless it contradicts a source. `synthesis.md` ("Sourcing discipline") and `check-briefing.md` ("What counts as a hallucination") state it identically; change them together.
 4. **The filter is permissive.** A paper that survived as MAYBE should score 3–5 on Alignment, not 6–7 (`rubric-scoring.md`).
 5. **Demonstrate, don't promote.** "novel", "breakthrough", and "paradigm-shift" are the named banned words in `synthesis.md`, `analyze-pdf-quick.md`, `rubric-pdf.md`, `notebooklm-discussion-guide.md`, and the skill's `references/briefing.md`; change all five or none.
-6. **The podcast follows the briefing.** `notebooklm-discussion-guide.md` keeps the paper the briefing puts first in a theme even below the score cutoff.
+6. **The podcast follows the briefing.** `notebooklm-discussion-guide.md` keeps the paper the briefing puts first in a theme even below the score cutoff. Its pruning table mirrors the length presets in `lib/notebooklm/podcastLength.js` (Short, Default, Long, each matched to Gemini Notebook's own length option); change them together.
 7. **Caveats are content.** Report a paper's stated limitations as facts; ban only hedging about the model's own certainty.
 8. **Describe meaning, not shape:** no example JSON, no "respond only with" lines.
 9. **No shouting.** Current models over-apply emphasized rules. State each constraint once, with its reason.
@@ -217,7 +217,7 @@ The README is thin; `docs/` is the source of truth. After changing a default, Se
 | `useProfile.js`, `components/profile/*`, `lib/profile/*` | `using/writing-a-profile.md`, `using/refining-over-time.md` |
 | gate UIs, `components/run/*`, `components/score-review/*` | `using/review-gates.md` |
 | Settings panel, dedupe | `using/tuning-the-pipeline.md` |
-| `lib/notebooklm/*` | `add-ons/podcast.md` |
+| `lib/notebooklm/*`, `components/notebooklm/*` | `add-ons/podcast.md` |
 | persistence hooks and routes, auth, `process.env.*`, `package.json` scripts | `reference/environment.md`, `reference/troubleshooting.md`, `getting-started/install.md` |
 | prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md` |
 

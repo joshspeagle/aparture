@@ -67,7 +67,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | PDF analysis (`pdfModel`)               | `gemini-3.8-flash`      |
 | Briefing (`briefingModel`)              | `gemini-3.8-flash`      |
 | Quick summary (`quickSummaryModel`)     | `gemini-3.5-flash-lite` |
-| NotebookLM doc (`notebookLMModel`)      | `gemini-3.8-flash`      |
+| Podcast outline (`notebookLMModel`)     | `gemini-3.8-flash`      |
 
 Changes worth considering:
 

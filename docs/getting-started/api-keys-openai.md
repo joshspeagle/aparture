@@ -66,7 +66,7 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | PDF analysis (`pdfModel`)           | `gpt-6.1-sol` |
 | Briefing (`briefingModel`)          | `gpt-6.1-sol` |
 | Quick summary (`quickSummaryModel`) | `gpt-6-luna`  |
-| NotebookLM doc (`notebookLMModel`)  | `gpt-6.1-sol` |
+| Podcast outline (`notebookLMModel`) | `gpt-6.1-sol` |
 
 ::: warning Post-processing stays on Google unless you change it
 Stage 3.5 runs on `postProcessingModel`, which defaults to `gemini-3.6-flash` and doesn't follow your other choices. With no Google key, pick a GPT model as the **Review Model** under **Enable Post-Processing** in Settings, or turn post-processing off; otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.

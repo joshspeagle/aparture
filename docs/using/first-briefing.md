@@ -147,7 +147,7 @@ Four blocks are worth recognising across the two views:
 | **Analysis Results** | Pipeline view            | Ranked paper list with scores (0.0–10.0, see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)), justifications, and deep summaries — still interactive |
 | **Download Report**  | Pipeline view            | Markdown compile of the per-paper deep analyses (see [report vs briefing](/concepts/pipeline#the-download-report-vs-the-briefing))                                    |
 | **Briefing**         | Briefing view (archived) | Editorial reading surface — executive summary, themes, paper cards                                                                                                    |
-| **NotebookLM**       | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast)                                                                                       |
+| **Podcast**          | Briefing view            | Optional podcast bundle generator, see [Generating a podcast](/add-ons/podcast)                                                                                       |
 
 ::: tip Expect the first briefing to be rough
 The filter model hasn't seen any of your feedback yet, your profile is a sketch rather than a honed description, and you didn't give feedback at any of the gates. That's all fine — the feedback loop sharpens across runs, and that's really what the rest of the Guide is about.
