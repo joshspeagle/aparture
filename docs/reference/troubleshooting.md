@@ -58,7 +58,7 @@ If your symptom isn't here, [file an issue](https://github.com/joshspeagle/apart
 | The app loads on this machine but not from another device            | The server listens on 127.0.0.1 only                                   | [Reaching the app from another device](#reaching-the-app-from-another-device)   |
 | Every API call returns `401 Invalid password`                        | `ACCESS_PASSWORD` mismatch, trailing whitespace, or CRLF               | [ACCESS_PASSWORD mismatch](#access-password-mismatch)                           |
 | `.env.local` edits don't appear to take effect                       | Dev server cached old values at startup                                | [`.env.local` not loading](#env-local-not-loading)                              |
-| `missing credentials` or provider `401`                              | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                                 |
+| `no API key for <provider>` or provider `401`                        | API key env var unset, or wrong prefix pasted                          | [API key format issues](#api-key-format-issues)                                 |
 | `arXiv rate limit: exhausted 3 retries`                              | ArXiv's 3s-per-request cap was tripped                                 | [arXiv rate limits](#arxiv-rate-limits)                                         |
 | Run reports `arXiv: auto-atom`, much slower than usual               | OAI-PMH failed; Auto mode fell back to Atom                            | [arXiv rate-limited](#arxiv-rate-limited)                                       |
 | `Failed to download PDF: HTTP 403` (or 404 / timeout)                | Genuine download failure — retried, then reported with the real status | [reCAPTCHA on PDF downloads](#recaptcha-on-pdf-downloads)                       |
@@ -221,7 +221,7 @@ Common causes:
 
 ### API key format issues
 
-A request gets past `ACCESS_PASSWORD` but you see `missing credentials` or a provider `401`. The env var for the route's provider is probably unset or malformed.
+A request gets past `ACCESS_PASSWORD` but you see `no API key for <provider>` or a provider `401`. The first means the env var for the route's provider is unset, and the message names it; the second usually means the key is malformed or revoked.
 
 Expected prefixes:
 

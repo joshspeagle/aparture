@@ -53,7 +53,7 @@ Aparture's default model slots are all Google, so adding an OpenAI key alone doe
 
 Expect about $0.50 on the 5-paper test with GPT-6.1 Sol on the PDF slot and the other slots on their Google defaults, plus reasoning tokens.
 
-If the key is missing, the activity log shows `missing credentials` (the env var is unset or misspelled). A malformed or revoked key gives `401 invalid_api_key`, and an organization with no credit gives `429 insufficient_quota`. If a model returns `model_not_found`, check which models your organization can use in the dashboard, or pick another GPT model in Settings.
+If the key is missing, the activity log shows `no API key for openai: set OPENAI_API_KEY in .env.local and restart the server` (the env var is unset or misspelled). A malformed or revoked key gives `401 invalid_api_key`, and an organization with no credit gives `429 insufficient_quota`. If a model returns `model_not_found`, check which models your organization can use in the dashboard, or pick another GPT model in Settings.
 
 ## 6. Recommended models
 

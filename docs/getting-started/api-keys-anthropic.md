@@ -46,7 +46,7 @@ Aparture's default model slots are all Google, so adding a Claude key alone does
 
 Expect about $0.50 on the 5-paper test with Sonnet 5.5 on the PDF slot, or $0.90 with Opus 5.5, with the other slots on their Google defaults. Thinking tokens come on top.
 
-If the key is missing, the activity log shows `missing credentials` (the env var is unset or misspelled). If it is malformed or revoked, Anthropic's own authentication error appears instead.
+If the key is missing, the activity log shows `no API key for anthropic: set CLAUDE_API_KEY in .env.local and restart the server` (the env var is unset or misspelled). If it is malformed or revoked, Anthropic's own authentication error appears instead.
 
 ## 5. Recommended models
 

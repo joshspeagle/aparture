@@ -53,7 +53,7 @@ Aparture's default model slots are all Google, so with the key in place and the 
 
 On the free tier the Minimal API Test costs nothing. On a paid project with the default models, expect about $0.20 at the promotional prices through 2026-12-31 and about $0.40 at list price.
 
-If the key is missing, the activity log shows `missing credentials` (the env var is unset or misspelled). If the key is malformed, revoked, or unrestricted, Google's own error message appears instead.
+If the key is missing, the activity log shows `no API key for google: set GOOGLE_AI_API_KEY in .env.local and restart the server` (the env var is unset or misspelled). If the key is malformed, revoked, or unrestricted, Google's own error message appears instead.
 
 ## 5. Recommended models
 
