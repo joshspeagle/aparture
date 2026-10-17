@@ -2,7 +2,8 @@ import { defineConfig } from 'vitepress';
 
 export default defineConfig({
   title: 'Aparture',
-  description: 'Multi-stage research paper discovery and analysis using LLMs',
+  description:
+    "Aparture reads the day's arXiv against a research profile you write and produces one briefing, with every citation checked against the papers it was given.",
 
   // GitHub Pages deployment base path (set to '/' for custom domain)
   base: '/aparture/',

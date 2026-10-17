@@ -113,7 +113,7 @@ Overrides only work at this stage. Once you continue to scoring, the buttons dea
 
 ### The Feedback panel carries the general-comment input
 
-Every briefing view has a section at the bottom of the main area labelled **Feedback**. Scroll past the briefing itself and the NotebookLM card to find it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — _"General comment on this week's briefing or your research interests…"_ — for notes that aren't tied to any one paper.
+Every briefing view has a section labelled **Feedback** below the briefing and its Generation details panel. On the current briefing, the NotebookLM card sits below it. Near the top of that section is an <span class="ui-action">+ Add a comment</span> button that opens a larger text box — _"General comment on this week's briefing or your research interests…"_ — for notes that aren't tied to any one paper.
 
 General comments are distinctive: they go to the refinement flow as profile-level guidance rather than paper-level signal. The flow sees the comment text alongside the briefing it was written against, so a comment like _"this week leaned too heavily on interpretability"_ has context to be interpreted correctly.
 
@@ -149,13 +149,13 @@ The <span class="ui-action">+ Add a comment</span> button expands a larger text 
 
 Three controls for narrowing the timeline below:
 
-- A **Type** menu: all types, stars, dismisses, comments, or overrides.
-- A **New only** toggle: show only events since the last time you ran the refinement flow.
-- A **Date range** menu: all time, last week, last 30 days, and so on.
+- A **Type** menu: all types, stars, dismisses, comments, overrides, or notes (the bucket, scoring-round, and run notes).
+- A **New since last revision** toggle: show only events since the last time you ran the refinement flow.
+- A **Date range** menu: all time, or the past 7, 14, or 30 days.
 
 ### The timeline
 
-A chronological list of every feedback event, most recent first. Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
+A chronological list of every feedback event, most recent first. Each entry shows when you gave it, a small icon for the type (★, ⊘, 💬, 💭, ⇄, 📋), and either the paper's title (for paper-scoped events) or the comment text (for general ones). Paper-scoped entries also show the paper's score and which briefing they came from.
 
 The timeline is useful for two things: reminding yourself what you've been marking, and spotting patterns you hadn't noticed. _"I keep dismissing interpretability papers"_ is often a hint the profile is a little off in that area.
 

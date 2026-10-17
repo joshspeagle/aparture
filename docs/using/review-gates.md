@@ -69,7 +69,7 @@ You don't have to review every paper. Overrides usually happen in the <span clas
 
 ### What it does
 
-After Stage 3.5 (post-processing), the pipeline has a ranked list of scores but hasn't spent any tokens on deep PDF reads yet. That's the cheapest moment to adjust which papers get the full treatment.
+After Stage 3.5 (post-processing), the pipeline has a ranked list of scores but hasn't read any PDFs yet. This is where you decide which papers get read in full.
 
 When `pauseBeforeDeepAnalysis` is on (default: **on**), the pipeline halts here. A review banner with a <span class="ui-action">Continue to PDF analysis →</span> button sits at the head of the full scored list, split into three collapsible groups.
 
@@ -87,25 +87,25 @@ Three groups, each collapsible:
 
 Each row in the list shows the paper's title and authors, its score (pre-analysis), the scoring model's justification, and — when the paper appeared in a past run — a muted "seen ‹date›" duplicate chip with a small history icon. On the right of each row sit three controls:
 
-- **★ (star)** — guarantees this paper gets PDF-analysed, regardless of where its score sits.
-- **⊘ (exclude)** — removes this paper from PDF analysis for this run.
-- **💬 (comment)** — opens a small text box to attach a note to the paper. Does not change whether the paper goes to PDF.
+- **STAR**: guarantees this paper gets PDF-analysed, regardless of where its score sits.
+- **DISMISS**: removes this paper from PDF analysis for this run.
+- **💬 add comment**: opens a small text box to attach a note to the paper. Does not change whether the paper goes to PDF.
 
 ### The selection logic
 
 The final set of papers sent to Stage 4 is additive:
 
 ```
-PDF set = (top-N by score) ∪ {papers you starred} − {papers you excluded}
+PDF set = (top-N by score) ∪ {papers you starred} − {papers you dismissed}
 ```
 
-Stars can reach into the Borderline or Low score groups and pull papers up. Excludes can remove papers from the top-N. If you star several borderline papers, the final PDF set may exceed `maxDeepAnalysis` — that's intentional, not a bug: your explicit choices override the automatic cutoff.
+Stars can reach into the Borderline or Low score groups and pull papers up. Dismissals can remove papers from the top-N. If you star several borderline papers, the final PDF set may exceed `maxDeepAnalysis` — that's intentional, not a bug: your explicit choices override the automatic cutoff.
 
 Starred papers carry a guarantee all the way through: even if a PDF-analysed paper's `finalScore` ends up lower than the `finalOutputCount` cutoff, starred papers always appear in `finalRanking` and therefore in the briefing.
 
 ### Round-level note
 
-Below the paper list sits a free-text field labelled **"+ feedback on this scoring round"**. This is for observations about the scoring run as a whole — _"scores feel compressed, everything is bunched between 5 and 7"_, _"filter let through a lot of tangential ML papers this time"_. It isn't attached to any single paper; instead it flows into the next profile-refinement call as a run-level observation. Leave it blank if nothing's worth noting.
+Inside the gate banner, under the cost estimate, sits a free-text field labelled **"+ feedback on this scoring round"**. This is for observations about the scoring run as a whole — _"scores feel compressed, everything is bunched between 5 and 7"_, _"filter let through a lot of tangential ML papers this time"_. It isn't attached to any single paper; instead it flows into the next profile-refinement call as a run-level observation. Leave it blank if nothing's worth noting.
 
 ### Skip remaining gates this run
 

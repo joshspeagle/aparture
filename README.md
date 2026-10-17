@@ -24,8 +24,8 @@ Open [http://localhost:3000](http://localhost:3000). Full walkthrough: [Getting 
 
 [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — complete docs.
 
-- [Get Started](https://joshspeagle.github.io/aparture/getting-started/install) — install, API keys, verify, first briefing
-- [Using Aparture](https://joshspeagle.github.io/aparture/using/reading-a-briefing) — reading briefings, feedback loop, writing a profile
+- [Get Started](https://joshspeagle.github.io/aparture/getting-started/install) — install, API keys, verify setup
+- [Using Aparture](https://joshspeagle.github.io/aparture/using/first-briefing) — your first briefing, reading briefings, feedback, writing a profile
 - [Under the Hood](https://joshspeagle.github.io/aparture/concepts/pipeline) — pipeline, models, briefing anatomy
 - [Reference](https://joshspeagle.github.io/aparture/reference/environment) — env vars, prompts, troubleshooting
 

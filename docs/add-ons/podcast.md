@@ -27,14 +27,14 @@ Everything is plain markdown or text, so you can inspect the bundle before uploa
 Inside the NotebookLM card:
 
 1. **Duration.** Drop-down with 5, 10, 15, 20, and 30 minute options. The discussion guide scales to the chosen length — a five-minute episode covers one theme and 2–3 papers at headline depth, a thirty-minute episode covers 3–4 themes with meaningful dives on the top papers. The scaling rules live in `lib/notebooklm/buildFocusPrompt.js` if you want to see the exact budget per tier.
-2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` — pick a capable one, since this is a synthesis task. `claude-sonnet-4.6` or `gemini-3.1-pro` are reasonable defaults.
+2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` and starts on the app's default model. Pick a capable one, since this is a synthesis task; [Model selection](/concepts/model-selection) lists the stronger options.
 3. **Generate.** Click <span class="ui-action">Generate NotebookLM bundle</span>. Takes roughly 30–60 seconds; progress shows inline.
 
 When it's done, a ZIP file downloads with a name like `aparture-notebooklm-2026-04-17.zip`.
 
 ## Uploading to NotebookLM
 
-NotebookLM doesn't offer an API for notebook creation or audio generation, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
+The NotebookLM app at notebooklm.google.com has no public API for creating notebooks or generating audio, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
 
 1. Unzip the bundle locally. NotebookLM doesn't accept ZIPs as sources.
 2. Open [notebooklm.google.com](https://notebooklm.google.com) and sign in with a Google account if needed.
