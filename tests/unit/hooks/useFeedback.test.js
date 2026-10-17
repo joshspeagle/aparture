@@ -412,3 +412,115 @@ describe('addScopedFeedback — run scope', () => {
     expect(runEvent.text).toBe('run comment');
   });
 });
+
+describe('recordFilterOverride — click-time, latest-wins, validated (P0-2 / P1-6)', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  const override = (patch = {}) => ({
+    arxivId: '2504.01234',
+    paperTitle: 'A filtered paper',
+    summary: 'one-line filter summary',
+    justification: 'why the filter said NO',
+    originalVerdict: 'NO',
+    newVerdict: 'YES',
+    briefingDate: '2026-10-17',
+    ...patch,
+  });
+
+  it('records an override with the filter context', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0]).toMatchObject({
+      type: 'filter-override',
+      arxivId: '2504.01234',
+      originalVerdict: 'NO',
+      newVerdict: 'YES',
+      summary: 'one-line filter summary',
+      briefingDate: '2026-10-17',
+    });
+  });
+
+  it('a second click on the same paper replaces the first (latest-wins)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'MAYBE' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].newVerdict).toBe('YES');
+  });
+
+  it("moving a paper back to the filter's own verdict removes the override", () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'NO' }));
+    });
+    expect(result.current.events).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem('aparture-feedback')).events).toEqual([]);
+  });
+
+  it('re-recording the identical override is a no-op (same event, same state reference)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    const before = result.current.events;
+    act(() => {
+      result.current.recordFilterOverride(override());
+    });
+    expect(result.current.events).toBe(before);
+  });
+
+  it('refuses verdicts outside YES/MAYBE/NO (the dry-run mock used to send 123)', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ originalVerdict: 123 }));
+      result.current.recordFilterOverride(override({ originalVerdict: undefined }));
+      result.current.recordFilterOverride(override({ originalVerdict: 'yes' }));
+      result.current.recordFilterOverride(override({ newVerdict: 'PROBABLY' }));
+      result.current.recordFilterOverride(override({ arxivId: undefined }));
+    });
+    expect(result.current.events).toEqual([]);
+  });
+
+  it('keeps overrides on the same paper from different run days independent', () => {
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ briefingDate: '2026-10-16' }));
+      result.current.recordFilterOverride(override({ briefingDate: '2026-10-17' }));
+    });
+    expect(result.current.events).toHaveLength(2);
+  });
+
+  it('folds duplicate same-key events left by the old append-only logger', () => {
+    const legacy = (id, ts) => ({
+      id,
+      type: 'filter-override',
+      arxivId: '2504.01234',
+      originalVerdict: 'NO',
+      newVerdict: 'MAYBE',
+      timestamp: ts,
+      briefingDate: '2026-10-17',
+    });
+    window.localStorage.setItem(
+      'aparture-feedback',
+      JSON.stringify({ events: [legacy('old-1', 1), legacy('old-2', 2)] })
+    );
+    const { result } = renderHook(() => useFeedback());
+    act(() => {
+      result.current.recordFilterOverride(override({ newVerdict: 'YES' }));
+    });
+    expect(result.current.events).toHaveLength(1);
+    expect(result.current.events[0].newVerdict).toBe('YES');
+  });
+});

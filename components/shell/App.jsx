@@ -460,10 +460,29 @@ export default function App() {
   }, [config]);
 
   // --- Filter verdict cycling ---
+  // Each click is also recorded as a filter-override feedback event right
+  // away (latest-wins per paper; moving a paper back to the filter's verdict
+  // removes it). Overrides used to be diffed out of the buckets only when
+  // scoring started, so every click made after a run was silently dropped.
+  const recordFilterOverride = feedback.recordFilterOverride;
   const setFilterVerdict = useCallback(
     (paperId, currentVerdict, nextVerdict) => {
       if (currentVerdict === nextVerdict) return;
       const BUCKET_BY_VERDICT = { YES: 'yes', MAYBE: 'maybe', NO: 'no' };
+      const livePaper = useAnalyzerStore
+        .getState()
+        .filterResults[BUCKET_BY_VERDICT[currentVerdict]]?.find((p) => p.id === paperId);
+      if (livePaper) {
+        recordFilterOverride({
+          arxivId: livePaper.arxivId ?? livePaper.id,
+          paperTitle: livePaper.title,
+          summary: livePaper.filterSummary ?? '',
+          justification: livePaper.filterJustification ?? '',
+          originalVerdict: livePaper.originalVerdict,
+          newVerdict: nextVerdict,
+          briefingDate: todayStr(),
+        });
+      }
       setFilterResults((prev) => {
         const currentBucket = BUCKET_BY_VERDICT[currentVerdict];
         const nextBucket = BUCKET_BY_VERDICT[nextVerdict];
@@ -478,7 +497,7 @@ export default function App() {
         };
       });
     },
-    [setFilterResults]
+    [setFilterResults, recordFilterOverride]
   );
 
   // Shared filter pass: all scoped-feedback events for today. Three derived

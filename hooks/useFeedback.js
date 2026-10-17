@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';
+import { isFilterVerdict } from '../lib/profile/feedbackStatus.js';
 
 const FEEDBACK_KEY = 'aparture-feedback';
 
@@ -143,12 +144,37 @@ export function useFeedback() {
     });
   }, []);
 
-  // Phase 1.5.1 B3: filter-override events record when the user manually
-  // changed a paper's filter verdict before scoring. The suggest-profile
-  // flow uses these as a signal that the profile may be too narrow or too
-  // broad for the filter stage.
-  const addFilterOverride = useCallback((paper) => {
+  // Filter-override events record that the user disagreed with a paper's
+  // Stage 2 verdict; suggest-profile reads them as a "profile too narrow /
+  // too broad for the filter" signal. Recorded when the pill is CLICKED
+  // (App.setFilterVerdict) — they used to be diffed out of the buckets when
+  // scoring started, which silently dropped every override made after a
+  // run. Latest-wins per (paper, run day): re-clicking replaces the event,
+  // and moving a paper back to the filter's own verdict removes it.
+  // Verdicts outside YES/MAYBE/NO are refused outright, so mock or corrupt
+  // data (the dry run's old `verdict: 123`) can never become feedback.
+  const recordFilterOverride = useCallback((paper) => {
+    if (!paper?.arxivId) return;
+    if (!isFilterVerdict(paper.originalVerdict) || !isFilterVerdict(paper.newVerdict)) return;
     setEvents((prev) => {
+      const sameKey = (e) =>
+        e.type === 'filter-override' &&
+        e.arxivId === paper.arxivId &&
+        e.briefingDate === paper.briefingDate;
+      const existing = prev.filter(sameKey);
+      if (paper.originalVerdict === paper.newVerdict) {
+        if (existing.length === 0) return prev;
+        const next = prev.filter((e) => !sameKey(e));
+        persist(next);
+        return next;
+      }
+      if (
+        existing.length === 1 &&
+        existing[0].originalVerdict === paper.originalVerdict &&
+        existing[0].newVerdict === paper.newVerdict
+      ) {
+        return prev; // already recorded exactly this override
+      }
       const event = {
         id: makeId(),
         type: 'filter-override',
@@ -161,7 +187,9 @@ export function useFeedback() {
         timestamp: Date.now(),
         briefingDate: paper.briefingDate,
       };
-      const next = [...prev, event];
+      // Dropping every same-key event also folds duplicates left by the
+      // old append-only logger into the single latest one.
+      const next = [...prev.filter((e) => !sameKey(e)), event];
       persist(next);
       return next;
     });
@@ -211,7 +239,7 @@ export function useFeedback() {
       ensureDismiss,
       addPaperComment,
       addGeneralComment,
-      addFilterOverride,
+      recordFilterOverride,
       addScopedFeedback,
       getNewSince,
     }),
@@ -223,7 +251,7 @@ export function useFeedback() {
       ensureDismiss,
       addPaperComment,
       addGeneralComment,
-      addFilterOverride,
+      recordFilterOverride,
       addScopedFeedback,
       getNewSince,
     ]
