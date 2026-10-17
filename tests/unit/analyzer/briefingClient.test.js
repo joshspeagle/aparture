@@ -493,3 +493,135 @@ describe('runBriefingGeneration — abort handling', () => {
     expect(setters.setSynthesizing).toHaveBeenLastCalledWith(false);
   });
 });
+
+// --- Live-path payload tests -------------------------------------------------
+// These drive runBriefingGeneration WITHOUT a mockTester, with fetch routed by
+// URL, so they pin exactly what the client posts to /api/analyze-pdf-quick,
+// /api/synthesize, and /api/check-briefing.
+
+function makeLiveSetters() {
+  return {
+    setSynthesizing: vi.fn(),
+    setSynthesisError: vi.fn(),
+    setBriefingCheckResult: vi.fn(),
+    setBriefingStage: vi.fn(),
+    setQuickSummariesById: vi.fn(),
+    setFullReportsById: vi.fn(),
+  };
+}
+
+function routeFetch() {
+  const bodies = { quick: [], synthesize: [], check: [] };
+  vi.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+    const body = JSON.parse(options.body);
+    if (url === '/api/analyze-pdf-quick') {
+      bodies.quick.push(body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ quickSummary: `quick summary of ${body.paper.arxivId}` }),
+      };
+    }
+    if (url === '/api/synthesize') {
+      bodies.synthesize.push(body);
+      const ids = body.papers.map((p) => p.arxivId);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          briefing: {
+            executiveSummary: 'summary',
+            themes: [{ title: 't', argument: 'a', paperIds: ids }],
+            papers: body.papers.map((p) => ({
+              arxivId: p.arxivId,
+              title: p.title,
+              score: 5,
+              onelinePitch: 'pitch',
+              whyMatters: 'why',
+            })),
+          },
+        }),
+      };
+    }
+    if (url === '/api/check-briefing') {
+      bodies.check.push(body);
+      return { ok: true, status: 200, json: async () => ({ verdict: 'NO', justification: 'ok' }) };
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  });
+  return bodies;
+}
+
+const liveRanking = [
+  {
+    arxivId: '2605.0001',
+    title: 'Paper One',
+    authors: ['A. Author', 'B. Author'],
+    abstract: 'Abstract one',
+    score: 8,
+    deepAnalysis: { summary: 'Deep summary one' },
+  },
+  {
+    arxivId: '2605.0002',
+    title: 'Paper Two',
+    authors: ['C. Author'],
+    abstract: 'Abstract two',
+    score: 6,
+    deepAnalysis: { summary: 'Deep summary two' },
+  },
+];
+
+async function runLive(overrides = {}) {
+  // cacheLastAnalysisRun warns in the node env (no window) — silence it.
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const bodies = routeFetch();
+  const saveBriefing = vi.fn();
+  await runBriefingGeneration({
+    results: { finalRanking: liveRanking },
+    briefingModel: 'gemini-3.6-flash',
+    quickSummaryModel: 'gemini-3.6-flash',
+    profile: { content: 'profile' },
+    password: 'pw',
+    saveBriefing,
+    ...makeLiveSetters(),
+    ...overrides,
+  });
+  return { bodies, saveBriefing };
+}
+
+describe('runBriefingGeneration — paper comments reach the synthesizer (P0-1)', () => {
+  it('puts paper-comment text into papers[i].engagement.comments', async () => {
+    const { bodies } = await runLive({
+      feedbackEvents: [
+        { id: 's1', type: 'star', arxivId: '2605.0001', timestamp: 1 },
+        {
+          id: 'c1',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'This is the key paper today — lead the briefing with it.',
+          timestamp: 2,
+        },
+        {
+          id: 'c2',
+          type: 'paper-comment',
+          arxivId: '2605.0001',
+          text: 'Compare to SBI.',
+          timestamp: 3,
+        },
+        // Whitespace-only text is not a comment.
+        { id: 'c3', type: 'paper-comment', arxivId: '2605.0002', text: '   ', timestamp: 4 },
+      ],
+    });
+
+    expect(bodies.synthesize).toHaveLength(1);
+    const byId = Object.fromEntries(bodies.synthesize[0].papers.map((p) => [p.arxivId, p]));
+    // Pre-fix the client read `e.comment` (never set), so `comments` was
+    // always absent and only {starred, dismissed} reached the prompt.
+    expect(byId['2605.0001'].engagement).toEqual({
+      starred: true,
+      dismissed: false,
+      comments: ['This is the key paper today — lead the briefing with it.', 'Compare to SBI.'],
+    });
+    expect(byId['2605.0002'].engagement).toEqual({ starred: false, dismissed: false });
+  });
+});
