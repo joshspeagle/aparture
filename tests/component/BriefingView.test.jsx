@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import BriefingView, { layoutBriefing } from '../../components/briefing/BriefingView.jsx';
+import { summarizeAudit } from '../../components/briefing/BriefingHeader.jsx';
 import sample from '../fixtures/briefing/sample-output.json';
 
 const card = (arxivId, title) => ({
@@ -185,5 +186,43 @@ describe('BriefingView', () => {
     );
     expect(container.querySelectorAll('.active-dismiss').length).toBe(1);
     expect(container.querySelectorAll('.active-star').length).toBe(0);
+  });
+});
+
+describe('BriefingHeader — claims-check status', () => {
+  it('summarizes the check from generation metadata', () => {
+    expect(summarizeAudit(undefined)).toBeNull();
+    expect(summarizeAudit({ briefingModel: 'x' })).toBeNull();
+    expect(summarizeAudit({ hallucinationCheck: null })).toEqual({
+      kind: 'not-run',
+      text: 'claims check did not run',
+    });
+    expect(summarizeAudit({ hallucinationCheck: { verdict: 'NO' } }).kind).toBe('passed');
+    expect(
+      summarizeAudit({
+        hallucinationCheck: {
+          verdict: 'MAYBE',
+          flaggedClaims: [{ excerpt: 'a' }, { excerpt: 'b' }],
+        },
+      }).text
+    ).toBe('claims check flagged 2 claims');
+  });
+
+  it('shows the status on the reading view', () => {
+    render(
+      <BriefingView
+        briefing={sample}
+        date="April 13, 2026"
+        briefingDate="2026-04-13"
+        audit={summarizeAudit({ hallucinationCheck: null })}
+        quickSummariesById={{}}
+        fullReportsById={{}}
+        feedbackEvents={[]}
+        onStar={() => {}}
+        onDismiss={() => {}}
+        onAddComment={() => {}}
+      />
+    );
+    expect(screen.getByText('claims check did not run')).toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { Unlock } from 'lucide-react';
 import BriefingCard from '../briefing/BriefingCard.jsx';
 import BriefingView from '../briefing/BriefingView.jsx';
+import { summarizeAudit } from '../briefing/BriefingHeader.jsx';
 import GenerationDetails from '../briefing/GenerationDetails.jsx';
 import PipelineArchiveView from '../briefing/PipelineArchiveView.jsx';
 import Button from '../ui/Button.jsx';
@@ -44,6 +45,7 @@ function MainArea({
   onStar,
   onDismiss,
   onAddComment,
+  onAnswer,
   // For profile view
   profile,
   updateProfile,
@@ -380,6 +382,9 @@ function MainArea({
         <BriefingView
           briefing={entry.briefing}
           testMode={entry.generationMetadata?.testMode ?? false}
+          audit={summarizeAudit(entry.generationMetadata)}
+          editorQuestions={entry.editorQuestions ?? []}
+          onAnswer={onAnswer}
           // Append T00:00:00 so the YYYY-MM-DD string parses as LOCAL midnight,
           // not UTC — bare date strings render one day early in UTC-negative
           // timezones (same pattern as SidebarBriefingList.formatBriefingLabel).

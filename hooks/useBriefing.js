@@ -379,7 +379,7 @@ export function useBriefing({ password = '' } = {}) {
       date,
       briefing,
       generationMetadata,
-      { quickSummariesById, fullReportsById, pipelineArchive } = {}
+      { quickSummariesById, fullReportsById, pipelineArchive, editorQuestions } = {}
     ) => {
       const id = generateId();
       const entry = {
@@ -392,6 +392,9 @@ export function useBriefing({ password = '' } = {}) {
         ...(quickSummariesById ? { quickSummariesById } : {}),
         ...(fullReportsById ? { fullReportsById } : {}),
         ...(pipelineArchive ? { pipelineArchive } : {}),
+        ...(Array.isArray(editorQuestions) && editorQuestions.length > 0
+          ? { editorQuestions }
+          : {}),
       };
       setCurrent(entry);
       persistCurrent(entry);

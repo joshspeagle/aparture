@@ -3,6 +3,7 @@ import BriefingProse from './BriefingProse.jsx';
 import BriefingHeader from './BriefingHeader.jsx';
 import ExecutiveSummary from './ExecutiveSummary.jsx';
 import ThemeSection from './ThemeSection.jsx';
+import EditorQuestions from './EditorQuestions.jsx';
 import PaperCard from './PaperCard.jsx';
 import QuickSummaryInline from './QuickSummaryInline.jsx';
 import FullReportSidePanel from './FullReportSidePanel.jsx';
@@ -62,6 +63,11 @@ export default function BriefingView({
   // "· N screened" segment rather than rendering a misleading 0.
   papersScreened = null,
   testMode = false,
+  // { kind, text } from summarizeAudit(generationMetadata), or null.
+  audit = null,
+  // Up to two questions saved with the briefing (entry.editorQuestions).
+  editorQuestions = [],
+  onAnswer,
   quickSummariesById = {},
   fullReportsById = {},
   feedbackEvents,
@@ -113,6 +119,7 @@ export default function BriefingView({
         papersScreened={papersScreened}
         readingTimeMinutes={readingTimeMinutes}
         testMode={testMode}
+        audit={audit}
       />
       <ExecutiveSummary text={briefing.executiveSummary} />
 
@@ -144,6 +151,14 @@ export default function BriefingView({
           {orphanIds.map(renderCard)}
         </ThemeSection>
       )}
+
+      <EditorQuestions
+        questions={editorQuestions}
+        feedbackEvents={feedbackEvents}
+        briefingDate={briefingDate}
+        testMode={testMode}
+        onAnswer={onAnswer}
+      />
 
       <FullReportSidePanel
         open={openFullId !== null}

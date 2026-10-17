@@ -105,7 +105,9 @@ export default function BriefingCard({
               ? 'Auditing briefing\u2026'
               : briefingStage === 'retrying'
                 ? 'Retrying\u2026'
-                : 'Generating\u2026'}
+                : briefingStage === 'asking'
+                  ? 'Preparing questions\u2026'
+                  : 'Generating\u2026'}
           </>
         ) : (
           <>

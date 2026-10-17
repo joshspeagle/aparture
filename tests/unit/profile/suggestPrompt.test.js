@@ -449,3 +449,26 @@ describe('renderFeedbackSection — previously rejected suggestions (P1-5)', () 
     expect(out).not.toMatch(/PREVIOUSLY REJECTED/);
   });
 });
+
+describe("renderFeedbackSection — answers to the editor's questions", () => {
+  it('renders each answer with its question and the papers that prompted it', () => {
+    const out = renderSuggestPrompt('F\n{{feedback}}', {
+      profile: 'p',
+      events: [
+        {
+          type: 'answer',
+          question: 'Reserve a slot for galaxy formation?',
+          answer: 'Yes, reserve a slot',
+          evidence: ['2610.21628'],
+          briefingDate: '2026-10-17',
+          timestamp: 1,
+        },
+      ],
+      briefings: {},
+    });
+    expect(out).toContain("ANSWERS TO THE EDITOR'S QUESTIONS (1):");
+    expect(out).toContain(
+      '- [2026-10-17] "Reserve a slot for galaxy formation?" → "Yes, reserve a slot" (asked about 2610.21628)'
+    );
+  });
+});
