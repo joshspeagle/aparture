@@ -29,6 +29,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
   dismissed,
   briefingDate,
   feedbackEvents = [],
+  testMode = false,
   onStar,
   onDismiss,
   onComment,
@@ -45,6 +46,7 @@ const RankedPaperCard = memo(function RankedPaperCard({
     quickSummary: paper.deepAnalysis?.summary ?? paper.scoreJustification ?? '',
     score: paper.finalScore ?? paper.relevanceScore ?? 0,
     briefingDate,
+    ...(testMode ? { testMode: true } : {}),
   });
 
   const handleStar = () => onStar?.(buildPaperMeta());
@@ -306,7 +308,10 @@ const RankedPaperCard = memo(function RankedPaperCard({
               <div>
                 {(() => {
                   const pastComments = feedbackEvents.filter(
-                    (e) => e.type === 'paper-comment' && e.arxivId === paper.id
+                    (e) =>
+                      e.type === 'paper-comment' &&
+                      e.arxivId === paper.id &&
+                      Boolean(e.testMode) === Boolean(testMode)
                   );
                   if (pastComments.length === 0) return null;
                   return (
@@ -471,6 +476,7 @@ RankedPaperCard.propTypes = {
   dismissed: PropTypes.bool,
   briefingDate: PropTypes.string,
   feedbackEvents: PropTypes.array,
+  testMode: PropTypes.bool,
   onStar: PropTypes.func,
   onDismiss: PropTypes.func,
   onComment: PropTypes.func,

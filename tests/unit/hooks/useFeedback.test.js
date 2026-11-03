@@ -91,6 +91,22 @@ describe('test-run feedback is tagged and kept out of suggestions (P0-2)', () =>
     expect(real[0].type).toBe('dismiss');
   });
 
+  it('buildReactionIndex partitions real and test-mode reactions independently', async () => {
+    const { buildReactionIndex } = await import('../../../hooks/useFeedback.js');
+    const events = [
+      { type: 'dismiss', arxivId: '2504.01234' },
+      { type: 'star', arxivId: '2504.01234', testMode: true },
+    ];
+    expect(buildReactionIndex(events, false).get('2504.01234')).toEqual({
+      starred: false,
+      dismissed: true,
+    });
+    expect(buildReactionIndex(events, true).get('2504.01234')).toEqual({
+      starred: true,
+      dismissed: false,
+    });
+  });
+
   it('a test-run scoped note never overwrites the real note for the same scope and day', () => {
     const { result } = renderHook(() => useFeedback());
     const note = (text) => ({ scope: { kind: 'run' }, text, briefingDate: '2026-10-17' });

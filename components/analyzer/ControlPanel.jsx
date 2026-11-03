@@ -68,11 +68,15 @@ export default function ControlPanel({
   const runSetupCheck = async () => {
     const slotDefs = [
       ['Filter', config?.filterModel],
-      // No Post-processing row: Stage 3.5 dispatches config.scoringModel, so the Scoring probe covers it.
       ['Scoring', config?.scoringModel],
+      ['Post-processing', config?.enableScorePostProcessing ? config?.postProcessingModel : null],
       ['PDF analysis', config?.pdfModel],
       ['Briefing', config?.briefingModel],
       ['Quick summaries', config?.quickSummaryModel],
+      [
+        'Refusal fallback',
+        config?.refusalPolicy === 'fallback' ? config?.refusalFallbackModel : null,
+      ],
       ['NotebookLM', notebookLMModel],
     ];
     const slots = slotDefs.filter(([, model]) => !!model).map(([slot, model]) => ({ slot, model }));

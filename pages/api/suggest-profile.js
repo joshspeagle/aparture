@@ -302,6 +302,7 @@ export default async function handler(req, res) {
     let data;
     let totalTokensIn = response.tokensIn;
     let totalTokensOut = response.tokensOut;
+    let totalCacheReadTok = response.cacheReadTok ?? 0;
     let repaired = false;
     let firstErrors = null;
 
@@ -346,6 +347,7 @@ export default async function handler(req, res) {
       data = secondCheck.data;
       totalTokensIn += repairedResp.tokensIn ?? 0;
       totalTokensOut += repairedResp.tokensOut ?? 0;
+      totalCacheReadTok += repairedResp.cacheReadTok ?? 0;
       repaired = true;
     }
 
@@ -422,6 +424,7 @@ export default async function handler(req, res) {
         noChangeReason: retryData.noChangeReason,
         tokensIn: totalTokensIn + (retryResponse.tokensIn ?? 0),
         tokensOut: totalTokensOut + (retryResponse.tokensOut ?? 0),
+        cacheReadTok: totalCacheReadTok + (retryResponse.cacheReadTok ?? 0),
         repaired,
         retried: true,
         ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),
@@ -438,6 +441,7 @@ export default async function handler(req, res) {
       noChangeReason: data.noChangeReason,
       tokensIn: totalTokensIn,
       tokensOut: totalTokensOut,
+      cacheReadTok: totalCacheReadTok,
       repaired,
       retried: false,
       ...(firstErrors ? { originalValidationErrors: firstErrors } : {}),

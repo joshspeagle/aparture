@@ -83,9 +83,14 @@ export default function BriefingView({
   const readingTimeMinutes = estimateReadingTime(briefing, papers);
 
   const isStarred = (arxivId) =>
-    feedbackEvents?.some((e) => e.type === 'star' && e.arxivId === arxivId) ?? false;
+    feedbackEvents?.some(
+      (e) => e.type === 'star' && e.arxivId === arxivId && Boolean(e.testMode) === Boolean(testMode)
+    ) ?? false;
   const isDismissed = (arxivId) =>
-    feedbackEvents?.some((e) => e.type === 'dismiss' && e.arxivId === arxivId) ?? false;
+    feedbackEvents?.some(
+      (e) =>
+        e.type === 'dismiss' && e.arxivId === arxivId && Boolean(e.testMode) === Boolean(testMode)
+    ) ?? false;
 
   const renderCard = (id) => {
     const paper = papersById[id];

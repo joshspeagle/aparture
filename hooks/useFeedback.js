@@ -68,8 +68,29 @@ function withTestFlag(event, testMode) {
 // Latest-wins replacement (stars/dismisses, scoped notes, overrides) only
 // ever replaces an event from the SAME partition: a test-run action never
 // overwrites or deletes a real event, and vice versa.
-function samePartition(event, testMode) {
-  return Boolean(event.testMode) === testMode;
+export function samePartition(event, testMode = false) {
+  return Boolean(event?.testMode) === Boolean(testMode);
+}
+
+// Build a per-paper { starred, dismissed } map scoped to a single partition
+// (real runs vs test runs) so test-mode reactions never bleed into real views.
+export function buildReactionIndex(events = [], testMode = false) {
+  const idx = new Map();
+  if (!Array.isArray(events)) return idx;
+  for (const e of events) {
+    if (!e?.arxivId || (e.type !== 'star' && e.type !== 'dismiss')) continue;
+    if (!samePartition(e, testMode)) continue;
+    const entry = idx.get(e.arxivId) ?? { starred: false, dismissed: false };
+    if (e.type === 'star') {
+      entry.starred = true;
+      entry.dismissed = false;
+    } else {
+      entry.dismissed = true;
+      entry.starred = false;
+    }
+    idx.set(e.arxivId, entry);
+  }
+  return idx;
 }
 
 // The single star/dismiss event literal — both the toggling (addStar/

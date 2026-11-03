@@ -74,12 +74,13 @@ export default async function handler(req, res) {
     const promptOverride = process.env.APARTURE_TEST_PROMPT_OVERRIDE;
     const isFixture = callMode.mode === 'fixture';
     const useCaching = provider === 'anthropic' && !isFixture && !promptOverride;
+    const finalPrompt = promptOverride ?? fullPrompt;
 
     const response = await callModel(
       {
         provider,
         model: modelApiId,
-        prompt: useCaching ? fullPrompt.slice(cachePrefix.length) : fullPrompt,
+        prompt: useCaching ? fullPrompt.slice(cachePrefix.length) : finalPrompt,
         apiKey,
         ...(useCaching ? { cachePrefix, cacheable: true } : {}),
       },

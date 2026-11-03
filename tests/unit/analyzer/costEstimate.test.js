@@ -119,6 +119,20 @@ describe('estimateRunCost', () => {
     expect(byStage.every((s) => s.model === PRICED_MODEL)).toBe(true);
     expect(byStage.every((s) => s.cost != null)).toBe(true);
   });
+
+  it('prices postProcessing with postProcessingModel when set, falling back to scoringModel', () => {
+    const { byStage: withExplicit } = estimateRunCost({
+      counts: { postProcessing: 10 },
+      config: { scoringModel: 'gpt-5.4-nano', postProcessingModel: PRICED_MODEL },
+    });
+    expect(withExplicit[0].model).toBe(PRICED_MODEL);
+
+    const { byStage: withFallback } = estimateRunCost({
+      counts: { postProcessing: 10 },
+      config: { scoringModel: PRICED_MODEL },
+    });
+    expect(withFallback[0].model).toBe(PRICED_MODEL);
+  });
 });
 
 describe('computeActualCost', () => {

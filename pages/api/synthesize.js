@@ -157,6 +157,7 @@ export default async function handler(req, res) {
         briefing: normalized.briefing,
         tokensIn: response.tokensIn,
         tokensOut: response.tokensOut,
+        cacheReadTok: response.cacheReadTok ?? 0,
         repaired: false,
         corrections: normalized.corrections,
         preflight,
@@ -176,6 +177,7 @@ export default async function handler(req, res) {
         briefing: repair.briefing,
         tokensIn: response.tokensIn + (repair.tokensIn ?? 0),
         tokensOut: response.tokensOut + (repair.tokensOut ?? 0),
+        cacheReadTok: (response.cacheReadTok ?? 0) + (repair.cacheReadTok ?? 0),
         repaired: repair.repaired,
         corrections: [...normalized.corrections, ...(repair.corrections ?? [])],
         preflight,
@@ -203,6 +205,7 @@ export default async function handler(req, res) {
         briefing: salvage.briefing,
         tokensIn: response.tokensIn + (repairErr?.tokensIn ?? 0),
         tokensOut: response.tokensOut + (repairErr?.tokensOut ?? 0),
+        cacheReadTok: (response.cacheReadTok ?? 0) + (repairErr?.cacheReadTok ?? 0),
         // true when the salvaged candidate is the LLM-repaired briefing,
         // false when repair produced nothing usable and the first pass was used.
         repaired: candidate === repairErr?.briefing,

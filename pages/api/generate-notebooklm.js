@@ -13,6 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { localDateStr } from '../../lib/dates.js';
 import { callModel } from '../../lib/llm/callModel.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
@@ -87,7 +88,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'papers array is required' });
   }
 
-  const runDate = date ?? new Date().toISOString().slice(0, 10);
+  const runDate = date ?? localDateStr();
 
   try {
     const modelCfg = MODEL_REGISTRY[notebookLMModel];
