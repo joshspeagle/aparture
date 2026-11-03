@@ -15,13 +15,14 @@ const pillStyle = (selected) => ({
   fontWeight: selected ? 600 : 400,
 });
 
-function chosenAnswer(feedbackEvents, question, briefingDate) {
+function chosenAnswer(feedbackEvents, question, briefingDate, testMode = false) {
   return feedbackEvents?.findLast?.(
     (e) =>
       e.type === 'answer' &&
       e.questionId === question.id &&
       e.question === question.text &&
-      e.briefingDate === briefingDate
+      e.briefingDate === briefingDate &&
+      Boolean(e.testMode) === Boolean(testMode)
   )?.answer;
 }
 
@@ -37,7 +38,7 @@ export default function EditorQuestions({
     <section className="theme-section" aria-label="Notes from the editor">
       <div className="meta-line">── NOTES FROM THE EDITOR ──</div>
       {questions.map((q) => {
-        const chosen = chosenAnswer(feedbackEvents, q, briefingDate);
+        const chosen = chosenAnswer(feedbackEvents, q, briefingDate, testMode);
         return (
           <div key={q.id} style={{ marginTop: 'var(--aparture-space-4)' }}>
             <p style={{ marginBottom: 'var(--aparture-space-2)' }}>{q.text}</p>

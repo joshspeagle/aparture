@@ -36,9 +36,13 @@ function formatBriefingLabel(dateStr, timestamp, showTime) {
   return base;
 }
 
-function countStars(briefing, feedbackEvents) {
+function countStars(briefing, feedbackEvents, testRun = false) {
   if (!briefing?.papers?.length || !feedbackEvents?.length) return 0;
-  const starredIds = new Set(feedbackEvents.filter((e) => e.type === 'star').map((e) => e.arxivId));
+  const starredIds = new Set(
+    feedbackEvents
+      .filter((e) => e.type === 'star' && Boolean(e.testMode) === Boolean(testRun))
+      .map((e) => e.arxivId)
+  );
   return briefing.papers.filter((p) => starredIds.has(p.arxivId)).length;
 }
 
@@ -80,7 +84,11 @@ export default function SidebarBriefingList({
       id: entry.id,
       date: entry.date,
       label: formatBriefingLabel(entry.date, entry.timestamp, dateCounts[entry.date] > 1),
-      starCount: countStars(entry.briefing, feedbackEvents),
+      starCount: countStars(
+        entry.briefing,
+        feedbackEvents,
+        Boolean(entry.testRun ?? entry.generationMetadata?.testMode)
+      ),
       viewId: `briefing:${entry.id}`,
       archived: entry.archived ?? false,
     }));

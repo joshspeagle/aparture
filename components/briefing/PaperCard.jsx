@@ -206,7 +206,10 @@ export default function PaperCard({
       )}
       {(() => {
         const comments = feedbackEvents.filter(
-          (e) => e.type === 'paper-comment' && e.arxivId === paper.arxivId
+          (e) =>
+            e.type === 'paper-comment' &&
+            e.arxivId === paper.arxivId &&
+            Boolean(e.testMode) === Boolean(testMode)
         );
         if (comments.length === 0) return null;
         return (

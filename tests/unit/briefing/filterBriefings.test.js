@@ -78,6 +78,15 @@ describe('filterBriefings', () => {
     expect(out[0].date).toBe('2025-01-10');
   });
 
+  it('does not match test-mode stars against real briefings under starredOnly', () => {
+    const feedbackEvents = [{ type: 'star', arxivId: '2501.11111', testMode: true }];
+    expect(filterBriefings(history, feedbackEvents, { starredOnly: true })).toEqual([]);
+    const testHistory = [{ ...b1, testRun: true }, b2];
+    const out = filterBriefings(testHistory, feedbackEvents, { starredOnly: true });
+    expect(out).toHaveLength(1);
+    expect(out[0].date).toBe('2025-01-10');
+  });
+
   it('combines dateRange + starredOnly + query (all must match)', () => {
     const feedbackEvents = [{ type: 'star', arxivId: '2501.11111' }];
     const out = filterBriefings(history, feedbackEvents, {

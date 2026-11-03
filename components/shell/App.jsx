@@ -16,7 +16,7 @@ import { useAnalyzerStore } from '../../stores/analyzerStore.js';
 import { useGateTitle } from '../../hooks/useGateTitle.js';
 import { useProfile } from '../../hooks/useProfile.js';
 import { useBriefing } from '../../hooks/useBriefing.js';
-import { useFeedback } from '../../hooks/useFeedback.js';
+import { buildReactionIndex, useFeedback } from '../../hooks/useFeedback.js';
 import { useSeenPapers } from '../../hooks/useSeenPapers.js';
 import { useAutoProposals } from '../../hooks/useAutoProposals.js';
 import { runProposalRound } from '../../lib/profile/runProposalRound.js';
@@ -878,23 +878,11 @@ export default function App() {
     };
   }, [results.scoredPapers, results.failedPapers, filterResults.yes, filterResults.maybe]);
 
-  const feedbackIndex = useMemo(() => {
-    const idx = new Map();
-    for (const e of feedback.events) {
-      if (!e.arxivId || (e.type !== 'star' && e.type !== 'dismiss')) continue;
-      const entry = idx.get(e.arxivId) ?? { starred: false, dismissed: false };
-      if (e.type === 'star') {
-        entry.starred = true;
-        entry.dismissed = false;
-      }
-      if (e.type === 'dismiss') {
-        entry.dismissed = true;
-        entry.starred = false;
-      }
-      idx.set(e.arxivId, entry);
-    }
-    return idx;
-  }, [feedback.events]);
+  const activeTestMode = Boolean(testState?.dryRunInProgress || testState?.minimalTestInProgress);
+  const feedbackIndex = useMemo(
+    () => buildReactionIndex(feedback.events, activeTestMode),
+    [feedback.events, activeTestMode]
+  );
 
   // Shared "feedback since the last profile update" list — consumed by both
   // MainArea (profile view) and SuggestDialog, so the filter runs once.
@@ -945,13 +933,14 @@ export default function App() {
           dismissed={entry?.dismissed ?? false}
           briefingDate={paperCardBriefingDate}
           feedbackEvents={feedback.events}
+          testMode={activeTestMode}
           onStar={feedback.addStar}
           onDismiss={feedback.addDismiss}
           onComment={feedback.addPaperComment}
         />
       );
     },
-    [feedbackIndex, paperCardBriefingDate, feedback]
+    [feedbackIndex, paperCardBriefingDate, feedback, activeTestMode]
   );
 
   // --- Stable wrappers for handlers previously declared inline in JSX ---

@@ -216,6 +216,7 @@ export default async function handler(req, res) {
         flaggedClaims: data.flaggedClaims,
         tokensIn: response.tokensIn,
         tokensOut: response.tokensOut,
+        cacheReadTok: response.cacheReadTok ?? 0,
         repaired: false,
       });
       return;
@@ -273,6 +274,7 @@ export default async function handler(req, res) {
       flaggedClaims: data.flaggedClaims,
       tokensIn: (response.tokensIn ?? 0) + (repaired.tokensIn ?? 0),
       tokensOut: (response.tokensOut ?? 0) + (repaired.tokensOut ?? 0),
+      cacheReadTok: (response.cacheReadTok ?? 0) + (repaired.cacheReadTok ?? 0),
       repaired: true,
       originalValidationErrors: firstErrors,
     });

@@ -134,6 +134,14 @@ describe('skill files', () => {
   });
 
   it('.agents/skills/aparture resolves to the skill under .claude/', () => {
-    expect(realpathSync(path.join(ROOT, '.agents/skills/aparture'))).toBe(realpathSync(SKILL_DIR));
+    const linkPath = path.join(ROOT, '.agents/skills/aparture');
+    let resolved = realpathSync(linkPath);
+    if (resolved !== realpathSync(SKILL_DIR)) {
+      // On Windows/NTFS checkouts with core.symlinks=false, git writes a plain
+      // text file containing the relative target path instead of a symlink.
+      const pointer = readFileSync(linkPath, 'utf8').trim();
+      resolved = realpathSync(path.resolve(path.dirname(linkPath), pointer));
+    }
+    expect(resolved).toBe(realpathSync(SKILL_DIR));
   });
 });
