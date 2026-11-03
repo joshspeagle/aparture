@@ -1,19 +1,19 @@
 # Install
 
-Aparture is a Next.js app that runs locally. This page walks through installing Node.js, cloning the repo, and getting a working dev server on macOS, Linux, Windows, or WSL2. On a clean machine, expect 10–15 minutes from start to finish.
+Aparture is a Next.js web application that runs locally on your machine. Installing Node.js, cloning the repository, and starting the development server on macOS, Linux, Windows, or WSL2 takes about 10–15 minutes on a clean system.
 
 ## Prerequisites
 
-- **Node.js 22 or newer.** `package.json` requires it, and CI tests Node 22 and 24. The examples below use Node 22.
-- **Git** for cloning the repository.
-- **~1 GB of disk.** `node_modules` is about 500 MB. Another 300 MB if you install Playwright for the reCAPTCHA fallback (optional, see §3).
-- **A shell you're comfortable in.** Bash or zsh on macOS and Linux, PowerShell or WSL2 on Windows. WSL2 is Microsoft's Linux-on-Windows environment; it tends to be faster than native PowerShell for Node-based dev work.
+- **Node.js 22 or newer:** `package.json` enforces Node 22+, and continuous integration tests against Node 22 and Node 24. The examples below install Node 22.
+- **Git:** Used to clone the repository.
+- **Approximately 1 GB of free disk space:** `node_modules` occupies roughly 500 MB, and installing Playwright for the optional reCAPTCHA PDF fallback (§5) uses an additional 300 MB.
+- **A terminal shell:** Use `bash` or `zsh` on macOS and Linux, or PowerShell or WSL2 on Windows (WSL2 provides a Linux environment on Windows that executes Node file I/O faster than native Windows filesystems).
 
 ## 1. Install Node
 
 ### macOS
 
-Install with [nvm](https://github.com/nvm-sh/nvm), which lets you switch Node versions per project without sudo.
+Install Node with [nvm](https://github.com/nvm-sh/nvm) so that you can manage Node versions in your home directory without `sudo`:
 
 ```bash
 # Xcode CLI tools (git, make, clang)
@@ -34,7 +34,7 @@ node -v   # should print v22.x.x
 
 ### Linux (Ubuntu/Debian, Fedora, Arch)
 
-Same nvm approach. Distro packages (`apt install nodejs`) tend to lag behind, so nvm is the simpler path.
+Use `nvm` on Linux as well because distribution packages (`apt install nodejs`) often ship older Node releases:
 
 ```bash
 # Build deps (native modules need these)
@@ -51,7 +51,7 @@ nvm alias default 22
 
 ### Windows (native PowerShell)
 
-On Windows, [fnm](https://github.com/Schniz/fnm) is the cleanest Node manager. It installs via winget.
+On native Windows, install [fnm](https://github.com/Schniz/fnm) via `winget` and enable long filesystem paths for deep `node_modules` trees:
 
 ```powershell
 # Install fnm
@@ -71,23 +71,25 @@ git config --global core.longpaths true
 ```
 
 ::: tip Windows Defender can slow npm install dramatically
-If `npm install` takes more than a few minutes, Windows Defender is probably scanning `node_modules` as it's written. Adding exclusions for your dev tree, `%APPDATA%\npm-cache`, and `node.exe` usually drops install time from ~10 minutes to ~1–3.
+If `npm install` takes several minutes on Windows, real-time scanning in Windows Defender is likely inspecting `node_modules` as files are written. Adding exclusions for your project directory, `%APPDATA%\npm-cache`, and `node.exe` typically reduces install times from ~10 minutes to 1–3 minutes.
 :::
 
 ### WSL2 (Ubuntu on Windows)
 
-If you're on Windows and don't mind a Linux shell, WSL2 is the faster option.
+If you use Windows and are comfortable working in a Linux shell, WSL2 offers faster package installation and server startup.
 
 ::: tip Keep the repo on the Linux filesystem
-Keep the repo at `~/projects/...` inside WSL, not under `/mnt/c/...`. Cross-filesystem I/O is slow, and `npm run dev` can take 60+ seconds to start if the repo lives on a Windows path.
+Clone the repository inside the native Linux filesystem (such as `~/projects/aparture`) rather than under `/mnt/c/...` because cross-filesystem I/O across the WSL mount bridge can cause `npm run dev` to take over 60 seconds to start.
 :::
+
+Run the following command once as Administrator in PowerShell:
 
 ```powershell
 # One-time, as Administrator in PowerShell
 wsl --install -d Ubuntu-24.04
 ```
 
-Then inside the Ubuntu shell:
+Then run these commands inside the Ubuntu shell:
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -110,65 +112,65 @@ cp .env.local.example .env.local
 npm install
 ```
 
-`npm install` pulls roughly 700 packages (~500 MB) and takes 1–3 minutes on a clean machine.
+`npm install` downloads roughly 700 packages (~500 MB) in 1–3 minutes.
 
-Key figures on briefing cards are cropped from each paper's PDF with pdf.js and a prebuilt native canvas module (`@napi-rs/canvas`), which `npm install` fetches for macOS, Windows and Linux. If the module can't load on your machine, cards simply show no figure.
+Briefing cards crop key figures from each paper's PDF using `pdf.js` and a prebuilt native canvas binding (`@napi-rs/canvas`) that `npm install` fetches automatically for macOS, Windows, and Linux. If the native canvas module cannot load on your platform, briefing cards simply omit the figure thumbnail.
 
 ## 3. Set a local access password
 
-Open `.env.local` in any editor and set `ACCESS_PASSWORD` to something you'll remember:
+Open `.env.local` in a text editor and set `ACCESS_PASSWORD` to a passphrase you will remember:
 
 ```bash
 ACCESS_PASSWORD=pick-anything-memorable
 ```
 
-Aparture gates the web UI behind this password — the login screen prompts for it, and every API call re-checks it server-side. There's no auto-generation; you pick the value yourself. The example file ships with `ACCESS_PASSWORD=change-me` as a placeholder.
+Aparture protects the web interface and all API routes with this password: the login screen prompts for it, and every API request verifies it on the server. The example configuration file ships with `ACCESS_PASSWORD=change-me` as a starter value.
 
-`npm run dev` listens on 127.0.0.1, so only this machine can open the app, and the placeholder is enough to get started. To reach the app from another device on your network, start it with `npm run dev -- -H 0.0.0.0`, and set a long password first.
+Because `npm run dev` binds to `127.0.0.1` by default, only processes on your local machine can reach the server. If you expose the server to other devices on your local network via `npm run dev -- -H 0.0.0.0`, set a strong password first.
 
-You'll also add your LLM API key to this same `.env.local` file on the next page. The dev server starts without one — there's no startup validation — but every pipeline run will fail at its first LLM call until a key is present.
+You will also add your LLM provider API key to `.env.local` on the next page. The development server starts without an API key, and pipeline runs check for the key when making their first LLM request.
 
 ## 4. Identify yourself to arXiv (optional but encouraged)
 
-arXiv's API docs ask clients to include a contact email on every request, so their ops team can reach whoever's responsible if traffic from your IP starts causing issues. Aparture sends this as an HTTP `From` header when `ARXIV_CONTACT_EMAIL` is set in `.env.local`, and sends nothing when it isn't:
+arXiv's API documentation asks automated clients to include a contact email address on requests so operations staff can reach the maintainer if traffic from an IP address causes issues. When `ARXIV_CONTACT_EMAIL` is set in `.env.local`, Aparture sends that address in the HTTP `From` request header:
 
 ```bash
 # .env.local
 ARXIV_CONTACT_EMAIL=you@example.edu
 ```
 
-This is not an arXiv account — there's no signup, no password, no verification. arXiv has no auth system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics.
+arXiv's public endpoints do not require account registration or authentication; the `From` header serves as a politeness signal used by arXiv's rate-limit heuristics.
 
 ::: tip Academic addresses carry more weight
-Institutional emails (`.edu`, `.ac.*`) get better treatment from arXiv's rate-limit heuristics than generic webmail (`@gmail.com`, `@outlook.com`). If you have one, use it. If not, setting a webmail address is still better than leaving the variable unset — at least you're reachable.
+Institutional email addresses (`.edu`, `.ac.*`) receive more lenient treatment from arXiv's rate-limit heuristics than consumer webmail domains (`@gmail.com`, `@outlook.com`). If you do not have an institutional address, providing a personal email address is still preferable to leaving the variable unset.
 :::
 
-Skipping this step is fine — Aparture will still work — but enabling it reduces your chance of being throttled, especially on dense runs across many arXiv categories.
+Aparture works without `ARXIV_CONTACT_EMAIL`, but setting it reduces the likelihood of rate-limit throttling during large multi-category harvests.
 
 ## 5. Playwright (optional fallback for reCAPTCHA)
 
-Aparture downloads PDFs directly from arXiv by default, and this works most of the time. Occasionally, arXiv serves a reCAPTCHA challenge instead of the PDF, and the direct download fails. When that happens, Aparture falls back to Playwright — a headless browser that handles the reCAPTCHA session — if it's installed.
+Aparture downloads PDFs directly from arXiv by default. When arXiv occasionally serves a reCAPTCHA challenge page on a PDF URL after a burst of downloads, Aparture automatically falls back to a headless Chromium browser managed by Playwright if Playwright is installed.
 
-Without Playwright, affected papers get a notice in the run log and skip the deep-analysis stage. They stay in the ranking on their abstract score and still reach the briefing, without a full report, and an end-of-run card lists them. Everything else in the pipeline (quick filter, abstract scoring, briefing synthesis, podcast bundle) works regardless.
+When Playwright is not installed, papers blocked by reCAPTCHA are logged in the activity timeline and skip Stage 4 full-PDF analysis; they remain in the ranking based on their Stage 3 abstract score, still appear in the briefing, and are listed in an end-of-run summary card. All other pipeline stages (quick filter, abstract scoring, briefing synthesis, and podcast generation) run normally without Playwright.
 
-Install it if you'd like the fallback available:
+To enable the headless browser fallback, install Playwright's Chromium binary:
 
 ```bash
 npx playwright install chromium
 
-# Linux only — installs libnss3, libatk-bridge, etc.
+# Linux only: installs libnss3, libatk-bridge, and system libraries
 npx playwright install-deps chromium
 ```
 
-Run `npx playwright install chromium` again after an update that moves Playwright to a new version: each release looks for its own Chromium build, and until it's downloaded the fallback fails to launch.
+Re-run `npx playwright install chromium` whenever a dependency update upgrades Playwright to a newer release, because each Playwright version requires its matching Chromium build.
 
-::: tip Don't delete the Playwright profile
-The fallback runs a headless browser in the background; you never see a window or solve a challenge yourself. It keeps its cookies in `temp/playwright-profile/`, which is what lets later downloads skip the challenge. Deleting that folder means the next affected download starts from a fresh session, and the first one after that can take 5–10 seconds longer.
+::: tip Preserve the Playwright profile directory
+The Playwright fallback runs headlessly in the background and stores its session cookies in `temp/playwright-profile/` so subsequent PDF downloads bypass the challenge automatically. Keeping `temp/playwright-profile/` intact avoids an extra 5–10 second browser startup delay on later runs.
 :::
 
 ## 6. Verify the toolchain
 
-Before moving on, confirm everything installed cleanly:
+Confirm that the repository and test suite run cleanly:
 
 ```bash
 node -v                       # v22.x.x
@@ -177,37 +179,37 @@ npm run lint                  # ESLint passes
 npm test                      # Vitest, fixture-based: no API calls, $0
 ```
 
-If all four pass, the local setup is ready. `npm run dev` will start and serve the UI now, but pipeline runs will fail at the first LLM call until you've added at least one API key in `.env.local`.
+Once all four commands succeed, your local toolchain is ready. Next, add at least one LLM provider key to `.env.local`.
 
 ## Common gotchas
 
 **macOS**
 
-- `EACCES` on global install: you likely installed Node via Homebrew instead of nvm. Avoid `sudo npm install -g`; reinstall Node via nvm.
+- **`EACCES` permission error on global install:** Node was likely installed via Homebrew using system directories. Reinstall Node using `nvm` so packages live under `~/.nvm/` without requiring `sudo`.
 
 **Linux**
 
-- `Error: Cannot find module` after `nvm install`: your shell init didn't load nvm. Check that `~/.bashrc` contains the nvm block and that you sourced it (or just open a new terminal).
-- Playwright complains about `libnss3.so`: run `npx playwright install-deps chromium` (needs sudo).
-- **ARM64 only** — `npm test` fails with `Cannot find module '@rolldown/binding-linux-arm64-gnu'`: npm occasionally fails to install the correct platform-specific native binding for vitest's rolldown dependency ([npm/cli#4828](https://github.com/npm/cli/issues/4828)). The dev server (`npm run dev`) is unaffected; only vitest needs the binding. Fix:
+- **`Error: Cannot find module` after `nvm install`:** Your shell startup file did not load `nvm`. Confirm that `~/.bashrc` contains the `nvm` initialization block and run `source ~/.bashrc` (or open a new terminal).
+- **Playwright reports missing `libnss3.so`:** Run `npx playwright install-deps chromium` (which prompts for `sudo` to install system shared libraries).
+- **ARM64 only (`npm test` fails with `Cannot find module '@rolldown/binding-linux-arm64-gnu'`):** An npm optional-dependency bug ([npm/cli#4828](https://github.com/npm/cli/issues/4828)) occasionally omits the platform-specific native binding for Vitest's `rolldown` bundler. The development server (`npm run dev`) is unaffected, and you can install the binding directly for `npm test`:
   ```bash
   npm install --no-save @rolldown/binding-linux-arm64-gnu
   ```
-  If a plain reinstall is preferred: `rm -rf node_modules package-lock.json && npm install`. Same situation applies on Windows ARM64 (`@rolldown/binding-win32-arm64-msvc`) and macOS ARM64 (`@rolldown/binding-darwin-arm64`) if npm's optional-deps handling misses the matching binding.
+  Alternatively, run `rm -rf node_modules package-lock.json && npm install`. The same fix applies on Windows ARM64 (`@rolldown/binding-win32-arm64-msvc`) and macOS ARM64 (`@rolldown/binding-darwin-arm64`).
 
 **Windows native**
 
-- `ENAMETOOLONG` during `npm install`: long paths aren't enabled. Re-run the long-paths step from §1 and set `git config --global core.longpaths true`.
+- **`ENAMETOOLONG` during `npm install`:** Windows long paths are disabled. Run the Administrator PowerShell registry command from §1 and run `git config --global core.longpaths true`.
 
 **arXiv rate limits**
 
-- Hitting `arXiv rate limit: exhausted 3 retries` repeatedly on otherwise-modest runs: set `ARXIV_CONTACT_EMAIL` in `.env.local` (see §4) and restart `npm run dev`. See [troubleshooting → arXiv rate limits](/reference/troubleshooting#arxiv-rate-limits) for the full retry/backoff behavior.
+- **Repeated `arXiv rate limit: exhausted 3 retries` errors on normal runs:** Set `ARXIV_CONTACT_EMAIL` in `.env.local` (§4) and restart `npm run dev`. See [troubleshooting for arXiv rate limits](/reference/troubleshooting#arxiv-rate-limits) for full details on retry and backoff behavior.
 
 **WSL2**
 
-- `npm run dev` takes 60+ seconds to start: the repo is probably under `/mnt/c/...`. Move it to `~/projects/` on the Linux filesystem.
-- `localhost:3000` doesn't load from a Windows browser: WSL2 port-forwarding can take a few seconds on first start. If it persists, run `wsl --shutdown` from PowerShell and reopen.
+- **`npm run dev` takes over 60 seconds to start:** The repository is located on a mounted Windows drive under `/mnt/c/...`. Move the checkout to `~/projects/` on the native Linux filesystem.
+- **`localhost:3000` does not load in a Windows browser:** WSL2 port forwarding occasionally stalls after hibernate or sleep; run `wsl --shutdown` in PowerShell and reopen your Ubuntu terminal.
 
 ## Next
 
-[Add at least one API key →](/getting-started/api-keys)
+Continue to [API keys](/getting-started/api-keys) to configure at least one model provider.

@@ -1,22 +1,45 @@
 # Briefing anatomy
 
-A tour of the briefing from the inside — what each section is, what prompt instruction produces it, and the hard constraints the synthesis LLM must honour.
+Every rendered briefing combines the structured output of the Stage 5 synthesis model with cached artifacts from earlier pipeline stages, deterministic metadata validation, and post-synthesis audit results.
 
-::: info System view, not reading view
-This page is the **system view** of the briefing: what produces each part and why. For the **reading view** — what to look for, how to act on stars and dismissals, how to use the inline expansions — see [Reading a briefing](/using/reading-a-briefing) instead.
+::: info Architectural reference
+Prompt templates, schema validators, and pipeline stages work together to construct each component of a briefing. For a reader-focused guide on triaging daily papers, expanding summaries, and recording feedback, see [Reading a briefing](/using/reading-a-briefing).
 :::
 
-## Three sections, nothing more
+## Synthesis output structure {#three-sections-nothing-more}
 
-Despite the visual density of a finished briefing, the synthesis LLM only produces three things: an executive summary, a list of themes, and one card per paper. Everything else on the page — the quick-summary expansion, the full-report side panel, the editor's questions, the "Generation details" disclosure — is rendered from data generated elsewhere in the pipeline, not from the synthesis call.
+Although a rendered briefing displays rich interactive panels, the `/api/synthesize` LLM call returns a compact JSON object with only three top-level fields: `executiveSummary`, `themes`, and `papers`. All surrounding elements on the page (the inline quick-summary expansions, the cropped key figures, the slide-over Stage 4 full reports, the **Notes from the editor** questions, the hallucination audit badge, the **Generation details** disclosure, and the interactive feedback footer) are populated from separate pipeline calls and deterministic state, keeping the synthesis model focused strictly on editorial writing:
 
-Keeping the synthesis contract narrow keeps the LLM's job narrow: produce editorial prose against a small, well-defined shape, and stop.
+<div style="margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft);">
+  <svg viewBox="0 0 720 490" style="width: 100%; height: auto; max-width: 720px; display: block; margin: 0 auto;" role="img" aria-label="Structural schematic of a rendered Aparture briefing showing Header, Audit Badge, Executive Summary, Thematic Sections with Full-Read Paper Cards and Key Figures, Papers Also Worth a Look, Notes from the Editor, and Interactive Feedback Footer">
+    <rect x="28" y="14" width="664" height="86" rx="8" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.6" />
+    <text x="48" y="38" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-brand-1)">1. Header + Audit Badge + Executive Summary</text>
+    <text x="48" y="58" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-1)">Dateline, focus/screened counts, reading time, and claims-check audit badge</text>
+    <text x="48" y="78" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">200 to 400 word serif editorial lead ending with the primary reading recommendation</text>
+    <rect x="28" y="110" width="664" height="156" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="48" y="134" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">2. Thematic Sections + Full-Read Paper Cards + Key Figures</text>
+    <text x="48" y="153" font-family="var(--vp-font-family-base)" font-size="12" font-style="italic" fill="var(--vp-c-text-2)">Priority-ordered themes (2 to 5): 6 to 12 word argument headline + 2 to 4 sentence synthesis</text>
+    <rect x="48" y="166" width="624" height="86" rx="6" fill="var(--vp-c-bg-soft)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="66" y="188" font-family="var(--vp-font-family-mono)" font-size="11" font-weight="700" fill="var(--vp-c-brand-1)">[Score 8.6] Paper Card (arxivId + verified title + abstract/PDF/HTML/alphaXiv links)</text>
+    <text x="66" y="207" font-family="var(--vp-font-family-base)" font-size="11.5" fill="var(--vp-c-text-1)">15 to 25 word onelinePitch + 2 to 4 sentence whyMatters + cropped Stage 4 Key Figure &amp; caption</text>
+    <text x="66" y="226" font-family="var(--vp-font-family-mono)" font-size="10.5" fill="var(--vp-c-text-2)">Cached expansions: [quick summary (~300w)] [full report (Stage 4)] + [star] [dismiss] [comment]</text>
+    <text x="66" y="243" font-family="var(--vp-font-family-base)" font-size="11" fill="var(--vp-c-text-3)">Cross-listed theme references render as "Also in this theme (shown above)"</text>
+    <rect x="28" y="276" width="664" height="52" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="48" y="300" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">3. Papers Also Worth a Look / Other Papers Fallback</text>
+    <text x="48" y="318" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Secondary thematic clusters and deterministic fallback group ensuring zero omitted papers</text>
+    <rect x="28" y="338" width="664" height="56" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="48" y="362" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">4. Notes from the Editor (/api/editor-questions)</text>
+    <text x="48" y="381" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Up to two single-tap multiple-choice questions resolving profile ambiguities exposed by the run</text>
+    <rect x="28" y="404" width="664" height="72" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-brand-1)" stroke-width="1.4" />
+    <text x="48" y="428" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">5. Interactive Feedback Footer, Audit Provenance &amp; Podcast Add-On</text>
+    <text x="48" y="447" font-family="var(--vp-font-family-base)" font-size="11.5" fill="var(--vp-c-text-2)">Audit flagged claims, Generation details provenance, Feedback timeline, and Suggest improvements</text>
+    <text x="48" y="464" font-family="var(--vp-font-family-mono)" font-size="11" fill="var(--vp-c-text-3)">Persisted to reports/briefings/&lt;id&gt;.json and indexed in browser localStorage</text>
+  </svg>
+</div>
 
 ## Section 1: the executive summary
 
-The editorial lead for the day. The first prose the user reads. Two to four paragraphs, usually 200–400 words.
-
-The synthesis prompt gives the model a three-paragraph template rather than a word count, because the structure is where most of the value lives. From `prompts/synthesis.md`:
+The executive summary serves as the editorial lead at the top of the briefing, spanning two to four paragraphs (typically 200 to 400 words). The synthesis prompt (`prompts/synthesis.md`) specifies a three-part narrative structure so that the opening prose synthesizes the day's developments before concluding with an explicit reading recommendation:
 
 > The editorial lead for the day. This is the first thing the user reads, so it should frame the day's papers as a story rather than a list.
 >
@@ -26,13 +49,11 @@ The synthesis prompt gives the model a three-paragraph template rather than a wo
 >
 > **Final paragraph:** a clear reading recommendation. "If you read one paper today, make it [arxivId] because…" This is the most actionable sentence in the briefing.
 
-Rendered directly after the briefing header, one paragraph per paragraph the model wrote.
+The briefing view renders the executive summary immediately beneath the header bar, with one paragraph per paragraph returned by the model.
 
 ## Section 2: themes
 
-The organising spine of the briefing. Two to five priority-ordered groupings, each with a headline, a paragraph of editorial reasoning, and a list of paper references. Every paper must appear in at least one theme.
-
-From `prompts/synthesis.md`:
+Themes form the organizing structure of the briefing across two to five priority-ordered clusters, each containing an argument-style headline, a paragraph of editorial reasoning, and a list of paper references (`paperIds`). Every paper in the final round must appear in at least one theme. From `prompts/synthesis.md`:
 
 > Themes are the organizing spine of the briefing. Each theme groups papers that share an argument, method, problem, or tension, and explains why the grouping matters.
 >
@@ -44,17 +65,13 @@ From `prompts/synthesis.md`:
 > - `argument`: a 2–4 sentence paragraph explaining why these papers belong together and what the user should take away. This is editorial writing, not a section header. If papers within the theme are in tension or build on each other, say so here. **Debates belong inside themes, not in a separate section.**
 > - `paperIds`: the arxivIds of the papers in this theme.
 
-The `argument` bullet reflects a design choice worth surfacing. Prior versions of Aparture had separate components for explicitly marked tensions and over-time observations. Those were removed in favour of handling those cases **inside a theme's argument**, where they're naturally grounded in the papers being grouped. A theme that contains two papers disagreeing about the same phenomenon will usually produce better prose when the disagreement is argued through in the theme's own paragraph than when it's lifted out into its own UI block.
+Placing methodological debates and competing claims directly inside `theme.argument` keeps cross-paper comparisons grounded in the specific papers that follow below the heading.
 
-Each theme renders as a numbered section with an argument-style title, an italicised argument paragraph, and the paper cards for its papers. Themes appear in the priority order the LLM returned. A card renders once, in the first theme that lists it; a later theme that lists the same paper names it in an _"Also in this theme (shown above)"_ line. A card that no theme lists renders in a final **Other papers** group, so no paper silently disappears.
+In the briefing view, each theme renders as a numbered section in the priority order returned by the synthesis model. Each paper's full card renders once, inside the first theme that lists its `arxivId`; if a subsequent theme also lists that paper, the later theme displays an _"Also in this theme (shown above)"_ reference line. Any paper omitted from all themes by the model is placed in a trailing **Other papers** group so that every final-round paper remains accessible.
 
 ## Section 3: papers
 
-One interactive card per paper that made it into the final round. Carries the paper's arXiv ID, title, final relevance score, a one-line pitch, and a paragraph explaining why it matters for the user specifically.
-
-The card's text is produced by the synthesis LLM, but the controls on the card (star, dismiss, comment, expansion buttons) are wired to external state. That split — static text from the model, dynamic state from React — is why paper cards look identical in the briefing view and the Analysis Results list even though the data behind them is different.
-
-From `prompts/synthesis.md`:
+The `papers` array contains one card object for each paper in the final round, pairing the paper's `arxivId`, `title`, and `score` with a one-line pitch (`onelinePitch`) and a profile-grounded paragraph explaining why it matters (`whyMatters`). While the synthesis LLM generates the prose fields, the interactive controls on each card (star, dismiss, comment, quick summary, and full report) bind to live React state, allowing cards in the briefing view and the Pipeline view's Analysis Results list to share the same component structure. From `prompts/synthesis.md`:
 
 > Each paper card has:
 >
@@ -69,98 +86,95 @@ From `prompts/synthesis.md`:
 >   - For **dismissed** papers: keep brief. Acknowledge the dismissal, and say why the paper is still worth a glance only if there is a genuine reason despite the user's signal.
 >   - When **comments** exist: integrate them. The user's own words should shape your framing.
 
-The model copies `title` and `score` only because the schema asks for them; before display, Aparture overwrites both with the input paper's values.
+Before rendering, Aparture overwrites `title` and `score` on every card with the ground-truth values from the pipeline input so that model transcription errors can never alter a paper's title or score.
 
-Each card renders inside its parent theme with a colour-coded score badge (brightened at 9+), the title as a link to the arXiv page, a row of links (abstract, PDF, arXiv's HTML rendering, alphaXiv), the italicised one-line pitch, the "why it matters" paragraph, the paper's key figure when the full read picked one, and action buttons for quick summary, full report, star, dismiss, and comment.
+Each rendered card displays its color-coded relevance score badge (highlighted more brightly at 9.0+), the title linked to the arXiv abstract page, the direct resource links (**abstract · PDF · HTML · alphaXiv**), the italicized `onelinePitch`, the `whyMatters` paragraph, the cropped Stage 4 key figure and caption when available, and the action bar for quick summary, full report, star, dismiss, and comment.
 
 ## Everything else on the page
 
-Three features look like they're part of the briefing but come from elsewhere in the pipeline. They exist because they're useful for reading and for provenance, but they don't need to be part of the synthesis LLM's output.
+Quick summaries, cropped key figures, full Stage 4 reports, editor clarification questions, and generation provenance render alongside the synthesis prose from separate pipeline stages.
 
 ### Quick summaries
 
-~300-word per-paper summaries, generated in parallel during Stage 5 of the pipeline. Render as an inline bordered block directly below each paper card when the user clicks the quick-summary button. They are for the reader only: the synthesis prompt doesn't receive them, and the audit doesn't check against them. Nothing audits a quick summary, so treat it as a reading aid.
+During Stage 5, `/api/analyze-pdf-quick` generates a roughly 300-word summary for each final-round paper in parallel using `quickSummaryModel`. Clicking <span class="ui-action">→ quick summary</span> on a paper card expands this text in a bordered block beneath the card. Quick summaries serve strictly as a reader convenience: they are not passed into `/api/synthesize` and are not evaluated by `/api/check-briefing`.
 
 ### Key figures
 
-The image is cropped from the paper's own PDF, and the caption under it is the paper's text, read from the PDF, not written by a model. Only the choice of figure is the model's. The images live in `reports/figures/`, keyed by arXiv ID, and are served by `/api/figures/<arxivId>` behind the access password. Briefings record which figure goes with which card (`figuresById`), so archived briefings keep theirs.
+During Stage 4, the PDF analysis model identifies a single representative figure label (such as `"Figure 2"`), and the server locates the matching caption in the PDF text layer, crops the figure region above it, and saves the image and verbatim caption to `reports/figures/<arxivId>.png` and `.json`. These images are served via `/api/figures/<arxivId>` behind `ACCESS_PASSWORD`, and each saved briefing records its figure mapping in `figuresById` so archived briefings retain their figures.
 
 ### Full reports
 
-The deep-analysis text produced by Stage 4 (PDF analysis). Render as a right-side panel triggered by the full-report button on any paper card. The panel renders the report's Markdown (headings, lists, bold, italic, code) through a small renderer that builds elements directly and never injects HTML, so model output can't add markup. Full reports are inputs to the briefing, not checked outputs: the audit uses them as evidence.
+Clicking <span class="ui-action">→ full report</span> opens a slide-over drawer displaying the complete Stage 4 deep-analysis report for that paper. The drawer renders Markdown structure (headings, lists, bold, italics, and inline code) into React elements without raw HTML injection. These Stage 4 full reports serve as the primary source evidence for both `/api/synthesize` and `/api/check-briefing`.
 
 ### Notes from the editor
 
-Up to two tap-to-answer questions at the end of the briefing, from a separate small call on the briefing model (`/api/editor-questions`, `prompts/editor-questions.md`) after the claims check. The model is shown the profile, the cards, the highest-scored papers left out, and recent feedback, including earlier answers. `lib/editorQuestions/questions.js` keeps a question only if it ends in a question mark, offers two to four short answers, and cites an arXiv ID the model was shown. Most days produce none. Saved with the briefing as `editorQuestions`; each tap becomes an `answer` feedback event.
+After the hallucination audit finishes, `/api/editor-questions` (`prompts/editor-questions.md`) makes a compact call on `briefingModel` using your profile, the synthesized cards, the highest-scoring excluded papers, and recent feedback (including earlier answers). The validator in `lib/editorQuestions/questions.js` retains a question only if it ends with a question mark, provides two to four short answer options, and cites an `arxivId` from the input corpus. Validated questions are saved on the briefing as `editorQuestions`, and clicking an option records an `answer` feedback event.
 
 ### Generation metadata
 
-Everything you see in the expandable "Generation details" section below the briefing:
+Expanding <span class="ui-action">Generation details ▸</span> beneath the briefing displays the run provenance stored in `generationMetadata`:
 
-- Profile snapshot at generation time
-- Model IDs for the filter, scoring, PDF, and briefing stages (`filterModel`, `scoringModel`, `pdfModel`, `briefingModel`)
-- Categories selected for the run
-- Filter verdict counts
-- The filter gate and retry policy flags (`pauseAfterFilter`, `briefingRetryOnYes`, `briefingRetryOnMaybe`)
-- **Hallucination audit result** — verdict (<span class="verdict is-yes">NO</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">YES</span>), justification, list of flagged claims, and whether a retry was triggered
-- Generation timestamp
+- **Profile snapshot**: The active profile prose at generation time.
+- **Stage model IDs**: `filterModel`, `scoringModel`, `pdfModel`, and `briefingModel`.
+- **Categories and filter counts**: Selected arXiv subcategories and Stage 2 <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, and <span class="verdict is-no">NO</span> counts.
+- **Gate and retry flags**: `pauseAfterFilter`, `briefingRetryOnYes`, and `briefingRetryOnMaybe`.
+- **Hallucination audit result**: Audit verdict (<span class="verdict is-yes">NO</span>, <span class="verdict is-maybe">MAYBE</span>, or <span class="verdict is-no">YES</span>), auditor justification, flagged claims list, and retry indicator.
+- **Timestamp**: ISO 8601 completion time.
 
-This data is attached to the saved briefing entry separately from the briefing object itself, so new provenance fields can be added over time without changing the synthesis contract.
+Attaching `generationMetadata` alongside the briefing object allows new provenance fields to be recorded without altering the synthesis schema.
 
 ## Hard constraints (from the prompt)
 
-A few invariants the synthesis LLM must honour:
+The synthesis prompt (`prompts/synthesis.md`) enforces strict citation and coverage invariants:
 
 > - Copy every `arxivId` you emit, in `papers`, in `themes.paperIds`, and in prose such as the reading recommendation, exactly as it appears in the input list. Never invent, normalize, shorten, or reformat an ID, and don't cite an arXiv ID that isn't in the input list.
 > - `papers` contains one entry per final-round paper in the input list.
 > - `themes` contains at least one theme, and every paper in `papers` appears in at least one theme.
 
-The structural rules (required fields, no extra fields, non-empty strings) aren't in the prompt at all: the provider's structured output and the zod schema enforce them.
+Field types and non-empty string requirements are enforced directly by the provider's structured-output schema and server-side Zod validation.
 
-The sourcing discipline sorts the briefing's sentences into two kinds, and the hallucination audit (`prompts/check-briefing.md`) applies the same split:
+Both the synthesis prompt and the hallucination audit (`prompts/check-briefing.md`) distinguish paper-level factual claims from cross-paper editorial synthesis:
 
 > - A factual claim about a paper (a number, a named method, dataset, or model, a comparative result, or a view you attribute to the authors) must be supported by that paper's `abstract` or `fullReport`. This holds wherever the claim appears, including inside a sentence that connects several papers. Do not invent findings, methodology details, author opinions, numbers, or conclusions.
 > - Editorial synthesis (the thread several papers share, the tension between them, why a result matters for this user) is the briefing's job and needs no single source passage. It must not contradict any paper it cites, and it must not carry an unsupported factual claim.
 
 ## Checks before display
 
-Every briefing passes through deterministic checks in `lib/synthesis/validator.js` before it renders. None of them call a model.
+Every synthesized briefing passes through deterministic validation in `lib/synthesis/validator.js` before rendering:
 
-**Corrections.** Code fixes these and lists them in the synthesize route's response; the app doesn't display the list:
+**Automatic corrections** (applied silently in code and listed in the API response):
 
-- Each card's `title` and `score` are replaced with the input paper's. A real arXiv ID carrying another paper's title would otherwise render as fact.
-- Duplicate cards, and duplicate IDs within a theme, are dropped.
+- Every card's `title` and `score` are overwritten with the ground-truth values from the input paper object.
+- Duplicate cards and duplicate `arxivId` entries within a single theme are deduplicated.
 
-**Rejections.** These fail the briefing and send it to one LLM repair call, which sees the errors:
+**Validation rejections** (trigger a single LLM repair call with the explicit error list):
 
-- A card or theme cites an arXiv ID that isn't in the input list.
-- The prose (executive summary, theme titles and arguments, pitches, why-it-matters paragraphs) contains an arXiv ID that isn't one of the day's papers.
-- An input paper has no card. A dismissed paper may be left out; a starred paper never may.
-- A card sits in no theme, or a theme lists a paper that has no card.
+- Any card or `themes.paperIds` entry cites an `arxivId` outside the input list.
+- Any prose field (executive summary, theme titles or arguments, pitches, or `whyMatters` paragraphs) cites an `arxivId` outside the input list.
+- Any non-dismissed input paper (or any starred paper) is missing a card in `papers`.
+- Any card is omitted from all themes, or a theme references an `arxivId` that has no card.
 
-**Salvage.** If the repair call fails or its output still doesn't pass, Aparture repairs the briefing in code rather than discarding it:
+**Deterministic salvage** (applied in code if the LLM repair call fails or still violates a rule):
 
-- cards for unknown IDs are removed;
-- every left-out paper (except dismissed ones) gets a placeholder card whose pitch reads _"Added by Aparture: the briefing model left this paper out"_;
-- theme entries without a card are dropped, and empty themes with them;
-- cards no theme lists are grouped under _"Other papers in today's final round"_;
-- arXiv IDs in the prose that aren't the day's papers become _[unverified arXiv ID removed]_.
+- Cards referencing unknown `arxivId`s are removed.
+- Any omitted non-dismissed paper receives a fallback card whose pitch states _"Added by Aparture: the briefing model left this paper out"_.
+- Theme references lacking a matching card are removed, along with any themes left empty.
+- Cards that no theme lists are grouped under a fallback **Other papers** theme for the current final round.
+- Unverified `arxivId` strings inside prose are replaced with _[unverified arXiv ID removed]_.
 
-The terminal logs each salvage. If even the salvaged briefing fails the checks, synthesis fails and reports the repair's errors.
-
-**The audit.** After the checks, a second LLM call on the same model reads the briefing against each paper's abstract and full report, untruncated, and flags the factual claims it can't find in them. Quick summaries aren't part of its evidence, because the writer never saw them. The audit's verdict can trigger one retry of synthesis (see [the pipeline](/concepts/pipeline#the-hallucination-retry-loop)). If the audit call fails, it runs once more; if it still fails, the briefing is saved unaudited, its reason goes into `generationMetadata.hallucinationCheckError`, and the reading view's header says _claims check did not run_.
+**Post-validation hallucination audit**: Once structural validation succeeds, `/api/check-briefing` audits all factual claims in the briefing against the untruncated abstracts and Stage 4 full reports, optionally triggering one synthesis retry when unsupported claims are flagged (see [The pipeline → The hallucination-retry loop](/concepts/pipeline#the-hallucination-retry-loop)). If the audit call itself fails twice, the briefing is saved as unaudited with the error recorded in `generationMetadata.hallucinationCheckError` and _claims check did not run_ shown in the header.
 
 ## Where to tune what
 
-- **Change how the briefing is structured or written.** Edit `prompts/synthesis.md`. This prompt is the biggest quality lever in the system — changes take effect on the next briefing with no rebuild. See [Prompts](/reference/prompts).
-- **Change how it looks.** Edit `styles/briefing.css`. Palette tokens (`--aparture-*`) are referenced by class name in the components, so colour changes propagate without touching any JavaScript.
-- **Change the hallucination audit's sensitivity.** Edit `prompts/check-briefing.md`. Also hot-reloadable.
+- **Adjusting briefing structure or tone**: Edit `prompts/synthesis.md`; changes take effect on the next synthesis run without rebuilding (see [Prompts](/reference/prompts)).
+- **Adjusting visual styling**: Edit `styles/briefing.css`, where `--aparture-*` CSS custom properties control the briefing palette across light and dark modes.
+- **Adjusting audit strictness**: Edit `prompts/check-briefing.md`, which is also reloaded from disk on every audit call.
 
 ## Next
 
-[Reading a briefing →](/using/reading-a-briefing) — the UX view: how to work through a briefing as a researcher.
+Continue to [Reading a briefing →](/using/reading-a-briefing) for the reader workflow covering daily triage, inline expansions, and feedback controls.
 
-Also worth reading:
+Related guides:
 
-- [**The pipeline**](/concepts/pipeline) — how papers become the inputs the synthesis prompt sees.
-- [**Prompts**](/reference/prompts) — every hot-reloadable prompt file, with sanity-check recipes.
+- [**The pipeline**](/concepts/pipeline): How Stages 1 through 4 produce the inputs passed to synthesis.
+- [**Prompts**](/reference/prompts): Complete guide to customizing Aparture's hot-reloadable prompt templates.

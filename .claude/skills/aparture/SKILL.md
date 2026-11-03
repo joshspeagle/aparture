@@ -6,36 +6,36 @@ compatibility: Runs inside the aparture repository (uses node bin/aparture.mjs a
 
 # Aparture: the daily arXiv briefing
 
-The reader wants to stop skimming the arXiv without worrying about what they're missing. Every choice in a run serves three requirements:
+Aparture exists so a reader can stop skimming the arXiv without worrying about missing relevant papers. Every run is structured around editorial synthesis, source verification, and reader control over profile updates:
 
-1. **Worth reading.** One editorial briefing that argues across papers, tuned by a profile the reader wrote. Not a ranked list.
-2. **Checkable.** Every cited arXiv ID comes from today's harvest, and every specific claim (a number, a method, a result) is traceable to text you actually read. A single fabricated citation ends the reader's trust in the tool, so the validation step is the product, not a formality.
-3. **The reader stays in control.** Their profile changes only by edits they accept. You propose; they decide.
+1. **Editorial synthesis:** Each run produces a single thematic briefing that connects the day's papers and evaluates them against the profile the reader wrote.
+2. **Source verification:** Every cited arXiv ID comes from the day's harvest, and every specific claim (a number, a method, or a result) traces directly to text you read. Because a single fabricated citation breaks the reader's trust in automated synthesis, the validation pass sits in the critical path before publication.
+3. **Reader control:** The research profile changes only when the reader accepts a proposed edit or dictates a change directly.
 
-A run takes a fresh session roughly 20–40 minutes and mostly runs unattended. Work in the run directory, keep the reader's state directory as the record, and finish with a published briefing plus a short report.
+A full run takes roughly 20–40 minutes in a fresh session and executes largely unattended. Work inside the run directory, treat the reader's state directory as the system of record, and conclude with a published briefing and a concise run summary.
 
 ## State: where memory lives
 
-All persistent state is plain files the reader can read and edit, in a **state directory** (`$APARTURE_STATE`, else `./aparture-state`; create it on first run):
+All persistent state lives in plain-text and JSON files inside a **state directory** (`$APARTURE_STATE`, defaulting to `./aparture-state` and created on the first run) so the reader can inspect and edit every file directly:
 
-| File                    | What it holds                                                                                                                                                                                                                                                                                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `profile.md`            | The reader's research profile, in their words. Every stage reads it. Edit only through accepted proposals.                                                                                                                                                                                                                                             |
-| `config.json`           | `categories`, `daysBack` (default 1), `readCount` (papers to deep-read, default 12), `briefingArtifactUrl` (set after first publish), optional `watchlist` of author names and phrases.                                                                                                                                                                |
-| `seen.json`             | arxivId → first-seen date (YYYY-MM-DD). Papers already seen are skipped. Keep 90 days.                                                                                                                                                                                                                                                                 |
-| `feedback.jsonl`        | One JSON event per line: `star`, `dismiss`, `comment`, `more-like-this`, `already-knew`, `answer` (to an editor's question), `proposal-decision`. Append-only; never rewrite history.                                                                                                                                                                  |
-| `learned.md`            | Editorial notes: accepted preferences that came from feedback rather than the reader's own pen, in `## Selection`, `## Writing` and `## Podcast` sections, one bullet each ("Prefers papers with released code"). The same notes, format and limits as the app's Editorial notes tab (`lib/profile/editorialNotes.js`). Shown to the reader; editable. |
-| `briefings/<date>.json` | Each published briefing, in the format in `references/briefing.md`.                                                                                                                                                                                                                                                                                    |
+| File                    | What it holds                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profile.md`            | The reader's research profile in their own words. Every stage reads this file, and it is modified only through accepted proposals or direct reader requests.                                                                                                                                                                                         |
+| `config.json`           | `categories`, `daysBack` (default `1`), `readCount` (number of papers to deep-read, default `12`), `briefingArtifactUrl` (populated after the first publish), and an optional `watchlist` of author names and key phrases.                                                                                                                           |
+| `seen.json`             | A map from `arxivId` to first-seen date (`YYYY-MM-DD`). Previously seen papers are skipped automatically, and entries are retained for 90 days.                                                                                                                                                                                                      |
+| `feedback.jsonl`        | One JSON event per line (`star`, `dismiss`, `comment`, `more-like-this`, `already-knew`, `answer` for an editor's question, and `proposal-decision`). This log is append-only.                                                                                                                                                                       |
+| `learned.md`            | Editorial notes recording accepted preferences derived from reader feedback under `## Selection`, `## Writing`, and `## Podcast` headings, with one bullet per note (for example, `"Prefers papers with released code"`). This file shares the format and per-section limits of the web app's Editorial notes tab (`lib/profile/editorialNotes.js`). |
+| `briefings/<date>.json` | Each published briefing stored in the schema defined in `references/briefing.md`.                                                                                                                                                                                                                                                                    |
 
-If `profile.md` is missing, stop and help the reader write one (`references/profile.md`). Don't run a briefing on a placeholder profile: it wastes a run and teaches the reader the tool is generic.
+If `profile.md` is missing, stop and help the reader draft one following `references/profile.md` because running on a generic placeholder profile produces an uninformative briefing.
 
 ## The run
 
-Create a run directory (`$RUN = <state>/runs/<YYYY-MM-DD>`) and go through these phases in order. Each phase writes a file; if a phase fails, fix it and re-run that phase rather than starting over.
+Create a run directory (`$RUN = <state>/runs/<YYYY-MM-DD>`) and execute the following phases sequentially. Because each phase writes its output to disk, you can fix and re-run any failed phase directly from its checkpoint.
 
 ### 1. Collect feedback since the last run
 
-Read `references/feedback.md` and follow its intake steps: pull new events from the briefing page's database (when `briefingArtifactUrl` is set and the ArtifactData tool is available) and from anything the reader said in this conversation, append them to `feedback.jsonl`, and apply any proposal the reader accepted (that is the only path by which `profile.md` or `learned.md` changes).
+Read `references/feedback.md` and run its intake sequence: fetch new events from the briefing page's database (when `briefingArtifactUrl` is set and the ArtifactData tool is available) alongside any preferences stated in the current conversation, append those events to `feedback.jsonl`, and apply any proposals the reader accepted.
 
 ### 2. Harvest
 
@@ -44,17 +44,17 @@ node bin/aparture.mjs fetch --config <state>/config.json --seen <state>/seen.jso
   --out $RUN/candidates.json --chunks <K>
 ```
 
-Pick `K` so each chunk holds roughly 100–150 papers (the command logs the count; re-run with a different `--chunks` if needed). The script handles arXiv politeness (OAI-PMH, jittered spacing, retries) and anchors "one day" on the most recent day of submissions, so weekends and holidays work. If it reports zero papers, say so in the report and stop. That is a valid outcome, not an error to work around.
+Choose `K` so that each chunk holds roughly 100–150 papers (the command logs the total count, and you can re-run it with an adjusted `--chunks` value if needed). The script enforces arXiv request spacing (OAI-PMH harvesting, jittered delays, and retries) and anchors a single-day window on the most recent submission day so that weekends and holidays resolve cleanly. If the harvest returns zero new papers, report that outcome and stop.
 
 ### 3. Triage in parallel
 
-Launch one worker per chunk with the Agent tool, all in a single message so they run concurrently, using `model: "sonnet"` (triage is high-volume judgment; the deep read is where the strongest model pays off). Give each worker the profile, the selection notes (`node bin/aparture.mjs notes --state <state> --scope selection`), recent feedback highlights, its chunk file, and the instructions in `references/triage.md`. Each writes `$RUN/triage/<chunk>.json`.
+Launch one worker per chunk concurrently in a single message using the Agent tool with `model: "sonnet"`, which provides fast high-volume abstract evaluation before full-paper reading. Pass each worker the research profile, the selection notes (`node bin/aparture.mjs notes --state <state> --scope selection`), recent feedback highlights, its assigned chunk file, and the rubric instructions in `references/triage.md`. Each worker writes `$RUN/triage/<chunk>.json`.
 
-When all return, check coverage: every candidate ID must appear in exactly one triage file. Re-run a worker whose file is missing or incomplete.
+Once all workers return, verify that every candidate arXiv ID appears in exactly one triage output file, and re-run any worker whose output is missing or incomplete.
 
 ### 4. Select the reading set
 
-Rank YES and MAYBE papers by score. Take the top `readCount`, then adjust: add any paper matching the watchlist or strongly resembling recent stars; keep the set from collapsing onto one subtopic when the profile is broad; never add a paper the reader dismissed before. Write `$RUN/selection.json` with each chosen ID and a one-line reason, plus the next 10–15 as `nearMisses` (they appear in the briefing as "also worth a look"). Read `references/triage.md` § Selection for the tie-breaking rules.
+Rank all `YES` and `MAYBE` papers by score and take the top `readCount` papers, then apply the selection adjustments in `references/triage.md` (§ Selection): include papers that match the `watchlist` or closely resemble recent starred papers, diversify across subtopics when the profile is broad, and exclude any paper the reader previously dismissed. Write `$RUN/selection.json` with each selected ID and a one-line selection rationale, followed by the next 10–15 papers as `nearMisses` (which appear in the briefing under `"Also worth a look"`).
 
 ### 5. Enrich and deep-read
 
@@ -63,13 +63,13 @@ node bin/aparture.mjs enrich --in $RUN/candidates.json --ids <comma-separated se
   --out-dir $RUN/papers --out $RUN/enrich.json
 ```
 
-This writes `$RUN/papers/<id>.md` (the paper's full text from arXiv's HTML rendering, math as LaTeX, with figure captions). Papers without an HTML version get `<id>.pdf` instead, plus extracted text when `pdftotext` is installed. Requests to arxiv.org are spaced 15 seconds apart, as its robots.txt asks, so twelve papers take about three minutes; run it in the background and start nothing else that touches arXiv meanwhile.
+This command writes `$RUN/papers/<id>.md` containing the paper's full text from arXiv's HTML rendering, with math formatted as LaTeX and figure captions preserved. Papers without an HTML rendering are downloaded as `<id>.pdf` instead, accompanied by extracted text when `pdftotext` is installed. Because `arxiv.org` `robots.txt` specifies a 15-second crawl delay between page and file requests, enriching 12 papers takes roughly three minutes; run this step in the background without issuing concurrent requests to arXiv.
 
-Then launch one deep-read worker per paper (or per pair, for more than ~12 papers), in a single message, with the session's default model. Each follows `references/deep-read.md` and writes `$RUN/reports/<id>.json`: a technical report, the key result with the exact sentence it comes from, a key-figure choice, and a skeptical note. The verbatim quotes are what make the briefing checkable later, so workers must copy them character-for-character from the paper text.
+Next, launch one deep-read worker per paper (or per pair of papers when selecting more than ~12 papers) in a single message using the session's default frontier model. Each worker follows `references/deep-read.md` and writes `$RUN/reports/<id>.json` containing a technical summary, the key result paired with its exact source sentence, a key-figure selection, and a methodological caveat. Workers must copy verbatim quotes character-for-character from the paper text so deterministic quote validation succeeds in Phase 7.
 
 ### 6. Write the briefing
 
-Read `references/briefing.md` (format, editorial voice, what each section is for) and write `$RUN/briefing.json` yourself from the reports, the selection, the near misses, and the reader's recent feedback. This is the part the reader came for: an editor's argument about what today's papers mean for their work, not a summary of each.
+Read `references/briefing.md` for the schema, editorial voice, and section structure, then write `$RUN/briefing.json` directly from the deep-read reports, the selection list, the near misses, and the reader's recent feedback. Frame the briefing as a cohesive editorial argument explaining what the day's papers mean for the reader's research agenda.
 
 ### 7. Validate
 
@@ -77,9 +77,9 @@ Read `references/briefing.md` (format, editorial voice, what each section is for
 node bin/aparture.mjs validate --run $RUN --state <state>
 ```
 
-This checks the schema, that every cited arXiv ID is in the reading set or near misses, and that every quoted string appears verbatim in that paper's text. Fix every error it reports and run it again until it passes; do not publish a briefing that fails it.
+This validator verifies the JSON schema, checks that every cited arXiv ID belongs to the selected reading set or near misses, and confirms that every quoted string appears verbatim in that paper's full text. Fix any reported errors and re-run validation until it passes cleanly before proceeding.
 
-Then launch one checker worker (`references/briefing.md` § Audit) that reads the briefing against the reports and flags any per-paper claim the sources don't support. Revise or delete flagged claims. Editorial synthesis across papers is allowed; invented specifics are not.
+After deterministic validation passes, launch one audit worker (`references/briefing.md` § Audit) to compare the briefing against the deep-read reports and flag any unsupported per-paper claims. Revise or remove every flagged claim while preserving valid cross-paper synthesis.
 
 ### 8. Render and publish
 
@@ -87,7 +87,7 @@ Then launch one checker worker (`references/briefing.md` § Audit) that reads th
 node bin/aparture.mjs render --run $RUN --state <state> --model "<model name>"
 ```
 
-Publish `$RUN/briefing.html` with the Artifact tool as described in `references/publishing.md` (it declares the `db` capability so the reader's stars, comments and answers come back to the next run). Reuse `briefingArtifactUrl` from `config.json` so the reader keeps one bookmark; record it there after the first publish. Without the Artifact tool, leave the HTML file and say where it is.
+Publish `$RUN/briefing.html` with the Artifact tool following `references/publishing.md` (declaring the `db` capability so the reader's stars, comments, and question replies persist for the next run). Reuse `briefingArtifactUrl` from `config.json` so the reader's bookmark stays constant, and record the URL in `config.json` after the first publish. If the Artifact tool is unavailable in the current environment, keep the local HTML file and report its path.
 
 ### 9. Record
 
@@ -95,20 +95,20 @@ Publish `$RUN/briefing.html` with the Artifact tool as described in `references/
 node bin/aparture.mjs record --state <state> --run $RUN
 ```
 
-This adds every harvested ID to `seen.json`, archives the briefing to `briefings/`, and prunes entries older than 90 days. If the state directory is a git repository, commit with a message naming the date and paper counts, and push if a remote is configured.
+This command appends every harvested arXiv ID to `seen.json`, archives the briefing under `briefings/`, and prunes `seen.json` entries older than 90 days. If the state directory is a Git repository, commit the updated state with a message recording the date and paper counts, and push to the configured remote.
 
-Finish with a report of five lines or fewer: papers harvested / triaged YES·MAYBE / deep-read, the briefing link, validation results, and anything that needs the reader (a proposal awaiting a decision, a phase that degraded).
+Conclude with a summary of five lines or fewer reporting the counts of papers harvested, triaged (`YES` and `MAYBE`), and deep-read, the published briefing link or file path, the validation and audit outcome, and any items awaiting reader action (such as pending profile proposals or degraded stages).
 
 ## Feedback and the profile
 
-The profile works like memory. It should get sharper every week, in a form the reader can read. `references/feedback.md` has the full procedure; the principles:
+The research profile functions as inspectable long-term memory that sharpens over time as the reader reviews briefings. Full rules are in `references/feedback.md`, governed by the following principles:
 
-- **Propose, never apply silently.** Feedback produces at most two or three proposed edits per run, each with the evidence that motivated it (the papers starred or dismissed, the comment quoted). They appear in the briefing's "Notes from the editor" with accept/decline buttons. Only accepted proposals touch `profile.md` or `learned.md`.
-- **Ask, don't guess.** When feedback is ambiguous (a dismissal of a paper squarely inside the profile), ask one short question in the briefing instead of editing. Answers are feedback too.
-- **Show the effect.** When a paper is in today's briefing because of something the reader taught you, say so in one clause ("you starred two papers on this last week").
+- **Propose edits explicitly:** Accumulated feedback produces at most two or three proposed edits per run, each backed by the specific starred or dismissed papers and quoted comments that motivated it. Proposals render in the briefing's `"Notes from the editor"` section with accept and decline controls, and only accepted proposals modify `profile.md` or `learned.md`.
+- **Ask when signal is ambiguous:** When a feedback event could support multiple interpretations (such as dismissing a paper that matches a core profile topic), include a short multiple-choice question in the briefing so the reader can clarify the boundary.
+- **Surface the causal link:** When a paper is included in the current briefing because of a preference the reader taught the system in an earlier run, note that connection in a brief clause (for example, `"because you starred two papers on this method last week"`).
 
 ## Other requests
 
-- **"Set up Aparture" / first run:** `references/profile.md` (writing the profile together, choosing categories, `config.json`), then `references/scheduling.md` to make it daily.
-- **"Why did you include / skip X?":** answer from `$RUN/triage/*.json` and `selection.json`. Every exclusion has a recorded reason; quote it.
-- **"Change my profile":** edit `profile.md` directly when the reader dictates the change; show the diff.
+- **"Set up Aparture" or first run:** Follow `references/profile.md` to draft the profile, select arXiv categories, and write `config.json`, then consult `references/scheduling.md` if the reader wants automated daily runs.
+- **"Why did you include / skip X?":** Look up the paper in `$RUN/triage/*.json` and `selection.json` and quote the recorded verdict rationale.
+- **"Change my profile":** Edit `profile.md` directly when the reader dictates an explicit change, and show the resulting diff.

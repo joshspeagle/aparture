@@ -1,30 +1,26 @@
 # Model selection
 
-Each pipeline stage reads from its own model slot, and picking the model for each slot is where most of your cost-versus-quality trade-offs live. This page covers the slots, the current registry, and a few configurations that work well in practice.
+Every LLM stage in Aparture reads from an independent model slot, allowing you to match model capability and token pricing to the specific workload of each stage.
 
 ## The model slots
 
-Aparture has six model slots for the pipeline plus one for the optional podcast add-on. Every slot ships with a default, and any slot can be changed between runs without restarting the server. Six have drop-downs in the Settings panel; the post-processing one appears when **Enable Post-Processing** is on. `notebookLMModel` is picked on the Podcast card in the briefing view.
+Aparture provides six pipeline model slots plus one slot for the optional podcast add-on. Every slot ships with an all-Google default and can be reassigned between runs without restarting the server. Five pipeline slots appear directly in the Settings panel, `postProcessingModel` (**Review Model**) appears when **Enable Post-Processing** is checked, and `notebookLMModel` is selected on the Podcast card inside the briefing view:
 
 | Slot                  | What it drives                                                                                                                                              | Default                 |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | `filterModel`         | Stage 2 quick filter (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage) | `gemini-3.5-flash-lite` |
-| `scoringModel`        | Stage 3 abstract scoring (0–10 + justification)                                                                                                             | `gemini-3.6-flash`      |
+| `scoringModel`        | Stage 3 abstract scoring (0–10 score + justification)                                                                                                       | `gemini-3.6-flash`      |
 | `postProcessingModel` | Stage 3.5 comparative re-scoring (optional)                                                                                                                 | `gemini-3.6-flash`      |
-| `pdfModel`            | Stage 4 deep PDF analysis                                                                                                                                   | `gemini-3.8-flash`      |
-| `briefingModel`       | Stage 5 synthesis, the hallucination audit, and the refinement flow                                                                                         | `gemini-3.8-flash`      |
-| `quickSummaryModel`   | Per-paper quick-summary compression (text-only), runs just before synthesis                                                                                 | `gemini-3.5-flash-lite` |
-| `notebookLMModel`     | The podcast add-on's discussion guide                                                                                                                       | `gemini-3.8-flash`      |
+| `pdfModel`            | Stage 4 full-text PDF analysis                                                                                                                              | `gemini-3.8-flash`      |
+| `briefingModel`       | Stage 5 synthesis, hallucination audit, editor questions, and profile refinement                                                                            | `gemini-3.8-flash`      |
+| `quickSummaryModel`   | Per-paper ~300-word summary compression (text-only), executed immediately before synthesis                                                                  | `gemini-3.5-flash-lite` |
+| `notebookLMModel`     | Discussion guide generation for the podcast bundle                                                                                                          | `gemini-3.8-flash`      |
 
-The `quickSummaryModel` default is a Flash-Lite model because the work is text compression: the input is the text of each deep-analysis report, not the PDF. If you run a single provider and don't want a Google key alongside it, switch this slot to that provider's small model. Quick-summary failures don't stop the briefing; a missing key only drops the inline quick-summary expansions.
-
-The scoring rubric itself is described on the pipeline page: see [Stage 3 scoring](/concepts/pipeline#stage-3-score-abstracts) for what the `scoringModel` is asked to do.
+Because `quickSummaryModel` compresses the text of each Stage 4 report rather than reading raw PDF bytes, a lightweight Flash-Lite, Haiku, or Luna model is well suited for that slot. If you run exclusively on Anthropic or OpenAI without a Google API key, switch `quickSummaryModel` to your active provider's lightweight model (a missing key on `quickSummaryModel` omits the inline quick-summary expansions without halting synthesis). For details on how `scoringModel` evaluates abstracts, see [Stage 3 scoring](/concepts/pipeline#stage-3-score-abstracts).
 
 ## Current lineup
 
-The registry in `utils/models.js` is the authoritative source. It keeps each provider's current generation plus the one before it, with per-model pricing. Prices below are US dollars per million tokens (MTok), registry snapshot 2026-10-17.
-
-Some providers publish a time-boxed promotional price. The registry records it with its end date, and Aparture's cost estimates use the promotional price until that date and the list price after. Both are shown below.
+The model registry in `utils/models.js` maintains each provider's current generation alongside the immediately preceding generation, together with per-model pricing in US dollars per million tokens (MTok) as of the `2026-10-17` registry snapshot. When a provider offers a time-limited promotional rate, the registry stores both the promotional price (with its expiration date) and the standard list price so that cost estimates automatically use whichever rate applies on the date of the run.
 
 ### Anthropic (Claude)
 
@@ -39,14 +35,14 @@ Some providers publish a time-boxed promotional price. The registry records it w
 | `claude-sonnet-5`   | `claude-sonnet-5`   | 1M      | $2 / $10       | Yes               |
 | `claude-haiku-4.5`  | `claude-haiku-4-5`  | 200k    | $1 / $5        | No                |
 
-The first four rows are the current generation. Opus 5.5 is cheaper than the Opus 5 it replaces, and Haiku 5.5 costs a tenth of Haiku 4.5 while adding adaptive thinking. Haiku 5.5's price holds for prompts up to 100K tokens; longer prompts bill at $0.50 / $2.50, which a long PDF on the `pdfModel` slot can reach.
+The first four rows represent Anthropic's current generation: Opus 5.5 reduces pricing below Opus 5, and Haiku 5.5 costs one-tenth as much as Haiku 4.5 while adding adaptive thinking. Haiku 5.5's `$0.10 / $0.50` rate applies to prompts up to 100K tokens; prompts exceeding 100K tokens bill at `$0.50 / $2.50`, which long manuscripts on `pdfModel` can reach.
 
-Two things to know about the Fable models (`claude-fable-5.1`, `claude-fable-5`):
+When selecting a Fable model (`claude-fable-5.1` or `claude-fable-5`), note its reasoning billing and data-retention requirements:
 
-- **Their thinking can't be turned off.** At $50 / MTok output, thinking tokens are the expensive kind, and there's no setting that trades them away.
-- **They require 30-day data retention on your Anthropic organization.** Under zero data retention every request fails with a 400 that reads like a malformed payload rather than a policy rejection. If a Fable model is the one that 400s for you and the others work, check your org's retention setting first.
+- **Reasoning tokens are always active**: Adaptive thinking cannot be disabled on Fable models, and reasoning tokens are billed at the `$50 / MTok` output rate.
+- **Requires 30-day organization data retention**: Anthropic restricts Fable models to organizations with 30-day data retention enabled; under zero-data-retention policies, Fable requests fail with an HTTP 400 error. If Fable returns 400 while Opus or Sonnet succeeds on the same key, check your organization's retention setting.
 
-Claude Mythos is available only through Project Glasswing, so it isn't in the registry. If you have access, adding it is a short change in `utils/models.js`: copy the matching Fable entry and change the IDs.
+Claude Mythos is restricted to Project Glasswing participants and is not included in the default registry; users with access can add it to `utils/models.js` by copying a Fable entry and updating the model IDs.
 
 ### OpenAI (GPT)
 
@@ -59,7 +55,7 @@ Claude Mythos is available only through Project Glasswing, so it isn't in the re
 | `gpt-5.6-terra` | `gpt-5.6-terra` | $2 / $12                                                        | $0.20        |
 | `gpt-5.6-luna`  | `gpt-5.6-luna`  | $0.20 / $1.20                                                   | $0.02        |
 
-The GPT-6 family is current; GPT-5.6 is the previous generation. Prices are OpenAI's standard-tier rates for prompts up to 272K tokens. OpenAI caches repeated prompt prefixes automatically, so the cached-input column applies to the part of each prompt that repeats between calls (the rubric and your profile).
+The GPT-6 family (`gpt-6-astra`, `gpt-6.1-sol`, and `gpt-6-luna`) is the current generation, while the GPT-5.6 family is the previous generation. Listed prices reflect standard-tier rates for prompts up to 272K tokens. OpenAI automatically caches repeated prompt prefixes (such as the scoring rubric and your research profile), billing cached prefix tokens at the discounted rate in the final column.
 
 ### Google (Gemini)
 
@@ -74,11 +70,9 @@ The GPT-6 family is current; GPT-5.6 is the previous generation. Prices are Open
 | `gemini-2.5-flash`      | `gemini-2.5-flash`      | $0.30 / $2.50                                        | Legacy    |
 | `gemini-2.5-flash-lite` | `gemini-2.5-flash-lite` | $0.10 / $0.40                                        | Legacy    |
 
-The first three rows are current: Gemini 4 Argon is the flagship (paid tier only), 3.8 Flash is the strongest Flash model, and 3.5 Flash-Lite is the cheapest current model. 3.6 Flash and 3.1 Flash-Lite are the previous generation; Google lists 3.1 Flash-Lite's earliest shutdown as May 2027. Google now limits Gemini 2.5 to accounts that have used it before, so a new key is likely to be refused; the models aren't deprecated.
+The current Google lineup comprises `gemini-4-argon` (flagship, paid tier only), `gemini-3.8-flash` (highest-capability Flash model), and `gemini-3.5-flash-lite` (low-cost current model), while `gemini-3.6-flash` and `gemini-3.1-flash-lite` represent the preceding generation (with `gemini-3.1-flash-lite` scheduled for retirement no earlier than May 2027). Google restricts the legacy Gemini 2.5 family to accounts that have previously called those models.
 
-Gemini 3.x and 4 think by default, and Google bills thinking tokens at the output rate. Aparture counts them in its cost tracking.
-
-Google rejects requests from unrestricted standard API keys. [Google setup](/getting-started/api-keys-google#_2-create-an-api-key) explains which keys work.
+Gemini 3.x and Gemini 4 models enable thinking tokens by default, which Google bills at the output token rate and Aparture includes in its post-run cost summaries. Google rejects requests from unrestricted standard API keys; see [Google setup](/getting-started/api-keys-google#_2-create-an-api-key) for key restriction setup.
 
 ### Removed in the October 2026 refresh
 
@@ -92,31 +86,26 @@ Google rejects requests from unrestricted standard API keys. [Google setup](/get
 | `gemini-3-flash` (preview)                              | `gemini-3.8-flash`    |
 | `gemini-3.1-pro` (preview)                              | `gemini-4-argon`      |
 
-The move happens once, when the app loads a saved config, and covers every model slot including `refusalFallbackModel` and the podcast model (`notebookLMModel`). Most replacements cost the same as or less than the model they replace. Two cost more at list price: the `gemini-3-flash` preview moves to `gemini-3.8-flash`, and the `gemini-3.1-pro` preview moves to `gemini-4-argon`, which also needs a paid tier. Check those slots in Settings if you were using either preview. Models removed in earlier refreshes move the same way.
+When Aparture loads a saved configuration on startup, any retired model ID in any slot (including `refusalFallbackModel` and `notebookLMModel`) is migrated automatically to its replacement in the table above. Most automatic replacements cost the same as or less than the retired model, whereas `gemini-3-flash` (preview) maps to `gemini-3.8-flash` and `gemini-3.1-pro` (preview) maps to `gemini-4-argon` (which also requires a paid tier). Verify those slots in Settings if you previously used either preview model.
 
 ## Per-stage recommendations
 
-Each stage puts different pressure on the model. Matching the model to the pressure keeps quality up and costs down.
+Each stage places different demands on throughput, calibration, and long-context comprehension:
 
-**`filterModel`: fast, cheap, directional.** Stage 2 sorts every fetched paper into three buckets with a short summary, so throughput and cost matter more than nuance. Good picks: `gemini-3.5-flash-lite` (the default), `gemini-3.1-flash-lite` (cheaper), `claude-haiku-5.5`, `gpt-6-luna`.
-
-**`scoringModel`: careful and calibrated, still batch-friendly.** Stage 3 scores each surviving abstract from 0 to 10, and those scores decide what gets read in full. Good picks: `gemini-3.6-flash` (the default), `gemini-3.8-flash`, `claude-sonnet-5.5`, `gpt-6.1-sol`. `claude-haiku-5.5` or `gpt-6-luna` can work if your profile is clear-cut.
-
-**`postProcessingModel`: the Review Model.** Stage 3.5 compares top papers against each other for consistency. Its **Review Model** drop-down sits under **Enable Post-Processing** in Settings. The slot defaults to `gemini-3.6-flash` and doesn't follow `scoringModel` when you change it, so a setup with no Google key should pick a model its keys cover there, or turn post-processing off. Otherwise every Stage 3.5 batch fails and the run keeps the Stage 3 scores.
-
-**`pdfModel`: the slot where quality shows most.** Stage 4 reads full PDFs, including figures, equations, and tables, and writes the deep analysis the briefing is built from. It is also the most expensive slot, because it runs once per paper on tens of thousands of tokens. Good picks: `gemini-3.8-flash` (the default), `gemini-4-argon`, `claude-opus-5.5`, `claude-sonnet-5.5`, `gpt-6.1-sol`. A Fable model or `gpt-6-astra` works here, but its premium multiplies across every paper read.
-
-**`briefingModel`: editorial judgment over a long context.** Stage 5 reads your profile and every full report in one call and writes the executive summary, themes, and paper cards; the audit runs on the same model. Good picks: `gemini-3.8-flash` (the default), `gemini-4-argon`, `claude-opus-5.5`, `gpt-6.1-sol`. This is the one slot where `claude-fable-5.1` or `gpt-6-astra` can be worth the price: it runs once per briefing rather than once per paper, so the premium is bounded.
-
-**`quickSummaryModel`: small and cheap.** Any Flash-Lite, Haiku 5.5, or Luna model.
+- **`filterModel` (fast, low-cost abstract triage)**: Stage 2 classifies every fetched abstract into <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, or <span class="verdict is-no">NO</span> with a one-sentence summary. Recommended picks: `gemini-3.5-flash-lite` (default), `gemini-3.1-flash-lite`, `claude-haiku-5.5`, or `gpt-6-luna`.
+- **`scoringModel` (calibrated batch ranking)**: Stage 3 assigns 0.0–10.0 relevance scores that determine which papers advance to Stage 4. Recommended picks: `gemini-3.6-flash` (default), `gemini-3.8-flash`, `claude-sonnet-5.5`, or `gpt-6.1-sol` (or `claude-haiku-5.5` / `gpt-6-luna` when your profile boundaries are sharply defined).
+- **`postProcessingModel` (comparative Review Model)**: Stage 3.5 re-evaluates top candidates in comparative batches. The **Review Model** dropdown appears under **Enable Post-Processing** in Settings and defaults to `gemini-3.6-flash` independently of `scoringModel`; if you operate without a Google API key, switch `postProcessingModel` to your active provider or uncheck **Enable Post-Processing**.
+- **`pdfModel` (deep multimodal manuscript analysis)**: Stage 4 reads full PDFs (including figures, equations, and tables) at tens of thousands of tokens per paper and writes the technical reports that ground the briefing. Recommended picks: `gemini-3.8-flash` (default), `gemini-4-argon`, `claude-opus-5.5`, `claude-sonnet-5.5`, or `gpt-6.1-sol`. Flagship reasoning models (`claude-fable-5.1` or `gpt-6-astra`) can also be used here, though their per-paper cost multiplies across the full `maxDeepAnalysis` set.
+- **`briefingModel` (long-context editorial synthesis and audit)**: Stage 5 synthesizes all final-round full reports alongside your profile in one call and runs the hallucination audit on the same slot. Recommended picks: `gemini-3.8-flash` (default), `gemini-4-argon`, `claude-opus-5.5`, or `gpt-6.1-sol`. Because `briefingModel` runs once per briefing (plus audit) rather than once per paper, flagship models such as `claude-fable-5.1` or `gpt-6-astra` add a bounded cost here.
+- **`quickSummaryModel` (compact text compression)**: Any Flash-Lite, Haiku 5.5, or Luna model handles the ~300-word Stage 4 report compression cleanly.
 
 ## Example configurations
 
-The cost figures below are rough planning numbers. They use the same per-paper token estimates the app uses for its gate projections (`lib/analyzer/costEstimate.js`) on a reference run: 100 papers fetched, 50 scored and post-processed, 20 read in full, and one briefing over those 20. Thinking tokens bill as output and aren't in these figures, so real runs on thinking models come in higher. The app's own estimates appear at the score-review and pre-briefing gates, and after a run the Download Report card shows a per-stage estimate from the tokens the run actually used.
+The planning figures below use Aparture's built-in token estimator (`lib/analyzer/costEstimate.js`) on a standard reference run: 100 papers fetched, 50 scored and post-processed, 20 analyzed in full as PDFs, and 1 synthesized briefing covering those 20 papers. Thinking tokens are billed as output tokens and are not included in pre-run projections, so runs on thinking-enabled models bill higher than the baseline figures. Live pre-stage estimates appear at Gates 2 and 3, and actual post-run token costs appear on the Download Report card.
 
 ### Default (Aparture ships with this)
 
-All-Google, all models eligible for Google's free tier. This is what `DEFAULT_CONFIG` sets.
+`DEFAULT_CONFIG` assigns all-Google models that qualify for Google's free tier:
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
@@ -127,17 +116,15 @@ All-Google, all models eligible for Google's free tier. This is what `DEFAULT_CO
 | `briefingModel`       | `gemini-3.8-flash`      |
 | `quickSummaryModel`   | `gemini-3.5-flash-lite` |
 
-Ballpark cost for the reference run: about $0.86 at the promotional Flash prices through 2026-12-31, about $1.66 at list price after that, and $0 within the free tier's daily caps. See [Google API key setup](/getting-started/api-keys-google#free-tier) for the caps.
+The estimated cost for the 100-paper reference run is approximately `$0.86` at promotional Flash pricing through `2026-12-31`, `$1.66` at standard list pricing thereafter, and `$0` when operating within Google's free-tier daily rate limits (see [Google API key setup](/getting-started/api-keys-google#free-tier)).
 
 ### Stronger reading on Google
 
-The default with `gemini-4-argon` on `pdfModel` and `briefingModel`. Argon needs a paid tier.
-
-Ballpark cost for the reference run: about $2.00 at Argon's promotional price through 2026-11-30, about $3.93 at list price.
+Upgrading `pdfModel` and `briefingModel` from the default lineup to `gemini-4-argon` (which requires a paid Google tier) brings the estimated cost for the 100-paper reference run to approximately `$2.00` at Argon's promotional rate through `2026-11-30` and `$3.93` at standard list pricing.
 
 ### Mixed providers
 
-One way to spread work across all three providers: Gemini Flash-Lite on the high-volume filter, Claude Sonnet for abstract scoring, GPT-6.1 Sol for deep PDF analysis, Gemini 3.8 Flash for the briefing, and Claude Haiku for quick summaries. Post-processing stays on its Google default. It needs keys for all three.
+Combining all three providers lets you assign each stage to a specialized tier (requiring valid API keys for Google, Anthropic, and OpenAI):
 
 | Slot                  | Model                   |
 | --------------------- | ----------------------- |
@@ -148,29 +135,25 @@ One way to spread work across all three providers: Gemini Flash-Lite on the high
 | `briefingModel`       | `gemini-3.8-flash`      |
 | `quickSummaryModel`   | `claude-haiku-5.5`      |
 
-Ballpark cost for the reference run: about $2.06 at list price. Prompt caching trims the Anthropic and OpenAI stages on repeat runs with the same profile.
-
-This is one mix among many. Each slot only needs a valid key for its own provider; a missing key breaks the stage that needs it, and the rest of the pipeline keeps running.
-
-The per-provider pages show an all-Anthropic and an all-OpenAI lineup with stage-by-stage costs: [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models), [OpenAI](/getting-started/api-keys-openai#_6-recommended-models).
+The estimated cost for the 100-paper reference run is approximately `$2.06` at list pricing, with prompt caching reducing repeated prefix costs on the Anthropic and OpenAI stages. Single-provider lineups with per-stage cost tables are detailed on the [Anthropic](/getting-started/api-keys-anthropic#_5-recommended-models) and [OpenAI](/getting-started/api-keys-openai#_6-recommended-models) setup pages.
 
 ## Adaptive thinking on Anthropic
 
-Every current Claude model in the registry uses adaptive thinking: the model spends more reasoning tokens on hard prompts and fewer on easy ones. Aparture sends `thinking: {type: "adaptive"}` on every Anthropic model except `claude-haiku-4.5`, which rejects it. Which models get the parameter is set by a `supportsAdaptiveThinking` flag on each Anthropic entry in `utils/models.js`. For a model ID that isn't in the registry, the adapter falls back to the model's name and version.
+Every current-generation Claude model in the registry supports adaptive thinking, allocating additional reasoning tokens to complex prompts and fewer to routine ones. Aparture passes `thinking: {type: "adaptive"}` automatically on all Anthropic models where `supportsAdaptiveThinking` is enabled in `utils/models.js` (every model except `claude-haiku-4.5`, which rejects the parameter; for custom model IDs outside the registry, the adapter infers support from the model family and version).
 
-Aparture doesn't set an effort level, so each model runs at its own default. Thinking tokens bill as output; they are usually worth it on the PDF and briefing slots and buy less on the filter. Anthropic calls get a default `maxTokens` of 16000 to leave room for thinking.
+Aparture leaves the reasoning effort parameter at each model's provider default and configures a default `maxTokens` of `16000` on Anthropic calls so reasoning tokens do not truncate the structured output. Because thinking tokens bill at the output rate, they provide the highest return on `pdfModel` and `briefingModel`.
 
 ::: tip Anthropic prompt caching
-Aparture enables Anthropic's prompt caching on every Anthropic call. The cached part of each prompt is the rubric and your profile, so repeat calls within a few minutes read that part at a fraction of the input price; the PDFs and abstracts themselves aren't cached. The terminal prints `[anthropic cache] read=N create=N` after each call if you want to confirm cache hits.
+Aparture enables ephemeral prompt caching on every Anthropic request. Because the scoring rubric and your research profile sit in the shared prompt prefix, subsequent batches within the cache window read that prefix at a steep discount while only the per-paper abstracts or PDFs bill as fresh input tokens. The server logs `[anthropic cache] read=N create=N` to the terminal after each call so you can verify cache hits.
 :::
 
 ## When the registry changes
 
-Model IDs change faster than anything else in Aparture. At each registry refresh, models more than a generation old are removed, and saved configs that point at a removed model move to its replacement the next time the app loads, as in the table above. The user-facing IDs in Settings stay stable when a provider renames an API ID; `utils/models.js` maps one to the other, so an upgrade is a one-file change.
+Whenever `utils/models.js` is refreshed for a new model generation, models more than one generation old are retired and mapped automatically to their current equivalents on config load. User-facing model IDs in Settings remain stable across minor provider snapshot renames because `utils/models.js` maps each user-facing ID to its current provider API string in a single file.
 
 ---
 
-**Registry snapshot 2026-10-17.** Prices from `utils/models.js` (`inputPerMTok`/`outputPerMTok`, plus `promo` blocks with end dates). Check the provider pages for current prices before committing to high-volume use:
+**Registry snapshot 2026-10-17.** Pricing metadata is defined in `utils/models.js` (`inputPerMTok`, `outputPerMTok`, and `promo` blocks with expiration dates). Consult the official provider pricing pages for the latest rates:
 
 - Anthropic: [platform.claude.com/docs/en/docs/about-claude/models](https://platform.claude.com/docs/en/docs/about-claude/models)
 - OpenAI: [developers.openai.com/api/docs/pricing](https://developers.openai.com/api/docs/pricing)
@@ -178,10 +161,10 @@ Model IDs change faster than anything else in Aparture. At each registry refresh
 
 ## Next
 
-[The pipeline →](/concepts/pipeline): where each model slot fits, and what each stage asks of it.
+Continue to [The pipeline →](/concepts/pipeline) to see how each stage processes papers and passes data to the next model slot.
 
-Also worth reading:
+Related guides:
 
-- [API keys](/getting-started/api-keys): set up the keys for the providers you picked.
-- [Tuning the pipeline](/using/tuning-the-pipeline): thresholds, batch sizes, and review gates to adjust alongside model choice.
-- [Reading a briefing](/using/reading-a-briefing): what the `briefingModel` produces, so you can judge whether a slot change is helping.
+- [**API keys**](/getting-started/api-keys): Configure API keys for Anthropic, Google, and OpenAI.
+- [**Tuning the pipeline**](/using/tuning-the-pipeline): Adjust concurrency, batch sizes, candidate counts, and review gates alongside model slots.
+- [**Reading a briefing**](/using/reading-a-briefing): Inspect what `briefingModel` produces and compare configurations via Generation details.

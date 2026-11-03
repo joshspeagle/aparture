@@ -1,108 +1,93 @@
 # Generating a podcast
 
-Aparture doesn't produce audio directly. Instead, it builds a bundle of markdown sources plus a focus prompt that you upload to [Gemini Notebook](https://notebooklm.google.com) (Google's hosted tool, formerly NotebookLM), which generates a two-host conversation about the day's papers. The whole flow takes a few minutes of active clicking on top of whatever the notebook needs to render the audio.
-
-This page covers what's in the bundle, how the upload works, and the two places where you can tune podcast style.
+Aparture builds a structured ZIP bundle of Markdown sources and a custom focus prompt that you upload to [Gemini Notebook](https://notebooklm.google.com) (Google's hosted notebook service, formerly NotebookLM) to generate a two-host audio conversation covering the day's papers. Creating and uploading the bundle takes two to three minutes of interactive setup before Gemini Notebook renders the audio, and both the discussion outline (`prompts/notebooklm-discussion-guide.md`) and focus prompt (`lib/notebooklm/buildFocusPrompt.js`) can be customized for your workflow.
 
 ## Is this worth setting up?
 
-The podcast flow is entirely optional. Plenty of users skip it and just read their briefings. It tends to earn its keep if you commute or exercise regularly and want to keep up passively, if audio sticks better for you than text, or if you want to share a briefing with a collaborator who isn't in Aparture. If most of your paper reading happens at a desk and you don't want another tool in the loop, skipping this add-on is perfectly reasonable.
+The podcast workflow is an optional add-on, and many researchers rely solely on the written briefing. Generating audio provides value when you want to review the day's papers while commuting or exercising, when spoken dialogue helps you retain high-level structure before opening a PDF, or when you want to share a digestible overview with a collaborator. If you prefer reading directly at your desk, you can skip this workflow entirely.
 
 ## What's in the bundle
 
-Once a briefing exists, a <span class="ui-action">Podcast</span> card appears below it in the main area. Clicking <span class="ui-action">Generate podcast bundle</span> downloads a ZIP file containing:
+Once a briefing has been generated, a <span class="ui-action">Podcast</span> card appears below it in the main area. Clicking <span class="ui-action">Generate podcast bundle</span> downloads a ZIP archive containing `INSTRUCTIONS.md`, `briefing.md`, `discussion-guide.md`, per-paper Stage 4 reports (`papers/<arxivId>.md`), and `focus-prompt.txt`:
 
-| File                  | Purpose                                                                                                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `INSTRUCTIONS.md`     | The three-step upload workflow you're about to do. Not a notebook source: read it and keep it local.                                                                     |
-| `briefing.md`         | The full briefing rendered as a single markdown source. Executive summary, themes, paper cards.                                                                          |
-| `discussion-guide.md` | A podcast outline generated from the briefing — theme weighting, talking points, pacing, scaled to the length preset. The main "content" source the notebook reads from. |
-| `papers/<arxivId>.md` | One file per paper, holding the Stage 4 deep-analysis report. The notebook uses these for detail during the conversation.                                                |
-| `focus-prompt.txt`    | The prompt you paste into the notebook's audio-customisation box. Tells the hosts what to emphasise, how deep to go, and how to pace the conversation.                   |
+| File                  | Purpose                                                                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INSTRUCTIONS.md`     | Step-by-step upload instructions for Gemini Notebook. Keep this file locally for reference and do not upload it as a notebook source.                                      |
+| `briefing.md`         | The complete written briefing (executive summary, thematic arguments, and paper cards) formatted as a single Markdown source.                                              |
+| `discussion-guide.md` | A structured podcast outline generated from the briefing (theme weighting, talking points, and pacing scaled to your chosen length preset) that guides the notebook hosts. |
+| `papers/<arxivId>.md` | One file per analyzed paper containing its Stage 4 full-PDF technical report so the hosts can draw on specific methods and numbers.                                        |
+| `focus-prompt.txt`    | The customization prompt that you paste into Gemini Notebook's audio-overview instructions box to control emphasis, technical depth, and pacing.                           |
 
-Everything is plain markdown or text, so you can inspect the bundle before uploading.
+Because every file in the archive is plain Markdown or text, you can inspect or edit the bundle before uploading it.
 
 ## Generating the bundle
 
-Inside the Podcast card:
+Configure and build the bundle inside the Podcast card:
 
-1. **Length.** Short (about 5–8 minutes), Default (about 10–15 minutes), or Long (about 20–30 minutes). The discussion guide and focus prompt scale to the preset: Short covers one or two themes and 2–3 papers, Default two or three themes with 4–6 papers in depth, Long 3–4 themes with meaningful dives on the top papers. Each preset matches one of the notebook's own length options (Shorter, Default, Longer); the card and `INSTRUCTIONS.md` name the one to pick. The budgets per preset live in `lib/notebooklm/podcastLength.js`.
-2. **Model.** Drop-down for which model generates the discussion guide. Picks up every model in `AVAILABLE_MODELS` and starts on the app's default model. Pick a capable one, since this is a synthesis task; [Model selection](/concepts/model-selection) lists the stronger options.
-3. **Generate.** Click <span class="ui-action">Generate podcast bundle</span>. Takes roughly 30–60 seconds; progress shows inline.
-
-When it's done, a ZIP file downloads with a name like `aparture-notebooklm-2026-04-17.zip`.
+1. **Length:** Select **Short** (approximately 5–8 minutes), **Default** (approximately 10–15 minutes), or **Long** (approximately 20–30 minutes). Both the discussion guide and the focus prompt scale their scope to match your preset: **Short** covers 1–2 themes and 2–3 papers, **Default** covers 2–3 themes with 4–6 papers in depth, and **Long** covers 3–4 themes with extended discussion of the highest-scoring papers. Each preset corresponds to one of Gemini Notebook's built-in duration options (**Shorter**, **Default**, or **Longer**), as noted on the card and in `INSTRUCTIONS.md` (preset budgets are defined in `lib/notebooklm/podcastLength.js`).
+2. **Model:** Choose the model that generates `discussion-guide.md` from the selector (populated from `AVAILABLE_MODELS` and defaulting to `gemini-3.8-flash`). Because outlining the episode is a cross-paper synthesis task, select a capable synthesis model ([Model selection](/concepts/model-selection)).
+3. **Generate:** Click <span class="ui-action">Generate podcast bundle</span>. Generation takes roughly 30–60 seconds and downloads a ZIP archive named `aparture-notebooklm-YYYY-MM-DD.zip`.
 
 ## Uploading to Gemini Notebook
 
-Gemini Notebook, at notebooklm.google.com, has no public API for creating notebooks or generating audio, so this is a manual upload flow. Expect 2–3 minutes of clicking. Step-by-step (the version in `INSTRUCTIONS.md` inside the bundle stays current if Google changes the UI):
+Because Gemini Notebook (`notebooklm.google.com`) does not offer a public API for notebook creation or audio generation, uploading the bundle is a brief manual step (if Google updates the Notebook interface, `INSTRUCTIONS.md` inside your generated ZIP archive contains the latest UI labels):
 
-1. Unzip the bundle locally. The notebook doesn't accept ZIPs as sources.
-2. Open [notebooklm.google.com](https://notebooklm.google.com) and sign in with a Google account if needed.
+1. Unzip the downloaded archive on your machine, as Gemini Notebook accepts individual files rather than ZIP archives.
+2. Open [notebooklm.google.com](https://notebooklm.google.com) and sign in with your Google account.
 3. Create a new notebook.
-4. In the Sources panel, choose "Add source" → "Upload files" and select **every `.md` file** from the unzipped bundle at once — `briefing.md`, `discussion-guide.md`, and all of `papers/<arxivId>.md`.
-5. Do not upload `focus-prompt.txt` or `INSTRUCTIONS.md` as sources. They're for the next step and for you, respectively.
-6. Wait a few seconds for the notebook to index the sources.
-7. In the main panel, find the Audio Overview controls and click <span class="ui-action">Customize</span> (sometimes a pencil icon).
-8. Paste the entire contents of `focus-prompt.txt` into the customisation text box, and pick the length option that matches your preset (Shorter, Default, or Longer).
-9. Click <span class="ui-action">Generate</span>. The notebook takes a few minutes to render the audio — timing varies with queue depth on Google's side.
-
-When it finishes, you'll have an audio overview in the notebook. Play it in-browser, download it, or share the notebook link.
+4. In the Sources panel, select **Add source → Upload files** and upload `briefing.md`, `discussion-guide.md`, and all files under `papers/<arxivId>.md`.
+5. Leave `focus-prompt.txt` and `INSTRUCTIONS.md` out of the uploaded sources, because `focus-prompt.txt` is pasted into the audio customization box in Step 8 and `INSTRUCTIONS.md` is for your own reference.
+6. Wait a few seconds for Gemini Notebook to index the uploaded Markdown files.
+7. In the Audio Overview panel, click <span class="ui-action">Customize</span> (or the pencil icon).
+8. Paste the full contents of `focus-prompt.txt` into the customization text box and select the Gemini Notebook duration option that matches your preset (**Shorter**, **Default**, or **Longer**).
+9. Click <span class="ui-action">Generate</span>. Gemini Notebook renders the audio overview in a few minutes depending on server queue depth, after which you can listen in your browser, download the audio file, or share the notebook link.
 
 ::: info Gemini Notebook UI changes
-Google revises the notebook interface periodically. Button names and panel locations drift. The bundle's `INSTRUCTIONS.md` is the version of these steps that ships with your bundle; if something doesn't match, trust that one over this page.
+Google updates the Gemini Notebook interface periodically. Whenever button labels or panel locations shift, follow the `INSTRUCTIONS.md` file packaged inside your downloaded bundle.
 :::
 
 ::: warning The notebook decides the final length
-The notebook's own length option is its pacing knob, and it overrides the length target in the focus prompt more often than not. That's why Aparture offers three presets instead of a minute count: pick the preset, then pick the matching option in the notebook. Expect ±30% variance even then. The focus prompt asks the hosts to keep the number of papers and depth intact when length is stretched or compressed, rather than dropping content.
+Gemini Notebook's built-in duration selector (**Shorter**, **Default**, **Longer**) is the primary pacing setting for the generated audio and takes precedence over minute targets written in the focus prompt. Always pair your Aparture preset with the matching duration selector in Gemini Notebook, and expect roughly $\pm 30\%$ variation in final runtime. The focus prompt instructs the hosts to preserve the selected papers and technical depth if the runtime stretches or compresses.
 :::
 
 ## What the focus prompt does
 
-The focus prompt is what distinguishes a generic "read the sources aloud" podcast from one that sounds like two researchers talking through the day's papers. It carries:
+The generated `focus-prompt.txt` file steers Gemini Notebook away from a generic summary toward a technical discussion between two researchers by specifying:
 
-- Your research context, paraphrased from the profile text.
-- How many papers to cover and at what depth, scaled to the length preset you picked.
-- What kind of conversation to have — argument-focused, willing to surface tensions, careful with citations.
-- What to skip, usually purely descriptive or low-scored material.
+- Your research context, summarized from your active profile and podcast editorial notes.
+- How many themes and papers to cover and at what level of technical detail, scaled to your selected length preset.
+- Conversational guidelines that prioritize methodological trade-offs, quantitative results, and explicit arXiv ID citations.
+- Material to skip, such as introductory boilerplate or lower-scored papers.
 
-The focus prompt is generated when you build the bundle, so it already reflects the specific briefing and length. You don't need to edit it — paste it in as-is.
+Because `focus-prompt.txt` is tailored to the specific briefing and length preset at bundle-generation time, you can paste it directly without manual edits.
 
 ## Tuning podcast style
 
-Two places shape the output, and they behave differently.
+You can customize podcast structure and tone through the Markdown outline prompt (`prompts/notebooklm-discussion-guide.md`) and the programmatic focus-prompt builder (`lib/notebooklm/buildFocusPrompt.js`).
 
 ### `prompts/notebooklm-discussion-guide.md`: the outline template
 
-This is the prompt that produces `discussion-guide.md`. It controls how themes are ordered and weighted in the outline, which papers get deep-dive coverage versus brief mentions, the overall conversation arc (open, themes, transitions, close), and the pruning rules when the outline would overrun the length budget.
+This Markdown prompt generates `discussion-guide.md`, controlling how themes are ordered and weighted, which papers receive deep-dive coverage versus brief mentions, how the conversation transitions from opening to close, and how lower-priority papers are pruned to fit the length preset.
 
-Edit this file and the next bundle you generate will use the new template — the server re-reads it on each call, no rebuild needed. This is usually the right place to experiment with podcast structure.
+Because the server reads `prompts/notebooklm-discussion-guide.md` from disk on every call, edits take effect on the next bundle you generate without restarting `npm run dev`.
 
 ### `lib/notebooklm/buildFocusPrompt.js`: the focus prompt builder
 
-This is a JavaScript function (not a markdown template) that produces `focus-prompt.txt`. It controls the conversation-style directives embedded in the focus prompt; the depth strategy for each preset (how time is split across deep-dives and brief mentions, and how many themes) lives beside it in `lib/notebooklm/podcastLength.js`.
+This JavaScript module generates `focus-prompt.txt`, combining conversation-style directives with the per-preset theme and paper budgets defined in `lib/notebooklm/podcastLength.js`.
 
-Because this lives in JS, changes require a server restart to take effect. It's less convenient for quick iteration but more powerful, since you can condition the prompt on briefing content or length programmatically.
-
-For the full prompt reference, see [Reference: prompts](/reference/prompts).
+Because `buildFocusPrompt.js` is part of the server code, restart `npm run dev` after editing it so your changes take effect. See [Reference: prompts](/reference/prompts) for a complete overview of all prompt templates and builders.
 
 ## Common issues
 
-**The audio sounds generic.** Usually the focus prompt wasn't pasted, or it was pasted into the wrong text box. The <span class="ui-action">Customize</span> → text-box flow is what shapes the podcast; without it, the notebook produces a default-tone summary.
-
-**The hosts skip a paper you wanted covered.** At shorter lengths, the outline prunes aggressively by score. Star the paper in the briefing, re-generate the bundle, and re-upload. Starred papers get priority in the discussion guide.
-
-**Length is way off target.** The notebook's length option controls pacing more than the focus prompt does; see the warning box in the upload section. Check that the option you picked matches your preset (Short and Shorter, Default and Default, Long and Longer).
-
-**The hosts spend the first minute or two on preamble and banter.** The focus prompt explicitly tells the hosts to skip greetings, agenda-setting, and meta-narration about the format, but the notebook sometimes inserts them anyway. The longer the length option, the worse this tends to be; Short has less runway for filler.
-
-**The hosts repeatedly announce what they'll do instead of doing it** ("we'll cite arXiv IDs today", "we'll keep this conversational", etc.). Same root cause as banter: the notebook sometimes meta-narrates despite the focus prompt telling it not to. A shorter length usually cuts this down because there's less time to fill.
-
-**The notebook hits a context limit or truncates.** Too many sources can do this. Try uploading only `briefing.md` and `discussion-guide.md`, dropping the per-paper reports. The notebook can usually infer enough from the briefing alone.
-
-**Bundle generation takes a long time.** The LLM call for the discussion guide is the slow part. Switching `notebookLMModel` to a faster model (a Gemini Flash or Claude Sonnet model) cuts this noticeably.
+- **The audio sounds generic:** Confirm that you clicked <span class="ui-action">Customize</span> in Gemini Notebook and pasted the contents of `focus-prompt.txt` into the instructions box before generating audio.
+- **The hosts skip a paper you wanted covered:** Shorter length presets prune lower-scoring papers to fit the time budget. Star the paper on the briefing view, regenerate the podcast bundle, and upload the updated files, because starred papers receive priority in the discussion guide.
+- **Episode length differs from your target:** Verify that the duration option selected in Gemini Notebook (**Shorter**, **Default**, or **Longer**) matches the preset you chose in Aparture.
+- **The hosts spend the opening minute on banter or meta-narration:** Although `focus-prompt.txt` instructs the hosts to begin directly with the science and avoid announcing their format, Gemini Notebook occasionally inserts conversational preamble on longer duration settings; switching to the **Short** preset reduces filler.
+- **Gemini Notebook hits a source limit or truncates:** On very large runs, upload only `briefing.md` and `discussion-guide.md` so the source set stays compact.
+- **Bundle generation takes a long time:** Generating `discussion-guide.md` requires a full synthesis call; switching `notebookLMModel` to a faster model (such as `gemini-3.8-flash` or `claude-sonnet-5.5`) reduces generation latency.
 
 ## Next
 
-- [Reading a briefing](/using/reading-a-briefing) — the briefing is the upstream input, so tuning it tunes the podcast.
-- [Tuning the pipeline](/using/tuning-the-pipeline) — thresholds and model choices that shape what reaches the bundle.
-- [Reference: prompts](/reference/prompts) — every prompt file Aparture ships, including the discussion-guide template.
+- [Reading a briefing](/using/reading-a-briefing): Learn how briefing themes and stars shape the upstream input to the podcast bundle.
+- [Tuning the pipeline](/using/tuning-the-pipeline): Adjust scoring thresholds and model slots that determine which papers reach the briefing.
+- [Reference: prompts](/reference/prompts): Inspect every prompt template Aparture uses, including `prompts/notebooklm-discussion-guide.md`.

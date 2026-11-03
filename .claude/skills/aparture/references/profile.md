@@ -1,24 +1,26 @@
 # Setting up: the profile and config
 
-A good profile is the difference between a briefing that reads like it knows the reader and one that reads like a press digest. Spend the time here on the first run.
+A specific, well-calibrated research profile is what turns the daily briefing into a personalized editorial argument rather than a generic summary list. Invest time on the first run to help the reader make their criteria concrete.
 
 ## Writing the profile together
 
-Ask the reader, in one message, for the few things that make a profile work, and offer to draft from their answers:
+Ask the reader in a single message for the core inputs needed to draft their profile, and offer to compose the initial `profile.md` from their answers:
 
-1. Their field and current projects, in a sentence or two each.
-2. Three to six topics or methods they actively follow, as specific as they can make them ("simulation-based inference for galaxy populations", not "machine learning").
-3. What makes a paper worth their time: methods over applications? Data releases? Theory?
-4. What to skip, with examples ("LLM benchmark papers without a methods contribution").
-5. Optionally: authors or groups to always surface, and adjacent areas they'd like occasional coverage of.
+1. **Field and active projects:** A sentence or two describing their research area and current projects.
+2. **Core topics and methods:** Three to six specific topics or methods they track closely (for example, `"simulation-based inference for galaxy populations"` rather than `"machine learning"`).
+3. **Selection criteria:** What makes a paper worth reading in full, such as new methodology, empirical benchmarks, data releases, or theoretical guarantees.
+4. **Explicit exclusions:** Topics or paper types to skip, with concrete examples (such as `"LLM benchmark papers without a methodological contribution"`).
+5. **Watchlist and adjacent areas (optional):** Specific authors, collaborations, or adjacent subfields they want surfaced when relevant.
 
-Draft `profile.md` in their register (first person, plain prose or short bullets, the way they wrote their answers), show it, and revise until they're satisfied. Four example profiles live in `lib/profile/starterTemplates.js` (focused, breadth, applied ML, and the bracketed fill-in template); show one if the reader wants a model, but never ship one unedited as their profile.
+Draft `profile.md` in the reader's own register (using first-person prose or concise bullets matching their reply), show the draft, and revise it until they approve. The repository includes starter profiles in `lib/profile/starterTemplates.js` (covering focused, breadth, applied ML, and a bracketed fill-in template) that you can show as examples if the reader wants a reference structure, while always tailoring the saved `profile.md` to the reader's specific research.
 
 ## Choosing categories
 
-Map their topics to arXiv categories (the full list is in `utils/arxivCategories.js`). Each category costs triage time in every run: cs.LG alone posts 300+ papers a day, so a broad profile across 15+ categories means 800–1,200 papers to triage daily. Suggest the smallest set that covers the profile, and mention the cost of adding large categories.
+Map the reader's research topics to arXiv subject categories from `utils/arxivCategories.js`. Because each added category increases daily triage volume (`cs.LG` alone receives over 300 submissions on peak days, and a broad profile across 15+ categories can harvest 800–1,200 papers per run), recommend the smallest category set that covers the reader's core and adjacent topics and note the token cost of adding high-volume categories.
 
 ## config.json
+
+Write `<state>/config.json` with the reader's chosen settings:
 
 ```json
 {
@@ -29,6 +31,6 @@ Map their topics to arXiv categories (the full list is in `utils/arxivCategories
 }
 ```
 
-`readCount` is how many papers get a full deep read: 8–12 suits most readers; more makes the briefing longer, not better. `watchlist` entries match author names and title/abstract text, and promote matches into the reading set.
+The `readCount` field sets how many papers receive a full deep read (8–12 papers fits a ten-minute daily briefing well), and `watchlist` entries match author surnames and title/abstract phrases to promote matching papers into the reading set.
 
-Create `learned.md` with `node bin/aparture.mjs notes --state <state> --init` (empty Selection, Writing and Podcast sections), an empty `feedback.jsonl`, and `seen.json` (`{}`). If the reader wants history and backup, make the state directory a git repository (private) so every profile change is a commit.
+Initialize `learned.md` by running `node bin/aparture.mjs notes --state <state> --init` (which creates empty `Selection`, `Writing`, and `Podcast` sections), create an empty `feedback.jsonl` file, and write `{}` to `seen.json`. If the reader wants versioned history and cloud backup, initialize the state directory as a private Git repository so every profile revision is recorded as a commit.

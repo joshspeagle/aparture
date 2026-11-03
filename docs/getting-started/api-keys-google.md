@@ -1,63 +1,63 @@
 # Google (Gemini) API key
 
-This page walks you through creating a Google AI Studio API key and wiring it into Aparture so the pipeline can call Gemini models. Google is the simplest provider to start with: every default model slot is a Gemini model, and Google's free tier covers all of them.
+Running Aparture with Gemini models requires a Google AI Studio API key stored in `.env.local`. Google is the simplest provider to start with because every default model slot in Aparture uses a Gemini model covered by Google's free tier.
 
-Two things worth knowing about Google before you start:
+Before you start, note how Google's free tier and API key restrictions work:
 
-- **The free tier covers the defaults.** Gemini 3.5 Flash-Lite, 3.6 Flash, and 3.8 Flash are free within Google's daily request caps. Gemini 4 Argon is the one current model that needs billing.
-- **Older keys may need a restriction.** The Gemini API rejects unrestricted standard keys. Keys that AI Studio creates now are a different kind and work as created; §2 covers older keys.
+- **Free-tier coverage for all defaults:** Gemini 3.5 Flash-Lite, 3.6 Flash, and 3.8 Flash run free of charge within Google's daily request quotas, while only the optional Gemini 4 Argon upgrade requires a paid billing account.
+- **API restriction required on older standard keys:** The Gemini API rejects unrestricted legacy `AIza...` keys, whereas new auth keys created in AI Studio work immediately as issued (see §2 if you are reusing an older key).
 
 ## 1. Sign up
 
-Head to [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with a Google account. The free tier needs no credit card.
+Open [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with a Google account. No credit card is required to use the free tier.
 
 ## 2. Create an API key
 
-1. Sign in and accept the terms of service on your first visit.
+1. Sign in to Google AI Studio and accept the terms of service on your first visit.
 2. Click **Create API key**.
-3. Pick a Google Cloud project for the key, or let AI Studio create one. A project with no billing account stays on the free tier.
-4. Copy the key.
+3. Select an existing Google Cloud project or let AI Studio create a new one (projects without a linked billing account remain on the free tier).
+4. Copy the generated key.
 
-Since 2026-05-28, every key AI Studio creates is an **auth key**, bound to a Google Cloud service account. An auth key works with Aparture as created.
+Since 2026-05-28, AI Studio issues **auth keys** bound to a Google Cloud service account, which work with Aparture immediately without additional configuration.
 
-Older keys are **standard keys**. The Gemini API rejects requests from a standard key that has no restrictions, and a restricted one keeps working. If AI Studio labels your key **Unrestricted**:
+Keys created prior to that change are **standard keys** (prefixed with `AIza`). Because the Gemini API rejects requests from unrestricted standard keys, any key labeled **Unrestricted** in AI Studio must be restricted to the Gemini API:
 
-1. Open the API keys page in AI Studio.
-2. Hover over the **Unrestricted** label and click **Add restrictions**.
+1. Open the API keys page in Google AI Studio.
+2. Hover over the **Unrestricted** label on your key and click **Add restrictions**.
 3. Select **Restrict to Gemini API only**.
 4. Click **Restrict key**.
 
-Changing a key's restrictions needs the `apikeys.keys.update` permission, which the API Keys Admin and Editor roles include. If you can't edit the key, create a new one instead.
+Updating key restrictions requires the `apikeys.keys.update` IAM permission (included in the API Keys Admin and Editor roles); if your account cannot modify the existing key, create a new key instead.
 
-Standard keys start with `AIza`. Google doesn't document the format of auth keys, so paste the key exactly as AI Studio shows it.
+Paste your key into `.env.local` exactly as AI Studio displays it.
 
 ## 3. Add to `.env.local`
 
-Open `.env.local` in the Aparture project root and paste the key:
+Open `.env.local` in the Aparture repository root and add the key under `GOOGLE_AI_API_KEY` without quotes or spaces around `=`:
 
 ```bash
 GOOGLE_AI_API_KEY=your-gemini-api-key
 ```
 
-The env var name is `GOOGLE_AI_API_KEY`, not `GEMINI_API_KEY` or `GOOGLE_API_KEY`. No quotes, no spaces around `=`. Restart `npm run dev` if it's already running; Next.js reads `.env.local` once at server startup.
+The environment variable name is `GOOGLE_AI_API_KEY` (not `GEMINI_API_KEY` or `GOOGLE_API_KEY`). Restart `npm run dev` if the server is already running so Next.js loads the updated file.
 
-If you haven't already set `ACCESS_PASSWORD` in the same file, see the [install page](/getting-started/install#_3-set-a-local-access-password). Both values live in `.env.local`; the web UI can't launch without a password.
+If you have not set `ACCESS_PASSWORD` in `.env.local` yet, follow the instructions on the [install page](/getting-started/install#_3-set-a-local-access-password), because the web UI requires a password to log in.
 
 ## 4. Verify
 
-Aparture's default model slots are all Google, so with the key in place and the dev server restarted you can test straight away:
+Because Aparture's default model slots all use Google Gemini models, you can verify your setup immediately after restarting the server:
 
-1. Start (or restart) `npm run dev` and log in.
-2. In the Control Panel, open **System Tests** and run the [API Setup Check](/getting-started/verify-setup#step-0-api-setup-check-free). It calls the Gemini API's free `countTokens` method for each configured model, so a key that Google refuses should fail here, before you spend anything.
-3. Run the Dry Run, then the [Minimal API Test](/getting-started/verify-setup).
+1. Start or restart `npm run dev` and log in to the web UI.
+2. In the Control Panel, expand **System Tests** and run the [API Setup Check](/getting-started/verify-setup#step-0-api-setup-check-free), which calls the Gemini API's free `countTokens` endpoint for each configured model to verify your key and model access before spending any tokens.
+3. Run the Dry Run followed by the [Minimal API Test](/getting-started/verify-setup).
 
-On the free tier the Minimal API Test costs nothing. On a paid project with the default models, expect about $0.20 at the promotional prices through 2026-12-31 and about $0.40 at list price.
+On a free-tier project, the Minimal API Test costs $0. On a paid project using the default models, the five-paper test costs roughly $0.20 at the promotional rates available through 2026-12-31 (or ~$0.40 at standard list pricing).
 
-If the key is missing, the activity log shows `no API key for google: set GOOGLE_AI_API_KEY in .env.local and restart the server` (the env var is unset or misspelled). If the key is malformed, revoked, or unrestricted, Google's own error message appears instead.
+If `GOOGLE_AI_API_KEY` is unset or misspelled in `.env.local`, the activity log reports `no API key for google: set GOOGLE_AI_API_KEY in .env.local and restart the server`. If the key is malformed, revoked, or unrestricted, the log displays Google's error message directly.
 
 ## 5. Recommended models
 
-You pick each pipeline stage's model individually in the Settings panel. See [Model selection](/concepts/model-selection) for what each slot does. For an all-Google setup, the defaults are the recommended lineup, and you don't need to change anything:
+You can configure each stage's model independently in Settings (see [Model selection](/concepts/model-selection)). For an all-Google configuration, Aparture's built-in defaults already match the recommended lineup:
 
 | Stage                                   | Model                   |
 | --------------------------------------- | ----------------------- |
@@ -69,21 +69,21 @@ You pick each pipeline stage's model individually in the Settings panel. See [Mo
 | Quick summary (`quickSummaryModel`)     | `gemini-3.5-flash-lite` |
 | Podcast outline (`notebookLMModel`)     | `gemini-3.8-flash`      |
 
-Changes worth considering:
+You can also adjust the default lineup for higher reasoning capacity or lower cost:
 
-- **Stronger reading.** Put `gemini-4-argon` on `pdfModel` and `briefingModel`. Argon needs a paid tier and costs about 2.7 times as much as 3.8 Flash; on the reference run below, the total goes from about $1.66 to $3.93 at list price.
-- **Lower floor.** `gemini-3.1-flash-lite` is the cheapest registered Gemini model ($0.25 / $1.50). On the filter and quick-summary slots it saves about two cents on the reference run below. Google lists its earliest shutdown as May 2027.
-- **3.8 Flash for scoring.** 3.6 Flash and 3.8 Flash cost the same, so this changes quality, not price. On the free tier, each model has its own limits, so putting more stages on one model uses up its daily cap sooner.
+- **Higher synthesis and reading capacity (`gemini-4-argon`):** Assign `gemini-4-argon` to `pdfModel` and `briefingModel` on a paid project. Argon costs roughly 2.7 times as much as 3.8 Flash, increasing the 100-paper reference run below from ~$1.66 to ~$3.93 at list price.
+- **Lowest-cost filtering (`gemini-3.1-flash-lite`):** Assigning `gemini-3.1-flash-lite` ($0.25 / $1.50 per MTok, with earliest deprecation listed as May 2027) to `filterModel` and `quickSummaryModel` trims roughly two cents from the reference run.
+- **Using `gemini-3.8-flash` for scoring:** Because `gemini-3.6-flash` and `gemini-3.8-flash` share the same per-token price, switching `scoringModel` to 3.8 Flash changes scoring behavior at equal paid cost, though on the free tier sharing one model across more stages consumes that model's daily request quota faster.
 
-The Gemini 2.5 models are still in the registry for projects that already use them. Google now limits Gemini 2.5 to accounts that have used it before, so a new key is likely to be refused.
+Legacy `gemini-2.5-*` models remain in the registry for existing projects, as Google restricts Gemini 2.5 access on newly created accounts.
 
 ## 6. Cost estimate
 
 ### Per-model pricing
 
-Gemini models bill per million tokens (MTok), separately for input and output. Gemini 3.x and 4 think by default, and Google bills thinking tokens at the output rate; Aparture counts them in its cost tracking.
+Gemini models bill per million tokens (MTok) separately for input and output. Because Gemini 3.x and 4 models use thinking by default and Google bills thinking tokens (`thoughtsTokenCount`) at the output rate, Aparture includes thinking tokens in its usage accounting.
 
-Paid-tier pricing for every Gemini model in Aparture's registry, for text prompts up to 200k tokens:
+Paid-tier pricing for all Gemini models in Aparture's registry (for text prompts up to 200K tokens) is listed below:
 
 | Model                                                    | Input ($/MTok) | Output ($/MTok) | Promotional price                 | Free tier |
 | -------------------------------------------------------- | -------------: | --------------: | --------------------------------- | --------- |
@@ -96,15 +96,15 @@ Paid-tier pricing for every Gemini model in Aparture's registry, for text prompt
 | `gemini-2.5-flash` (legacy)                              |          $0.30 |           $2.50 |                                   | Legacy    |
 | `gemini-2.5-flash-lite` (legacy)                         |          $0.10 |           $0.40 |                                   | Legacy    |
 
-Aparture's cost estimates use the promotional price until its end date and the list price after.
+Aparture's cost estimator automatically applies active promotional prices through their expiration dates and reverts to list prices afterward.
 
-The October 2026 refresh removed `gemini-3.5-flash`, the `gemini-3-flash` preview, and the `gemini-3.1-pro` preview. Saved configs move to `gemini-3.6-flash`, `gemini-3.8-flash`, and `gemini-4-argon` respectively the next time the app loads. The last two cost more than the previews they replace, and Argon needs a paid tier, so check those slots if you were using either preview.
+The October 2026 registry refresh replaced `gemini-3.5-flash`, `gemini-3-flash` preview, and `gemini-3.1-pro` preview with `gemini-3.6-flash`, `gemini-3.8-flash`, and `gemini-4-argon`, respectively. Because `gemini-4-argon` requires a paid billing account, verify your model slots if a saved configuration previously used the 3.1 Pro preview.
 
-**Caching.** Aparture doesn't create Google cache objects. Google applies implicit caching on its own for Gemini 2.5 and newer and passes on the discount automatically, but only above a minimum prompt size (4,096 tokens on the current Flash models and Argon). The estimates on this page assume full input price.
+**Implicit caching:** Google applies automatic prefix caching on Gemini 2.5 and newer models for prompts above 4,096 tokens without requiring explicit cache objects. The planning tables below report uncached list and promotional rates.
 
 ### Worked calculation: 100 input papers (default lineup, paid tier)
 
-Reference case: 100 fetched papers, 50 pass the filter and are scored and post-processed, 20 go through PDF analysis (below the default cap of 30). Token counts are the app's own per-paper planning estimates, and they leave out thinking tokens.
+In this reference scenario, 100 papers are fetched, 50 pass the filter for scoring and post-processing, and 20 undergo full-PDF analysis (below the default cap of 30). Token counts reflect the application's planning estimates prior to thinking tokens:
 
 | Stage                       | Model                 | Input tokens | Output tokens | Cost at list price                 |
 | --------------------------- | --------------------- | ------------ | ------------- | ---------------------------------- |
@@ -117,53 +117,53 @@ Reference case: 100 fetched papers, 50 pass the filter and are scored and post-p
 | **Total, list price**       |                       |              |               | **~$1.66**                         |
 | **Total, promotional**      |                       |              |               | **~$0.86** (Flash at half price)   |
 
-Rows are rounded to the cent, so the column sums a cent or two away from the totals, which are computed before rounding. Thinking adds output tokens on every row. After a run, the Download Report card shows the estimate from the tokens the run actually used.
+Individual rows are rounded to the nearest cent, while totals are summed prior to rounding. After a run completes, the Download Report card displays the exact token count and cost including thinking tokens.
 
 ### Scaling to other input volumes
 
-Filter and scoring scale linearly with input volume. Stage 4 scales with how many papers you deep-analyse, and the default cap of 30 binds at higher volumes:
+Filtering and abstract scoring scale linearly with harvested paper volume, while Stage 4 PDF analysis is bounded by the default cap of 30 papers:
 
-- **50 papers in** (10 PDFs): ~$0.86 list, ~$0.45 promotional
-- **100 papers in** (20 PDFs): ~$1.66 list, ~$0.86 promotional (reference case above)
-- **250 papers in** (30 PDFs, at cap): ~$2.59 list, ~$1.36 promotional. PDF analysis plateaus at the cap; filter and scoring keep growing.
+- **50 papers in** (10 PDFs): ~$0.86 list, ~$0.45 promotional.
+- **100 papers in** (20 PDFs): ~$1.66 list, ~$0.86 promotional (the reference calculation above).
+- **250 papers in** (30 PDFs, capped): ~$2.59 list, ~$1.36 promotional, where PDF analysis plateaus at 30 papers while filtering and scoring scale with input volume.
 
 ### Free tier
 
-On a project with no billing account, every default model runs free, subject to Google's rate limits:
+On a Google Cloud project without a linked billing account, all default Gemini models run at zero cost within Google's free-tier quotas:
 
-- **Daily request caps.** Each model has its own requests-per-day cap, and caps apply per project, not per key. They reset at midnight Pacific time. A 25-paper run fits comfortably; a 250-paper run can hit a cap partway through.
-- **Your limits are on the dashboard.** Google's docs don't list per-model numbers; sign in at [aistudio.google.com](https://aistudio.google.com/) to see yours.
-- **Google uses free-tier prompts and responses to improve its products.** On the paid tier it doesn't. If your profile contains research notes you'd rather keep out of that, use a paid project.
+- **Per-project daily request caps:** Each model enforces its own requests-per-day quota at the Google Cloud project level (resetting at midnight Pacific time), which easily covers a 25-paper run and can bind during a 250-paper run.
+- **Live quota inspection:** Sign in to [aistudio.google.com](https://aistudio.google.com/) to inspect the exact rate limits assigned to your project.
+- **Data-usage policy:** Google uses free-tier prompts and responses to improve its products, whereas paid-tier traffic is excluded; link a billing account if your research profile contains private notes.
 
 ## 7. When to add billing
 
-You'll want a paid project when any of these applies:
+Link a Cloud Billing account to your Google Cloud project when any of the following conditions apply:
 
-- You want Gemini 4 Argon on any slot. It is paid only.
-- Your runs hit the free tier's daily caps.
-- You don't want Google to use your prompts and responses to improve its products.
-- You want higher rate limits, for example to raise Stage 4 parallelism.
+- You want to run `gemini-4-argon`, which is available only on paid tiers.
+- Your daily runs exceed the free tier's requests-per-day or requests-per-minute quotas.
+- You want your prompts and profile excluded from Google's product-improvement training pipeline.
+- You want higher rate limits so you can increase Stage 4 PDF concurrency.
 
 ### Upgrading to Tier 1
 
-Moving from the free tier to Tier 1 means linking a Cloud Billing account to the project that owns your key and prepaying at least $5. Google's [billing page](https://ai.google.dev/gemini-api/docs/billing) has the current steps.
+To move from the free tier to paid Tier 1, link a Cloud Billing account to your project and make a prepayment of at least $5 following Google's [billing documentation](https://ai.google.dev/gemini-api/docs/billing).
 
-Google caps monthly spend per billing account by tier: $250 on Tier 1, $2,000 on Tier 2. You can't change the tier cap directly, but you can request an increase. You can also set your own project-level spend cap in AI Studio (Google marks this experimental). Tier 2 requires $100 paid on the billing account and three days since the first successful payment. At the defaults, a daily 250-paper run costs about $78 a month at list price, well under the Tier 1 cap.
+Google enforces monthly spend caps by billing tier ($250/month on Tier 1 and $2,000/month on Tier 2, which unlocks after $100 in cumulative spend and three days since the initial payment), and you can also configure a project-level spend limit in AI Studio. At Aparture's default settings, a daily 250-paper run costs roughly $78/month at full list price, fitting comfortably within Tier 1.
 
 ## 8. Common gotchas
 
-- **Forgot to restart `npm run dev`.** Hot-reload doesn't pick up `.env.local` changes; restart the server.
-- **Wrong env var name.** It's `GOOGLE_AI_API_KEY`, not `GEMINI_API_KEY` or `GOOGLE_API_KEY`.
-- **Every Google call fails on an old key.** The key is probably an unrestricted standard key. Restrict it to the Gemini API (§2) or create a new one.
-- **Argon slots fail on a free project.** Gemini 4 Argon has no free tier. Set up billing, or move those slots back to `gemini-3.8-flash`.
-- **Gemini 2.5 fails on a new key.** Google limits Gemini 2.5 to accounts that used it before. Switch to a 3.x model.
-- **Runs slow down partway through on the free tier.** Free-tier rate limits are lower than paid ones. On large runs Aparture warns when a Flash-Lite stage's parallelism is likely to exceed 60 requests per minute; the run pauses on rate-limit errors and recovers, but slowly. Lower that stage's parallelism in Settings, or add billing.
-- **Want faster PDF analysis on a paid project?** Tier 1 rate limits leave room for more than the default 3 parallel PDF calls. Raise **Parallel PDF Calls** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-calls)).
+- **Forgetting to restart `npm run dev`:** Restart the development server whenever you edit `.env.local` so Next.js reloads environment variables.
+- **Misspelled environment variable name:** The variable must be named `GOOGLE_AI_API_KEY` (not `GEMINI_API_KEY` or `GOOGLE_API_KEY`).
+- **All Google calls fail on an older `AIza...` key:** Restrict the legacy standard key to the Gemini API in AI Studio (§2) or generate a new key.
+- **`gemini-4-argon` fails on a free project:** Argon requires a paid billing tier; switch the slot back to `gemini-3.8-flash` or enable billing.
+- **`gemini-2.5-*` fails on a new account:** Google restricts legacy 2.5 models to accounts with prior 2.5 usage; select a current `gemini-3.x` model instead.
+- **Rate-limit pauses on large free-tier runs:** When a Flash-Lite stage's batch count and concurrency approach ~60 requests per minute, Aparture logs a pre-flight notice and automatically pauses and retries on 429 responses; lower the stage concurrency in Settings or upgrade to Tier 1.
+- **Speeding up PDF analysis on paid tiers:** Paid Tier 1 quotas support higher concurrency than the default of 3 parallel PDF calls; raise **Parallel PDF Calls** in Settings to 5–8 ([tuning the pipeline](/using/tuning-the-pipeline#parallel-pdf-calls)).
 
 ## Next
 
-Key added and dev server restarted? Confirm it works: [Verify your setup →](/getting-started/verify-setup)
+Once your key is configured and the server is restarted, proceed to [Verify your setup](/getting-started/verify-setup).
 
 ---
 
-_Pricing snapshot taken 2026-10-17 from the model registry, checked against Google's pricing page the same day. Google's pricing, free-tier policy, and billing tiers change. Verify current pricing at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing), key rules at [ai.google.dev/gemini-api/docs/api-key](https://ai.google.dev/gemini-api/docs/api-key), and your rate limits at [aistudio.google.com](https://aistudio.google.com/) before committing to real spend._
+_Pricing snapshot taken 2026-10-17 from the model registry. Verify current pricing at [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing), API key rules at [ai.google.dev/gemini-api/docs/api-key](https://ai.google.dev/gemini-api/docs/api-key), and project rate limits at [aistudio.google.com](https://aistudio.google.com/)._

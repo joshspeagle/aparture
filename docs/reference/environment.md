@@ -1,11 +1,11 @@
 # Environment variables
 
-Aparture reads its secrets and a few runtime flags from `.env.local` at the repo root. The file is gitignored; if you don't have one yet, [Install](/getting-started/install) walks through creating it.
+Aparture reads its authentication secrets and runtime configuration flags from `.env.local` in the repository root. This file is gitignored; if you have not created it yet, follow the steps in [Install](/getting-started/install).
 
-There are four variables you'll usually care about — one required password, three API keys (at least one required) — plus four optional ones (`PORT`, `NODE_ENV`, `ARXIV_CONTACT_EMAIL`, `APARTURE_REPORTS_DIR`) and a handful of test-only overrides that should never appear in a real dev file.
+For standard local use, you configure `ACCESS_PASSWORD` and at least one provider API key (`CLAUDE_API_KEY`, `OPENAI_API_KEY`, or `GOOGLE_AI_API_KEY`), alongside optional runtime settings (`PORT`, `NODE_ENV`, `ARXIV_CONTACT_EMAIL`, and `APARTURE_REPORTS_DIR`). The table below also documents test-only overrides used by the automated Vitest suite.
 
 ```bash
-# .env.local — gitignored, project root
+# .env.local (gitignored, repository root)
 ACCESS_PASSWORD=change-me
 CLAUDE_API_KEY=
 OPENAI_API_KEY=
@@ -17,51 +17,51 @@ GOOGLE_AI_API_KEY=
 ```
 
 ::: warning Restart after editing
-Next.js reads `.env.local` once at dev-server startup. If you edit the file while `npm run dev` is running, the change usually won't take effect — stop the server (Ctrl-C) and re-run it.
+Next.js reads `.env.local` once when the development server starts. Whenever you edit `.env.local` while `npm run dev` is running, stop the server (`Ctrl-C`) and start it again so the new values take effect.
 :::
 
 ## Quick reference
 
-| Variable                                | Required                  | Read by                                                                         | Default                               |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------- | ------------------------------------- |
-| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                                                     | None — unset means every request 401s |
-| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | Anthropic models unavailable if unset |
-| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | OpenAI models unavailable if unset    |
-| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper     | Google models unavailable if unset    |
-| `PORT`                                  | No                        | Next.js CLI (not read from source)                                              | `3000`                                |
-| `NODE_ENV`                              | No                        | `lib/llm/resolveCallModelMode.js` · `pages/api/analyze-pdf.js` (test gates)     | `development` (set by Next)           |
-| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/harvest-arxiv.js` · `fetch-arxiv.js` · `bin/aparture.mjs`            | Unset — no `From` header sent         |
-| `APARTURE_REPORTS_DIR`                  | No                        | `pages/api/briefings/*.js` · `pages/api/sessions/*.js` · `lib/figures/store.js` | `<cwd>/reports`                       |
-| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/loadRubricPrompt.js`                         | Unset                                 |
-| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                          | Unset                                 |
-| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                                  | Unset                                 |
-| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                                   | Unset                                 |
+| Variable                                | Required                  | Read by                                                                                         | Default                                  |
+| --------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `ACCESS_PASSWORD`                       | Yes                       | Every route in `pages/api/`                                                                     | None (unset causes every request to 401) |
+| `CLAUDE_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper                     | Anthropic models unavailable if unset    |
+| `OPENAI_API_KEY`                        | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper                     | OpenAI models unavailable if unset       |
+| `GOOGLE_AI_API_KEY`                     | At least one of the three | All LLM-calling routes, via the shared `lib/llm/resolveRouteAuth.js` helper                     | Google models unavailable if unset       |
+| `PORT`                                  | No                        | Next.js CLI (not read from source)                                                              | `3000`                                   |
+| `NODE_ENV`                              | No                        | `lib/llm/resolveCallModelMode.js` · `pages/api/analyze-pdf.js` (test gates)                     | `development` (set by Next)              |
+| `ARXIV_CONTACT_EMAIL`                   | No                        | `pages/api/harvest-arxiv.js` · `fetch-arxiv.js` · `bin/aparture.mjs`                            | Unset (no `From` header sent)            |
+| `APARTURE_REPORTS_DIR`                  | No                        | `lib/persistence/coldStore.js` · `pages/api/{briefings,sessions}/*.js` · `lib/figures/store.js` | `<cwd>/reports`                          |
+| `APARTURE_TEST_PROMPT_OVERRIDE`         | Test only                 | Most LLM-calling routes · `lib/llm/loadRubricPrompt.js`                                         | Unset                                    |
+| `APARTURE_TEST_PDF_OVERRIDE`            | Test only                 | `lib/llm/callModel.js`                                                                          | Unset                                    |
+| `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE` | Test only                 | `pages/api/suggest-profile.js`                                                                  | Unset                                    |
+| `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`   | Test only                 | `pages/api/check-briefing.js`                                                                   | Unset                                    |
 
 ## Required
 
 ### `ACCESS_PASSWORD`
 
-The password that gates every API route. The web UI sends it in the `password` field of the JSON body on POST/PATCH requests, and in the `x-aparture-password` request header on GET/DELETE requests (never in the URL query string, which would leak into dev-server logs and browser history); each route validates it against `process.env.ACCESS_PASSWORD` with a constant-time comparison and returns `401 Invalid password` on mismatch. The check fails closed: when `ACCESS_PASSWORD` is unset or empty, every request is rejected rather than silently accepted. Never sent to the browser — the client stores only what the user typed.
+`ACCESS_PASSWORD` gates every API route in the application. The web UI sends this password in the `password` field of the JSON request body on `POST` and `PATCH` calls, and in the percent-encoded `x-aparture-password` HTTP header on `GET` and `DELETE` calls (keeping the password out of URL query strings so it never appears in server logs or browser history). Each route compares the supplied value against `process.env.ACCESS_PASSWORD` in constant time and returns `401 Invalid password` on a mismatch. The check fails closed: when `ACCESS_PASSWORD` is unset or empty, every request is rejected. The server never sends `ACCESS_PASSWORD` to the browser; the client stores only what the user entered at login.
 
 ```bash
 ACCESS_PASSWORD=correct-horse-battery-staple
 ```
 
-A long random string (12+ characters) is enough for the intended use case — a single-tenant dev or self-hosted instance. `npm run dev` and `npm start` listen on 127.0.0.1, so only the local machine can reach the app; `npm run dev -- -H 0.0.0.0` opens it to your network. Aparture is not designed to sit on the public internet unprotected; for that, wrap it behind a real auth layer.
+A random passphrase of 12 or more characters is well suited for a single-user local or LAN deployment. Because `npm run dev` and `npm start` bind to `127.0.0.1` by default, only the local machine can reach the server unless you pass `npm run dev -- -H 0.0.0.0` to listen on your local network. Do not expose the server directly to the public internet without an external authentication proxy.
 
-The headless runner (`node bin/aparture.mjs`) calls the arXiv proxy routes in-process rather than over HTTP. When `ACCESS_PASSWORD` is unset it generates a random one for its own process, so it needs no password configured.
+When the headless runner (`node bin/aparture.mjs`) invokes the arXiv proxy routes in-process and `ACCESS_PASSWORD` is unset, it generates a random in-memory password for its own process automatically.
 
 ## API keys (at least one required)
 
-You need at least one provider key. Providing several lets you mix providers across pipeline stages — the default config uses Google for all slots, but Anthropic + Google, OpenAI + Anthropic, or any other combination works as long as each selected model's provider has a key.
+You must configure at least one LLM provider key, and you can set keys for multiple providers to mix models across pipeline stages (for example, pairing Google Gemini or Anthropic Haiku on filtering with Anthropic Opus or OpenAI GPT-6.1 Sol on PDF analysis and briefing synthesis).
 
-Each route resolves its key at request time based on the selected model's provider. No startup validation — a stage configured for a provider with no key will fail only when it tries to run.
+Each API route resolves the key for its selected model's provider at request time; if a stage is assigned to a provider whose key is unset, that stage fails when called.
 
-A request can also bring its own provider key, in an `apiKey` body field, instead of the password. The web UI doesn't do this; it exists for the planned desktop app. `/api/analyze-pdf` downloads a PDF before it calls a model, so there a client key must have its provider's published shape (`sk-ant-…` for Anthropic, `sk-…` for OpenAI, `AIza…` for Google), or the request needs the password.
+API routes also accept a client-supplied provider key in the `apiKey` request body field in place of `password` to support the planned Phase 2 desktop application. Because `/api/analyze-pdf` downloads the manuscript PDF before calling the LLM, a client-supplied `apiKey` on that route must match its provider's published prefix shape (`sk-ant-...` for Anthropic, `sk-...` for OpenAI, or `AIza...` for Google) if `password` is not used.
 
 ### `CLAUDE_API_KEY`
 
-Anthropic (Claude) API key. Prefix: `sk-ant-api03-`. Used when any pipeline slot is set to a Claude model. See [Anthropic setup](/getting-started/api-keys-anthropic) for signup and key creation.
+Anthropic (Claude) API key, prefixed with `sk-ant-api03-`, used whenever a pipeline slot is set to a Claude model. See [Anthropic setup](/getting-started/api-keys-anthropic) for account creation and billing details.
 
 ```bash
 CLAUDE_API_KEY=sk-ant-api03-...
@@ -69,7 +69,7 @@ CLAUDE_API_KEY=sk-ant-api03-...
 
 ### `OPENAI_API_KEY`
 
-OpenAI (GPT) API key. Prefix: `sk-proj-` for project keys (current) or `sk-` for legacy user keys. Used when any slot is set to an OpenAI model. See [OpenAI setup](/getting-started/api-keys-openai).
+OpenAI (GPT) API key, prefixed with `sk-proj-` for project keys (or `sk-` for legacy user keys), used whenever a pipeline slot is set to an OpenAI model. See [OpenAI setup](/getting-started/api-keys-openai).
 
 ```bash
 OPENAI_API_KEY=sk-proj-...
@@ -77,7 +77,7 @@ OPENAI_API_KEY=sk-proj-...
 
 ### `GOOGLE_AI_API_KEY`
 
-Google AI Studio (Gemini) API key. Standard keys start with `AIza` and must be restricted to the Gemini API; Google doesn't document the format of the auth keys AI Studio has issued since 2026-05-28. Used when any slot is set to a Gemini model. The env var is specifically `GOOGLE_AI_API_KEY` — not `GEMINI_API_KEY` or `GOOGLE_API_KEY`. See [Google setup](/getting-started/api-keys-google).
+Google AI Studio (Gemini) API key, used whenever a pipeline slot is set to a Gemini model. Legacy standard keys start with `AIza` and must be restricted to the Gemini API, while auth keys created in AI Studio since 2026-05-28 work as issued. The variable name is `GOOGLE_AI_API_KEY` (not `GEMINI_API_KEY` or `GOOGLE_API_KEY`). See [Google setup](/getting-started/api-keys-google).
 
 ```bash
 GOOGLE_AI_API_KEY=your-gemini-api-key
@@ -87,7 +87,7 @@ GOOGLE_AI_API_KEY=your-gemini-api-key
 
 ### `PORT`
 
-Port for `npm run dev`. Useful when 3000 is already in use by something else. Read by the Next.js CLI directly; no Aparture source code references it. Requires a dev-server restart.
+Sets the HTTP port for `npm run dev` when port `3000` is already in use by another process. `PORT` is read directly by the Next.js CLI and requires a server restart when changed:
 
 ```bash
 PORT=3001
@@ -95,82 +95,80 @@ PORT=3001
 
 ### `NODE_ENV`
 
-Set automatically by `next dev` (`development`), `next start` (`production`), and `vitest` (`test`). You usually don't set this in `.env.local`. Two source-level effects, both test gates: when `NODE_ENV === 'test'`, `pages/api/analyze-pdf.js` honors the `_testPdfBase64` request body field (see below) and skips the download path, and `lib/llm/resolveCallModelMode.js` honors a client-requested fixture mode. In any other environment both are ignored and every LLM call is live.
+Set automatically by `next dev` (`development`), `next start` (`production`), and `vitest` (`test`), so you do not need to set it in `.env.local`. In source code, `NODE_ENV === 'test'` gates two test-only behaviors: `pages/api/analyze-pdf.js` honors the `_testPdfBase64` request body field to bypass live arXiv downloads, and `lib/llm/resolveCallModelMode.js` honors client-requested fixture mode. In `development` and `production`, both test paths are ignored and all LLM calls execute live.
 
 ### `ARXIV_CONTACT_EMAIL`
 
-Contact email sent as an HTTP `From` header on every arXiv request: the OAI-PMH proxy (`pages/api/harvest-arxiv.js`), the Atom proxy (`pages/api/fetch-arxiv.js`), and the headless runner's page and PDF fetches (`bin/aparture.mjs`). arXiv's API user manual politely asks clients to identify themselves so their ops team can reach the maintainer if the traffic pattern causes issues. Not authenticated — arXiv has no API-key or account system for the public query endpoint; the header is purely a goodwill signal, weighted by their abuse heuristics. If unset, no `From` header is sent (the request still works; it's just anonymous).
+Contact email address sent in the HTTP `From` header on every request to arXiv across the OAI-PMH proxy (`pages/api/harvest-arxiv.js`), the Atom proxy (`pages/api/fetch-arxiv.js`), and the headless runner (`bin/aparture.mjs`). arXiv's API documentation asks automated clients to include a contact address so operations staff can reach the maintainer if traffic patterns cause issues, and arXiv's rate-limit heuristics treat identified clients (especially institutional `.edu` and `.ac.*` addresses) more leniently than anonymous traffic. When `ARXIV_CONTACT_EMAIL` is unset, requests omit the `From` header:
 
 ```bash
 ARXIV_CONTACT_EMAIL=you@example.edu
 ```
 
-Institutional addresses (`.edu`, `.ac.*`) tend to carry more weight than generic webmail domains.
-
 ### `APARTURE_REPORTS_DIR`
 
-Base directory for runtime-state files. Today three persistence layers write here:
+Base directory on disk for cold runtime persistence across briefings, cropped figures, and analyzer sessions:
 
-- briefing tier writes to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`,
-- key figures go to `<APARTURE_REPORTS_DIR>/figures/<arxivId>.png`, with the label and caption beside it in `.json`,
-- analyzer session tier writes to `<APARTURE_REPORTS_DIR>/sessions/<sessionId>.json` (full `allPapers` + `scoredPapers` + filter verdicts; the localStorage hot blob keeps only a summary so quota is never the limit).
+- **Briefings:** Saved to `<APARTURE_REPORTS_DIR>/briefings/<id>.json`.
+- **Key figures:** Cropped images are written to `<APARTURE_REPORTS_DIR>/figures/<arxivId>.png` alongside label and caption metadata in `<arxivId>.json`.
+- **Analyzer sessions:** Full session state (`allPapers`, `scoredPapers`, and filter verdicts) is saved to `<APARTURE_REPORTS_DIR>/sessions/<sessionId>.json`, while browser `localStorage` retains a compact summary under ~600 KB.
 
-Defaults to `<cwd>/reports`, matching the existing `reports/` convention.
+When unset, `APARTURE_REPORTS_DIR` defaults to `<cwd>/reports`:
 
 ```bash
-# .env.local (rarely set in practice)
+# .env.local (optional custom storage path)
 APARTURE_REPORTS_DIR=/path/to/alternate/reports
 ```
 
-Primarily useful to point Vitest at a `tmp` directory so integration tests don't touch `reports/` in the repo. The planned desktop app replaces this with `~/aparture/` as the unified working directory.
+In tests, Vitest points `APARTURE_REPORTS_DIR` at a temporary directory so integration tests do not write to the repository's `reports/` folder; in the planned desktop application, it points to `~/aparture/`.
 
 ## Test-only overrides
 
 ::: danger Do not set these in a real dev environment
-These variables exist so the Vitest integration suite can produce deterministic fixture hashes. When set, the affected routes substitute stub values into prompts — useful for tests, useless (and silently destructive) for real runs.
+The variables below exist exclusively so the Vitest integration suite can compute deterministic fixture hashes. Setting them in `.env.local` substitutes stub strings into live prompts.
 :::
 
 ### `APARTURE_TEST_PROMPT_OVERRIDE`
 
-When set, replaces the variable tail of each LLM prompt with this literal string before hashing. Makes fixture keys deterministic regardless of paper content. Also disables Anthropic prompt caching (the `cachePrefix` / `cacheable` fields are omitted from the request), so fixture behaviour doesn't depend on cache state.
+Replaces the variable tail of each LLM prompt with this literal string prior to hashing so fixture keys remain deterministic across test runs, and disables Anthropic prompt caching (`cachePrefix` and `cacheable` are omitted) so fixture behavior does not depend on cache state.
 
-Read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, `generate-notebooklm.js`, and `editor-questions.js`, and by `lib/llm/loadRubricPrompt.js` when it builds a validation-retry prompt. Used via `beforeEach` in the integration tests at `tests/integration/`.
+This variable is read by `pages/api/synthesize.js`, `score-abstracts.js`, `rescore-abstracts.js`, `quick-filter.js`, `analyze-pdf.js`, `analyze-pdf-quick.js`, `generate-notebooklm.js`, `editor-questions.js`, and `lib/llm/loadRubricPrompt.js` during `tests/integration/` runs.
 
 ### `APARTURE_TEST_PDF_OVERRIDE`
 
-When set, replaces the `pdfBase64` field in the LLM request with this literal value before hashing. Decouples the fixture cache from actual PDF content. Read by `lib/llm/callModel.js`; used only by `tests/integration/analyze-pdf.test.js`.
+Replaces the `pdfBase64` field in LLM requests with a literal string before hashing so fixture keys are decoupled from PDF byte contents. Read by `lib/llm/callModel.js` and used by `tests/integration/analyze-pdf.test.js`.
 
 ### `APARTURE_TEST_SUGGEST_PROMPT_OVERRIDE`
 
-Variant of `APARTURE_TEST_PROMPT_OVERRIDE` scoped to `pages/api/suggest-profile.js`. The suggest-profile route has its own override because its prompt layout differs from the other routes.
+Prompt-override variant scoped to `pages/api/suggest-profile.js`, which uses its own prompt structure.
 
 ### `APARTURE_TEST_CHECK_PROMPT_OVERRIDE`
 
-Variant of `APARTURE_TEST_PROMPT_OVERRIDE` scoped to `pages/api/check-briefing.js`.
+Prompt-override variant scoped to `pages/api/check-briefing.js`.
 
 ### `_testPdfBase64` (request body field, not env var)
 
-Not an environment variable — a request body field on `POST /api/analyze-pdf`, gated by `NODE_ENV === 'test'`. When present and gated in, the route injects the provided base64 PDF bytes directly and skips the arXiv download path entirely: the HTTP fetch, the Playwright fallback, and the reCAPTCHA handling are all bypassed. Used by `tests/integration/analyze-pdf.test.js` with the minimal fixture PDF at `tests/fixtures/pdf/minimal.pdf`.
+A JSON request body field on `POST /api/analyze-pdf` that is honored only when `NODE_ENV === 'test'`. When present in test mode, the route uses the supplied base64 PDF bytes directly and skips the live arXiv HTTP fetch, Playwright fallback, and reCAPTCHA handling (`tests/integration/analyze-pdf.test.js` passes `tests/fixtures/pdf/minimal.pdf` via this field).
 
 ## File format rules
 
-A few things about `.env.local` that bite reliably:
+Follow these formatting rules when editing `.env.local` to avoid parsing errors:
 
-- **UTF-8, no BOM.** Windows Notepad's default "Save As UTF-8" adds a byte-order mark. Use VS Code with "UTF-8" (not "UTF-8 with BOM"), or another editor with an explicit no-BOM option.
-- **LF line endings.** A CRLF at the end of a line can leak `\r` into the value on that line, which surfaces as "invalid password" or "invalid API key" errors with no other hint. Configure your editor to save `.env*` files as LF.
-- **No quotes.** `KEY=value` is correct. Quoting the value adds the quotes to the value on some parsers.
-- **Comments at column 0.** `# note` works only at the start of a line. `KEY=value # note` sets `KEY` to the literal string `value # note` on most parsers.
-- **One variable per line.** No multi-line values.
+- **UTF-8 encoding without BOM:** Windows Notepad's default `"Save As UTF-8"` prepends a byte-order mark that corrupts the first variable name; save `.env.local` using VS Code or another editor set to UTF-8 without BOM.
+- **LF line endings:** Windows CRLF (`\r\n`) line endings can leave a trailing `\r` character attached to a password or API key, causing `401 Invalid password` or provider authentication errors; configure your editor to save `.env*` files with LF (`\n`) line endings.
+- **Unquoted values:** Write `KEY=value` without surrounding quotes, because some environment parsers include quote characters as part of the value.
+- **Comments at column 0:** Place `# comment` lines on their own line starting at column 0, because inline comments (`KEY=value # note`) are parsed as part of the value string.
+- **One variable per line:** Keep every key-value assignment on a single line.
 
 ## Security
 
-- `.env.local` is gitignored by default. Verify with `git check-ignore .env.local` — if it prints the path, it's being ignored; if it prints nothing, `.gitignore` isn't set up right.
-- API keys never cross the client boundary. All LLM calls go through `pages/api/*` server routes, which read the env var and forward the request. The browser never sees the key.
-- If you accidentally commit a key, revoke it in the provider's console and rotate. A commit that touched `.env.local` is reachable forever in the git history; rotating the key is simpler than trying to scrub it.
+- `.env.local` is gitignored by default; you can verify that Git ignores it by running `git check-ignore .env.local` (which prints `.env.local` when properly ignored).
+- Provider API keys remain exclusively on the server: all LLM requests execute inside `pages/api/*` backend routes, and keys are never sent to the browser.
+- If you ever commit an API key to a Git repository by mistake, revoke and rotate the key immediately in the provider's console because committed secrets persist in Git reflogs and history.
 
 ## See also
 
-- [API keys hub](/getting-started/api-keys) — pricing and provider comparison
-- [Install](/getting-started/install) — Node setup and creating `.env.local`
-- [Verify setup](/getting-started/verify-setup) — the three setup checks that confirm keys authenticate and the pipeline runs
-- [Troubleshooting](/reference/troubleshooting) — symptoms caused by `.env.local` format issues
+- [API keys hub](/getting-started/api-keys): Provider comparison and cost estimates.
+- [Install](/getting-started/install): Node.js installation and creating `.env.local`.
+- [Verify setup](/getting-started/verify-setup): Zero-cost and end-to-end setup checks.
+- [Troubleshooting](/reference/troubleshooting): Diagnosing `.env.local` and authentication errors.

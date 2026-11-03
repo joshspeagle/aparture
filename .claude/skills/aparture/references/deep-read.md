@@ -1,27 +1,27 @@
 # Deep read: one worker per selected paper
 
-The deep read turns a paper into material an editor can write from: what it does, what it found, how far to trust it, and why this reader should care. Everything the briefing later says about the paper comes from this report, so the report has to be faithful to the paper and say where each claim came from.
+The deep-read stage converts each selected paper into a structured technical report covering what the authors did, what they measured, where the limitations lie, and how the work connects to the reader's profile. Because every specific claim in the final briefing traces to this report, the report must represent the paper's scope accurately and pair key findings with verbatim source quotes.
 
 ## Instructions for a deep-read worker
 
-You will receive the reader's profile (plus its selection notes), the paper's triage entry (score and one-line reason), and either:
+You receive the reader's profile (including its selection notes), the paper's triage entry (score and one-line rationale), and one of two full-text formats:
 
-- `<run>/papers/<id>.md` — the full text from arXiv's HTML rendering, with math as `$LaTeX$`, a figure list with captions, and appendices omitted; or
-- `<run>/papers/<id>.pdf` — when arXiv has no HTML version. Read it with the Read tool, using the `pages` parameter for long papers (methods, results and conclusions matter most). Its figure list in `<run>/papers/<id>.json` comes from the PDF's captions (ids like `Figure 3`); `render` crops the one you pick out of the PDF, the same crop the app uses.
+- `<run>/papers/<id>.md`: The full paper text extracted from arXiv's HTML rendering, with math formatted as `$LaTeX$`, a figure list with captions, and appendices omitted.
+- `<run>/papers/<id>.pdf`: Provided when arXiv has no HTML rendering for the paper. Read it with the Read tool, using the `pages` parameter on long manuscripts to focus on the introduction, methods, results, and conclusions. Its extracted figure list in `<run>/papers/<id>.json` comes from the PDF captions (using identifiers such as `Figure 3`), and `render` crops the selected figure directly from the PDF using the same cropping pipeline as the web application.
 
-Read the paper properly: the introduction for the claim, the method for what was actually done, the results for what was actually shown, and the conclusion for what the authors think it means. Abstracts oversell; a report that only paraphrases the abstract has failed.
+Read the introduction for the central claim, the methods section for the actual implementation, the results section for the empirical or theoretical evidence, and the conclusion for the authors' interpretation, because abstracts frequently overstate generality.
 
-Your report is what the briefing writer works from, so imprecision here travels. State the scope of every result (which datasets, experiments or regimes it was measured on) and describe the method as the paper does, not as a simplified gloss: "a two-pass network" is not "one pass", and "one estimator per kind of block" is not "one estimator for all blocks".
+Because the briefing writer works directly from your report, preserve the exact scope of every finding (naming the specific datasets, experimental regimes, or assumptions) and describe the architecture or estimator accurately (for example, distinguishing a two-pass network from a single-pass network, or a per-block estimator from a global one).
 
-Score the paper again with the rubric in `prompts/rubric-pdf.md` (Research Alignment × 0.5 + Paper Quality × 0.5, profile-aware quality calibration). Ignore that file's `{{...}}` placeholders and its output format; use the format below.
+Re-score the paper after reading the full text using the rubric in `prompts/rubric-pdf.md` (Research Alignment × 0.5 + Paper Quality × 0.5, with profile-aware quality calibration), ignoring that file's `{{...}}` placeholders and writing the JSON structure below.
 
 ### Quotes are the audit trail
 
-Several fields ask for a `quote`. A quote is a sentence or clause copied **character-for-character** from `<id>.md` (or from the PDF text when that is your source), long enough to be unambiguous (at least eight words) and short enough to be specific (one sentence). A validation script later checks every quote against the paper text and rejects the briefing if one doesn't match, so copy, don't retype or tidy. If you can't find a sentence that supports a claim, drop the claim.
+Several output fields require a `quote` string copied **character-for-character** from `<id>.md` (or from the PDF text when reading from PDF). Each quote should be a single unambiguous sentence or clause of at least eight words. Because `node bin/aparture.mjs validate` checks every quote against the source text and rejects the briefing on any mismatch, copy the exact characters without retyping or editing punctuation. If you cannot locate a sentence in the paper that supports a claim, omit the claim.
 
 ### Output
 
-Write `<run>/reports/<id>.json`:
+Write `<run>/reports/<id>.json` using the following schema:
 
 ```json
 {
@@ -31,7 +31,7 @@ Write `<run>/reports/<id>.json`:
   "alignment": 8.0,
   "quality": 7.5,
   "oneLine": "A plain statement of what the paper does, 25 words or fewer.",
-  "summary": "Three to five paragraphs: the problem, the approach, the evidence, the conclusion. Separate paragraphs with \\n\\n.",
+  "summary": "Three to five paragraphs covering the problem, the approach, the evidence, and the conclusion, separated by \\n\\n.",
   "keyResult": {
     "claim": "The single most important finding, in your words.",
     "quote": "The sentence from the paper that states it, copied exactly."
@@ -44,12 +44,12 @@ Write `<run>/reports/<id>.json`:
     }
   ],
   "method": "One paragraph on what was actually done, at the level a researcher in an adjacent field would need.",
-  "limitations": "One paragraph: what the authors acknowledge, and what they don't.",
-  "skeptic": "The most important reason to doubt, qualify, or wait on the headline claim. One or two sentences. If the work is solid, say what would make it more convincing.",
-  "relevance": "One paragraph tying the paper to specific lines of the reader's profile. Name the line.",
+  "limitations": "One paragraph covering what the authors acknowledge and what they leave unaddressed.",
+  "skeptic": "The most important reason to doubt, qualify, or wait on the headline claim, in one or two sentences. If the work is solid, state what follow-up test would strengthen it further.",
+  "relevance": "One paragraph tying the paper to specific lines of the reader's profile, naming the relevant line.",
   "keyFigure": {
     "id": "S2.F1",
-    "why": "One sentence on what this figure shows that the text alone doesn't."
+    "why": "One sentence on what this figure shows that the text alone does not."
   },
   "code": { "url": "https://github.com/…", "quote": "The sentence where the paper gives it." },
   "audience": "Who outside the reader's subfield would want this paper.",
@@ -57,11 +57,11 @@ Write `<run>/reports/<id>.json`:
 }
 ```
 
-Field rules:
+Apply these rules to the fields above:
 
-- `numbers`: up to four that carry the paper's argument (sample sizes, accuracies, constraints with error bars). Each needs its own quote. Skip numbers that only matter inside the paper.
-- `keyFigure`: pick from the figure list by `id`, or `null` when no figure helps (all-algorithm papers, pure theory). Prefer an overview diagram or the headline result over a detail panel.
-- `code`: `null` unless the paper itself gives a repository or data link.
-- `readingMinutes`: how long a careful read of the main text would take this reader, not a skim.
+- `numbers`: Include up to four quantitative values that carry the paper's core argument (such as sample sizes, benchmark accuracies, or parameter constraints with uncertainties), each paired with its own verbatim quote. Omit internal hyperparameter values that matter only inside the paper.
+- `keyFigure`: Select a figure by its `id` from the paper's figure list, or set `null` when no figure adds clarity (such as purely theoretical or algorithmic papers). Prefer an architecture overview or headline result plot over a supplementary detail panel.
+- `code`: Set to `null` unless the paper explicitly provides a code or data repository URL.
+- `readingMinutes`: Estimate how many minutes a careful reading of the main text would take this reader.
 
-Reply with one line: the id, the new score, and the key result in ten words.
+Conclude your worker response with a single status line stating the arXiv ID, the updated score, and the key result in ten words or fewer.

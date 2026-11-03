@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     // lib/synthesis/renderPrompt.js.
     const cachePrefix = templatePrefix.replaceAll('{{profile}}', () => profile ?? '');
 
-    // Phase 1.5.1: optional retry hint from the client-side hallucination
+    // Optional retry hint from the client-side hallucination
     // check + retry flow. Appended to the prompt so the model knows this is
     // a second attempt and needs to ground claims more carefully.
     const hintSuffix = retryHint ? `\n\n# Retry hint from validator\n\n${retryHint}` : '';

@@ -1,10 +1,12 @@
 # Aparture
 
-_Bringing the arXiv into focus._
+_Aparture brings the daily arXiv listing into focus._
 
-Aparture exists so a researcher can stop skimming the arXiv without worrying about what they're missing. You describe your research in plain English. Each run filters the day's papers against that description, reads the strongest matches in full, and writes one briefing that connects them. Every citation is checked against the papers it was actually given before the briefing renders. When it misjudges a paper, you say so, and it proposes an edit to your profile that you accept or reject. It runs on your machine, with your API keys.
+Aparture exists so a researcher can stop skimming the arXiv without worrying about missing relevant papers. You describe your research in plain English. Each run filters the day's papers against that description, reads the strongest matches in full, and writes a single briefing that connects them. Every citation is verified against the input papers before the briefing renders because fabricated references undermine trust in automated synthesis. When the pipeline misjudges a paper, you record feedback, and Aparture proposes an edit to your profile that you can accept or reject. The application runs locally on your machine using your own API keys.
 
-![a rendered briefing](docs/public/screenshots/briefing-hero.png)
+![Aparture renders a daily briefing with an executive summary, thematic synthesis, and claim-checked paper cards.](docs/public/screenshots/briefing-hero.png)
+
+_Aparture renders a daily briefing with an executive summary, thematic synthesis, and claim-checked paper cards._
 
 ## Quickstart
 
@@ -16,27 +18,27 @@ cp .env.local.example .env.local   # then add your key
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Full walkthrough: [Getting Started →](https://joshspeagle.github.io/aparture/getting-started/install)
+Open [http://localhost:3000](http://localhost:3000) in your browser. Follow the [Getting Started guide](https://joshspeagle.github.io/aparture/getting-started/install) for a complete walkthrough.
 
-> **On ARM64 (Apple Silicon, Linux ARM, Windows ARM)?** `npm install` mostly works, but `npm test` may fail with `Cannot find module '@rolldown/binding-*'` due to an npm optional-deps bug. Fix with `npm install --no-save @rolldown/binding-<your-platform>` — see [troubleshooting → rolldown binding](https://joshspeagle.github.io/aparture/reference/troubleshooting#npm-install-failures).
+> **ARM64 platforms (Apple Silicon, Linux ARM, Windows ARM):** `npm install` completes normally, but `npm test` may fail with `Cannot find module '@rolldown/binding-*'` because of an npm optional-dependency bug. Run `npm install --no-save @rolldown/binding-<your-platform>` to install the missing binary, and see the [troubleshooting guide for rolldown bindings](https://joshspeagle.github.io/aparture/reference/troubleshooting#npm-install-failures) for platform-specific package names.
 
 ## Documentation
 
-[joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/) — complete docs.
+The complete documentation is published at [joshspeagle.github.io/aparture](https://joshspeagle.github.io/aparture/):
 
-- [Get Started](https://joshspeagle.github.io/aparture/getting-started/install) — install, API keys, verify setup
-- [Using Aparture](https://joshspeagle.github.io/aparture/using/first-briefing) — your first briefing, reading briefings, feedback, writing a profile
-- [Under the Hood](https://joshspeagle.github.io/aparture/concepts/pipeline) — pipeline, models, briefing anatomy
-- [Reference](https://joshspeagle.github.io/aparture/reference/environment) — env vars, prompts, troubleshooting
+- **[Get Started](https://joshspeagle.github.io/aparture/getting-started/install):** Installation, API keys, and setup verification.
+- **[Using Aparture](https://joshspeagle.github.io/aparture/using/first-briefing):** Running your first briefing, reading briefings, recording feedback, and writing a profile.
+- **[Under the Hood](https://joshspeagle.github.io/aparture/concepts/pipeline):** Pipeline stages, model slots, and briefing anatomy.
+- **[Reference](https://joshspeagle.github.io/aparture/reference/environment):** Environment variables, prompt templates, and troubleshooting.
 
 ## License
 
-MIT.
+Aparture is released under the MIT License.
 
 ## Acknowledgements
 
-Built in collaboration with Claude.
+Aparture was built in collaboration with Claude.
 
 ---
 
-**Note:** Originally built to help the author (Josh Speagle) manage daily paper monitoring across cs, stat, and astro-ph. Still optimized for researcher-first workflows.
+**Note:** Aparture was originally built to help the author (Josh Speagle) manage daily paper monitoring across `cs`, `stat`, and `astro-ph`, and it remains optimized for individual researcher workflows.

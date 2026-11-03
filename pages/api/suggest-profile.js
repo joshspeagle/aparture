@@ -192,7 +192,7 @@ export default async function handler(req, res) {
     callModelMode,
   } = req.body ?? {};
 
-  // Phase 1: password gate before the body-field 400 so a wrong password is
+  // Password gate runs before the body-field 400 so a wrong password is
   // always a 401, matching this route's original check ordering.
   const gate = checkRoutePassword({ apiKey: clientApiKey, password });
   if (!gate.ok) {
@@ -213,7 +213,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Phase 2: env-key resolution + callMode + fixture-aware credential check
+  // Env-key resolution + callMode + fixture-aware credential check
   // (fixture mode skips the missing-credentials 401; see resolveRouteAuth).
   const auth = resolveRouteAuth({
     apiKey: clientApiKey,

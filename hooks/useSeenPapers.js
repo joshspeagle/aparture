@@ -22,10 +22,6 @@
 //   the (_migratedAt, _dedupeVersion) sentinel pair — recordRun never stamps
 //   either, so the two can never desync into the version=0 + _migratedAt state
 //   that would force a spurious clearing rebuild.
-//
-// Phase 2 seam: when state migrates to ~/aparture/, only the STORAGE_KEY +
-// migration source need updating; consumer contract (index/ready/recordRun)
-// stays stable.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeSetItem } from '../lib/persistence/safeStorage.js';

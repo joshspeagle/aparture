@@ -1,7 +1,5 @@
-// Zustand store for ArxivAnalyzer state.
-// Phase B-prep chunk 4: consolidates ~28 useState calls in
-// components/ArxivAnalyzer.js into a single store. The store is
-// independently testable, the pipeline reads from it directly via
+// Zustand store for ArxivAnalyzer state. The store is independently
+// testable, the pipeline reads from it directly via
 // useAnalyzerStore.getState(), and no React Context provider is needed.
 
 import { create } from 'zustand';
@@ -74,7 +72,7 @@ export function initialState() {
     },
     // --- auth slice (password + isAuthenticated) ---
     // NOTE: unlike other slices, these are FLAT top-level keys (not
-    // wrapped in an `auth: {...}` object). Task 4b consumers should
+    // wrapped in an `auth: {...}` object). Consumers should
     // read them as `useAnalyzerStore((s) => s.password)`, NOT
     // `useAnalyzerStore((s) => s.auth.password)`.
     password: '',
@@ -331,7 +329,7 @@ export const useAnalyzerStore = create((set) => ({
   // the data keys, preserving action identities — so the store is
   // restored to pristine data values without losing any setters.
   // Tests should call this in beforeEach rather than setState(initialState())
-  // directly, so test isolation isn't load-bearing on the structural
+  // directly, so test isolation does not depend on the structural
   // coincidence that initialState() happens to cover every top-level key.
   //
   // resetStore does NOT clear msStarredIds / msDismissedIds because they're

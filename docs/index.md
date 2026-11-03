@@ -4,7 +4,7 @@ layout: home
 hero:
   name: <span class="hero-name">Ap<span class="ar-highlight">ar</span>ture</span>
   text: <span class="tagline-text">Bringing the <span class="arxiv-highlight"><span class="arxiv-ar-highlight">ar</span>Xiv</span> into focus</span>
-  tagline: One briefing a day replaces the listings. Every citation in it is checked against the papers it was given.
+  tagline: One daily briefing replaces raw arXiv skimming, with every citation verified against the source papers.
   actions:
     - theme: brand
       text: Get Started
@@ -18,9 +18,9 @@ hero:
 import { withBase } from 'vitepress';
 </script>
 
-Aparture is a local web app that reads the day's arXiv so you can stop skimming it. You describe your research in plain English and pick the arXiv categories to watch. Each run scores the new preprints in those categories against your description and reads the strongest ones in full. It then writes a briefing that groups the papers into themes and says why each one matters for your work. Every citation in the briefing is checked against the papers it was actually given before anything renders.
+Aparture is a local web application that reads the daily arXiv listings so you can stop skimming them manually. You describe your research in plain English and select the arXiv categories you follow. Each run scores the new preprints in those categories against your description, reads the highest-scoring manuscripts in full, and writes a cohesive briefing that groups the papers into themes and explains how each one connects to your work. Every citation in the briefing is verified against the input papers before the page renders.
 
-It's designed to be used over weeks rather than once. You star papers you liked, dismiss ones that missed the mark, and comment where you have specific reactions. When you ask for suggestions, Aparture turns those signals into proposed edits to your profile, and you accept or reject each one.
+Aparture is designed for continuous daily use over weeks and months. As you read each briefing, you star papers that were valuable, dismiss papers that missed the mark, and leave comments where you have specific reactions. When you request profile suggestions, Aparture turns those accumulated signals into concrete proposed edits to your research profile that you can accept or reject individually.
 
 <div class="landing-cards">
 
@@ -29,7 +29,7 @@ It's designed to be used over weeks rather than once. You star papers you liked,
 
 ### A profile in plain prose
 
-You describe your research the way you would to a colleague, not as a keyword list. Every stage reads that description, from the first filter to the briefing.
+You describe your research in natural prose the way you would explain it to a colleague. Every stage of the pipeline reads that description, from the initial abstract filter through the final synthesis.
 
 </div>
 
@@ -38,7 +38,7 @@ You describe your research the way you would to a colleague, not as a keyword li
 
 ### One briefing per run
 
-Each run produces one piece of writing that argues across the day's papers. It opens with an editorial lead and tells you which papers to open first.
+Each run produces a single editorial document that synthesizes across the day's papers, opening with an executive summary and highlighting which papers to read first.
 
 </div>
 
@@ -47,7 +47,7 @@ Each run produces one piece of writing that argues across the day's papers. It o
 
 ### Feedback becomes profile edits
 
-Star, dismiss, or comment on what you see. The Suggest Improvements flow reads that feedback and proposes specific edits to your profile, each with the feedback that motivated it. You accept or reject each edit.
+Star, dismiss, or comment on papers as you read. The Suggest Improvements workflow analyzes your feedback and proposes targeted edits to your profile, citing the specific events that motivated each change so you can accept or reject it.
 
 </div>
 
@@ -56,7 +56,7 @@ Star, dismiss, or comment on what you see. The Suggest Improvements flow reads t
 
 ### Bring your own models
 
-Aparture works with Anthropic, OpenAI, and Google models, and each stage can use a different one: a cheap model for filtering, a stronger one for reading papers. Your keys stay in `.env.local` on your machine.
+Aparture supports Anthropic, OpenAI, and Google models, and each pipeline stage can use a different model (such as a fast model for filtering and a frontier model for full-PDF reading). Your API keys stay in `.env.local` on your machine.
 
 </div>
 
@@ -69,19 +69,19 @@ Aparture works with Anthropic, OpenAI, and Google models, and each stage can use
 <a class="step-card" :href="withBase('/getting-started/install.html')">
   <span class="step-number">STEP 01</span>
   <h4>Install</h4>
-  <p>Node, the repo, optional Playwright. About 5 minutes.</p>
+  <p>Install Node.js, clone the repository, and optionally set up Playwright in about 5 minutes.</p>
 </a>
 
 <a class="step-card" :href="withBase('/getting-started/api-keys.html')">
   <span class="step-number">STEP 02</span>
   <h4>API keys</h4>
-  <p>Pick a provider, create a key, paste into <code>.env.local</code>.</p>
+  <p>Choose a provider, create an API key, and add it to <code>.env.local</code>.</p>
 </a>
 
 <a class="step-card" :href="withBase('/getting-started/verify-setup.html')">
   <span class="step-number">STEP 03</span>
   <h4>Verify setup</h4>
-  <p>Dry run (free) and Minimal API Test (~$0.20–$1 on paid tiers).</p>
+  <p>Run the free Dry Run and the Minimal API Test (~$0.20–$1 on paid tiers).</p>
 </a>
 
 </div>
@@ -89,10 +89,10 @@ Aparture works with Anthropic, OpenAI, and Google models, and each stage can use
 <a class="step-card step-card-cta" :href="withBase('/using/first-briefing.html')">
   <span class="step-number">READY TO RUN</span>
   <h4>Start using Aparture →</h4>
-  <p>A narrated 10-minute walk through your first real briefing, end to end.</p>
+  <p>Follow a narrated 10-minute walkthrough of your first live briefing from start to finish.</p>
 </a>
 
-Already have Aparture running? The [Guide](/using/first-briefing) covers daily use, from running and reading briefings to giving feedback and refining your profile. [Under the Hood](/concepts/pipeline) explains how the pipeline and briefings work. [Reference](/reference/environment) is where to look up environment variables, prompt files, and troubleshooting symptoms.
+If you already have Aparture running, the [Guide](/using/first-briefing) covers daily workflows from running and reading briefings to recording feedback and refining your profile, [Under the Hood](/concepts/pipeline) explains the pipeline architecture and briefing checks, and [Reference](/reference/environment) documents environment variables, prompt templates, and troubleshooting steps.
 
 <div class="landing-footer">
 
