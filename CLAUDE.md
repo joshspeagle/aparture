@@ -219,7 +219,7 @@ The agent skill references prompt sections by exact heading (`"Style and voice"`
 | Settings panel, dedupe | `using/tuning-the-pipeline.md` |
 | `lib/notebooklm/*`, `components/notebooklm/*` | `add-ons/podcast.md` |
 | persistence hooks and routes, auth, `process.env.*`, `package.json` scripts | `reference/environment.md`, `reference/troubleshooting.md`, `getting-started/install.md` |
-| prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md` |
+| prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md`; `add-ons/agent-skill.md` |
 
 Screenshots live in `docs/public/screenshots/`, captured at `1440x900` in the light theme, and should be recaptured whenever the UI layout changes materially.
 

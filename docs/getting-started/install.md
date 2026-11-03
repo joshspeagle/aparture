@@ -1,6 +1,10 @@
 # Install
 
-Aparture is a Next.js web application that runs locally on your machine. Installing Node.js, cloning the repository, and starting the development server on macOS, Linux, Windows, or WSL2 takes about 10–15 minutes on a clean system.
+Aparture runs locally on your machine either as a Next.js web application in your browser or as a headless Agent Skill (`SKILL.md` paired with `node bin/aparture.mjs`) inside Claude Code, Antigravity, or OpenAI Codex. Installing Node.js, cloning the repository, and starting the development server on macOS, Linux, Windows, or WSL2 takes about 10–15 minutes on a clean system.
+
+::: tip Running via the Agent Skill (`SKILL.md`)
+If you plan to run Aparture exclusively inside your coding agent using [Running as an agent skill](/add-ons/agent-skill), complete **§1 (Install Node)**, **§2 (Clone and install)**, and **§4 (Identify yourself to arXiv)** below, then proceed directly to [Running as an agent skill](/add-ons/agent-skill). The headless runner does not require `ACCESS_PASSWORD` or provider API keys in `.env.local`.
+:::
 
 ## Prerequisites
 
@@ -212,4 +216,5 @@ Once all four commands succeed, your local toolchain is ready. Next, add at leas
 
 ## Next
 
-Continue to [API keys](/getting-started/api-keys) to configure at least one model provider.
+- Continue to [API keys](/getting-started/api-keys) to configure at least one model provider for the local web application.
+- Or jump to [Running as an agent skill](/add-ons/agent-skill) to run Aparture headlessly via `SKILL.md` and `node bin/aparture.mjs` using your coding agent subscription.

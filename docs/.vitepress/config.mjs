@@ -68,7 +68,10 @@ export default defineConfig({
         },
         {
           text: 'Add-ons',
-          items: [{ text: 'Generating a podcast', link: '/add-ons/podcast' }],
+          items: [
+            { text: 'Running as an agent skill', link: '/add-ons/agent-skill' },
+            { text: 'Generating a podcast', link: '/add-ons/podcast' },
+          ],
         },
       ],
       '/add-ons/': [
@@ -88,7 +91,10 @@ export default defineConfig({
         },
         {
           text: 'Add-ons',
-          items: [{ text: 'Generating a podcast', link: '/add-ons/podcast' }],
+          items: [
+            { text: 'Running as an agent skill', link: '/add-ons/agent-skill' },
+            { text: 'Generating a podcast', link: '/add-ons/podcast' },
+          ],
         },
       ],
       '/concepts/': [
