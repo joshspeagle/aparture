@@ -1,5 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
-import { extractJsonFromLlmOutput } from '../../utils/json.js';
+import { extractParsed } from '../../lib/llm/structured/extractParsed.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
@@ -80,18 +80,6 @@ function validateRescoreResponse(parsed, expectedCount) {
   });
 
   return { isValid: errors.length === 0, errors, rescores };
-}
-
-function extractParsed(result) {
-  if (result?.structured !== undefined && result.structured !== null) {
-    return result.structured;
-  }
-  try {
-    const cleaned = extractJsonFromLlmOutput(result?.text ?? '');
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
-  }
 }
 
 function formatPapersForBatch(papers) {

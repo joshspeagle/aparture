@@ -1,6 +1,119 @@
 import { AVAILABLE_MODELS, getModel, getModelsForPDF } from '../../../utils/models.js';
 import Select from '../../ui/Select.jsx';
 
+const MODEL_SLOTS = [
+  {
+    key: 'filterModel',
+    id: 'setting-filterModel',
+    label: 'Quick Filter Model',
+    description:
+      'Triages each paper as YES / MAYBE / NO based on your profile. Processes papers in small batches (configurable under Advanced Options) so even lightweight models work well here.',
+    getValue: (config) => config.filterModel,
+    getOptions: () => AVAILABLE_MODELS,
+  },
+  {
+    key: 'scoringModel',
+    id: 'setting-scoringModel',
+    label: 'Abstract Scoring Model',
+    description:
+      'Reads each abstract and scores relevance 0–10 with a justification. This is where your profile has the most influence on paper ranking.',
+    getValue: (config) => config.scoringModel,
+    getOptions: () => AVAILABLE_MODELS,
+  },
+  {
+    key: 'pdfModel',
+    id: 'setting-pdfModel',
+    label: 'Deep PDF Analysis Model',
+    description:
+      'Downloads and analyzes the full PDF for top-ranked papers. Produces detailed summaries, key findings, and methodology assessments. Benefits from a capable model.',
+    getValue: (config) => config.pdfModel,
+    getOptions: () => getModelsForPDF(),
+  },
+  {
+    key: 'quickSummaryModel',
+    id: 'setting-quickSummaryModel',
+    label: 'Quick-Summary Model (briefing prep)',
+    description:
+      'Compresses each analyzed PDF into a ~300-word pre-read before briefing synthesis. Independent of the briefing model — lightweight models work well here.',
+    getValue: (config) => config.quickSummaryModel ?? 'gemini-3.1-flash-lite',
+    getOptions: () => AVAILABLE_MODELS,
+  },
+  {
+    key: 'briefingModel',
+    id: 'setting-briefingModel',
+    label: 'Briefing Model (synthesis + suggest)',
+    description:
+      'Synthesizes the analyzed papers into a structured briefing, and also powers the Suggest Improvements flow on the Profile page.',
+    getValue: (config) => config.briefingModel ?? config.pdfModel,
+    getOptions: () => getModelsForPDF(),
+  },
+];
+
+function ModelSlotField({ slot, config, setConfig, disabled }) {
+  const value = slot.getValue(config);
+  const options = slot.getOptions();
+
+  return (
+    <div>
+      <label
+        htmlFor={slot.id}
+        style={{
+          display: 'block',
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: 'var(--aparture-text-xs)',
+          fontWeight: 500,
+          color: 'var(--aparture-mute)',
+          marginBottom: 'var(--aparture-space-2)',
+        }}
+      >
+        {slot.label}
+      </label>
+      <p
+        style={{
+          fontFamily: 'var(--aparture-font-sans)',
+          fontSize: '12px',
+          color: 'var(--aparture-mute)',
+          margin: '0 0 8px 0',
+          lineHeight: 1.5,
+        }}
+      >
+        {slot.description}
+      </p>
+      <Select
+        id={slot.id}
+        value={value}
+        onChange={(e) => setConfig((prev) => ({ ...prev, [slot.key]: e.target.value }))}
+        disabled={disabled}
+      >
+        {options.map((model) => (
+          <option key={model.id} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </Select>
+      <div
+        style={{
+          marginTop: 'var(--aparture-space-2)',
+          padding: 'var(--aparture-space-2)',
+          background: 'var(--aparture-bg)',
+          borderRadius: '4px',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--aparture-font-sans)',
+            fontSize: 'var(--aparture-text-xs)',
+            color: 'var(--aparture-mute)',
+            margin: 0,
+          }}
+        >
+          {getModel(value)?.description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ModelSelectionSection({ config, setConfig, processing }) {
   return (
     <>
@@ -25,300 +138,15 @@ export default function ModelSelectionSection({ config, setConfig, processing })
         }}
         className="md:grid-cols-3"
       >
-        <div>
-          <label
-            htmlFor="setting-filterModel"
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: 'var(--aparture-space-2)',
-            }}
-          >
-            Quick Filter Model
-          </label>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '12px',
-              color: 'var(--aparture-mute)',
-              margin: '0 0 8px 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Triages each paper as YES / MAYBE / NO based on your profile. Processes papers in small
-            batches (configurable under Advanced Options) so even lightweight models work well here.
-          </p>
-          <Select
-            id="setting-filterModel"
-            value={config.filterModel}
-            onChange={(e) => setConfig((prev) => ({ ...prev, filterModel: e.target.value }))}
+        {MODEL_SLOTS.map((slot) => (
+          <ModelSlotField
+            key={slot.key}
+            slot={slot}
+            config={config}
+            setConfig={setConfig}
             disabled={processing.isRunning}
-          >
-            {AVAILABLE_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </Select>
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-2)',
-              padding: 'var(--aparture-space-2)',
-              background: 'var(--aparture-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                margin: 0,
-              }}
-            >
-              {getModel(config.filterModel)?.description}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="setting-scoringModel"
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: 'var(--aparture-space-2)',
-            }}
-          >
-            Abstract Scoring Model
-          </label>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '12px',
-              color: 'var(--aparture-mute)',
-              margin: '0 0 8px 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Reads each abstract and scores relevance 0–10 with a justification. This is where your
-            profile has the most influence on paper ranking.
-          </p>
-          <Select
-            id="setting-scoringModel"
-            value={config.scoringModel}
-            onChange={(e) => setConfig((prev) => ({ ...prev, scoringModel: e.target.value }))}
-            disabled={processing.isRunning}
-          >
-            {AVAILABLE_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </Select>
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-2)',
-              padding: 'var(--aparture-space-2)',
-              background: 'var(--aparture-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                margin: 0,
-              }}
-            >
-              {getModel(config.scoringModel)?.description}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="setting-pdfModel"
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: 'var(--aparture-space-2)',
-            }}
-          >
-            Deep PDF Analysis Model
-          </label>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '12px',
-              color: 'var(--aparture-mute)',
-              margin: '0 0 8px 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Downloads and analyzes the full PDF for top-ranked papers. Produces detailed summaries,
-            key findings, and methodology assessments. Benefits from a capable model.
-          </p>
-          <Select
-            id="setting-pdfModel"
-            value={config.pdfModel}
-            onChange={(e) => setConfig((prev) => ({ ...prev, pdfModel: e.target.value }))}
-            disabled={processing.isRunning}
-          >
-            {getModelsForPDF().map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </Select>
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-2)',
-              padding: 'var(--aparture-space-2)',
-              background: 'var(--aparture-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                margin: 0,
-              }}
-            >
-              {getModel(config.pdfModel)?.description}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="setting-quickSummaryModel"
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: 'var(--aparture-space-2)',
-            }}
-          >
-            Quick-Summary Model (briefing prep)
-          </label>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '12px',
-              color: 'var(--aparture-mute)',
-              margin: '0 0 8px 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Compresses each analyzed PDF into a ~300-word pre-read before briefing synthesis.
-            Independent of the briefing model — lightweight models work well here.
-          </p>
-          <Select
-            id="setting-quickSummaryModel"
-            value={config.quickSummaryModel ?? 'gemini-3.1-flash-lite'}
-            onChange={(e) => setConfig((prev) => ({ ...prev, quickSummaryModel: e.target.value }))}
-            disabled={processing.isRunning}
-          >
-            {AVAILABLE_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </Select>
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-2)',
-              padding: 'var(--aparture-space-2)',
-              background: 'var(--aparture-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                margin: 0,
-              }}
-            >
-              {getModel(config.quickSummaryModel ?? 'gemini-3.1-flash-lite')?.description}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="setting-briefingModel"
-            style={{
-              display: 'block',
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: 'var(--aparture-text-xs)',
-              fontWeight: 500,
-              color: 'var(--aparture-mute)',
-              marginBottom: 'var(--aparture-space-2)',
-            }}
-          >
-            Briefing Model (synthesis + suggest)
-          </label>
-          <p
-            style={{
-              fontFamily: 'var(--aparture-font-sans)',
-              fontSize: '12px',
-              color: 'var(--aparture-mute)',
-              margin: '0 0 8px 0',
-              lineHeight: 1.5,
-            }}
-          >
-            Synthesizes the analyzed papers into a structured briefing, and also powers the Suggest
-            Improvements flow on the Profile page.
-          </p>
-          <Select
-            id="setting-briefingModel"
-            value={config.briefingModel ?? config.pdfModel}
-            onChange={(e) => setConfig((prev) => ({ ...prev, briefingModel: e.target.value }))}
-            disabled={processing.isRunning}
-          >
-            {getModelsForPDF().map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </Select>
-          <div
-            style={{
-              marginTop: 'var(--aparture-space-2)',
-              padding: 'var(--aparture-space-2)',
-              background: 'var(--aparture-bg)',
-              borderRadius: '4px',
-            }}
-          >
-            <p
-              style={{
-                fontFamily: 'var(--aparture-font-sans)',
-                fontSize: 'var(--aparture-text-xs)',
-                color: 'var(--aparture-mute)',
-                margin: 0,
-              }}
-            >
-              {getModel(config.briefingModel ?? config.pdfModel)?.description}
-            </p>
-          </div>
-        </div>
+          />
+        ))}
       </div>
 
       <div
