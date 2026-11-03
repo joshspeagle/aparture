@@ -1,94 +1,92 @@
 # Positioning
 
-_Last revised 2026-07-15. This is the business case for Aparture: what problem it solves, for whom, against what alternatives, and what would count as success or failure. When a design question can't be settled by the [design principles](docs/concepts/design-principles.md), it should be settled here._
+_Last revised 2026-07-15. This document defines the product case for Aparture: what problem it solves, for whom, against which alternatives, and what counts as success or failure. Design questions that are not settled by the [design principles](docs/concepts/design-principles.md) are settled here._
 
 ## The statement
 
-Aparture exists so a researcher can stop skimming the arXiv without worrying about what they're missing. You describe your research in plain English. Each run filters the day's papers against that description, reads the strongest matches in full, and writes one briefing that connects them. Every citation is checked against the papers it was actually given before the briefing renders. When it misjudges a paper, you say so, and it proposes an edit to your profile that you accept or reject. It runs on your machine, with your API keys.
+Aparture exists so a researcher can stop skimming the arXiv without worrying about missing relevant papers. You describe your research in plain English. Each run filters the day's papers against that description, reads the strongest matches in full, and writes a single briefing that connects them. Every citation is verified against the input papers before the briefing renders. When the pipeline misjudges a paper, you record feedback, and Aparture proposes an edit to your profile that you can accept or reject. The application runs locally on your machine using your own API keys.
 
 ## 1. Problem
 
-arXiv logged 32,040 new papers in June 2026, its third monthly record this year. A researcher watching several categories faces 100–300 new listings a day. The daily skim takes 30–60 minutes, most of it spent discarding, and skipping a day risks missing the one paper that matters. Tools exist to shorten the list, but a shorter list is still a list: you still do the reading, and you still do the judging. The skim survives because nothing is trusted enough to replace it.
+arXiv logged 32,040 new papers in June 2026, setting a monthly submission record. A researcher watching several categories faces 100–300 new listings a day. The daily skim takes 30–60 minutes, most of which is spent discarding irrelevant papers, and skipping a day risks missing a key result. Existing tools shorten the list, but a shorter list still requires the researcher to read and evaluate each candidate manually. The manual skim persists because existing tools do not verify their synthesis deeply enough to replace direct inspection.
 
 ## 2. User
 
-**Lead:** a PhD student or postdoc in a specific, fast-moving subfield, who needs high recall on a narrow agenda and reads the listings out of scoop anxiety. Onboarding, starter templates, and the tutorial are written for this person.
+- **Lead user:** A PhD student or postdoc in a fast-moving subfield who needs high recall on a focused research agenda and monitors daily listings to stay current. Onboarding, starter templates, and the tutorial target this workflow.
+- **Secondary user:** A senior researcher spanning several archives (`cs`, `stat`, `astro-ph`) who needs cross-disciplinary breadth with calibrated selectivity and has limited time for manual triage. The architecture was built for this workflow, and the documentation covers multi-archive monitoring as the advanced path.
+- **Out of scope for now:** Research groups seeking a shared multi-user digest. Each Aparture instance serves a single researcher.
 
-**Secondary:** a senior researcher spanning several archives (cs, stat, astro-ph), who needs breadth with judgment and has the least time of anyone. The architecture was built for this person and the docs cover the breadth workflow as the power-user path.
-
-**Explicit non-user, for now:** labs wanting a shared digest. One researcher per instance.
-
-Both users currently rely on some mix of arXiv listing emails, Scholar Inbox, social media, and group chat.
+Both user groups currently rely on a combination of arXiv email alerts, Scholar Inbox, social media, and group chat.
 
 ## 3. Alternatives, and where each stops short
 
-- **Free ranked feeds** (Scholar Inbox, Semantic Scholar research feeds, alphaXiv): rank the day's papers well, free, at real scale. They shorten the list but don't read it for you, and they learn your taste through embeddings you can't inspect or correct directly.
-- **Query tools** (Elicit, Undermind, Consensus): genuinely synthesize across papers, but per question, priced $10–45/month. Monitoring is a gated side feature. They answer what you ask; they don't watch your field.
-- **DIY digest scripts** (zotero-arxiv-daily at ~5.7k stars, ChatPaper, ArxivDigest): free, self-hosted, bring-your-own-key, per-paper summaries. No cross-paper synthesis, no validation, no feedback loop. This is the lane Aparture physically lives in, and it is crowded.
-- **Platform assistants** (ChatGPT Pulse, Gemini scheduled actions): proactive morning briefings, but generic — opaque sourcing, no citation checks, no reproducibility, shallow arXiv handling.
+- **Free ranked feeds** (Scholar Inbox, Semantic Scholar research feeds, alphaXiv): These services rank the day's papers effectively and free of charge at scale, but they return a list of individual papers and learn preferences through black-box embeddings that users cannot inspect or edit directly.
+- **Query tools** (Elicit, Undermind, Consensus): These tools synthesize across papers in response to a specific question for \$10–45/month, treating ongoing monitoring as a secondary feature rather than watching a field continuously.
+- **DIY digest scripts** (zotero-arxiv-daily at ~5.7k stars, ChatPaper, ArxivDigest): These free, self-hosted, bring-your-own-key scripts generate independent per-paper summaries without cross-paper synthesis, citation verification, or an iterative feedback loop.
+- **Platform assistants** (ChatGPT Pulse, Gemini scheduled actions): These general-purpose assistants deliver proactive morning briefings, but their sourcing is opaque, citations are unverified, runs are non-reproducible, and arXiv integration is shallow.
 
-## 4. What is actually different
+## 4. What sets Aparture apart
 
-Market research (2026-07) confirms three claims and kills one.
+A July 2026 market review identified the core differentiators that separate Aparture from existing tools, alongside features that are standard across the category.
 
-**Confirmed differentiated:**
+**Confirmed differentiators:**
 
-1. **One editorial briefing per run over a personalized paper set.** No surveyed tool does this. Ranked feeds produce lists; query tools synthesize per question; Paper Digest's daily review is impact-ranked aggregation, not profile-driven synthesis.
-2. **Validation before display.** Every cited arXiv ID is checked against the input set; per-paper claims are audited before the briefing renders. No digest tool advertises anything like it, and hallucinated citations are the field's live complaint (15–20% fabrication rates on citation tasks are reported even for frontier models).
-3. **Legible personalization that grows.** The profile is a document the user wrote; feedback becomes a proposed edit the user approves. The profile works like memory: it accumulates what the tool learns, in a form the user can read, edit, and carry forward. Incumbents learn silently via embeddings; no surveyed tool offers auditable preference evolution.
+1. **One editorial briefing per run over a personalized paper set.** Existing ranked feeds output individual items, query tools synthesize per question, and Paper Digest's daily review aggregates by general impact score. Aparture writes a single thematic argument driven by the reader's written profile.
+2. **Validation before display.** Every cited arXiv ID is checked against the input set, and per-paper factual claims are audited against the source text before the briefing renders. Hallucinated citations remain a central failure mode across LLM tooling (with 15–20% fabrication rates reported on citation tasks even for frontier models), so deterministic and model-backed verification is essential.
+3. **Legible personalization that evolves.** The research profile is a plain-text document written by the user, and feedback turns into concrete proposed edits that the user reviews and approves. Because the profile accumulates learned preferences in human-readable prose, the user can read, edit, and carry that memory forward across models and sessions.
 
-**Not differentiated (table stakes):** personalized daily ranking (Scholar Inbox et al., free), plain-English criteria driving LLM scoring (open-source projects did it in 2023; Elicit and Undermind use natural-language questions), LLM deep-reading of PDFs (universal), per-paper summaries (commodity), self-hosted BYOK digests (the most crowded free niche of all).
+**Baseline capabilities (table stakes):** Personalized daily ranking (Scholar Inbox and peers), plain-English criteria driving LLM scoring (introduced in open-source scripts in 2023 and used by Elicit and Undermind), full-PDF LLM reading, per-paper summaries, and self-hosted bring-your-own-key digests.
 
-**Reframed:** the mid-pipeline review gates are control over what gets deep-read, not cost management. Against free competitors, "approve each spend" reads as friction; "you decide which papers deserve a full read" is the honest and better framing.
+**Role of review gates:** The mid-pipeline review gates give the user direct control over which papers receive a full PDF read. Framing the gates around selecting which papers deserve deep analysis aligns the workflow with research judgment.
 
 ## 5. Why now
 
-Three things changed together: models became good and cheap enough to deep-read a dozen PDFs daily for pocket change; structured outputs made citation validation mechanical rather than aspirational; and submission volume broke the manual skim for good.
+Recent shifts in model capability, structured decoding, and submission volume make this workflow viable: frontier and mid-tier models can now read a dozen PDFs daily for a few cents to a few dollars, schema-constrained outputs make citation validation deterministic, and rising arXiv submission volume has made manual skimming unsustainable across multiple categories.
 
 ## 6. Success criteria
 
-- The user stops the manual skim within two weeks and does not restart it.
-- A typical daily run costs cents to low single dollars.
-- No fabricated citation ever reaches a rendered briefing.
-- Profile edit suggestions are accepted more often than rejected.
+- The user stops skimming raw arXiv listings within two weeks and relies on the daily briefing.
+- A typical daily run costs between a few cents and a few dollars.
+- Zero fabricated citations reach a rendered briefing.
+- Profile edit suggestions are accepted more often than they are rejected.
 
 ## 7. Non-goals
 
-Hosted multi-user. Reference management. A search/memory product over past briefings (briefings are a morning paper, not an archive to mine; the existing simple history search is enough). General literature Q&A. The podcast stays an add-on.
+Aparture does not aim to provide hosted multi-user accounts, reference management, an archival search product over past briefings (the built-in history filter is sufficient for revisiting recent runs), or general-purpose literature Q&A. The podcast generator remains an optional add-on.
 
 ## 8. Risks
 
-- **Willingness to pay for monitoring is unproven anywhere in the market** — researchers pay for search and review automation, not daily triage. Aparture's answer is that it isn't sold: it's free, self-hosted, BYOK. But the setup cost still competes with a zero-effort Scholar Inbox signup, so the first run has to justify the install.
-- **One hallucinated briefing ends the habit permanently.** Validation is the product, not a feature of it.
-- **Daily PDF deep-reads can cost more per month than a subscription tool.** Frugal defaults, cross-run dedupe, and the gates are what keep the economics honest.
-- **Nothing here is proprietary.** Free incumbents could bolt on synthesis; platforms already ship generic briefings. The defensible ground is what both are structurally bad at: checked citations, inspectable personalization, a reproducible pipeline.
-- **Model churn breaks daily tools.** Registry refreshes are maintenance, not polish (this repo's own audit found a retired model ID serving 404s).
+- **Uncertain willingness to pay for daily triage:** Researchers pay for literature search and systematic review automation, while daily monitoring is typically free. Aparture addresses this by running as a free, self-hosted, bring-your-own-key application, though the initial setup effort still competes with instant web signups such as Scholar Inbox.
+- **Trust fragility:** A single fabricated briefing can end a user's reliance on the tool permanently, which is why citation and claim validation sits in the critical path before display.
+- **Cumulative PDF token costs:** Daily full-PDF analysis can exceed the monthly price of a commercial subscription if left unbounded. Frugal default models, cross-run deduplication, and review gates keep daily token spend predictable.
+- **Low proprietary moat:** Free incumbents can add synthesis layers, and platform assistants already ship scheduled briefings. Aparture's durable advantage lies in verified citations, inspectable plain-text personalization, and a reproducible local pipeline.
+- **Model lifecycle churn:** Provider model deprecations break daily tools unless the model registry and automatic migration maps stay current (an internal audit caught a retired model ID returning 404 responses).
 
 ## 9. Voice
 
-Rules for all user-facing prose — README, docs, UI copy, and this file:
+All user-facing prose across `README.md`, `docs/`, UI copy, and repository documentation follows the Synergistic Prose Register:
 
-- Short declarative sentences. Concrete nouns.
-- Name the mechanism, not the virtue: "citations are checked against the input list," never "trustworthy."
-- At most one metaphor, and only if it does real work.
-- No slogan fragments, no rule-of-three rhythm, no em-dash chains.
-- The register of the troubleshooting page, not of a landing page.
+- Write complete declarative sentences with concrete domain nouns and exact technical terms.
+- Name the mechanism and explain why it holds using an explicit `"because"` clause (`"citations are verified against the input list before rendering because fabricated IDs break reader trust"`).
+- State what the system does positively, avoiding routine `"X, not Y"`, `"rather than"`, or `"instead of"` antithesis (use at most one contrast on a page where a genuine user misconception exists).
+- Never use prose em-dashes, clipped verbless fragments, slogan taglines, announced counts, setup-and-reveal colons in running prose, or mannered metaphors.
+- Maintain the clear, instructional register of a technical reference guide.
 
 ## Appendix: market landscape (2026-07 snapshot)
 
-| Tool                                                                   | What it is                                                                                                         | Personalization                               | Output shape                                   | Pricing                                       |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------- | --------------------------------------------- |
-| Scholar Inbox                                                          | Daily personalized recommender (arXiv + bio/med/chem-rxiv); strongest free incumbent, "tens of thousands" of users | Trained from paper up/down votes (embeddings) | Ranked list + per-paper visual summaries       | Free                                          |
-| Semantic Scholar feeds                                                 | Adaptive recommender tied to library folders                                                                       | Save/not-relevant signals (embeddings)        | Ranked list + TLDRs                            | Free                                          |
-| alphaXiv                                                               | arXiv overlay: comments, grounded per-paper AI, trending feeds ($7M seed, 2025)                                    | Followed topics                               | Per-paper                                      | Free                                          |
-| Google Scholar alerts                                                  | Keyword/author email alerts                                                                                        | Manual keywords                               | Raw list                                       | Free                                          |
-| Emergent Mind                                                          | arXiv explorer, topic pages, trending digest                                                                       | Followed topics                               | Per-topic/per-paper                            | Free–$25/mo                                   |
-| Undermind                                                              | Deep agentic literature search + topic-monitoring alerts                                                           | Saved natural-language questions              | Per-query synthesis; per-topic alerts          | ~$16–20/mo, enterprise                        |
-| Elicit                                                                 | Review automation; alerts with natural-language screening rubric                                                   | Explicit question per alert                   | Per-query synthesis; screened alert lists      | $12–49/mo (alerts gated)                      |
-| Paper Digest                                                           | Daily digests since 2018; impact-ranked daily review                                                               | Areas/keywords                                | Per-paper one-liners; shallow aggregate review | Paid, price unlisted                          |
-| Consensus / SciSpace                                                   | Evidence-focused Q&A / chat-with-paper                                                                             | Query-based                                   | Per-query                                      | $10–90/mo                                     |
-| OSS scripts (zotero-arxiv-daily 5.7k★, ChatPaper 19.7k★, ArxivDigest…) | Self-hosted BYOK daily digests                                                                                     | Zotero library or plain-English interests     | Per-paper scores/summaries                     | Free                                          |
-| ChatGPT Pulse / Gemini scheduled actions                               | Generic proactive morning briefings                                                                                | Chat history / prompt                         | Cross-source briefing, unvalidated             | Platform plans                                |
-| arxiv-sanity                                                           | Karpathy's recommender                                                                                             | Tags + SVM                                    | Ranked list                                    | Dead (2025) — its shutdown is a demand signal |
+| Tool                                                                   | What it is                                                                                                         | Personalization                               | Output shape                                   | Pricing                                      |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| Scholar Inbox                                                          | Daily personalized recommender (arXiv + bio/med/chem-rxiv); strongest free incumbent, "tens of thousands" of users | Trained from paper up/down votes (embeddings) | Ranked list + per-paper visual summaries       | Free                                         |
+| Semantic Scholar feeds                                                 | Adaptive recommender tied to library folders                                                                       | Save/not-relevant signals (embeddings)        | Ranked list + TLDRs                            | Free                                         |
+| alphaXiv                                                               | arXiv overlay: comments, grounded per-paper AI, trending feeds (\$7M seed, 2025)                                   | Followed topics                               | Per-paper                                      | Free                                         |
+| Google Scholar alerts                                                  | Keyword/author email alerts                                                                                        | Manual keywords                               | Raw list                                       | Free                                         |
+| Emergent Mind                                                          | arXiv explorer, topic pages, trending digest                                                                       | Followed topics                               | Per-topic/per-paper                            | Free–\$25/mo                                 |
+| Undermind                                                              | Deep agentic literature search + topic-monitoring alerts                                                           | Saved natural-language questions              | Per-query synthesis; per-topic alerts          | ~\$16–20/mo, enterprise                      |
+| Elicit                                                                 | Review automation; alerts with natural-language screening rubric                                                   | Explicit question per alert                   | Per-query synthesis; screened alert lists      | \$12–49/mo (alerts gated)                    |
+| Paper Digest                                                           | Daily digests since 2018; impact-ranked daily review                                                               | Areas/keywords                                | Per-paper one-liners; shallow aggregate review | Paid, price unlisted                         |
+| Consensus / SciSpace                                                   | Evidence-focused Q&A / chat-with-paper                                                                             | Query-based                                   | Per-query                                      | \$10–90/mo                                   |
+| OSS scripts (zotero-arxiv-daily 5.7k★, ChatPaper 19.7k★, ArxivDigest…) | Self-hosted BYOK daily digests                                                                                     | Zotero library or plain-English interests     | Per-paper scores/summaries                     | Free                                         |
+| ChatGPT Pulse / Gemini scheduled actions                               | Generic proactive morning briefings                                                                                | Chat history / prompt                         | Cross-source briefing, unvalidated             | Platform plans                               |
+| arxiv-sanity                                                           | Karpathy's recommender                                                                                             | Tags + SVM                                    | Ranked list                                    | Shut down in 2025 (demonstrated user demand) |
 
-Primary sources include scholar-inbox.com, arxiv.org/stats/monthly_submissions, elicit.com/pricing, undermind.ai, github.com/TideDra/zotero-arxiv-daily, openai.com/index/introducing-chatgpt-pulse.
+Primary sources include scholar-inbox.com, arxiv.org/stats/monthly_submissions, elicit.com/pricing, undermind.ai, github.com/TideDra/zotero-arxiv-daily, and openai.com/index/introducing-chatgpt-pulse.

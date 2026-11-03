@@ -1,168 +1,187 @@
 # Refining over time
 
-Once you've marked a decent amount of feedback — stars, dismisses, comments, filter overrides — your profile will usually be due for an update. Rather than rewriting it by hand, you can hand the accumulated feedback to a flow that proposes profile edits. It reads your current profile plus everything you've marked, and returns a list of small, targeted changes, each with its own rationale. You pick which ones to apply.
+As you accumulate stars, dismissals, comments, filter overrides, scoped notes, and answers to editor questions across runs, your research profile can be updated directly from that recorded evidence. The profile refinement flow reads your active profile alongside your pending feedback events and returns a list of atomic, non-overlapping diffs, each paired with a written rationale citing the feedback that motivated it. You inspect the diffs individually and apply whichever subset you approve.
 
-This page covers that flow: what it sees, what the review step looks like, the per-call guidance field, and when it's worth running.
+## The closed-loop refinement cycle {#the-loop-in-one-sentence}
 
-## The loop in one sentence
+Each run forms part of a closed-loop cycle in which your profile guides the daily briefing, your reactions accumulate in the feedback store, the proposal gate generates targeted diffs, and your accepted updates revise the profile for subsequent runs:
 
-Read a briefing → react (stars, dismisses, comments, filter overrides) → let feedback accumulate → click <span class="ui-action">Suggest improvements →</span> → review the proposed changes one at a time → accept any subset → the next briefing uses the revised profile.
-
-Most of the detail below is about the review step, because that's where the decisions happen.
+<div style="margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft);">
+  <svg viewBox="0 0 720 420" style="width: 100%; height: auto; max-width: 720px; display: block; margin: 0 auto;" role="img" aria-label="Closed-loop refinement cycle connecting Research Profile and Editorial Notes, Daily Pipeline and Briefing, Reader Feedback and Editor-Question Answers, Proposal Gate and Suggest Adjustments, and Accepted Diffs and Note Updates">
+    <defs>
+      <marker id="rot-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 8 5 L 0 9 z" fill="var(--vp-c-text-3)" />
+      </marker>
+      <marker id="rot-arrow-brand" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 8 5 L 0 9 z" fill="var(--vp-c-brand-1)" />
+      </marker>
+    </defs>
+    <rect x="130" y="16" width="540" height="56" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="152" y="40" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">1. Research Profile + Editorial Notes</text>
+    <text x="152" y="59" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Prose research agenda plus Selection, Writing, and Podcast notes</text>
+    <line x1="400" y1="72" x2="400" y2="92" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rot-arrow)" />
+    <rect x="130" y="94" width="540" height="56" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="152" y="118" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">2. Daily Pipeline &amp; Briefing</text>
+    <text x="152" y="137" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Stages 1 to 5 triage, score, read PDFs, and synthesize the briefing</text>
+    <line x1="400" y1="150" x2="400" y2="170" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rot-arrow)" />
+    <rect x="130" y="172" width="540" height="56" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.4" />
+    <text x="152" y="196" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">3. Reader Feedback &amp; Editor-Question Answers</text>
+    <text x="152" y="215" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Stars, dismissals, overrides, paper/general/scoped comments, and answers</text>
+    <line x1="400" y1="228" x2="400" y2="248" stroke="var(--vp-c-brand-1)" stroke-width="1.6" marker-end="url(#rot-arrow-brand)" />
+    <rect x="130" y="250" width="540" height="62" rx="10" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.8" />
+    <text x="152" y="275" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-brand-1)">4. Proposal Gate / Suggest Adjustments</text>
+    <text x="152" y="296" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-1)">Manual Suggest improvements call or automatic trigger (&gt;= 4 pts across &gt;= 2 runs)</text>
+    <line x1="400" y1="312" x2="400" y2="332" stroke="var(--vp-c-brand-1)" stroke-width="1.6" marker-end="url(#rot-arrow-brand)" />
+    <rect x="130" y="334" width="540" height="62" rx="8" fill="var(--vp-c-bg)" stroke="var(--vp-c-brand-1)" stroke-width="1.4" />
+    <text x="152" y="359" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">5. Accepted Diffs &amp; Note Updates</text>
+    <text x="152" y="380" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">Per-change diff selection, live cumulative preview, and versioned snapshot</text>
+    <path d="M 130 365 L 56 365 Q 38 365 38 347 L 38 62 Q 38 44 56 44 L 126 44" fill="none" stroke="var(--vp-c-brand-1)" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#rot-arrow-brand)" />
+    <text x="24" y="210" font-family="var(--vp-font-family-mono)" font-size="11" font-weight="600" fill="var(--vp-c-brand-1)" transform="rotate(-90 24 210)" text-anchor="middle">Updated profile feeds next run</text>
+  </svg>
+</div>
 
 ## What the flow sees
 
-The <span class="ui-action">Suggest improvements →</span> button lives in two places — at the top of the Feedback panel beneath every briefing, and in its own card on the Profile page — and both open the same dialog. The dialog lists every pending feedback event (anything not yet incorporated into your profile) with checkboxes, so you can include or exclude specific events. All are included by default. Feedback from test runs is never listed.
+The <span class="ui-action">Suggest improvements →</span> button appears both at the top of the Feedback panel beneath every briefing and inside its own card on the Profile page. Clicking either button opens the suggestion dialog, which lists all pending feedback events (every event not yet incorporated into your profile) with individual checkboxes enabled by default. Events recorded during test runs are excluded automatically.
 
-![The Suggest profile improvements dialog: a checklist of recent feedback events with checkboxes, an optional guidance text box, and Cancel and Generate suggestion buttons](/screenshots/suggest-dialog.png)
+![The Suggest profile improvements dialog displays a checklist of recent feedback events with checkboxes, an optional guidance text box, and Cancel and Generate suggestion buttons.](/screenshots/suggest-dialog.png)
 
-_The suggestion dialog before generating: every pending feedback event is listed with a checkbox, and the guidance field steers this one suggestion without being stored._
+_The suggestion dialog displays all pending feedback events with checkboxes alongside the optional per-call guidance field._
 
-When you click <span class="ui-action">Generate suggestion</span>, the model receives:
+When you click <span class="ui-action">Generate suggestion</span>, the refinement prompt assembles the following inputs for the `briefingModel`:
 
-- Your current profile text.
-- Every paper you've **starred** or **dismissed** — the current state per paper, so if you starred then un-starred a paper, the model only sees that it's un-starred.
-- Every paper with a **filter override** — the current verdict plus what the override signals (too narrow or too broad). When a paper also has a **paper comment** from the same run, the two are presented as a single combined block: _"overrode NO → YES, with comment: [your rationale]"_. This pairing gives the model cleaner context than either signal alone.
-- Your most recent **paper comments** — capped at the most recent 30. If the cap fires, the dialog shows an amber notice naming how many older comments were dropped.
-- Your most recent **general comments** — same 30-item cap. Each one is paired with the briefing it was written against (executive summary, theme titles and arguments, and per-paper pitches), so the model can interpret reactions like _"this one leaned too heavily on interpretability"_ with the right context.
-- **Scoped feedback** (bucket-level, score-review, and run-level observations), grouped by `briefingDate`. These appear as three labelled sections in the prompt — `BUCKET-LEVEL OBSERVATIONS`, `SCORE-REVIEW NOTES`, and `RUN-LEVEL OBSERVATIONS` — so the model knows which scope each note belongs to and can weight run-level patterns accordingly. Filter-override events and scoped-feedback events are passed through uncapped (both are latest-wins or have no natural numeric accumulation).
-- Your **answers to the editor's questions**, uncapped, in a section of their own (`ANSWERS TO THE EDITOR'S QUESTIONS`), each with the question and the papers that prompted it. An answer is you settling an ambiguity the day's papers exposed, which makes it one of the most direct signals the flow sees.
-- The changes you **rejected** in earlier rounds, the 10 most recent, in a section that tells the model not to propose them again unless the new feedback gives a reason.
-- Any **per-call guidance** you type in (see below).
-
-The model's job is to read these signals and propose surgical edits that align your profile with what the feedback suggests you actually want.
+- **Current profile text and editorial notes**: Your active research profile and scoped editorial notes serve as the baseline document.
+- **Starred and dismissed papers**: The current toggle state per `arxivId` (so starring and later unstarring a paper leaves no star signal).
+- **Filter overrides**: Each overridden paper's current verdict and directional scope signal (too narrow or too broad). When a paper has both a filter override and a paper comment from the same run, the prompt combines them into a single block (_"overrode NO → YES, with comment: [your rationale]"_) so the model sees the action and explanation together.
+- **Recent paper comments**: Up to the 30 most recent paper comments. When more than 30 pending paper comments exist, the dialog displays an amber notice reporting how many older comments were omitted.
+- **Recent general comments**: Up to the 30 most recent general comments, each paired with the executive summary, theme titles, theme arguments, and paper pitches of the briefing where it was written so that comparative comments have full context.
+- **Scoped feedback notes**: Bucket-level, score-review, and run-level observations grouped by `briefingDate` under three dedicated prompt sections (`BUCKET-LEVEL OBSERVATIONS`, `SCORE-REVIEW NOTES`, and `RUN-LEVEL OBSERVATIONS`). Both filter overrides and scoped notes pass through uncapped because they use latest-wins replacement per key.
+- **Answers to editor questions**: All pending answers in a dedicated `ANSWERS TO THE EDITOR'S QUESTIONS` section, each paired with the question text and the cited papers that prompted it.
+- **Recently rejected diffs**: Up to the 10 most recent changes you rejected in earlier refinement rounds, accompanied by an instruction not to propose them again unless newer feedback justifies reconsidering them.
+- **Per-call guidance**: Any one-time steering instruction you enter at the top of the dialog.
 
 ## Automatic proposals
 
-You don't have to remember to click <span class="ui-action">Suggest improvements</span>. After a real briefing (not a Dry Run or Minimal Test), Aparture checks whether your pending feedback adds up to something worth a look, and if it does, asks the briefing model for proposals in the background. When it finds any, a card under the briefing says how many; <span class="ui-action">Review proposals</span> opens the same review dialog, with nothing changed until you accept.
+In addition to manual refinement calls, Aparture checks after every completed production briefing (excluding Dry Runs and Minimal API Tests) whether your unweighed pending feedback has reached the threshold for a background proposal round. When the threshold is met, Aparture calls the `briefingModel` in the background; if the model returns candidate edits, a notification card appears beneath the briefing with a <span class="ui-action">Review proposals</span> button that opens the standard review dialog.
 
-What adds up: a star, dismissal, or filter override counts 1 point, a comment 2, and an answer to one of the editor's questions 4. A round runs when feedback no earlier round has weighed reaches 4 points across at least two briefings, or includes an answer (the editor asked that question to settle something, so the answer can act on its own). The two-briefing rule keeps one unusual day from driving an edit. No new round starts while earlier proposals still wait for you, and a round that finds no pattern shows nothing and doesn't weigh the same feedback again.
+The threshold weights pending events by specificity: each star, dismissal, or filter override counts as 1 point, each comment or scoped note counts as 2 points, and each answer to an editor question counts as 4 points. An automatic round triggers whenever unweighed feedback reaches at least 4 points across at least two distinct briefings, or whenever you record an answer to an editor question (which carries 4 points and resolves an explicit profile gap immediately). Requiring at least two briefings for non-answer signals prevents a single atypical submission day from driving profile edits. No new background round runs while existing proposals await your review, and a round that returns `"no clear change"` marks those events as weighed so it does not repeatedly query the model on the same set.
 
-Each round is one call on the briefing model, about what a manual <span class="ui-action">Suggest improvements</span> costs. Turn it off under Settings → Review & confirmation ("Propose profile changes after a briefing…").
+Each automatic proposal round makes one call to `briefingModel`. You can disable automatic proposals under **Settings → Review & confirmation** by unchecking _"Propose profile changes after a briefing…"_ (`autoProposals`).
 
 ## Per-call guidance
 
-Above the <span class="ui-action">Generate suggestion</span> button sits a small text field labelled _"Guidance for this suggestion (optional)"_. It's the place to type a short, direct note about how you want the profile to change on this one call — examples that work:
+Above the <span class="ui-action">Generate suggestion</span> button sits an optional text field labelled _"Guidance for this suggestion (optional)"_. Entering a short directive here steers the current suggestion call directly:
 
-- _"Focus on narrowing my astro interests to galactic dynamics specifically."_
-- _"Keep the NLP language, drop the vision-only work."_
-- _"Add a line about preferring methodological papers over applications."_
+- _"Focus on narrowing my astrophysics interests to galactic dynamics specifically."_
+- _"Keep the NLP methodology language and drop computer-vision applications."_
+- _"Add a sentence stating that I prefer methodological papers over pure applications."_
 
-When you fill this in, it becomes the highest-priority signal the model sees, and it's told to use the feedback events beneath it to ground concrete changes that move the profile in the direction you asked for. Leave it empty and the flow runs from feedback signals alone.
+When populated, per-call guidance acts as the highest-priority instruction in the refinement prompt, directing the model to ground your requested adjustment in the checked feedback events below. Per-call guidance applies only to that single generation call and is discarded when the dialog closes; to record persistent intent across runs, add a general comment in the Feedback panel instead.
 
-Guidance isn't stored anywhere. It applies to this one suggestion and disappears when the dialog closes. If you want a persistent note, leave a general comment in the Feedback panel instead.
+## Atomic suggested changes {#suggested-changes-not-a-rewrite}
 
-## Suggested changes, not a rewrite
+The refinement endpoint returns a structured array of atomic, non-overlapping diffs against your existing profile text:
 
-The output isn't a new profile. It's a list of atomic, non-overlapping changes, each with:
+| Field         | What it holds                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| **Edit type** | `replace`, `insert`, or `delete`                                                               |
+| **Anchor**    | The exact substring in your current profile targeted by the edit                               |
+| **Content**   | The replacement or inserted text (`replace` and `insert`), or an empty string (`delete`)       |
+| **Rationale** | A brief explanation justifying the edit and citing the supporting feedback events by `arxivId` |
 
-| Field         | What it holds                                                                     |
-| ------------- | --------------------------------------------------------------------------------- |
-| **Edit type** | `replace`, `insert`, or `delete`.                                                 |
-| **Anchor**    | An exact substring from your current profile that the change targets.             |
-| **Content**   | The new text (for replace and insert). Empty for delete.                          |
-| **Rationale** | A short line explaining why, usually citing specific feedback events by arXiv ID. |
-
-Changes are guaranteed non-overlapping — if two candidate edits would touch adjacent text, the model merges them into one — so you can accept any subset and the result is still well-formed. The API validates this server-side and retries once if the model returns overlapping edits.
+Because candidate edits are constrained to be non-overlapping (if two edits touch adjacent text, the model merges them into one diff), you can accept any combination of checkboxes and produce a valid profile document. The server validates non-overlap deterministically and retries once if the model returns overlapping anchors.
 
 ## The review dialog
 
-When suggestions come back, the dialog swaps to a per-change review. Top to bottom:
+Once suggestions are generated, the dialog switches to the interactive review view containing per-change cards, a live cumulative preview, and apply controls.
 
 ### Change cards
 
-Each proposed change renders as a card with a checkbox (checked by default), a small label showing the edit type, a diff preview, and the model's rationale below.
+Each proposed profile diff renders as an individual card with a checkbox (checked by default), an edit-type badge, an inline diff preview, and the model's rationale.
 
-The diff preview uses the colour conventions used elsewhere in the app: the anchor text in red (with a strikethrough if it's being deleted or replaced), the new text in green. For inserts, the anchor is shown as grey _"after: …"_ context because the anchor itself isn't being touched — the new content is going in right after it.
+The inline diff highlights anchor text being removed or replaced in red with a strikethrough and new text in green. For `insert` operations, the anchor substring renders in neutral grey as _"after: …"_ context because the inserted clause is placed immediately following the anchor without deleting it.
 
-Proposed [editorial notes](/using/writing-a-profile#editorial-notes) appear as cards of their own: _Add a writing note_, _Revise a note_ (the old text struck through above the new), or _Retire a note_. They are ticked and applied the same way, and the cumulative preview shows only the profile text.
-
-Rationales tend to look like _"You starred three papers on mixture-of-experts routing and dismissed two on sparse attention; this adds MoE to your active topics and removes sparse attention."_ Read them. Uncheck anything whose reasoning you don't buy.
+Proposed changes to your [editorial notes](/using/writing-a-profile#editorial-notes) render alongside profile diffs as dedicated cards labelled _Add a writing note_, _Revise a note_ (showing the previous note struck through above the replacement), or _Retire a note_. Examine the rationale on every card and uncheck any proposal whose reasoning overgeneralizes from a single paper.
 
 ### Cumulative preview
 
-Below the cards sits a live preview showing the profile you'd end up with from your current selection, in serif prose the way the LLM will read it. Check and uncheck cards and the preview updates in real time.
+Below the change cards, a live preview renders the complete profile prose that results from your currently checked cards. Toggling any checkbox updates the preview immediately.
 
 ::: tip
-The cumulative preview is the thing to watch here — it's the only place that shows the final profile as a whole. If it looks wrong as you toggle changes (a paragraph has disappeared, an anti-interest line reads oddly, the structure has drifted), adjust the checkboxes until it reads the way you want.
+Always read the cumulative preview before applying changes, because it shows how the individual diffs compose across the full document. If toggling a subset of diffs leaves an awkward transition or removes a breadth statement you want to keep, adjust the checkboxes until the complete preview reads cleanly.
 :::
 
 ### Apply
 
-The Apply button at the bottom reflects your current selection — <span class="ui-action">Apply 3 of 5 changes</span>, and so on. <span class="ui-action">Select all</span> and <span class="ui-action">Select none</span> helpers sit next to it. Clicking Apply commits the cumulative preview as your new profile and archives the previous version in history with a rationale composed from the accepted changes' rationales.
+The primary action button at the bottom of the dialog updates dynamically to reflect your selection (for example, <span class="ui-action">Apply 3 of 5 changes</span>) alongside <span class="ui-action">Select all</span> and <span class="ui-action">Select none</span> shortcuts. Clicking Apply saves the cumulative preview as your active profile and records a revision history snapshot whose rationale concatenates the rationales of the accepted diffs.
 
-The changes you leave unticked count as rejected. Aparture remembers them and lists them in the next suggestion request, so the model doesn't keep proposing an edit you've already turned down. If you untick everything, a <span class="ui-action">Reject all N changes</span> button appears, and clicking it records the rejection. <span class="ui-action">Cancel</span> closes the dialog without deciding anything.
+Any diff left unchecked when you click Apply is logged as rejected. Aparture passes your 10 most recent rejected diffs into subsequent refinement calls so the model does not re-propose edits you have already declined. If you uncheck every card, the button changes to <span class="ui-action">Reject all N changes</span> so you can log the rejections explicitly, while <span class="ui-action">Cancel</span> closes the dialog without recording a decision.
 
-The Suggest improvements card on the Profile page keeps a running tally: _"Suggested changes so far: 7 accepted, 3 rejected (70% accepted)."_ If most suggestions get rejected, write guidance for the next call, or a general comment that says what you want, rather than rerunning the flow on the same feedback.
+The Suggest improvements card on the Profile page tracks your cumulative acceptance rate (for example, _"Suggested changes so far: 7 accepted, 3 rejected (70% accepted)"_). If you find yourself rejecting most proposals, supply a specific per-call guidance string or record a general comment stating your intent before running the flow again.
 
 ## Which feedback counts as used
 
-After you apply or reject, Aparture marks as incorporated only the feedback behind the changes you accepted. It works this out from each accepted change's rationale: a star, dismiss, paper comment, or filter override counts when the rationale names its paper by arXiv ID or full title, and a general comment or note counts when the rationale quotes it. A note the rationales don't quote still counts if you accepted at least one change, unless a rejected change quoted it. An answer to one of the editor's questions counts as used whenever you accept at least one change.
+When you apply a set of diffs, Aparture transitions only the feedback events that backed your _accepted_ changes from **pending** to **incorporated**:
 
-Everything else stays pending: events you unticked before generating, events behind the changes you rejected, and all of them after a _"no change"_ result. Pending feedback is offered again the next time you run the flow, where it can add up to a pattern.
+- A **star**, **dismissal**, **paper comment**, or **filter override** is marked incorporated when an accepted diff's rationale cites that paper by `arxivId` or full title.
+- A **general comment** or **scoped note** is marked incorporated when an accepted diff's rationale quotes it, or when you accept at least one change and no rejected change quoted that note.
+- An **answer** to an editor question is marked incorporated whenever you accept at least one change in that round.
+
+All other feedback events (items you unchecked prior to generation, items cited only by rejected diffs, and all items from a _"no clear change"_ round) remain **pending** so that future refinement calls can combine them with newer signals.
 
 ## "No clear change": when feedback is ambiguous
 
-Sometimes the model can't find a clear improvement. When that happens, the dialog shows a single _"No profile changes suggested"_ panel with a short explanation — a `noChangeReason` — rather than a change list.
+When the refinement model concludes that your pending feedback does not support a defensible edit, the dialog displays a _"No profile changes suggested"_ notice accompanied by a `noChangeReason` explanation. Common causes include:
 
-This usually comes up when:
+- **Sparse signal**: Only a few pending events have accumulated since your last refinement pass.
+- **Conflicting reactions**: You starred one paper and dismissed another within the same narrow topic without leaving explanatory comments to distinguish them.
+- **Already covered by the profile**: The papers you dismissed are already excluded by your profile's anti-interests, so tightening the profile text further would be redundant.
 
-- Your feedback is too sparse. A handful of events don't give the model much to work with.
-- Your feedback is contradictory. You starred one paper on a topic and dismissed another on the same topic, so the signal is unclear.
-- Your profile already captures the signal. The papers you dismissed were already excluded by your anti-interests; there's nothing to change.
-
-Close the dialog, keep giving feedback (or refine the guidance note), and try again once there's more signal. The feedback you sent stays pending.
+Close the dialog and allow additional feedback to accumulate; all pending events remain in the store for the next round.
 
 ## Versioned history and rollback
 
-Every accepted suggestion creates a new entry in your profile history, tagged **suggested** to distinguish it from a manual edit. The entry archives the text from before the change.
+Every accepted suggestion round records a `suggested` entry in your profile history containing the prior profile text, prior editorial notes, timestamp, line-diff counts, and combined rationale (such as _"3 of 5 changes accepted"_).
 
-To browse history, expand the <span class="ui-action">History</span> control under the profile text box on the Profile page. Each entry is one change: a timestamp, a source tag, how many lines it added and removed, and its rationale. For a suggested change, the rationale collects the edits you accepted, and the entry says how many of the proposed edits that was (_"3 of 5 changes accepted"_). Click an entry to see what it changed, line by line, then <span class="ui-action">Revert</span> to put back the text from before it.
-
-Reverting is safe: your current profile is itself archived before the earlier text is restored, so you can always flip back. Reverting also undoes the bookkeeping: feedback incorporated by the revisions you reverted past becomes pending again, so the next suggestion can use it. The history keeps the last 20 revisions; a <span class="ui-action">Clear history</span> button wipes old revisions without touching the current profile. See [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback) for the full mechanics.
+To inspect or roll back a refinement pass, open the <span class="ui-action">Profile</span> view and expand <span class="ui-action">History</span> beneath the editor. Clicking any entry reveals its line-by-line diff and full prior text, and clicking <span class="ui-action">Revert</span> restores that snapshot. Reverting archives your current profile before restoring the earlier text and automatically resets any feedback events incorporated by the reverted revisions back to **pending** status. The history retains up to 20 revisions, and <span class="ui-action">Clear history</span> purges old snapshots without altering your active profile (see [Writing a good profile → Versioned history and rollback](/using/writing-a-profile#versioned-history-and-rollback)).
 
 ## When to run it
 
-The flow works best when the feedback store has enough signal to spot patterns, not at any particular cadence. Check the count at the top of the Feedback panel — events _not yet incorporated_ into your profile — and use roughly this guide:
+Trigger refinement based on the volume and diversity of _not yet incorporated_ events shown at the top of the Feedback panel:
 
-| Aggregate volume                      | What to expect                                                         |
-| ------------------------------------- | ---------------------------------------------------------------------- |
-| Fewer than ~10 pending events         | Usually too thin — expect _"no clear change"_ or vague proposals.      |
-| ~10–30 pending events, mixed types    | Enough for concrete, defensible edits, especially with a few comments. |
-| 30+ pending events including comments | Rich enough to cite specific reactions and recommend targeted edits.   |
+| Aggregate volume                      | What to expect                                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Fewer than ~10 pending events         | Sparse signal; often returns _"no clear change"_ or overly broad edits.                             |
+| ~10–30 pending events, mixed types    | Sufficient signal for concrete, well-supported diffs, especially when several comments are present. |
+| 30+ pending events including comments | Rich signal enabling targeted topic refinements grounded in specific paper reactions.               |
 
-This isn't a calendar thing. A heavy first-day session — a dozen filter overrides, half a dozen stars, a general comment or two — is enough to run the flow right away; two quiet weeks of barely-engaged briefings might not be.
-
-Two other triggers worth knowing about:
-
-- **When a briefing feels off.** If you've just read a briefing that missed papers you care about or included papers you don't, your reactions are fresh and specific. Often a good moment to run the flow, especially if you can combine it with a direct guidance note.
-- **After a shift in research focus.** Starting a new project or moving to a new field usually needs 3–5 briefings of feedback on the new focus before the flow has enough to work with. A guidance note can help accelerate this — _"shifting focus to protein structure prediction; integrate this into the profile"_ — but a single session of feedback still isn't much for the flow to work with.
+Running refinement is also effective right after reading a briefing whose selection felt miscalibrated (while your paper comments and scoped notes are fresh), or after three to five briefings in a new research direction paired with a direct per-call guidance note.
 
 ## A sanity check before accepting
 
-Before you click Apply, run the cumulative preview through a quick pass:
+Before clicking Apply, verify the cumulative preview against four criteria:
 
-- Does the profile still describe _you_, or has it drifted toward describing what the tool happened to surface this week?
-- Are the anti-interests still honest? Anti-interests tend to drift faster than positive interests because feedback is mostly about what you liked, not what you didn't.
-- Is the profile still a reasonable length (150–300 words)? Occasionally the flow will balloon the profile if the feedback is heavy on comments.
-- Would a collaborator reading this profile recognise your research?
+- **Agenda alignment**: Confirm that the updated text still describes your ongoing research program rather than overfitting to the specific papers that happened to appear in the latest run.
+- **Balanced anti-interests**: Check that new negative exclusions have not inadvertently ruled out adjacent methodological work you still want to discover.
+- **Compact length**: Keep the total profile between roughly 150 and 300 words so that every clause carries weight in the Stage 2 and Stage 3 prompts.
+- **Collaborator readability**: Confirm that a colleague in your field reading the preview would immediately recognize your research focus.
 
-If any of those feel off, uncheck the responsible cards — or close the dialog and make the edit by hand.
+If any proposed card distorts the preview, uncheck that card or edit the profile text manually.
 
 ## Limits
 
-A few things the flow won't do:
+Keep the structural boundaries of the refinement flow in mind:
 
-- **Write your first profile.** If the current profile is very thin, proposed changes will be too. Write a real profile manually first (see [Writing a good profile](/using/writing-a-profile)), then run refinement once you've given feedback on it.
-- **Know about papers it hasn't seen.** The flow only reads the papers you've reacted to inside Aparture plus your comments and overrides. Stars on arXiv itself don't reach it.
-- **Re-offer changes you rejected.** If you apply 3 of 5 and later want the other 2, there's no _"apply the rest"_. The 2 you left unticked are remembered as rejected, so the flow won't propose them again without a new reason. Make those edits by hand.
+- **Requires a substantive baseline profile**: If your starting profile is a single vague sentence, atomic diffs cannot build a coherent structure on their own; draft a complete initial profile first (see [Writing a good profile](/using/writing-a-profile)).
+- **Operates only on in-app feedback**: The refinement prompt sees only signals recorded inside Aparture (`star`, `dismiss`, `paper-comment`, `general-comment`, `filter-override`, scoped notes, and editor answers).
+- **Remembers rejected diffs**: If you accept 3 of 5 proposed diffs, the 2 unchecked diffs are recorded as rejected and will not be re-offered automatically unless new feedback supports them; apply them manually in the editor if you later decide you want them.
 
 ## Next
 
-[Review gates →](/using/review-gates) — with a sense of how feedback flows back into the profile, you can decide whether the three pause gates during a run still earn their keep for you.
+Continue to [Review gates →](/using/review-gates) to decide which of the three interactive pause gates continue to provide clear value for your workflow as your profile matures.
 
-Also worth reading:
+Related guides:
 
-- You've refined your profile and want to tune the rest of the pipeline. → [Tuning the pipeline](/using/tuning-the-pipeline)
-- A reminder of what each feedback type contributes. → [Giving feedback](/using/giving-feedback)
-- You're reading an old briefing and want to see which profile produced it. → [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance)
+- [**Tuning the pipeline**](/using/tuning-the-pipeline): How to adjust model slots, concurrency, batch sizes, and candidate caps.
+- [**Giving feedback**](/using/giving-feedback): Complete reference for the seven feedback signals that feed this workflow.
+- [**Reading a briefing → Generation provenance**](/using/reading-a-briefing#generation-provenance): How to inspect which profile snapshot produced an archived briefing.

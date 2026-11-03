@@ -1,239 +1,217 @@
 # Tuning the pipeline
 
-Once you've produced a few briefings and know what the defaults feel like, you'll usually want to tune the pipeline — which models run where, how many papers get deep-analysed, how many calls fire in parallel, which optional stages run at all. All of those knobs live in the **Settings** panel (sidebar → Settings), and this page walks through them.
+Once you have generated several briefings with the default configuration, you can tune the pipeline in the **Settings** panel (sidebar → Settings) to adjust which models run at each stage, how many papers receive full-text PDF analysis, how many API calls execute in parallel, and which optional stages or review gates remain active.
 
-Stage 4, which reads whole PDFs, costs far more per paper than the stages before it, so most of the tuning game is making sure it only sees the papers worth reading in full. The Settings panel is organised around that idea too: the model slots come first, the cheap stages sit in small text boxes under Advanced Options, and the review gates live at the bottom.
+Because Stage 4 reads complete PDFs at tens of thousands of tokens per paper, it accounts for the majority of token expenditure on a typical run. The primary tuning objective is therefore ensuring that Stage 4 analyzes only the papers worth reading in full. The Settings panel reflects this structure: per-stage model slots sit at the top, batching and concurrency parameters live under Advanced Options, and review gates and post-briefing checks sit at the bottom.
 
 ## The mental model
 
-Each stage narrows the set of papers before the next stage runs, so cheap models can afford to be loose on hundreds of abstracts while expensive models only ever see the handful that make it through. Rough per-paper costs:
+Each pipeline stage narrows the candidate pool before the next stage executes, allowing fast, inexpensive models to screen hundreds of abstracts while frontier or mid-tier models read only the surviving shortlist:
 
 | Stage              | What runs                                                                                                                            | Rough per-paper cost |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
-| Stage 1 · fetch    | arXiv API                                                                                                                            | free                 |
-| Stage 2 · filter   | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage | fractions of a cent  |
-| Stage 3 · scoring  | 0.0–10.0 with justification                                                                                                          | a fraction of a cent |
-| Stage 3.5 · post   | consistency pass on top N                                                                                                            | a fraction of a cent |
-| Stage 4 · PDFs     | deep read of top-ranked papers                                                                                                       | a few cents each     |
-| Stage 5 · briefing | synthesis + hallucination audit                                                                                                      | a few cents per run  |
+| Stage 1 · fetch    | arXiv OAI-PMH / Atom API                                                                                                             | Free                 |
+| Stage 2 · filter   | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage | Fractions of a cent  |
+| Stage 3 · scoring  | 0.0–10.0 relevance score with justification                                                                                          | A fraction of a cent |
+| Stage 3.5 · post   | Comparative consistency pass on top N                                                                                                | A fraction of a cent |
+| Stage 4 · PDFs     | Full-text PDF read of top-ranked papers                                                                                              | A few cents each     |
+| Stage 5 · briefing | Editorial synthesis + hallucination audit                                                                                            | A few cents per run  |
 
-Tuning comes down to: get the right papers into Stage 4, don't overspend on the stages before it, and don't let the wrong papers through. The rest of this page goes through the knobs.
-
-You don't have to do this arithmetic yourself. The score-review and pre-briefing gates show the projected spend of the stage they hold back, and after a run the Download Report card shows an estimated cost per stage, computed from the token counts each stage actually used. Both use the pricing in the model registry (`utils/models.js`): the list price, or a provider's published promotional price until its end date. They are planning figures, not a bill. If the registry has no price for a model, the estimate for that stage is hidden rather than guessed.
+Aparture computes cost estimates automatically so you do not have to calculate token totals by hand. Gates 2 and 3 display the projected cost of the stage they hold back, and once a run completes, the Download Report card shows a per-stage cost breakdown computed from actual token usage and the model registry pricing (`utils/models.js`), using active promotional rates before their expiration date and list prices thereafter. When a custom model has no price entry in the registry, the cost estimate for that stage is omitted.
 
 ## Per-stage model slots
 
-Each stage has its own model slot. Current defaults are all Google:
+Every LLM stage reads from an independent model slot, with all-Google defaults configured in `DEFAULT_CONFIG`:
 
 | Slot                  | Setting label                        | Default                 | What it drives                                                                                                                             |
 | --------------------- | ------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `filterModel`         | Quick Filter Model                   | `gemini-3.5-flash-lite` | Stage 2 <span class="verdict is-yes">YES</span>/<span class="verdict is-maybe">MAYBE</span>/<span class="verdict is-no">NO</span> verdicts |
-| `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`      | Stage 3 scoring                                                                                                                            |
-| `postProcessingModel` | Review Model (under post-processing) | `gemini-3.6-flash`      | Stage 3.5 consistency pass                                                                                                                 |
-| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.8-flash`      | Stage 4 full-text read                                                                                                                     |
-| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.8-flash`      | Stage 5 synthesis, the hallucination audit, and the profile-refinement flow                                                                |
-| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite` | ~300-word pre-read per paper, generated in parallel just before synthesis                                                                  |
-| `notebookLMModel`     | (chosen on the Podcast card)         | `gemini-3.8-flash`      | Optional podcast bundle                                                                                                                    |
+| `scoringModel`        | Abstract Scoring Model               | `gemini-3.6-flash`      | Stage 3 abstract relevance scoring                                                                                                         |
+| `postProcessingModel` | Review Model (under post-processing) | `gemini-3.6-flash`      | Stage 3.5 comparative consistency pass                                                                                                     |
+| `pdfModel`            | Deep PDF Analysis Model              | `gemini-3.8-flash`      | Stage 4 full-text PDF analysis                                                                                                             |
+| `briefingModel`       | Briefing Model (synthesis + suggest) | `gemini-3.8-flash`      | Stage 5 synthesis, hallucination audit, editor questions, and profile refinement                                                           |
+| `quickSummaryModel`   | Quick-Summary Model (briefing prep)  | `gemini-3.5-flash-lite` | ~300-word per-paper summary generated in parallel just before synthesis                                                                    |
+| `notebookLMModel`     | (chosen on the Podcast card)         | `gemini-3.8-flash`      | Optional podcast discussion guide bundle                                                                                                   |
 
-The Settings labels carry no stage numbers — the labels above are what you'll literally see on screen. `postProcessingModel` (**Review Model**) appears only while **Enable Post-Processing** is on, and it stays on `gemini-3.6-flash` when you change the scoring slot: without a Google key, change it too or turn the pass off. `notebookLMModel` is picked on the Podcast card in the briefing view rather than in Settings. All slots are disabled while a run is in progress.
+In the Settings UI, `postProcessingModel` (**Review Model**) appears only when **Enable Post-Processing** is checked. Because `postProcessingModel` remains on `gemini-3.6-flash` when you change `scoringModel`, users running without a Google API key should either assign `postProcessingModel` to their active provider or uncheck **Enable Post-Processing**. The `notebookLMModel` slot is selected directly on the Podcast card inside the briefing view. All model dropdowns are locked while a pipeline run is in progress.
 
-Three rules of thumb for model selection:
+When assigning models to slots, match model capability to stage token volume and combine providers freely across stages.
 
 ### Spend on what reads the most
 
-PDF analysis reads whole papers — typically tens of thousands of tokens each. That's where a stronger model earns its keep: better grounding, more faithful summaries, fewer claims that have to be flagged downstream. Upgrading `pdfModel` tends to move the briefing quality more than upgrading anything else.
+Stage 4 PDF analysis processes complete manuscripts (including figures, equations, and tables) at tens of thousands of input tokens per paper. Assigning a stronger model to `pdfModel` justifies its cost through more accurate technical summaries, better methodological extraction, and fewer unsupported claims flagged during the Stage 5 audit. Upgrading `pdfModel` improves briefing quality more directly than upgrading any earlier stage.
 
-Synthesis reads all the final-round papers plus your profile. It benefits from a capable model too, but it's a single call per run, so the bill for upgrading `briefingModel` is much smaller than upgrading `pdfModel`.
+Stage 5 synthesis reads all final-round full reports alongside your profile in a single call. Because `briefingModel` executes once per briefing (plus once for the audit) rather than once per paper, upgrading `briefingModel` adds much less cost per run than upgrading `pdfModel`.
 
-### Don't spend on what filters
+### Keep filtering and scoring lightweight {#dont-spend-on-what-filters}
 
-The quick filter runs on every fetched paper, often a hundred or more per day. A cheap, fast model is exactly right for this — it only has to decide "plausibly relevant" or "plausibly not." Any Flash-Lite, Haiku, or Luna-class model works; the default is `gemini-3.5-flash-lite`.
+The Stage 2 quick filter evaluates every fetched abstract (often 100 or more per day) to separate plausible candidates from clear non-matches. Lightweight, low-latency models such as `gemini-3.5-flash-lite`, `claude-haiku-5.5`, or `gpt-6-luna` handle binary and ternary abstract triage well at minimal cost.
 
-Scoring is similar: dozens to hundreds of abstracts, and most of what the model is doing is ranking within them. A mid-tier model is usually enough. [Model selection](/concepts/model-selection) has the current picks for each slot.
+Stage 3 abstract scoring ranks the surviving abstracts on a 0.0–10.0 scale. Mid-tier models such as `gemini-3.6-flash`, `claude-sonnet-5.5`, or `gpt-6.1-sol` provide reliable calibration across batches without incurring flagship token rates (see [Model selection](/concepts/model-selection) for per-stage recommendations).
 
 ### Mixing providers is fine
 
-Nothing in Aparture requires one provider per run. A common pattern is Gemini Flash-Lite for filtering (speed and price), Claude Sonnet for scoring, Claude Opus for PDFs, and Gemini for synthesis. As long as every slot has a valid key for the provider it points at, the pipeline doesn't care.
-
-See [Model selection](/concepts/model-selection) for the full registry, the per-stage recommendations, and example lineups (including a free-tier-only setup and a three-provider mix).
+Each stage slot operates independently and requires only a valid API key for the provider assigned to that slot. For example, you can run Gemini Flash-Lite on `filterModel`, Claude Sonnet on `scoringModel`, Claude Opus or GPT-6.1 Sol on `pdfModel`, and Gemini Flash on `briefingModel` within the same pipeline run. See [Model selection](/concepts/model-selection) for complete provider lineups and cost estimates.
 
 ## Parallelism
 
-Five concurrency knobs control how many calls fire in parallel at each batch-capable stage. All default to 3 (5 for quick-summaries), all clamp 1–20.
+Parallelism settings control how many API calls fire concurrently at each batch-capable stage (`filterConcurrency`, `scoringConcurrency`, `postProcessingConcurrency`, `pdfAnalysisConcurrency`, and `quickSummaryConcurrency`), defaulting to 3 (or 5 for quick summaries) and clamped to the range 1–20.
 
 ### Parallel filter calls
 
-**Parallel Filter Calls** (default 3, range 1–20) controls how many `/api/quick-filter` batches fire concurrently. Since the filter runs on every fetched paper, this is the knob that matters most on large runs — a 250-paper filter on `filterConcurrency: 1` takes ~85 sequential batches, and bumping to 5 cuts wall-clock roughly fivefold.
+**Parallel Filter Calls** (`filterConcurrency`, default 3, range 1–20) sets how many `/api/quick-filter` batches execute concurrently. Because Stage 2 screens every fetched paper, increasing `filterConcurrency` yields the largest wall-clock speedup on high-volume category sets: filtering 250 papers at `filterBatchSize: 3` requires roughly 84 batches, so raising concurrency from 1 to 5 reduces Stage 2 duration by roughly a factor of five.
 
-Anthropic gets a single-flight cache warmup: the first batch completes alone so the prompt-cache entry is primed before siblings start. Google and OpenAI start all workers immediately.
+On Anthropic models, the worker pool runs a single-flight cache warmup where the first batch completes alone to populate the ephemeral prompt-cache prefix before sibling workers launch. Google and OpenAI workers start concurrently without a warmup barrier.
 
 ### Parallel scoring calls
 
-**Parallel Scoring Calls** (default 3, range 1–20) controls how many `/api/score-abstracts` batches fire concurrently. Scoring runs on the papers that passed filter, so the knob's payoff scales with the filter's pass-through rate — with a ~60% pass rate, a 250-paper run means ~50 scoring batches at `scoringBatchSize: 3`.
-
-Same Anthropic cache-warmup behavior as filter.
+**Parallel Scoring Calls** (`scoringConcurrency`, default 3, range 1–20) sets how many `/api/score-abstracts` batches run concurrently in Stage 3. Total scoring batches scale with the Stage 2 pass-through rate (for example, a 60% pass rate on 250 papers produces 50 batches at `scoringBatchSize: 3`), and Anthropic models apply the same single-flight prompt-cache warmup as Stage 2.
 
 ### Parallel review calls
 
-**Parallel Review Calls** (default 3, range 1–20) controls how many `/api/rescore-abstracts` batches fire concurrently during the optional Stage 3.5 post-processing consistency pass. Only active when **Enable Post-Processing** is on.
+**Parallel Review Calls** (`postProcessingConcurrency`, default 3, range 1–20) sets how many `/api/rescore-abstracts` batches run concurrently during the optional Stage 3.5 consistency pass when **Enable Post-Processing** is active.
 
 ### Parallel PDF calls
 
-**Papers to Analyze** caps how many PDFs get read per run (default 30, range 1–100). **Parallel PDF Calls** (default 3, range 1–20) controls how many of those PDF analyses fire concurrently. The arXiv download step is serialised server-side, 15 seconds apart, the crawl delay arXiv's robots.txt sets for PDFs; once the PDFs are in hand, the LLM calls themselves run in parallel. That spacing puts a floor under Stage 4: 30 PDFs take at least seven and a half minutes to download, whatever the concurrency. A download that falls back to Playwright uses two slots, one for the abstract page and one for the PDF.
+**Papers to Analyze** (`maxDeepAnalysis`, default 30, range 1–100) caps the number of papers sent to Stage 4, while **Parallel PDF Calls** (`pdfAnalysisConcurrency`, default 3, range 1–20) sets how many PDF LLM analyses run in parallel. Server-side PDF downloads from arXiv are serialized with a 15-second spacing to honor the crawl delay specified in arXiv's `robots.txt` (with a Playwright reCAPTCHA fallback consuming two spacing slots: one for the abstract page and one for the PDF). Because downloads are spaced 15 seconds apart, downloading 30 PDFs requires at least 7.5 minutes regardless of LLM concurrency; once each PDF is downloaded, the LLM analysis workers run in parallel:
 
-- On **Anthropic** providers, the first worker finishes its call alone before the others begin, so the prompt-cache entry is primed once instead of racing.
-- On **Google** and **OpenAI**, all workers start immediately.
+- **Anthropic**: The first worker completes its call alone so the shared prompt-cache prefix is written once before remaining workers read from it.
+- **Google and OpenAI**: All workers start as soon as their PDF bytes are available.
 
 ### Parallel quick-summary calls
 
-**Parallel Quick-Summary Calls** (default 5, range 1–20), under **Briefing Options** in Advanced Options, sets how many `/api/analyze-pdf-quick` calls fan out at once during briefing prep. These produce the ~300-word pre-read summaries that expand inline on paper cards.
+**Parallel Quick-Summary Calls** (`quickSummaryConcurrency`, default 5, range 1–20), located under **Briefing Options** in Advanced Options, controls how many `/api/analyze-pdf-quick` requests run in parallel during Stage 5 to generate the ~300-word inline paper summaries.
 
 ### Tuning guidance
 
-Three is a conservative default that works across provider tiers. Raising it to 5–8 is usually fine on higher provider tiers (Anthropic Tier 3+, Google Tier 2+, OpenAI's Launch tier and up); drop to 1 if you start seeing 429s on a rate-limit-sensitive tier. Free-tier Google projects have the lowest limits, so start at 2–3 if you're relying on the free tier for filtering.
+A concurrency of 3 works reliably across standard provider tiers. On higher rate-limit tiers (Anthropic Tier 3+, Google paid Tier 2+, or OpenAI Launch tier and above), raising concurrency to 5–8 reduces run duration; on free-tier Google keys or entry-level tiers that return HTTP 429 errors, lower concurrency to 1–2.
 
-Aparture self-heals on transient errors. When one batch hits a rate limit (429), an unavailable provider (503), or an overloaded one (Anthropic's 529), every concurrent worker for the same provider pauses for the `Retry-After` window (capped at 60 s, or 5 s when the provider doesn't send one), then retries. The retry ladder uses up to `maxRetries` retries (default 4 → 5 attempts) with exponential + jittered backoff. Errors that a retry can't fix fail on the first attempt with the provider's message instead of spending the ladder: a bad or missing key (401, 403), an unknown model or malformed request (400, 404), a request that's too large (413), or a 422 other than a safety refusal. End-of-stage activity-log lines call out how many batches were rate-limited so you can see whether to drop concurrency or upgrade tier. If a stage runs on a Gemini Flash-Lite model with enough batches and parallelism to pass about 60 requests a minute, Aparture also logs a pre-flight warning before the stage starts.
+Aparture coordinates rate-limit recovery across workers automatically. Whenever any worker receives an HTTP 429 (rate-limited), 503 (unavailable), or Anthropic 529 (overloaded) response, all concurrent workers targeting that provider pause for the `Retry-After` duration (capped at 60 seconds, or 5 seconds when no header is present) before retrying with exponential jittered backoff up to `maxRetries` retries (default 4, for 5 total attempts). Non-retryable client errors fail immediately on the first attempt with the provider's diagnostic message, including authentication failures (401, 403), invalid model IDs or malformed payloads (400, 404), oversized requests (413), and 422 responses other than safety refusals or reCAPTCHA notices. At the end of each stage, the activity log reports how many batches hit rate limits, and when a Gemini Flash-Lite stage is configured with enough batches and concurrency to exceed roughly 60 requests per minute, Aparture logs a pre-flight warning before starting the stage.
 
 ### When a provider declines on content grounds
 
-Rate limits are one kind of failure; a **safety-classifier refusal** is a different one, and Aparture handles it separately. All three providers can return a successful HTTP response that contains no answer because a classifier declined the content — Anthropic as `stop_reason: "refusal"`, OpenAI as `content_filter` or a `refusal` field, Google as a `blockReason` or a safety `finishReason`.
+Provider safety-classifier refusals arrive as HTTP 200 responses whose payload declines to generate content (`stop_reason: "refusal"` on Anthropic, `content_filter` or a `refusal` field on OpenAI, and `blockReason` or a safety `finishReason` on Google).
 
-The important property is that a refusal is **deterministic**: the same prompt to the same classifier gets the same answer every time. So refusals never enter the retry ladder above — retrying would burn `maxRetries` attempts, and bill the input tokens for each, to be told no five times. Instead they go straight to the policy you pick in **Settings → Query Options → On Safety Refusal**:
+Because safety-classifier refusals are deterministic for a given prompt and model, retrying the identical call would waste `maxRetries` attempts and bill input tokens each time for the same refusal. Aparture bypasses the retry ladder on safety refusals and applies the policy selected under **Settings → Query Options → On Safety Refusal**:
 
-| Policy                      | `refusalPolicy` | What happens                                                                                                                                                      |
-| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Skip and continue**       | `skip`          | Default. The affected paper (or batch) is dropped, recorded, and the run carries on. An unattended overnight run isn't killed by one paper tripping a classifier. |
-| **Retry on fallback model** | `fallback`      | Re-issue the call once against `refusalFallbackModel`, then skip if that model refuses too. The fallback may be a different provider.                             |
-| **Stop the run**            | `fail`          | Halt on the first refusal. The run stops with an error that names the stage and the provider and says how to switch to `skip` or `fallback`.                      |
+| Policy                      | `refusalPolicy` | What happens                                                                                                                                            |
+| --------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Skip and continue**       | `skip`          | Default. Drops the affected paper or batch, records the refusal metadata, and continues the run so an unattended run completes cleanly.                 |
+| **Retry on fallback model** | `fallback`      | Re-issues the request once against `refusalFallbackModel` (which may use a different provider), then skips the item if the fallback model also refuses. |
+| **Stop the run**            | `fail`          | Halts the pipeline immediately on the first safety refusal and displays the stage, provider, and instructions for switching to `skip` or `fallback`.    |
 
-Under any policy, refusals are surfaced rather than silently swallowed: a summary card at the end of the run lists what was declined, at which stage, and under which category. This matters most under the default `skip` policy — without it you'd see a shorter briefing with no explanation for the gap.
+Every safety refusal is surfaced in an end-of-run summary card listing the declined paper or batch, the stage, and the refusal category so that skipped papers are never dropped silently.
 
-Three things worth knowing:
+When configuring safety-refusal handling, note how synthesis calls, fallback billing, and cross-provider rate limits behave:
 
-- **The briefing stage can't skip.** Synthesis is a single call for the whole briefing, so there's no partial result to fall back to. A refusal there fails the briefing with an explicit message; the papers and their analyses are unaffected, and you can regenerate on a different `briefingModel`.
-- **`fallback` spends on a model you didn't choose for that slot.** That's why it isn't the default. Set `refusalFallbackModel` explicitly — leaving it empty degrades `fallback` back to `skip`.
-- **The fallback model can be on another provider.** Its calls wait out that provider's rate limits, and when it is an Anthropic model the first fallback call primes the prompt cache so the rest read from it.
+- **Stage 5 synthesis cannot skip**: Because `/api/synthesize` generates the entire briefing in a single call, a safety refusal during synthesis halts the briefing step with an explicit error while leaving your Stage 4 paper analyses intact so you can re-run synthesis on a different `briefingModel`.
+- **Fallback model selection is explicit**: Because `fallback` bills tokens to a model outside your primary slot assignment, you must set `refusalFallbackModel` explicitly; if `refusalFallbackModel` is left empty, `fallback` degrades safely to `skip`.
+- **Cross-provider fallback caching**: When `refusalFallbackModel` points to a different provider, fallback calls honor that provider's rate-limit barrier, and on Anthropic models the first fallback call warms the prompt cache before subsequent fallback calls execute.
 
-For an astronomy or ML profile, refusals are rare. They're most likely if your interests overlap cybersecurity (cs.CR) or parts of quantitative biology (q-bio), where benign research abstracts occasionally trip a classifier tuned for something else.
+Safety refusals are rare in astrophysics, statistics, and core machine learning, occurring primarily in cybersecurity (`cs.CR`) or quantitative biology (`q-bio.*`) abstracts whose terminology triggers an overly broad provider classifier.
 
 ## Batch sizes
 
-Each stage batches papers into API calls to avoid per-paper overhead. Bigger batches are faster but risk hitting context limits or giving each paper less careful attention.
+Batch size settings control how many abstracts are grouped into a single API request during Stages 2, 3, and 3.5:
 
-| Setting            | Default | Reasonable range | Notes                                               |
-| ------------------ | ------- | ---------------- | --------------------------------------------------- |
-| Filter Batch Size  | 3       | 3–10             | Short prompts; batching mostly helps throughput     |
-| Scoring Batch Size | 3       | 3–8              | Each paper carries a full abstract + justification  |
-| Review Batch Size  | 5       | 3–10             | Post-processing compares multiple papers at once    |
-| PDF analysis batch | 1       | (always 1)       | One PDF per call — see **Parallel PDF Calls** above |
+| Setting            | Default | Reasonable range | Notes                                                                        |
+| ------------------ | ------- | ---------------- | ---------------------------------------------------------------------------- |
+| Filter Batch Size  | 3       | 3–10             | Compact prompts; larger batches increase throughput on high-volume runs      |
+| Scoring Batch Size | 3       | 3–8              | Each item includes a full abstract and requires a 2–3 sentence justification |
+| Review Batch Size  | 5       | 3–10             | Stage 3.5 compares multiple abstracts side by side within each batch         |
+| PDF analysis batch | 1       | (always 1)       | Fixed at 1 PDF per request; scale throughput via **Parallel PDF Calls**      |
 
-Most users never touch these. Raising batch sizes tends to help when you're on a fast provider with generous rate limits, your abstracts are short, or you're using a long-context model. Lowering them tends to help when you're hitting rate-limit errors or noticing sloppier scoring at larger batch sizes.
+Increasing batch sizes reduces request count when your provider enforces strict requests-per-minute limits and your selected model has a large context window; decreasing batch sizes prevents context-window truncation and keeps per-abstract scoring justifications sharp.
 
 ## Which papers advance where
 
-Two settings govern which papers move from one stage to the next.
+Candidate advancement between stages is governed by the filter verdict checkboxes and the **Papers to Analyze** cap.
 
 ### Filter verdicts to advance
 
-Under **Categories to Process** (Advanced Options → Filter Options), three checkboxes control which filter verdicts move on to scoring. Default is <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span>. Dropping <span class="verdict is-maybe">MAYBE</span> saves tokens on borderline papers but also skips anything the filter wasn't sure about, which tends to include the most interesting edge cases. Dropping <span class="verdict is-yes">YES</span> is rarely what you want.
+Under **Categories to Process** (Advanced Options → Filter Options), three checkboxes (`YES`, `MAYBE`, and `NO`) determine which Stage 2 buckets advance to Stage 3 abstract scoring. The default selection is <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span>. Unchecking <span class="verdict is-maybe">MAYBE</span> lowers Stage 3 scoring costs on high-volume days at the expense of dropping interdisciplinary or borderline papers that the fast filter model was uncertain about.
 
 ### Papers to Analyze
 
-**Papers to Analyze** (default 30, range 1–100) is a hard cap on how many papers get PDF-analysed. Stage 3 ranks every scored paper; Stage 4 takes the top N by score. If the filter lets through 200 papers and this is set to 30, the bottom 170 will appear in the scored list but won't be deep-analysed.
+**Papers to Analyze** (`maxDeepAnalysis`, default 30, range 1–100) caps how many papers advance from Stage 3/3.5 into Stage 4 full-text PDF analysis. After abstract scoring ranks all surviving papers, the top `N` papers by score (modified by any manual stars or dismissals at Gate 2) advance to Stage 4, while lower-ranked papers remain visible in the scored list without downloading their PDFs.
 
-Tighten it when cost matters more than comprehensiveness. Raise it when you want more papers read in depth and have the budget for it. Stage 4 is the most expensive stage per paper, so this knob moves the bill more than any other in the panel.
+Because Stage 4 is the primary cost driver of the pipeline, adjusting **Papers to Analyze** affects total run cost more directly than any other numeric parameter.
 
-::: info No separate score threshold
-Aparture doesn't currently expose a "minimum score to advance" setting — the cutoff is just "top N by score," controlled by **Papers to Analyze**. A paper with a 3.5 will get PDF-analysed if it's in the top 30 on a thin day, and a 6.5 will be skipped if it's position 31 on a busy one.
+::: info Top-N selection without a fixed minimum score
+Stage 4 advancement selects the top `N` papers by score rather than enforcing a hard minimum score cutoff. On a sparse submission day, a paper scoring 3.5 may fall within the top 30 and receive full-text analysis, whereas on a dense submission day a paper scoring 6.5 at rank 31 will fall just below the automatic cutoff unless you star it at Gate 2.
 :::
 
 ## Optional stages
 
 ### Post-processing
 
-**Enable Post-Processing** (default on) runs an extra consistency pass on the top N scored papers (default 50) after Stage 3. Papers are compared head-to-head in small batches and their scores adjusted up or down to bring outliers into line with the broader ranking.
+**Enable Post-Processing** (enabled by default) runs the Stage 3.5 comparative consistency pass across the top `postProcessingCount` scored abstracts (default 50). Papers are grouped into small shuffled batches (`postProcessingBatchSize`, default 5) and re-evaluated side by side so the model can align score calibration across independent Stage 3 batches.
 
-The reason it exists: Stage 3 scores each paper independently, which sometimes produces inconsistencies — two papers of similar quality can land a point apart just because they were in different batches. The post-processing pass irons that out.
-
-The pass runs on `postProcessingModel` (**Review Model**, right under the checkbox), which defaults to `gemini-3.6-flash`. With no Google key, pick a model your key covers or turn the pass off; otherwise every batch fails and the run keeps the Stage 3 scores.
-
-Turn it off as well if run-time matters more than ranking quality, or if you're rapidly iterating on profile changes and want faster feedback. Leave it on for most production runs.
+Stage 3.5 runs on `postProcessingModel` (**Review Model**, default `gemini-3.6-flash`). If you do not have a Google API key configured, either switch **Review Model** to your active provider or uncheck **Enable Post-Processing** so Stage 3.5 batches do not fail and fall back to raw Stage 3 scores. You can also disable post-processing when you want faster turnaround during rapid profile iteration.
 
 ### Quick filter
 
-Whether Stage 2 runs at all is governed by the `useQuickFilter` config flag (default on). It's not currently exposed in the Settings UI — the flag lives in the app's saved state and would need to be edited there to turn off — but it exists. Skipping the filter is reasonable when your categories are narrow enough that the day's volume is already manageable (under ~30 papers) and the filter is just overhead. For most users, especially on high-volume categories like `cs.LG` or `cs.CL`, the filter cuts scoring costs by a meaningful margin and is worth leaving on.
+Whether Stage 2 executes is controlled by the `useQuickFilter` flag (default `true`) in saved application state. When your selected arXiv categories yield a small daily volume (fewer than roughly 30 papers per run), skipping Stage 2 and sending all fetched abstracts directly to Stage 3 adds negligible cost; on high-volume categories such as `cs.LG` or `cs.CL`, keeping the quick filter enabled reduces Stage 3 scoring volume substantially.
 
 ## Review & confirmation
 
-Seven checkboxes under **Review & confirmation** govern when the pipeline pauses, when it retries, and whether the editor asks questions or proposes profile changes.
+The **Review & confirmation** section in Settings controls pause gates, hallucination audit retries, editor clarification questions, and automatic profile proposals:
 
-| Checkbox                                                                                        | Default | What it does                                                                                                                                                                                                         |
-| ----------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pause after filter to review overrides                                                          | on      | Stops at Gate 1 so you can move papers between <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> buckets                                 |
-| Pause before deep analysis                                                                      | on      | Stops at Gate 2 (after scoring, before PDF reads) so you can star borderline papers into the PDF set or exclude obvious duds from it                                                                                 |
-| Pause before briefing to review scores and add feedback                                         | on      | Stops at Gate 3 so you can star, dismiss, or comment before synthesis runs                                                                                                                                           |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>       | on      | Reruns synthesis once with a retry hint when the audit flags claims                                                                                                                                                  |
-| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span>  | off     | Same, but for the more ambiguous verdict                                                                                                                                                                             |
-| Ask me up to two questions after each briefing when the day's papers expose a gap in my profile | on      | After each briefing, one small call on the briefing model may add up to two tap-to-answer questions under **Notes from the editor** (`editorQuestions`). A failed call just means no questions that day              |
-| Propose profile changes after a briefing when my recent feedback adds up                        | on      | After a real briefing, one call on the briefing model may prepare profile and editorial-note proposals for you to review (`autoProposals`). See [automatic proposals](/using/refining-over-time#automatic-proposals) |
+| Checkbox                                                                                        | Default | What it does                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pause after filter to review overrides                                                          | on      | Pauses at Gate 1 (`pauseAfterFilter`) so you can move papers between <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, and <span class="verdict is-no">NO</span> buckets      |
+| Pause before deep analysis                                                                      | on      | Pauses at Gate 2 (`pauseBeforeDeepAnalysis`) after scoring so you can star borderline papers into the PDF set or exclude low-relevance papers                                                                     |
+| Pause before briefing to review scores and add feedback                                         | on      | Pauses at Gate 3 (`pauseBeforeBriefing`) so you can star, dismiss, or comment on analyzed papers before synthesis                                                                                                 |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>       | on      | Re-runs Stage 5 synthesis once with a retry hint whenever the audit flags unsupported claims (`briefingRetryOnYes`)                                                                                               |
+| Auto-retry briefing if hallucination check returns <span class="verdict is-maybe">MAYBE</span>  | off     | Re-runs Stage 5 synthesis once when the audit returns an uncertain verdict (`briefingRetryOnMaybe`)                                                                                                               |
+| Ask me up to two questions after each briefing when the day's papers expose a gap in my profile | on      | Runs `/api/editor-questions` on `briefingModel` after the audit to append up to two tap-to-answer clarification questions under **Notes from the editor** (`editorQuestions`)                                     |
+| Propose profile changes after a briefing when my recent feedback adds up                        | on      | Runs a background refinement check after a production briefing when unweighed feedback reaches the proposal threshold (`autoProposals`; see [automatic proposals](/using/refining-over-time#automatic-proposals)) |
 
 ### pauseBeforeDeepAnalysis
 
-`pauseBeforeDeepAnalysis` (default: **on**) fires after Stage 3.5 (post-processing) and before Stage 4 (PDF analysis). This is where you decide which papers get read in full. It also sits in front of the most expensive stage, so the banner shows the projected cost of the PDF run.
-
-The gate shows the full scored list in three groups — **Will PDF (top-N)**, **Borderline**, and **Low score** — with STAR and DISMISS controls per row. Stars pull papers into the PDF set from any group; dismissals remove them from it. The final PDF set is `(top-N) ∪ {starred papers} − {dismissed papers}`, so you can exceed `maxDeepAnalysis` deliberately if you want more papers analysed on a particular day.
-
-A free-text **"+ feedback on this scoring round"** field in the gate banner lets you leave a run-level note — observations about the scoring spread, an unusual batch composition, or a pattern you want the refinement flow to see. This is distinct from per-paper comments; it flows into the suggest-profile prompt as a round-level observation.
-
-See [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review) for the full walkthrough.
+`pauseBeforeDeepAnalysis` (default: **on**) pauses the pipeline at Gate 2 between Stage 3.5 post-processing and Stage 4 PDF analysis, displaying the projected PDF stage cost above the **Will PDF (top-N)**, **Borderline**, and **Low score** groups. Each row provides **STAR** and **DISMISS** controls so that the resulting PDF candidate set equals `(top-N) ∪ {starred papers} − {dismissed papers}`, allowing you to exceed `maxDeepAnalysis` whenever you star extra borderline papers. The banner also includes the free-text **"+ feedback on this scoring round"** input for recording run-level `score-review` observations (see [Review gates → Gate 2](/using/review-gates#gate-2-before-pdf-analysis-score-review)).
 
 ### Skip remaining gates this run
 
-A **Skip remaining gates this run** link sits in the banner at the head of all three gates, next to the Continue button. Clicking it bypasses any subsequent default-on gates for this run only — settings are not modified. Useful for an unattended run when you don't want to toggle settings off and back on: engage with whichever gate you want to review, then skip the rest.
+Clicking **Skip remaining gates this run** in the banner of Gate 1, Gate 2, or Gate 3 bypasses all subsequent pause gates for the rest of the current run without modifying your persistent Settings checkboxes. Keep the three pause gates enabled while calibrating a new profile or category set, and disable them selectively once filter buckets and score rankings match your expectations across consecutive runs (see [Review gates](/using/review-gates)).
 
-Leaving the three pause gates on is the right starting point. Turning them off is something you'll usually do deliberately, once you've seen enough runs to know the filter and the scores are landing well for your profile. [Review gates](/using/review-gates) goes deeper on what each gate shows and when to skip which.
-
-The retry checkboxes trade tokens for quality. A retry is a full second synthesis pass plus a second audit — cheap compared to Stage 4, but not free. Retry-on-<span class="verdict is-no">YES</span> is usually worth keeping on (a confident "hallucinations detected" verdict is rare but worth fixing). Retry-on-<span class="verdict is-maybe">MAYBE</span> is more defensible to turn off — the <span class="verdict is-maybe">MAYBE</span> verdict often catches paraphrases the auditor is unusually strict about rather than genuine hallucinations. The retry path fires at most once per briefing either way.
+For the synthesis audit checkboxes, keeping `briefingRetryOnYes` enabled catches and repairs confirmed unsupported claims automatically at the cost of one additional synthesis and audit call on the rare runs where `YES` triggers. Keeping `briefingRetryOnMaybe` disabled avoids spending an extra synthesis pass on strict paraphrase flags. Either retry path executes at most once per briefing.
 
 ## arXiv fetching
 
-Five Advanced-settings controls govern how Aparture talks to arXiv: ingestion mode, window semantics, min papers per subcategory, fill-up lookback days, cache TTL. See [arXiv ingestion](../concepts/arxiv-ingestion.md) for what each does and when to change defaults.
+Under Advanced Options, arXiv harvesting is configured through the ingestion mode, window semantics, minimum papers per subcategory, fill-up lookback days, and cache TTL. See [arXiv ingestion](../concepts/arxiv-ingestion.md) for the mechanics of each setting.
 
 ### Duplicate detection
 
-Aparture remembers the arXiv IDs from your runs of the last 90 days (the **seen-papers index**, stored in your browser's localStorage). By default, the **Remove duplicate papers** toggle in Settings drops these from new runs before any LLM call — saving tokens and avoiding re-reading work you've already seen. Turn it off if you'd rather keep duplicates visible; they'll be marked with a small "seen ‹date›" badge on filter, scoring, and briefing cards.
+Aparture maintains a rolling 90-day **seen-papers index** in browser `localStorage` (`aparture-seen-papers-index`) recording the `arxivId` of every paper processed in your saved briefings. By default, **Remove duplicate papers** in Settings drops previously seen papers after Stage 1 fetch before any LLM calls execute, saving tokens and preventing cross-run repetition. If you uncheck **Remove duplicate papers**, duplicate submissions remain in the run and display a muted _"seen ‹date›"_ badge across filter, scoring, and briefing cards.
 
-The first time you run Aparture after upgrading, the index is seeded from your saved briefings on disk. While that one-time migration is in flight, the status line will show `seen-papers index still loading` and the run is treated as having zero duplicates; the next run is fully deduped.
+On your first run after upgrading, Aparture seeds the seen-papers index asynchronously from your existing briefing files on disk. If you start a run while that initial migration is still in progress, the status line notes `seen-papers index still loading` and processes the run without deduplication; all subsequent runs use the populated index.
 
-Memory is anchored to **briefing-save**, not to every paper Aparture fetches. If you start a run and abort it before a briefing is saved (e.g. you stop at the score-review gate and walk away), those papers are _not_ added to the index — restart the pipeline and they'll come back. Once a briefing successfully saves, all papers that the LLM filter looked at during that run (yes/maybe/no buckets, plus the briefed shortlist) become "seen" for the next 90 days.
+Papers are committed to the seen-papers index only when a **briefing is saved** at the end of Stage 5. If you stop or abort a run at Gate 1, Gate 2, or Gate 3 before synthesis completes, none of that run's fetched papers are marked as seen, so restarting the pipeline will fetch them again. Once a briefing saves, every paper that entered Stage 2 filtering during that run (`yes`, `maybe`, and `no` buckets alike) is recorded in the index for 90 days. To rebuild the index from scratch, delete the `aparture-seen-papers-index` key under DevTools → Application → Local Storage and reload the page.
 
-Memory rolls off automatically after 90 days. Re-running with the same `daysBack` after a long pause will surface old papers again. If you ever want to clear the index manually, delete the `aparture-seen-papers-index` key from your browser's DevTools → Application → Local Storage; the next mount will rebuild it from your saved briefings.
+When duplicate removal is enabled, note how profile edits and subcategory fill-ups interact with the 90-day index:
 
-Two limits to know about:
-
-- **Profile changes don't bring papers back.** With duplicate removal on, a paper the filter marked NO under an older profile stays hidden for the rest of its 90 days, even if your new profile would accept it. Turn removal off for a run if you want to re-triage recent papers after a big profile change.
-- **Fill-ups don't account for duplicates.** If a category reaches `minPapersPerSubcategory` with papers that are mostly duplicates, no fill-up fires, and removal can leave that category with fewer papers than the minimum.
+- **Profile updates do not resurrect previously filtered papers**: A paper marked `NO` under an earlier profile remains in the 90-day seen-papers index after you broaden your profile; disable **Remove duplicate papers** temporarily for one run if you want to re-evaluate recent days against a newly rewritten profile.
+- **Subcategory fill-ups run before deduplication**: Because Stage 1 checks `minPapersPerSubcategory` before the in-memory deduplication pass removes previously seen papers, a subcategory whose recent papers were already seen in yesterday's run may end up with fewer than `minPapersPerSubcategory` net papers after deduplication.
 
 ## A few common configurations
 
-The defaults ship tuned sensibly — all-Google models, all three pause gates on, retry-on-<span class="verdict is-no">YES</span> on, retry-on-<span class="verdict is-maybe">MAYBE</span> off, Papers to Analyze at 30. From there:
+Starting from the shipped defaults (all-Google models, all three review gates on, `briefingRetryOnYes` on, `briefingRetryOnMaybe` off, and **Papers to Analyze** set to 30), three common adjustments cover most workflows:
 
-**Cost-sensitive.** Switch filter and scoring to a Flash-Lite, Haiku, or Luna-class model. Drop Papers to Analyze to 10–15. Turn off post-processing. Turn off retry-on-<span class="verdict is-maybe">MAYBE</span> if it isn't already.
-
-**Highest quality.** Put a top-tier model on `pdfModel` and `briefingModel`, and keep `scoringModel` on a mid-tier model; [Model selection](/concepts/model-selection) names the current options. Keep post-processing on. Raise Papers to Analyze to 50+. Turn both retry checkboxes on.
-
-**Unattended.** Turn off all three pause gates (nobody's there to click through them), or use the **Skip remaining gates this run** link on the first gate you encounter to bypass the rest without changing settings. Consider turning off both retry checkboxes — an unattended run can't weigh the trade-off when the audit flags something, and a retry ties up an extra few minutes. Tighten Papers to Analyze to something predictable so cost doesn't swing with daily paper volume.
+- **Cost-sensitive**: Assign Flash-Lite, Haiku 5.5, or Luna models to `filterModel` and `scoringModel`, lower **Papers to Analyze** to 10–15, uncheck **Enable Post-Processing**, and keep `briefingRetryOnMaybe` off.
+- **Highest quality**: Assign a flagship model (`gemini-4-argon`, `claude-opus-5.5`, `claude-fable-5.1`, or `gpt-6-astra` / `gpt-6.1-sol`) to `pdfModel` and `briefingModel` while keeping a calibrated mid-tier model on `scoringModel` (see [Model selection](/concepts/model-selection)), keep **Enable Post-Processing** on, raise **Papers to Analyze** to 50 or more, and enable both hallucination retry checkboxes.
+- **Unattended**: Uncheck all three pause gates (or click **Skip remaining gates this run** at Gate 1), optionally uncheck both hallucination retry boxes to bound run duration, and set **Papers to Analyze** to a fixed count (such as 20 or 25) so daily token spend remains predictable regardless of submission spikes.
 
 ## Where to see what a past briefing used
 
-Every briefing archives its full configuration in the **Generation details** panel — the small expandable section below the briefing itself. When you're looking at an old briefing and wondering which model was on the PDF slot that day, or whether the hallucination retry fired, open Generation details and check the fields there. This is also useful when a run produces a weird briefing and you want to compare against a known-good run to isolate what changed. See [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance) for what the panel shows.
+Every saved briefing records its full stage configuration inside the expandable **Generation details** panel beneath the briefing body. Inspecting Generation details on an archived briefing shows the exact profile snapshot, stage model IDs, category list, filter bucket counts, gate and retry settings, and audit verdict from that run (see [Reading a briefing → Generation provenance](/using/reading-a-briefing#generation-provenance)).
 
 ## Next
 
-[Review gates →](/using/review-gates) — what each pause gate shows and when to turn it off.
+Continue to [Review gates →](/using/review-gates) for a detailed guide to using or disabling each of the three interactive checkpoints.
 
-Also worth reading:
+Related guides:
 
-- You want the system view of each stage, not just the knobs. → [The pipeline](/concepts/pipeline)
-- You want to compare providers and pick a cost/quality combination. → [Model selection](/concepts/model-selection)
-- You want to tune the synthesis prompt itself, not just which model runs it. → [Prompts](/reference/prompts)
+- [**The pipeline**](/concepts/pipeline): Architectural overview of Stages 1 through 5 and their data contracts.
+- [**Model selection**](/concepts/model-selection): Complete model registry, pricing tables, and multi-provider configurations.
+- [**Prompts**](/reference/prompts): How to customize the hot-reloadable scoring and synthesis prompt files on disk.

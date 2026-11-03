@@ -1,192 +1,201 @@
 # Review gates
 
-If you've gone through a run or two, you've already seen all three gates in action — the pipeline halts after the filter completes, again after scoring and before PDF analysis, and once more before briefing synthesis, each time showing you intermediate results. All three gates are on by default. You can click through any single one without turning it off, and each can be disabled in Settings once you stop catching things at it.
-
-This page covers what each gate shows, what to do there, and when it's worth turning any of them off.
+During a default pipeline run, Aparture pauses at three interactive review gates: after the quick filter completes (Gate 1), after abstract scoring and post-processing before any PDFs are downloaded (Gate 2), and after full-text PDF analysis before briefing synthesis begins (Gate 3). Each gate displays the current stage's output and lets you adjust which papers advance or attach feedback before the next stage executes. All three gates are enabled by default, can be bypassed for the remainder of an active run with a single click, and can be disabled persistently in Settings once your profile is calibrated.
 
 ## Where they sit in the pipeline
 
-```
-  1. Fetch papers
-      │
-  2. Filter papers      (YES / MAYBE / NO triage)
-      │
-      ⏸   Gate 1 — review the buckets, fix obvious errors
-      │
-  3. Score abstracts    (0–10 + justification)
-  3.5. Post-process     (optional consistency pass)
-      │
-      ⏸   Gate 2 — review scores, star papers for deep analysis
-      │
-  4. Analyze PDFs       (full-text read of the top N)
-      │
-      ⏸   Gate 3 — star / dismiss / comment before synthesis
-      │
-  5. Briefing           (editorial synthesis + hallucination audit)
-```
+<div style="margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft);">
+  <svg viewBox="0 0 680 390" style="width: 100%; height: auto; max-width: 680px; display: block; margin: 0 auto;" role="img" aria-label="Pipeline sequence showing where Gate 1, Gate 2, and Gate 3 sit between the five automated stages">
+    <defs>
+      <marker id="rg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 8 5 L 0 9 z" fill="var(--vp-c-text-3)" />
+      </marker>
+    </defs>
+    <rect x="40" y="12" width="600" height="38" rx="7" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="58" y="36" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="600" fill="var(--vp-c-text-1)">1. Fetch papers</text>
+    <text x="260" y="36" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">Harvest new arXiv submissions across selected categories</text>
+    <line x1="340" y1="50" x2="340" y2="64" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="40" y="66" width="600" height="38" rx="7" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="58" y="90" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="600" fill="var(--vp-c-text-1)">2. Filter papers</text>
+    <text x="260" y="90" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">YES / MAYBE / NO abstract triage</text>
+    <line x1="340" y1="104" x2="340" y2="118" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="65" y="120" width="550" height="34" rx="17" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.5" />
+    <text x="88" y="142" font-family="var(--vp-font-family-mono)" font-size="12.5" font-weight="700" fill="var(--vp-c-brand-1)">Gate 1 (pauseAfterFilter)</text>
+    <text x="295" y="142" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-1)">Review buckets and override obvious filter misses</text>
+    <line x1="340" y1="154" x2="340" y2="168" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="40" y="170" width="600" height="44" rx="7" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="58" y="190" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="600" fill="var(--vp-c-text-1)">3. Score abstracts + 3.5. Post-process</text>
+    <text x="58" y="206" font-family="var(--vp-font-family-base)" font-size="12" fill="var(--vp-c-text-2)">0.0 to 10.0 relevance scores with justifications and optional consistency pass</text>
+    <line x1="340" y1="214" x2="340" y2="228" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="65" y="230" width="550" height="34" rx="17" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.5" />
+    <text x="85" y="252" font-family="var(--vp-font-family-mono)" font-size="11.5" font-weight="700" fill="var(--vp-c-brand-1)">Gate 2 (pauseBeforeDeepAnalysis)</text>
+    <text x="305" y="252" font-family="var(--vp-font-family-base)" font-size="11.5" fill="var(--vp-c-text-1)">Review scores and star or dismiss PDF candidates</text>
+    <line x1="340" y1="264" x2="340" y2="278" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="40" y="280" width="600" height="38" rx="7" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="58" y="304" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="600" fill="var(--vp-c-text-1)">4. Analyze PDFs</text>
+    <text x="260" y="304" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">Full-text PDF read of the top N papers</text>
+    <line x1="340" y1="318" x2="340" y2="332" stroke="var(--vp-c-text-3)" stroke-width="1.5" marker-end="url(#rg-arrow)" />
+    <rect x="65" y="334" width="550" height="34" rx="17" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.5" />
+    <text x="85" y="356" font-family="var(--vp-font-family-mono)" font-size="11.5" font-weight="700" fill="var(--vp-c-brand-1)">Gate 3 (pauseBeforeBriefing)</text>
+    <text x="290" y="356" font-family="var(--vp-font-family-base)" font-size="11.5" fill="var(--vp-c-text-1)">Star, dismiss, or comment before Stage 5 synthesis</text>
+  </svg>
+</div>
 
-All three gates pause a running pipeline until you click a <span class="ui-action">Continue →</span> button. They don't cost tokens — skipping them doesn't save money, only time — but they do catch bad runs early.
+Each gate pauses the active pipeline run in the browser until you click its <span class="ui-action">Continue →</span> button. The gates themselves consume zero tokens, and they allow you to catch misclassified papers before the pipeline spends tokens on downstream scoring or PDF reading.
 
-Gates 2 and 3 also show the projected spend of the stage they hold back. The score-review banner shows how many papers will be deep-read and a rough cost on your PDF model, updating live as you star and exclude; the pre-briefing banner does the same for the briefing. The numbers come from average token counts and the pricing snapshot in the model registry — planning figures, not a bill. If the registry has no price for the selected model, the line is hidden. Each gate presents the same banner — a one-line summary, a <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link — at the head of the section it gates. When a gate appears, the page scrolls it into view, so a pause far down the page doesn't look like a stall. The progress timeline marks the stage the gate holds back with ◐ and a line such as _"Waiting for you: review the scores below"_, and its progress bar hides until you continue. While a gate is waiting, the browser tab title changes to _"⏸ Waiting for your review — Aparture"_, so a backgrounded run signals when it needs you; the title restores when the run resumes.
+Gates 2 and 3 also display the projected token cost of the upcoming stage based on average token counts and the pricing snapshot in the model registry (`utils/models.js`). At Gate 2, the banner reports how many papers will receive a full-text PDF read alongside the estimated cost on your selected `pdfModel`, updating live as you star or dismiss candidates; at Gate 3, the banner reports the estimated synthesis cost on your `briefingModel`. If the registry does not carry pricing for a custom model ID, the cost line is omitted.
+
+Every gate renders a consistent banner containing a status summary, the primary <span class="ui-action">Continue →</span> button, and a **Skip remaining gates this run** link at the top of the gated section. When a gate activates, the page scrolls the banner into view automatically, the progress timeline marks the held stage with `◐` and an instructional message (such as _"Waiting for you: review the scores below"_), and the browser tab title prepends `⏸ Waiting for your review` to the Aparture window title until you resume the run.
 
 ## Gate 1: after the quick filter
 
 ### What it does
 
-The quick filter (Stage 2) is cheap: the `filterModel` slot (default `gemini-3.5-flash-lite`) runs <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> triage on every paper fetched from arXiv, along with a one-sentence summary and a short justification per paper. Its job is to cut the volume before you spend real tokens on scoring and deep analysis.
+In Stage 2, the `filterModel` slot (default `gemini-3.5-flash-lite`) assigns a <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, or <span class="verdict is-no">NO</span> triage verdict to every fetched abstract along with a one-sentence summary and brief justification, filtering out clearly unrelated papers before Stage 3 abstract scoring.
 
-When `pauseAfterFilter` is on (default: **on**), the pipeline halts immediately after the filter stage. A review banner — _"Filter complete — review verdicts before scoring"_ with a <span class="ui-action">Continue to scoring →</span> button — appears at the head of the filter results, which fill in below it grouped into three buckets.
+When `pauseAfterFilter` is enabled (default: **on**), the pipeline pauses immediately after Stage 2 completes and displays the Gate 1 review banner with a <span class="ui-action">Continue to scoring →</span> button above the three verdict buckets.
 
-![Gate 1: the filter-review banner with a Continue to scoring button and Skip remaining gates link, above the filtered papers grouped into YES, MAYBE, and NO buckets with per-paper verdict pills](/screenshots/gate-1-filter.png)
+![Gate 1 displays the filter-review banner with a Continue to scoring button and Skip remaining gates link above the filtered papers grouped into YES, MAYBE, and NO buckets with per-paper verdict pills.](/screenshots/gate-1-filter.png)
 
-_Gate 1 on a dry run (mock verdicts). The banner summarises the bucket counts; each row below carries clickable YES / MAYBE / NO verdict pills._
+_Gate 1 on a dry run displays the bucket counts in the banner above the YES, MAYBE, and NO paper lists with clickable verdict pills on each row._
 
 ### What you see
 
-Each paper in the list shows its title and authors, the filter's one-sentence summary (italic), and a _"Verdict reasoning:"_ line with the model's justification. On the right are three verdict buttons — <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, <span class="verdict is-no">NO</span>. The current verdict is filled; the other two are outlined. Clicking a different one moves the paper to that bucket and marks the choice with a small `⇄` to indicate it was overridden.
+Each paper row displays its title, author list, one-sentence italic summary, and _"Verdict reasoning:"_ justification alongside three clickable verdict pills (<span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, and <span class="verdict is-no">NO</span>). The active verdict pill is filled while the other two are outlined. Clicking an outlined pill moves the paper into that bucket and marks the pill with a `⇄` override indicator.
 
-Above the buckets sits <span class="ui-action">Continue to scoring →</span>, which advances the pipeline with whatever verdicts are in effect at that moment, overrides included.
+Clicking <span class="ui-action">Continue to scoring →</span> advances the pipeline to Stage 3 using the updated bucket assignments.
 
 ### What to do there
 
-If the filter got something right, do nothing. Most verdicts will be fine — the filter model is decent at its job.
+When the filter's bucket assignments look accurate, click <span class="ui-action">Continue to scoring →</span> without making changes. When a paper is misclassified, click the appropriate verdict pill to override it:
 
-When the filter gets something wrong, click a verdict to override. Moving a paper from <span class="verdict is-no">NO</span> to <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span> brings it into scoring — do this when you think the filter missed something relevant. Moving a paper from <span class="verdict is-yes">YES</span> to <span class="verdict is-no">NO</span> excludes it from scoring, which saves you tokens on something you already know isn't a fit.
+- Moving a paper from <span class="verdict is-no">NO</span> to <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span> rescues it into Stage 3 scoring on the active run.
+- Moving a paper from <span class="verdict is-yes">YES</span> to <span class="verdict is-no">NO</span> drops it before Stage 3 so you do not spend scoring or PDF tokens on an irrelevant submission.
 
-Every override is logged as a `filter-override` feedback event the moment you click. The verdict pills stay usable after the run ends, so you can still correct a verdict later; a change then is saved as feedback and doesn't re-run anything. These events act as scope signals downstream: a pattern of <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> overrides suggests your profile is too narrow in that area; the reverse suggests it's too broad. The refinement flow sees them. See [Giving feedback → The filter-review gate](/using/giving-feedback#the-filter-review-gate-carries-override-buttons) for the full mechanics.
+Every click immediately records a `filter-override` feedback event. The verdict pills also remain interactive in the Pipeline view after a run completes so that you can log post-run filter corrections for profile refinement without re-running the pipeline. Repeated <span class="verdict is-no">NO</span> → <span class="verdict is-yes">YES</span> overrides signal to the refinement flow that your profile is too narrow in that area, whereas repeated <span class="verdict is-yes">YES</span> → <span class="verdict is-no">NO</span> overrides signal that it is too broad (see [Giving feedback → The filter-review gate](/using/giving-feedback#the-filter-review-gate-carries-override-buttons)).
 
 ### In practice
 
-A few patterns come up repeatedly:
+Common triage situations at Gate 1 include:
 
-- **The filter dismisses a paper adjacent to your interests but not a direct match.** Override to <span class="verdict is-maybe">MAYBE</span> and see what deep analysis makes of it. This is the most common case.
-- **The filter accepts a paper whose abstract is mostly marketing.** Override to <span class="verdict is-no">NO</span> to skip spending tokens on a likely dud.
-- **The filter is confused by a paper straddling multiple fields.** Override to match your actual interest and note whether it's a symptom your profile could address.
+- **The filter excludes an adjacent methods paper framed around an unfamiliar application domain**: Override its verdict to <span class="verdict is-maybe">MAYBE</span> so Stage 3 evaluates the full abstract against your scoring rubric.
+- **The filter admits a broad promotional abstract with no substantive methodological contribution**: Override its verdict to <span class="verdict is-no">NO</span> to exclude the low-relevance paper before scoring.
+- **The filter misclassifies an entire bucket of cross-listed papers**: Attach a single bucket-level scoped note (`"+ feedback on this bucket"`) rather than clicking fifteen individual overrides.
 
-You don't have to review every paper. Overrides usually happen in the <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> buckets; the <span class="verdict is-no">NO</span> bucket can often be left alone unless something specific catches your eye.
+Most overrides occur while scanning the <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> buckets, plus a quick title scan of <span class="verdict is-no">NO</span> to ensure no core paper was dropped.
 
 ## Gate 2: before PDF analysis (score review)
 
 ### What it does
 
-After Stage 3.5 (post-processing), the pipeline has a ranked list of scores but hasn't read any PDFs yet. This is where you decide which papers get read in full.
+After Stage 3 abstract scoring and the optional Stage 3.5 post-processing consistency pass complete, the pipeline has a ranked list of scored abstracts ready for Stage 4 full-text PDF reading. When `pauseBeforeDeepAnalysis` is enabled (default: **on**), the pipeline pauses at Gate 2 and displays a review banner with a <span class="ui-action">Continue to PDF analysis →</span> button above three collapsible score groups.
 
-When `pauseBeforeDeepAnalysis` is on (default: **on**), the pipeline halts here. A review banner with a <span class="ui-action">Continue to PDF analysis →</span> button sits at the head of the full scored list, split into three collapsible groups.
+![Gate 2 displays the score-review banner showing how many papers will be deep-read and the estimated cost above the expanded Will PDF group, where each scored paper row has STAR and DISMISS buttons.](/screenshots/gate-2-score-review.png)
 
-![Gate 2: the score-review banner showing how many papers will be deep-read and the estimated cost, above the expanded Will PDF group where each scored paper row has STAR and DISMISS buttons](/screenshots/gate-2-score-review.png)
-
-_Gate 2 on a dry run. The banner carries the deep-read cost estimate; the Will PDF group below lists the papers headed to PDF analysis, each with STAR and DISMISS controls._
+_Gate 2 on a dry run shows the projected Stage 4 PDF analysis cost in the banner above the expanded Will PDF candidate group._
 
 ### What you see
 
-Three groups, each collapsible:
+Gate 2 organizes the scored abstracts into three collapsible bands:
 
-- **Will PDF (top-N)** — expanded by default. These are the papers that would go to Stage 4 as things stand: the top N by score, where N is your **Papers to Analyze** setting (default 30).
-- **Borderline** — collapsed by default. The next chunk of papers after the top-N cutoff, up to `min(maxDeepAnalysis, 50)` papers. These are the candidates most worth inspecting if you think the default cutoff is landing in the wrong place.
-- **Low score** — collapsed. Everything below the borderline band.
+- **Will PDF (top-N)** (expanded by default): The top `N` papers by score scheduled to advance to Stage 4 under your current **Papers to Analyze** (`maxDeepAnalysis`, default 30) setting.
+- **Borderline** (collapsed by default): The next band of papers immediately below the top-N cutoff, containing up to `min(maxDeepAnalysis, 50)` papers. Expanding this band lets you inspect candidates that narrowly missed the automatic cutoff.
+- **Low score** (collapsed by default): All remaining scored papers below the borderline band.
 
-Each row in the list shows the paper's title and authors, its score (pre-analysis), the scoring model's justification, and — when the paper appeared in a past run — a muted "seen ‹date›" duplicate chip with a small history icon. On the right of each row sit three controls:
+Each row displays the paper's title, authors, abstract relevance score, scoring justification, and (when the paper was seen in an earlier run within the last 90 days) a muted _"seen ‹date›"_ duplicate badge. The right side of each row provides three controls:
 
-- **STAR**: guarantees this paper gets PDF-analysed, regardless of where its score sits.
-- **DISMISS**: removes this paper from PDF analysis for this run.
-- **💬 add comment**: opens a small text box to attach a note to the paper. Does not change whether the paper goes to PDF.
+- **STAR**: Guarantees that this paper advances to Stage 4 full-text PDF analysis regardless of its abstract score.
+- **DISMISS**: Excludes this paper from Stage 4 PDF analysis on the current run.
+- **💬 add comment**: Attaches a free-text comment to the paper without changing whether its PDF is analyzed.
 
 ### The selection logic
 
-The final set of papers sent to Stage 4 is additive:
+The candidate set sent to Stage 4 combines the automatic top-N cutoff with your explicit Gate 2 overrides:
 
 ```
 PDF set = (top-N by score) ∪ {papers you starred} − {papers you dismissed}
 ```
 
-Stars can reach into the Borderline or Low score groups and pull papers up. Dismissals can remove papers from the top-N. If you star several borderline papers, the final PDF set may exceed `maxDeepAnalysis` — that's intentional, not a bug: your explicit choices override the automatic cutoff.
+Starring papers in the **Borderline** or **Low score** groups pulls them into Stage 4, and dismissing papers in **Will PDF (top-N)** removes them. If you star multiple borderline papers without dismissing top-N papers, the resulting PDF set can exceed `maxDeepAnalysis` because explicit stars override the automatic count cap.
 
-Starred papers carry a guarantee all the way through: even if a PDF-analysed paper's `finalScore` ends up lower than the `finalOutputCount` cutoff, starred papers always appear in `finalRanking` and therefore in the briefing.
+Furthermore, any paper you star carries a downstream guarantee through the rest of the run: even if its post-PDF `finalScore` falls below the `finalOutputCount` cutoff, a starred paper is always retained in `finalRanking` and included in the synthesized briefing.
 
 ### Round-level note
 
-Inside the gate banner, under the cost estimate, sits a free-text field labelled **"+ feedback on this scoring round"**. This is for observations about the scoring run as a whole — _"scores feel compressed, everything is bunched between 5 and 7"_, _"filter let through a lot of tangential ML papers this time"_. It isn't attached to any single paper; instead it flows into the next profile-refinement call as a run-level observation. Leave it blank if nothing's worth noting.
+Inside the Gate 2 banner beneath the cost estimate sits the free-text **"+ feedback on this scoring round"** field. Use this field to record observations about the scoring distribution as a whole (for example, _"scores feel compressed between 5 and 7"_ or _"the filter let through many tangential ML papers in this batch"_). This note is stored as a `score-review` scoped feedback event for the next profile refinement pass.
 
 ### Skip remaining gates this run
 
-A small <span class="ui-action">Skip remaining gates this run</span> link sits in the top-right of the gate banner, next to the Continue button — on this gate, Gate 1, and Gate 3. Clicking it bypasses all subsequent default-on gates for the rest of this run — useful when you want a single unattended run without changing your persistent settings. It does not modify any setting; the next run will still pause normally.
+Every gate banner (Gate 1, Gate 2, and Gate 3) includes a <span class="ui-action">Skip remaining gates this run</span> link in the top right next to the Continue button. Clicking it advances the pipeline and bypasses all subsequent pause gates for the remainder of the active run without altering your saved Settings checkboxes, so the next run will still pause normally.
 
-Click <span class="ui-action">Continue to PDF analysis →</span> when you're done. Stage 4 starts immediately with the adjusted paper set.
+Click <span class="ui-action">Continue to PDF analysis →</span> once your candidate list is finalized to start Stage 4.
 
 ## Gate 3: before briefing synthesis
 
 ### What it does
 
-After Stage 4 (PDF analysis) completes, the pipeline has scores, deep-analysis summaries, and a ranked list of papers. The next step is synthesis: the briefing model reads your profile, the analysed papers, and your feedback, then writes the executive summary, themes, and paper cards.
+Once Stage 4 finishes reading the selected PDFs, the pipeline has full technical reports, extracted key figures, and updated relevance scores for every analyzed paper. When `pauseBeforeBriefing` is enabled (default: **on**), the pipeline pauses at Gate 3 with an _"Analysis complete: review before briefing"_ banner and a <span class="ui-action">Continue to briefing →</span> button above the interactive Analysis Results list.
 
-When `pauseBeforeBriefing` is on (default: **on**), the pipeline halts before synthesis runs. A review banner — _"Analysis complete — review before briefing"_ with a <span class="ui-action">Continue to briefing →</span> button — sits at the head of the Analysis Results list, showing every PDF-analysed paper, score, and summary.
+![Gate 3 displays the pre-briefing banner with a Continue to briefing button and briefing cost estimate above the Analysis Results list of PDF-analyzed papers.](/screenshots/gate-3-pre-briefing.png)
 
-![Gate 3: the pre-briefing banner with a Continue to briefing button and briefing cost estimate, above the Analysis Results list of PDF-analysed papers](/screenshots/gate-3-pre-briefing.png)
-
-_Gate 3 on a dry run. Stars, dismisses, and comments given on the results below feed directly into the briefing that's about to be written._
+_Gate 3 on a dry run lets you star, dismiss, or comment on the analyzed papers before Stage 5 synthesizes the briefing._
 
 ### What to do there
 
-Star the papers you care about and dismiss the ones you don't. Both signals feed directly into the synthesis prompt: starred papers anchor themes and get the richest _"why it matters"_ treatment; dismissed papers get deprioritised or explained away; everything else is handled according to its relevance score. Leave a <span class="ui-action">+ comment</span> on a paper to have your note woven into its paragraph in the briefing.
+Mark stars, dismissals, and comments on the analyzed papers to shape how Stage 5 writes the briefing:
 
-To steer the briefing as a whole, use <span class="ui-action">+ Add a comment</span> in the gate's banner. The note goes to the briefing writer as an editorial instruction for this run: _"Lead with the diffusion-models cluster"_, or _"I want more methodology depth in the writeup"_. After you save it, the banner lists it under _"Sent to the briefing writer with this run"_. The note can't override the briefing's sourcing rules, and it's saved as a general comment, so the refinement flow sees it later too.
+- **Starred papers** anchor the executive summary and top themes and receive the most detailed _"why it matters"_ paragraphs.
+- **Dismissed papers** are deprioritized or briefly noted as low-fit in the synthesis.
+- **Paper comments** (<span class="ui-action">+ comment</span>) are passed directly to the synthesis writer and woven into that paper's card prose.
 
-Stars given here have a different meaning than stars given at Gate 2. A star at Gate 2 says _"analyse this paper's PDF"_; a star at Gate 3 (or on a rendered briefing) says _"I liked this paper"_. Both are stored as `star` events — the meaning is contextual based on when you gave it.
+To give the briefing writer a run-wide editorial instruction (such as _"Lead with the diffusion-models cluster"_ or _"Emphasize methodological limitations in each card"_), click <span class="ui-action">+ Add a comment</span> inside the Gate 3 banner. Saved banner notes appear under _"Sent to the briefing writer with this run"_, guide the current synthesis call (subject to the hard citation and sourcing rules), and are saved simultaneously as general comments for future profile refinement.
 
-The difference between Gate 3 and the same controls on the rendered briefing is timing. Feedback given here shapes the briefing that's about to be written. Feedback given while reading the briefing is recorded against the paper but only affects future runs — via the [refinement flow](/using/refining-over-time), where paper-grounded signals are among the strongest inputs the profile revision sees.
+While both Gate 2 and Gate 3 record `star` events, their operational roles differ by stage: starring at Gate 2 instructs the pipeline to _read the paper's PDF_, whereas starring at Gate 3 instructs the synthesis writer to _feature the paper prominently in the briefing_. Similarly, feedback given at Gate 3 shapes the briefing about to be synthesized, whereas feedback recorded later on the finished briefing page accumulates for future profile refinement (see [Refining over time](/using/refining-over-time)).
 
-Click <span class="ui-action">Continue to briefing →</span> when you're done. Synthesis runs, then the hallucination audit runs, then the briefing renders on its own page. The results list stays interactive while synthesis is in flight.
+Click <span class="ui-action">Continue to briefing →</span> to run Stage 5 synthesis and the hallucination audit.
 
 ## Stopping a run
 
-<span class="ui-action">Stop</span> ends the run at its next checkpoint and frees the controls at once, so you can start a new run straight away. Calls already sent to a provider still finish, and the provider bills them. The stopped run's late results are discarded instead of overwriting the new run's state, and a stopped run never saves a briefing.
+Clicking <span class="ui-action">Stop</span> halts the active run at its next checkpoint and immediately unlocks the interface controls so you can start a fresh run. Any API requests already in flight with a provider complete in the background (and are billed by the provider), but their late responses are discarded so they cannot overwrite the new run's state, and a stopped run never saves a briefing.
 
 ## Progression: from on by default to off
 
-All three gates start on because they catch bad runs early — especially useful in the first week or two, when you're still developing a sense of what your profile should say and what the pipeline does with it.
+All three gates default to **on** because inspecting intermediate outputs during your first five to ten runs reveals how your initial profile interacts with the filter, scoring rubric, and synthesis prompt. Once your profile has converged, you can selectively disable gates that no longer justify their pause:
 
-After five or ten successful briefings, the gates can start feeling like more friction than signal. At that point it's worth considering which ones still earn their keep:
+- **Disable `pauseAfterFilter` (Gate 1) first**: Once your profile's positive topics and anti-interests are well specified, Stage 2 filter overrides become rare and Stage 3 abstract scoring is inexpensive.
+- **Keep `pauseBeforeDeepAnalysis` (Gate 2) enabled while calibrating scores**: Gate 2 sits directly in front of the most expensive stage (Stage 4 PDF reading), making it the highest-value checkpoint for rescuing borderline papers and excluding obvious low-relevance papers before downloading PDFs.
+- **Keep `pauseBeforeBriefing` (Gate 3) enabled when you want active editorial steering**: Starring and commenting at Gate 3 shapes the narrative structure of the current day's briefing before it is written.
+- **Disable all three gates for fully unattended runs**: With all three checkboxes off, clicking <span class="ui-action">Start Analysis</span> runs Stages 1 through 5 continuously to a finished briefing without manual intervention.
 
-- **Turn off `pauseAfterFilter` first.** The filter is usually right enough that override-saving is marginal after a while, and scoring is cheap to over-run.
-- **Keep `pauseBeforeDeepAnalysis` on while you're still calibrating.** This is the best place to rescue papers the scorer ranked low but that you know from the abstract are worth reading in full — and to exclude obvious duds before they consume expensive PDF tokens.
-- **Keep `pauseBeforeBriefing` on longer.** This is where your stars, dismisses, and comments actively steer the synthesis. If you're not giving feedback at this gate, the briefing tends to drift toward generic.
-- **All three off once you trust the setup.** Runs become fully unattended: click <span class="ui-action">Start Analysis</span>, come back later, read the briefing.
-
-There's no harm in leaving all three on permanently if the workflow suits you. The gates are UI-only — they don't cost tokens, and skipping them doesn't save money.
-
-The **Skip remaining gates this run** link on each gate offers a middle path: you can engage with one gate and bypass the rest without touching any settings. Useful for days when you just want a quick check of the filter output before letting the rest of the run go unattended.
+When you want gates enabled by default but occasionally need an unattended run, click **Skip remaining gates this run** at Gate 1 to let the rest of that run proceed automatically.
 
 ## When to re-enable a gate you'd disabled
 
-Three situations in which flipping a gate back on tends to pay off (applies to all three gates):
+Re-enabling one or more review gates for a few runs is helpful whenever you change the inputs to the pipeline:
 
-- **You made a big profile change.** A freshly rewritten profile may be poorly calibrated, so the filter may be over- or under-selecting. Turning `pauseAfterFilter` back on for a few runs catches this early.
-- **You added new arXiv categories.** You haven't built a mental model of what comes through the filter in those categories yet.
-- **You switched to a much cheaper (or much more capable) model.** Model behaviour changes, and the first few runs with a new model are worth watching.
-
-Broadly, the gates are worth having on while you're still calibrating the pipeline to your interests, and worth disabling once a few runs in a row have landed well without intervention.
+- **After a major profile rewrite**: Re-enabling `pauseAfterFilter` (Gate 1) and `pauseBeforeDeepAnalysis` (Gate 2) for two or three runs verifies that new exclusions or added subfields are not over- or under-filtering.
+- **After adding new arXiv categories**: Inspecting Gate 1 and Gate 2 shows what volume and topic mix the new subcategories bring in.
+- **After switching stage models**: Different model families calibrate scores slightly differently, so watching the first few runs at Gate 2 confirms that your `maxDeepAnalysis` cutoff still falls in the expected score range.
 
 ## Where to toggle them
 
-All three gates live in <span class="ui-action">Settings</span> under **Review & confirmation**, as checkboxes:
+All three gate checkboxes live in <span class="ui-action">Settings</span> under **Review & confirmation**:
 
-- **Pause after filter to review overrides** — controls Gate 1 (`pauseAfterFilter`).
-- **Pause before deep analysis** — controls Gate 2 (`pauseBeforeDeepAnalysis`).
-- **Pause before briefing to review scores and add feedback** — controls Gate 3 (`pauseBeforeBriefing`).
+- **Pause after filter to review overrides**: Controls Gate 1 (`pauseAfterFilter`).
+- **Pause before deep analysis**: Controls Gate 2 (`pauseBeforeDeepAnalysis`).
+- **Pause before briefing to review scores and add feedback**: Controls Gate 3 (`pauseBeforeBriefing`).
 
-Two sibling checkboxes nearby — **Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>** (on by default) and **…<span class="verdict is-maybe">MAYBE</span>** (off by default) — govern the briefing retry loop, not the pause gates.
+Alongside them in the same section sit the two synthesis audit retry toggles: **Auto-retry briefing if hallucination check returns <span class="verdict is-no">YES</span>** (enabled by default) and **…<span class="verdict is-maybe">MAYBE</span>** (disabled by default). All Settings toggles are locked while a pipeline run is in progress and take effect on the next run.
 
-Toggles are disabled while a pipeline run is in progress (you can't change gate behaviour mid-run), and changes take effect on the next run.
-
-::: info No per-run toggle — but there's a shortcut
-Settings are global, not per-run. For a one-off unattended run without changing settings, use the **Skip remaining gates this run** link on any gate — it bypasses all subsequent default-on gates for that run only.
+::: info One-off unattended runs
+Because Settings checkboxes apply globally across runs, use the **Skip remaining gates this run** link on any gate banner whenever you want a single unattended pass without modifying your saved configuration.
 :::
 
 ## Next
 
-[Tuning the pipeline →](/using/tuning-the-pipeline) — past the gates, the rest of the knobs sit in Settings: model slots, batch sizes, concurrency, score thresholds, and retry behaviour.
+Continue to [Tuning the pipeline →](/using/tuning-the-pipeline) to configure the remaining stage parameters in Settings, including model slots, batch sizes, concurrency limits, candidate counts, and safety-refusal policies.
 
-Also worth reading:
+Related guides:
 
-- The feedback detail behind overrides, stars, and dismisses. → [Giving feedback](/using/giving-feedback)
-- What happens at each stage, not just at the gates. → [Pipeline](/concepts/pipeline)
+- [**Giving feedback**](/using/giving-feedback): How filter overrides, stars, dismissals, and scoped notes propagate into profile refinement.
+- [**The pipeline**](/concepts/pipeline): Complete architectural tour of Stages 1 through 5.

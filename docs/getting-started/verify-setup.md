@@ -1,170 +1,167 @@
 # Verify setup
 
-Three checkpoints sit between "I added my key to `.env.local`" and "I'm ready for a real run" — a free API Setup Check that probes each provider without sampling any tokens, a fully mocked Dry Run that costs nothing, and a small Minimal API Test that exercises real provider calls on a fixed 5-paper set. All three are UI-driven and live in the Control Panel's **System Tests** section, which is collapsed by default.
+Between adding your API key to `.env.local` and starting a full daily run, you can verify your setup using the free API Setup Check (which probes each configured provider without sampling tokens), the mocked Dry Run (which exercises the UI and arXiv harvesting at zero LLM cost), and the five-paper Minimal API Test (which makes live provider calls on a fixed benchmark set). All three checks run from the **System Tests** section of the Control Panel, which is collapsed by default.
 
-You'll also get your first look at Aparture's review gates on these runs, which is useful: they're where you'll be spending most of your attention during real daily use.
+Running the Dry Run and Minimal API Test also introduces Aparture's interactive review gates, where you can inspect and adjust paper selections between stages during daily runs.
 
 ## Getting to the tests
 
-1. Start the dev server: `npm run dev`
-2. Open `http://localhost:3000` in a browser.
-3. Enter the value of `ACCESS_PASSWORD` from your `.env.local`.
-4. In the Control Panel, click **System Tests** to expand the collapsed section. You'll see three cards — **API Setup Check**, **Dry Run Test**, and **Minimal API Test** — with a **Check API Setup**, a **Run Dry Test**, and a **Run API Test** button (the API Test button stays disabled, reading _Run Dry Test First_, until the Dry Run completes).
+1. Start the development server with `npm run dev`.
+2. Open `http://localhost:3000` in your browser.
+3. Log in using the `ACCESS_PASSWORD` value from `.env.local`.
+4. In the Control Panel, click **System Tests** to expand the test panel, which displays the **API Setup Check**, **Dry Run Test**, and **Minimal API Test** cards with their **Check API Setup**, **Run Dry Test**, and **Run API Test** buttons (the **Run API Test** button remains disabled and labeled _Run Dry Test First_ until the Dry Run succeeds).
 
-![The Pipeline view with the System Tests section expanded, showing three cards side by side: API Setup Check with a Check API Setup button, Dry Run Test with a Run Dry Test button, and Minimal API Test with a disabled Run Dry Test First button](/screenshots/system-tests.png)
+![The Pipeline view with the System Tests section expanded shows three cards side by side: API Setup Check with a Check API Setup button, Dry Run Test with a Run Dry Test button, and Minimal API Test with a disabled Run Dry Test First button.](/screenshots/system-tests.png)
 
-_The System Tests section expanded. The Minimal API Test stays locked until a Dry Run has completed._
+_The expanded System Tests panel shows the API Setup Check, Dry Run Test, and Minimal API Test cards, where the Minimal API Test unlocks once a Dry Run completes._
 
 ## Step 0: API Setup Check (free)
 
-The **Check API Setup** button probes each provider you've configured, without sampling a single token. It reads every configured model slot (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, podcast), dedupes slots that share a model, and runs one free probe per unique provider/model pair.
+Clicking **Check API Setup** probes every provider configured in your active model slots (filter, scoring, post-processing, PDF analysis, briefing, quick summaries, and podcast) without generating any output tokens. The check deduplicates slots that share the same model and sends one zero-cost probe per unique provider/model pair.
 
 ### What it validates
 
-- **Anthropic.** The probe sends a complete Messages request, built by the same adapter the pipeline uses (structured-output schema and thinking setting included), to the `count_tokens` endpoint. That endpoint returns the same 400/401/404 errors a real call would, so the key, the model ID, and the exact request syntax all get checked. Nothing is billed.
-- **Google.** The probe sends the adapter's message contents to the `countTokens` endpoint, which validates the key, the model ID, and the message syntax for free.
-- **OpenAI.** OpenAI has no count-tokens endpoint. The probe fetches the model's metadata, which verifies the key and the model ID; request shape is only exercised by the Minimal API Test below.
+- **Anthropic:** Sends a complete Messages payload built by the production adapter (including the structured-output schema and adaptive-thinking configuration) to Anthropic's free `count_tokens` endpoint, which validates your API key, model ID, and request syntax without billing tokens.
+- **Google:** Sends the adapter's formatted message payload to the Gemini API's free `countTokens` endpoint, verifying your API key, model ID, and message syntax.
+- **OpenAI:** Queries the OpenAI model metadata endpoint to verify your API key and model ID (because OpenAI does not expose a free count-tokens endpoint, full request syntax is verified during the Minimal API Test).
 
-Each slot's result row shows three checks — **Key**, **Model**, **Syntax** — with the provider's own error message on failure. A `—` means that check isn't validated by the probe (OpenAI's Syntax column, for example).
+Each slot's result row reports **Key**, **Model**, and **Syntax** status alongside the provider's error message if a check fails; a dash in a column indicates that the free probe does not cover that check (such as OpenAI's Syntax column).
 
 ### What it does not validate
 
-- **OpenAI request shape.** See above — run the Minimal API Test for that.
-- **Billing state and quota.** A key can authenticate here and still fail a real call with `429 insufficient_quota`. The Minimal API Test surfaces that.
-- **Provider latency, rate-limit behaviour, PDF downloads, or output parsing** — those need real calls.
+- **OpenAI structured request shape:** Exercised by the Minimal API Test below.
+- **Prepaid billing balance and rate-limit quotas:** An API key can authenticate against the metadata probe and still fail a billed request with `429 insufficient_quota`, which the Minimal API Test catches.
+- **Provider latency, PDF downloads, and response parsing:** Verified during the Minimal API Test.
 
-If a check fails, the fix is almost always in `.env.local` (key value) or Settings (model slot). Restart `npm run dev` after editing `.env.local`, then re-run the check.
+If any row fails in the API Setup Check, update the key in `.env.local` (and restart `npm run dev`) or change the model slot in Settings, then click **Check API Setup** again.
 
 ## Dry Run
 
-The Dry Run pipes a real arXiv fetch through a fully mocked LLM stack. It's the cheapest way to confirm that the UI renders correctly, that the pause gates fire where they should, and that your local environment isn't silently broken — without burning any provider credit.
+The Dry Run connects a live Stage 1 arXiv harvest to a mocked LLM pipeline so you can verify that arXiv harvesting, stage transitions, review gates, and UI components work end to end before spending provider credit.
 
 ### What it validates
 
-- **arXiv connectivity.** Stage 1 genuinely queries arXiv to get today's papers in your configured categories. If the arXiv API is down or your network is blocked, the Dry Run surfaces it here.
-- **End-to-end UI flow.** Every pipeline stage (fetch → filter → score → PDF analysis → briefing) renders correctly, and the filter-override pill, star/dismiss controls, and Download Report card all wire up.
-- **Mock response parsing.** JSON parsing, schema validation, and the malformed/missing-field/wrong-type correction loops.
-- **Error recovery.** Retry logic, correction prompts, failure escalation.
-- **Pause gates.** The Stop button, plus the `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` gates that fire by default.
+- **arXiv connectivity:** Stage 1 queries arXiv live for papers in your selected categories, surfacing network or proxy issues immediately.
+- **End-to-end UI flow:** Every pipeline stage (`fetch` → `filter` → `score` → `PDF analysis` → `briefing`) renders in the UI, exercising the filter-override pills, star and dismiss buttons, and Download Report card.
+- **Mock response parsing and error recovery:** Exercises JSON schema validation, retry backoff, and malformed-response correction loops.
+- **Review gates and cancellation:** Exercises the Stop button alongside the `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` review gates.
 
 ### What it does not validate
 
-- API keys, billing, or provider latency — all LLM calls are mocked.
-- PDF download and reCAPTCHA handling — Stage 4 is entirely mocked, so the real arXiv PDF fetch path doesn't run.
-- Real briefing quality — the synthesized briefing on a Dry Run is gibberish by design.
+- **API keys, billing, or provider latency:** All LLM calls use local mock generators.
+- **Live PDF downloads and reCAPTCHA fallback:** Stage 4 uses mock PDF analysis responses during a Dry Run.
+- **Briefing prose quality:** The Dry Run synthesizes placeholder text to test layout and validation wiring.
 
 ### What to expect
 
-You'll see:
+During the Dry Run, the UI displays:
 
-- A **TEST MODE** badge (yellow) on the briefing card once the run reaches it.
+- A yellow **TEST MODE** badge on the briefing card once synthesis finishes.
 - **TEST DATA** badges on the filter results, analysis results, and Download Report cards.
-- Status messages stepping through each stage: `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, `"Generating briefing..."`.
-- Intentional failure scenarios cycling through the test data — expect to see `"Mock parse failed: Response is not an array"` followed by `"Mock correction 1/3 succeeded"` at least once. These aren't real errors; they're there to exercise the retry path.
-- A green checkmark on the test card when it finishes.
+- Activity log messages stepping through `"Mock filter batch 1/10"`, `"initial-scoring"`, `"Mock PDF API Call N"`, and `"Generating briefing..."`.
+- Simulated parse failures such as `"Mock parse failed: Response is not an array"` followed by `"Mock correction 1/3 succeeded"`, which verify the client retry loop.
+- A green checkmark on the Dry Run card upon completion.
 
 ### ⚠️ You'll need to click through three review gates
 
-Aparture ships with `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` all **on by default**, so the pipeline will stop three times during the Dry Run and wait for you:
+Because `pauseAfterFilter`, `pauseBeforeDeepAnalysis`, and `pauseBeforeBriefing` are enabled by default, the pipeline pauses three times during the Dry Run and waits for your confirmation:
 
-1. **After filtering** — the UI shows three buckets (<span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span>). Click any verdict button to cycle a paper between buckets if you want to; then click **Continue to scoring →** at the top of the main area.
-2. **After scoring, before PDF analysis** — the scored list appears with star and dismiss controls for adjusting which papers get PDF-analysed. Click **Continue to PDF analysis →**.
-3. **After PDF analysis, before briefing synthesis** — you can star or dismiss any paper, or add a comment. Then click **Continue to briefing →**.
+1. **After filtering:** The UI displays the <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, and <span class="verdict is-no">NO</span> filter buckets; you can click any paper's verdict pill to cycle its bucket, then click **Continue to scoring →** at the top of the main area.
+2. **After scoring, before PDF analysis:** The scored paper list appears with star and dismiss controls for adjusting which papers receive full-PDF analysis; click **Continue to PDF analysis →** to proceed.
+3. **After PDF analysis, before briefing synthesis:** You can star, dismiss, or comment on any analyzed paper, then click **Continue to briefing →**.
 
-If the pipeline looks stuck, check whether it's actually waiting for you at one of these gates. You can disable any gate in **Settings → Review & confirmation**, but leaving them on is the realistic first-run experience.
+If a run appears paused with no terminal activity, check the top of the main area for a review gate banner. You can disable any gate under **Settings → Review & confirmation**.
 
 ### If it fails
 
 ::: info No real API calls happen here
-Dry Run failures are always code or environment issues, never API-related. If something breaks during a Dry Run, the cause is local.
+Because the Dry Run makes no LLM provider calls, any failure during a Dry Run comes from local environment state or arXiv network connectivity.
 :::
 
-Common causes:
+Use the table below to resolve Dry Run issues:
 
-| Symptom                                       | Likely cause                    | Fix                                                                                      |
-| --------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
-| Button stays disabled or greyed out           | Another test is already running | Wait, or reload the page                                                                 |
-| Pipeline halts at "fetching" indefinitely     | arXiv API unreachable           | Check your connection. Retry after a minute.                                             |
-| "Dry run test was cancelled"                  | You clicked Stop                | Re-click Run Dry Test                                                                    |
-| "Dry run test failed: Mock retries exhausted" | Code or fixture bug             | Check browser console for stack trace; see [troubleshooting](/reference/troubleshooting) |
-| No TEST MODE badges appear                    | React state not updating        | Hard-refresh (Ctrl-Shift-R); if persistent, restart `npm run dev`                        |
+| Symptom                                       | Likely cause                    | Fix                                                                                        |
+| --------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------ |
+| Button stays disabled or greyed out           | Another test is already running | Wait for the active run to finish, or reload the page                                      |
+| Pipeline halts at "fetching" indefinitely     | arXiv API unreachable           | Check your network connection and retry after a minute                                     |
+| "Dry run test was cancelled"                  | You clicked Stop                | Click **Run Dry Test** again                                                               |
+| "Dry run test failed: Mock retries exhausted" | Code or fixture bug             | Inspect the browser console stack trace; see [troubleshooting](/reference/troubleshooting) |
+| No TEST MODE badges appear                    | React state not updating        | Hard-refresh (`Ctrl-Shift-R`), or restart `npm run dev`                                    |
 
 ## Minimal API Test
 
-The Minimal Test button unlocks only after a successful Dry Run — the enforcement is deliberate, since running real API spend against a broken UI gets expensive fast. Where the Dry Run validates everything except the provider side, the Minimal Test validates everything the Dry Run skipped.
+Once the Dry Run succeeds, the **Run API Test** button unlocks and runs the full LLM pipeline against a fixed five-paper benchmark set using live provider calls and live arXiv PDF downloads.
 
 ### What it validates
 
-- **API key authentication.** A missing key surfaces as `no API key for <provider>`, which names the variable to set; a bad one as the provider's own authentication error.
-- **Billing and quota.** Insufficient credits or hit quotas return `402` or provider-specific errors.
-- **Provider latency, rate limits, and the retry path.** Real round-trip times; the pipeline's backoff behaviour if you're throttled.
-- **Real LLM response parsing.** The provider's output actually parses against Aparture's schemas, including structured-output (tool_use / responseSchema / response_format).
-- **arXiv PDF download and reCAPTCHA handling.** The 5 test papers have real arXiv `pdfUrl`s, so Stage 4 exercises the download path end-to-end — including the Playwright fallback if arXiv returns a reCAPTCHA. This is genuinely the first time PDF fetch gets validated.
-- **Prompt caching.** On Anthropic and OpenAI, you'll see cache write/read metrics in the terminal log after the first call.
+- **API key authentication:** Reports `no API key for <provider>` when an environment variable is unset, or displays the provider's authentication error when a key is invalid.
+- **Billing and quota state:** Surfaces `402` or `429 insufficient_quota` responses when an account lacks credit.
+- **Provider latency, rate limits, and retry backoff:** Exercises live round-trip requests and rate-limit recovery.
+- **Structured LLM output parsing:** Verifies that live responses from your configured models conform to Aparture's schemas (`output_config.format`, `responseSchema`, or `response_format`).
+- **Live arXiv PDF download and reCAPTCHA fallback:** Downloads the five benchmark PDFs directly from `arxiv.org` during Stage 4, exercising the Playwright fallback if arXiv serves a reCAPTCHA challenge.
+- **Prompt caching:** Logs cache write and read token counts in the terminal from the second request onward on Anthropic and OpenAI.
 
 ### What it does not validate
 
-- arXiv **abstract** fetching. The 5 test papers are hardcoded with their abstracts inline; Stage 1's `fetchPapers()` call is skipped on this test. PDF URLs are still fetched live from arXiv, but the paper list itself is a fixture.
+- **Live arXiv metadata harvesting:** The five benchmark papers use bundled metadata and abstracts so Stage 1 (`fetchPapers()`) is skipped, while Stage 4 fetches the five PDFs live from `arxiv.org`.
 
 ### What to expect
 
-Cost: ~$0.20–$1 on paid tiers depending on your model choices, since the PDF analysis stage downloads and reads all 5 papers in full. Google's free tier covers the whole run at $0 if every slot is a free-tier Flash model.
+The Minimal API Test costs roughly $0.20–$1.00 on paid tiers depending on your selected models (because Stage 4 reads up to five full PDFs), and costs $0 on Google's free tier when all model slots use default Flash models.
 
-You'll see:
+During the test run, you will observe:
 
-- Status messages: `"Starting minimal test with real API calls"`, `"Filter batch 1/1"`, `"initial-scoring"`, `"pdf-analysis"`, `"synthesizing"`, and finally `"Minimal test completed successfully"`.
-- No TEST MODE badges — the run makes real API calls on a fixed set of five papers. Aparture still files the briefing as a test run, and any feedback you give during it is tagged as test feedback, so it never reaches your profile suggestions.
-- A timestamp on the test card showing when it last completed.
+- Activity log status lines progressing through `"Starting minimal test with real API calls"`, `"Filter batch 1/1"`, `"initial-scoring"`, `"pdf-analysis"`, `"synthesizing"`, and `"Minimal test completed successfully"`.
+- A rendered briefing saved with the `testRun` flag so that any stars, dismissals, or comments you test during the run are tagged as test feedback and excluded from future profile suggestions.
+- A completion timestamp recorded on the Minimal API Test card.
 
-Open the terminal where `npm run dev` is running to watch the real-time log:
+In the terminal running `npm run dev`, each LLM call logs a dispatch line:
 
 ```
 Sending request to Google: { model: 'gemini-3.5-flash-lite', promptLength: 4821, structured: true }
 ```
 
-The line names the provider's model ID and adds `cacheable: true` or `hasPdf: true` only when they apply.
-
-Cache-hit metrics on Anthropic and OpenAI show as `[anthropic cache] read=N create=N` lines. A `read` value greater than 0 on call 2+ means caching is working.
+The log entry includes `cacheable: true` or `hasPdf: true` whenever those options apply, and Anthropic and OpenAI calls log `[anthropic cache] read=N create=N` or `[openai cache] read=N` lines where `read > 0` on subsequent calls confirms that prompt caching is active.
 
 ### ⚠️ You may need to manually override the filter results
 
-The 5 test papers are machine-learning classics: Word2Vec, Adam, U-Net, the original Transformer paper, and Mamba. Depending on how narrow your profile is, the filter may route all or most of them into the <span class="verdict is-no">NO</span> bucket — and if <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> both end up empty, scoring and PDF analysis have nothing to work on.
+The five benchmark papers are foundational machine-learning papers (Word2Vec, Adam, U-Net, the original Transformer paper, and Mamba). If your research profile focuses on another discipline (such as observational astronomy or theoretical statistics), the Stage 2 quick filter may classify all five papers as <span class="verdict is-no">NO</span>, leaving zero papers for Stage 3 scoring and Stage 4 PDF analysis.
 
-When the pipeline pauses at the filter-review gate:
+When the Minimal API Test pauses at the filter-review gate:
 
-1. Look at the three buckets. If <span class="verdict is-yes">YES</span> + <span class="verdict is-maybe">MAYBE</span> together are empty or sparse, you'll need to intervene.
-2. **Click any paper's verdict button** to cycle it through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event. During a test run the event is tagged as test feedback and kept out of profile suggestions; in daily runs the same event tells the refinement flow what your profile got wrong.
-3. Aim for **at least 2–3 papers in <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so the rest of the pipeline has something to chew on.
-4. Click **Continue to scoring →** once you're happy with the buckets.
+1. Check the <span class="verdict is-yes">YES</span> and <span class="verdict is-maybe">MAYBE</span> buckets; if both are empty, promote a few papers manually so the downstream stages run.
+2. **Click any paper's verdict pill** to cycle its verdict through <span class="verdict is-yes">YES</span> → <span class="verdict is-maybe">MAYBE</span> → <span class="verdict is-no">NO</span>. Each click records a `filter-override` event (tagged as test-only during this test run, and used to train profile suggestions during live runs).
+3. Promote **at least 2–3 papers into <span class="verdict is-yes">YES</span> or <span class="verdict is-maybe">MAYBE</span>** so Stage 3 scoring and Stage 4 PDF analysis receive sufficient input.
+4. Click **Continue to scoring →** to resume the test.
 
-This is also your first encounter with the filter-override mechanic, which becomes part of the feedback loop that powers [profile refinement](/using/refining-over-time). The gate itself is controlled by `pauseAfterFilter` in **Settings → Review & confirmation**; which verdicts advance to scoring is controlled by the **Categories to Process** checkboxes under **Advanced Options → Filter Options**.
+This step also demonstrates how filter overrides work during daily runs to rescue borderline papers ([profile refinement](/using/refining-over-time)). You can configure gate behavior via `pauseAfterFilter` under **Settings → Review & confirmation**, and choose which verdict buckets advance under **Advanced Options → Filter Options**.
 
 ### If it fails
 
-The error surface here is real — most failures indicate a real issue with keys or billing.
+Failures during the Minimal API Test reflect live provider authentication, billing, or network errors:
 
-| Symptom                                                               | Likely cause                                                                                                 | Fix                                                                                                                                                    |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Filter batch 1 failed: … Invalid password`                           | Password mismatch in `.env.local`                                                                            | Verify `ACCESS_PASSWORD`, restart `npm run dev`                                                                                                        |
-| `… no API key for <provider>`, or the provider's authentication error | Missing or bad API key                                                                                       | Verify the key, restart `npm run dev`. See the relevant [API keys page](/getting-started/api-keys)                                                     |
-| `429 insufficient_quota` (OpenAI)                                     | No credit balance                                                                                            | Add $5+ at **Settings → Billing**. See [OpenAI keys](/getting-started/api-keys-openai)                                                                 |
-| `429 rate_limit_exceeded`                                             | Provider throttled your request                                                                              | Wait 60s; pipeline retries with backoff. Move to higher tier if persistent. See [troubleshooting](/reference/troubleshooting)                          |
-| `402` / `billing_error` (Anthropic)                                   | Billing issue or unpaid invoice                                                                              | Log into console, fix billing                                                                                                                          |
-| Google refuses one model while the others work                        | A model the project can't use: Gemini 4 Argon without billing, or a legacy Gemini 2.5 model on a new project | Set up billing for Argon, or switch the affected slots to a current Flash model in Settings                                                            |
-| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`             | arXiv blocked a PDF download                                                                                 | Expected occasionally. Install Playwright for the fallback path, or accept abstract-only ranking for this run. See [install](/getting-started/install) |
-| `Initial parse failed: JSON.parse error`                              | Provider returned malformed JSON                                                                             | Often retries cleanly. If persistent, the model is struggling with the schema — try a different scoring model                                          |
-| Hangs on "Filter batch 1/1" with no terminal output                   | Route stuck; network blocked; firewall                                                                       | Check terminal for provider error. Try a curl smoke test from the provider page                                                                        |
+| Symptom                                                               | Likely cause                                                              | Fix                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Filter batch 1 failed: … Invalid password`                           | Password mismatch in `.env.local`                                         | Verify `ACCESS_PASSWORD` and restart `npm run dev`                                                                                    |
+| `… no API key for <provider>`, or the provider's authentication error | Missing or invalid API key                                                | Check the key in `.env.local` and restart `npm run dev`; see the [API keys page](/getting-started/api-keys)                           |
+| `429 insufficient_quota` (OpenAI)                                     | Zero prepaid credit balance                                               | Add $5+ under **Settings → Billing**; see [OpenAI keys](/getting-started/api-keys-openai)                                             |
+| `429 rate_limit_exceeded`                                             | Provider throttled your request rate                                      | Wait 60 seconds while the pipeline retries with backoff, or lower concurrency; see [troubleshooting](/reference/troubleshooting)      |
+| `402` / `billing_error` (Anthropic)                                   | Billing issue or expired credit                                           | Check billing status in the Anthropic console                                                                                         |
+| Google refuses one model while the others work                        | Model requires billing (`gemini-4-argon`) or prior usage (`gemini-2.5-*`) | Enable billing for Argon, or switch the slot to a current Flash model in Settings                                                     |
+| `Failed to download PDF: HTTP 403` / `reCAPTCHA detected`             | arXiv blocked a direct PDF download                                       | Install Playwright for the automatic fallback, or allow abstract-only ranking for that paper; see [install](/getting-started/install) |
+| `Initial parse failed: JSON.parse error`                              | Provider returned malformed JSON                                          | The pipeline retries automatically; if persistent, switch the stage to a stronger model                                               |
+| Hangs on "Filter batch 1/1" with no terminal output                   | Network blocked or firewall intercepting requests                         | Inspect the terminal for connection errors                                                                                            |
 
-Deep dives for each of these live on the [troubleshooting page](/reference/troubleshooting).
+Detailed diagnostic steps for each error appear on the [troubleshooting page](/reference/troubleshooting).
 
 ## What success looks like
 
-When both tests pass:
+When both verification tests pass:
 
-- The Dry Run card shows a green check and `"Dry run test completed successfully"`.
-- The Minimal Test card shows a green check, a last-run timestamp, and `"Minimal test completed successfully"`.
-- The main area renders a small **Briefing** — the in-app reading view with themes, per-paper cards, and an executive summary, same as you'd see on a real run. Content is obviously uninteresting (5 classic ML papers, a narrow set of themes) but its presence proves the synthesis pipeline works.
-- The **Download Report** card offers a separate markdown export of the same run. Briefing and report are two different outputs: the Briefing is what you read in the UI, the Report is what you save to disk if you want a standalone file.
-- The terminal log shows a clean sequence of `Sending request to ...` lines per stage, no red errors, and no repeated `API error 429` or validation-failed messages.
+- The Dry Run card displays a green checkmark and `"Dry run test completed successfully"`.
+- The Minimal API Test card displays a green checkmark, a completion timestamp, and `"Minimal test completed successfully"`.
+- The main area renders a complete **Briefing** view with an executive summary, thematic groupings, and paper cards for the benchmark papers.
+- The **Download Report** card provides a standalone Markdown export alongside the interactive in-app Briefing view.
+- The terminal log shows a clean sequence of `Sending request to ...` lines across all stages without unhandled errors.
 
-Your environment is solid. When you're ready to run the pipeline on your own profile and produce a real briefing, continue to the Guide: [Your first briefing →](/using/first-briefing).
+Your setup is now verified and ready for daily use: continue to [Your first briefing](/using/first-briefing).

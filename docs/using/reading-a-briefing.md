@@ -1,160 +1,161 @@
 # Reading a briefing
 
-Once you've produced a briefing, the question becomes how to read one efficiently. This page walks through what's on the page and a few patterns for working through it in a few minutes.
+A briefing is organized to answer one practical daily question: which of the new papers warrant opening the full PDF, and which only need a brief scan. The page places an editorial executive summary at the top, priority-ordered thematic clusters beneath it, and individual paper cards inside each theme so you can triage the day's literature in a few minutes.
 
-A briefing is built around a single practical question: which of the day's papers should you actually open, and which can you safely skip? The layout reflects that — an editorial lead at the top, a handful of thematic groupings below it, and per-paper cards inside each theme — all scaled so you can triage the day without reading every abstract.
+![The briefing reading view displays a dateline header, an executive summary in serif prose, a numbered theme heading with an italic argument, and a paper card with a relevance score badge.](/screenshots/briefing-view.png)
 
-![The briefing reading view: a dateline header, an executive summary in serif prose, a numbered theme heading with an italic argument, and a paper card with a relevance score badge](/screenshots/briefing-view.png)
-
-_The briefing reading surface, here from a dry run — hence the TEST MODE chip and mock prose. A real briefing has the same layout with your papers._
+_The briefing reading surface shown from a dry run with the TEST MODE badge and mock prose. A production briefing uses the identical layout populated with your analyzed papers._
 
 ## What's on the page
 
-From top to bottom, a briefing stacks like this:
+From top to bottom, the briefing view stacks the header, executive summary, thematic sections, editor questions, and verification panels:
 
-```
-  ┌────────────────────────────────────┐
-  │  Header                            │  date, counts, claims-check status
-  ├────────────────────────────────────┤
-  │  Executive summary                 │  200-400 word editorial lead
-  ├────────────────────────────────────┤
-  │  Theme 1                           │
-  │    Argument (2-4 sentences)        │
-  │     ├─ Paper card                  │
-  │     ├─ Paper card                  │
-  │     └─ Paper card                  │
-  ├────────────────────────────────────┤
-  │  Theme 2 … 5, Other papers         │
-  ├────────────────────────────────────┤
-  │  Notes from the editor             │  up to two questions, some days
-  ├────────────────────────────────────┤
-  │  Hallucination audit               │  verdict + flagged claims
-  │  Generation details ▸              │  how this briefing was made
-  └────────────────────────────────────┘
-```
+<div style="margin: 1.5rem 0; padding: 1.25rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft);">
+  <svg viewBox="0 0 680 360" style="width: 100%; height: auto; max-width: 680px; display: block; margin: 0 auto;" role="img" aria-label="Vertical layout stack of a rendered briefing from the header and executive summary down to the hallucination audit and generation details">
+    <rect x="30" y="12" width="620" height="40" rx="6" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="50" y="37" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">Header</text>
+    <text x="230" y="37" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">Dateline, screened/focus counts, reading time, claims-check status</text>
+    <rect x="30" y="60" width="620" height="44" rx="6" fill="var(--vp-c-brand-soft)" stroke="var(--vp-c-brand-1)" stroke-width="1.5" />
+    <text x="50" y="87" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-brand-1)">Executive summary</text>
+    <text x="230" y="87" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-1)">200 to 400 word editorial lead and primary reading recommendation</text>
+    <rect x="30" y="112" width="620" height="106" rx="6" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="50" y="136" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">Themes 1 to 5 (plus Other papers fallback)</text>
+    <text x="50" y="156" font-family="var(--vp-font-family-base)" font-size="12" font-style="italic" fill="var(--vp-c-text-2)">2 to 4 sentence thematic argument linking the cluster</text>
+    <rect x="54" y="168" width="180" height="36" rx="5" fill="var(--vp-c-bg-soft)" stroke="var(--vp-c-divider)" stroke-width="1" />
+    <text x="68" y="191" font-family="var(--vp-font-family-mono)" font-size="11.5" fill="var(--vp-c-text-1)">Paper card + score</text>
+    <rect x="250" y="168" width="180" height="36" rx="5" fill="var(--vp-c-bg-soft)" stroke="var(--vp-c-divider)" stroke-width="1" />
+    <text x="264" y="191" font-family="var(--vp-font-family-mono)" font-size="11.5" fill="var(--vp-c-text-1)">Paper card + figure</text>
+    <rect x="446" y="168" width="180" height="36" rx="5" fill="var(--vp-c-bg-soft)" stroke="var(--vp-c-divider)" stroke-width="1" />
+    <text x="460" y="191" font-family="var(--vp-font-family-mono)" font-size="11.5" fill="var(--vp-c-text-1)">Paper card + actions</text>
+    <rect x="30" y="226" width="620" height="40" rx="6" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="50" y="251" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">Notes from the editor</text>
+    <text x="250" y="251" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">Up to two tap-to-answer profile clarification questions</text>
+    <rect x="30" y="274" width="620" height="72" rx="6" fill="var(--vp-c-bg)" stroke="var(--vp-c-divider)" stroke-width="1.2" />
+    <text x="50" y="300" font-family="var(--vp-font-family-mono)" font-size="13" font-weight="700" fill="var(--vp-c-text-1)">Hallucination audit &amp; Generation details</text>
+    <text x="50" y="324" font-family="var(--vp-font-family-base)" font-size="12.5" fill="var(--vp-c-text-2)">Audit verdict badge, expandable flagged claims, and full run provenance</text>
+  </svg>
+</div>
 
 ### Header
 
-Under the date, one line counts the papers in focus and the papers screened, estimates the reading time, and gives the claims-check status: _claims checked_, _claims check flagged N claims_, or _claims check did not run_. The last two show in amber, so a flagged or unaudited briefing is visible before you read it.
+Directly beneath the date, a single metadata line reports the number of papers in focus, the total number of papers screened, the estimated reading time, and the claims-check status (_claims checked_, _claims check flagged N claims_, or _claims check did not run_). When claims are flagged or the check did not run, the status renders in amber so that you see the audit state before reading the prose.
 
 ### Executive summary
 
-The editorial lead at the top: two to four paragraphs of serif prose. It's the densest summary of the day in the briefing and often enough on its own if you're short on time.
+The executive summary opens the briefing with two to four paragraphs of serif prose (typically 200 to 400 words). When your reading time is limited, the executive summary alone captures the main developments of the run.
 
-The first paragraph carries the headline — what's the most notable thing in today's papers? If you starred any papers at Gate 3 (the pre-briefing review), those anchor the framing. Middle paragraphs surface thematic clusters and the throughline between them, or note that the day was scattered if it was. The final paragraph almost always lands on a reading recommendation along the lines of _"if you read one paper today, make it [arxivId] because…"_ — usually the clearest pointer in the whole briefing.
+The first paragraph states the primary headline across the current briefing's papers, anchored by any papers you starred at Gate 3 before synthesis. The middle paragraphs trace the thematic clusters and their connections, or note explicitly when the day's submissions span unrelated topics. The final paragraph concludes with a concrete reading recommendation (_"if you read one paper today, make it [arxivId] because…"_), providing a direct entry point into the detailed cards below.
 
 ### Themes
 
-Underneath come two to five themes, priority-ordered so the most important one — the one carrying your highest-scored and most-starred papers — comes first. Each theme is a cluster of papers that share an argument, method, problem, or tension.
+Below the executive summary sit two to five themes, ordered by priority so that the theme containing your highest-scored and starred papers appears first. Each theme groups papers that share a methodological approach, scientific domain, or conceptual tension.
 
-Each paper's card appears once, in the first theme that lists it. If a later theme lists the same paper, that theme names it in an _"Also in this theme (shown above)"_ line instead of repeating the card. A paper the briefing didn't place in any theme appears in a final **Other papers** group rather than disappearing.
+Every paper card renders in full once, inside the first theme that references it. If a subsequent theme also references that paper, the later theme lists it under an _"Also in this theme (shown above)"_ pointer to avoid duplicating cards. Any final-round paper that the synthesis model omitted from all themes is placed in a trailing **Other papers** group so that every analyzed paper remains visible.
 
-A theme opens with a numbered heading deliberately written as an argument or observation rather than a category label (e.g. _"1. Interpretability converges on attention heads"_, not _"Interpretability papers"_). A short italic argument — two to four sentences — explains why the papers below belong together and what the takeaway is. Where papers within a theme are in tension or build on each other, the argument says so; debates live inside themes rather than in a separate section.
+Each theme opens with a numbered heading phrased as a substantive observation (for example, _"1. Interpretability converges on attention heads"_ rather than a generic topic label), followed by a two-to-four-sentence italic argument explaining what unites the cluster and where the papers agree or conflict. Methodological tensions and debates between papers are developed directly inside the theme argument.
 
 ### Paper cards
 
-Each theme contains one or more paper cards. This is where individual papers are summarised — a card gives you enough to decide whether to open the PDF:
+Each theme contains one or more paper cards summarizing individual papers with enough detail to decide whether to open the PDF:
 
 | Part                 | What it shows                                                                                                                                                                                                           |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Score badge**      | A 0.0–10.0 relevance score (one decimal place), more brightly highlighted at 9+ — see [how scoring works](/concepts/pipeline#stage-3-score-abstracts)                                                                   |
-| **Title + arXiv ID** | Linked to the arXiv abstract page                                                                                                                                                                                       |
-| **Links**            | abstract · PDF · HTML · alphaXiv: the arXiv abstract page, the PDF, arXiv's HTML rendering (when the paper has one), and the paper's alphaXiv page                                                                      |
-| **One-line pitch**   | A 15–25 word italic sell — closer to "what would this paper say if it were selling itself in one sentence" than a summary                                                                                               |
-| **Why it matters**   | A 2–4 sentence paragraph grounded in your profile and your prior engagement with this paper                                                                                                                             |
+| **Score badge**      | A 0.0–10.0 relevance score (to one decimal place), highlighted more prominently at 9.0+ (see [how scoring works](/concepts/pipeline#stage-3-score-abstracts))                                                           |
+| **Title + arXiv ID** | Hyperlinked to the paper's arXiv abstract page                                                                                                                                                                          |
+| **Links**            | abstract · PDF · HTML · alphaXiv: direct links to the arXiv abstract page, the PDF, arXiv's HTML rendering (when available), and the alphaXiv discussion page                                                           |
+| **One-line pitch**   | A 15–25 word italic pitch stating the paper's core thesis or contribution in a single sentence                                                                                                                          |
+| **Why it matters**   | A 2–4 sentence paragraph connecting the paper to your research profile and any feedback signals you recorded during the run                                                                                             |
 | **Action buttons**   | <span class="ui-action">→ quick summary</span>, <span class="ui-action">→ full report</span>, <span class="ui-action">☆ star</span>, <span class="ui-action">⊘ dismiss</span>, <span class="ui-action">+ comment</span> |
 
-The "why it matters" paragraph is where your feedback shapes the output most visibly. Papers you starred at Gate 3 (before synthesis ran) get more extensive treatment; dismissed ones get a brief note acknowledging why they still showed up; everything else gets a short argument tied to your stated interests.
+The _"why it matters"_ paragraph reflects your Gate 3 feedback directly: papers starred before synthesis receive the fullest contextual treatment, dismissed papers receive a brief note explaining why they still met the final cutoff, and remaining papers are framed against your profile's stated topics.
 
-The title and score on a card always come from the pipeline, not from the briefing model: Aparture replaces whatever the model wrote with the paper's real title and score. Two markers mean Aparture repaired the briefing in code because the model's own repair failed: a card whose pitch reads _"Added by Aparture: the briefing model left this paper out"_, and the text _[unverified arXiv ID removed]_ where the prose cited an ID that isn't one of the day's papers. [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) lists every check.
+Before rendering a briefing, Aparture overwrites every card's title and score with the pipeline's ground-truth metadata from Stage 1 and Stage 4. If the synthesis model fails validation even after a repair call, deterministic salvage inserts explicit markers: a placeholder pitch reading _"Added by Aparture: the briefing model left this paper out"_ for any omitted paper, and _[unverified arXiv ID removed]_ wherever prose cited an identifier outside the current run's corpus. See [Briefing anatomy](/concepts/briefing-anatomy#checks-before-display) for the full validation pipeline.
 
 ### Notes from the editor
 
-Some briefings end with up to two short questions under **Notes from the editor**. They appear only when the day's papers exposed something your profile doesn't settle: a strong paper in an area the profile never mentions, say, or several papers ranked down for a reason the profile is silent about. Each question names what prompted it and offers two to four answers. Tap one to answer; tap it again to take the answer back.
+When the current run's papers expose an ambiguity in your profile (such as a high-scoring paper in an unmentioned subfield or several papers down-weighted for reasons your profile leaves implicit), the briefing ends with up to two questions under **Notes from the editor**. Each question cites the paper that prompted it and offers two to four short answer choices. Click an option to record your answer, or click the active option again to clear it.
 
-Answers are feedback. They go into the next [profile suggestion](/using/refining-over-time) as evidence, and you still accept or reject the edits it proposes. Later questions see your earlier answers, so nothing is asked twice. Most days there are no questions, and that's normal. To turn them off, clear **Ask me up to two questions after each briefing…** in **Settings → Review & confirmation**.
+Recorded answers enter the feedback store and feed the next [profile suggestion](/using/refining-over-time) as explicit scope decisions, while leaving you in control of accepting or rejecting the resulting profile diffs. Subsequent editor questions incorporate your earlier answers so the same question is never repeated. Most runs require no clarification and omit this section. To disable editor questions, uncheck **Ask me up to two questions after each briefing…** under **Settings → Review & confirmation**.
 
 ### Proposed profile changes
 
-When your recent feedback adds up, the latest briefing also shows a card: _N proposed changes to your profile_. <span class="ui-action">Review proposals</span> opens the review dialog with them; nothing changes until you accept. See [automatic proposals](/using/refining-over-time#automatic-proposals) for when they appear.
+Once your pending feedback crosses the automatic proposal threshold, the latest briefing displays a banner card reporting _N proposed changes to your profile_. Clicking <span class="ui-action">Review proposals</span> opens the per-change diff review dialog, and no edits take effect until you apply them. See [automatic proposals](/using/refining-over-time#automatic-proposals) for the scoring rules that trigger a background proposal round.
 
 ## Going deeper on a single paper
 
-Paper cards are short by design — they're a triage tool, not a replacement for reading. When one catches your attention, there are two ways to go deeper without leaving the briefing.
+Paper cards stay concise so that you can scan an entire briefing quickly. When a card catches your attention, you can inspect the inline quick summary, the cropped key figure, or the full Stage 4 technical report without leaving the page:
 
-**Quick summary** — click <span class="ui-action">→ quick summary</span> and an inline block expands beneath the card, showing a roughly 300-word compression of the paper's contribution, method, and result. These run through the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`), in parallel with each other, just before synthesis. They're written for you to read; the briefing writer and the audit don't use them. Click again to collapse.
-
-**Key figure** — when the full read picked a figure, the card shows it, cropped from the paper's PDF, with the paper's own caption underneath. Papers without one (a purely theoretical paper, or a PDF whose caption the crop couldn't find) just show no figure.
-
-**Full report** — click <span class="ui-action">→ full report</span> to open a side panel that slides in from the right and covers roughly the right half of the window. This shows the full per-paper technical report from Stage 4: a multi-paragraph technical summary followed by key findings, methodology, limitations, and a relevance assessment, with its headings and lists rendered. Use it when you want to understand a paper deeply without opening the PDF itself. Close with the `X` button or by clicking outside the panel.
+- **Quick summary**: Clicking <span class="ui-action">→ quick summary</span> expands an inline block beneath the card with a roughly 300-word synthesis of the paper's contribution, methodology, and quantitative findings. Quick summaries are generated in parallel via the `quickSummaryModel` slot (default `gemini-3.5-flash-lite`) immediately before synthesis for reader convenience; neither the briefing writer nor the hallucination auditor reads them. Click the button again to collapse the block.
+- **Key figure**: When the Stage 4 PDF analysis selects a representative figure and locates its caption in the PDF text layer, the card displays the cropped figure alongside the paper's verbatim caption. Purely theoretical papers or PDFs whose caption layout could not be matched simply omit the figure block.
+- **Full report**: Clicking <span class="ui-action">→ full report</span> opens a slide-over panel covering the right half of the viewport. This panel renders the complete Stage 4 technical report, including its multi-paragraph summary, key findings, methodology breakdown, limitations, and relevance justification. Close the panel with the `X` button or by clicking outside the drawer.
 
 ::: tip Expansions are free at read time
-Both the quick summary and the full report are generated once during the pipeline run and cached. Opening either costs nothing — no API calls, no waiting — so there's no reason to hesitate before clicking.
+Both the quick summary and the full technical report are generated once during the pipeline run and cached locally with the briefing. Expanding either view requires zero additional API calls or latency.
 :::
 
-## Two smaller panels underneath
+## Audit and provenance panels {#two-smaller-panels-underneath}
 
-Below the briefing body sit two small sections that are easy to miss but worth opening at least once.
+Below the briefing body sit the hallucination audit and the generation provenance panel.
 
 ### Hallucination audit
 
-After synthesis, Aparture makes a second LLM call, on the same briefing model, that audits the briefing's claims against each paper's abstract and full report: the same sources the writer was told to ground its claims in. The result appears as a verdict badge, with an optional "flagged claim(s) · click to view" link that expands a list of what the auditor questioned:
+Immediately after synthesis, Aparture issues a second call on the `briefingModel` to audit every factual claim in the briefing against the untruncated abstracts and Stage 4 full reports of the cited papers. The audit result renders as a verdict badge accompanied by a _"flagged claim(s) · click to view"_ toggle when any claims are questioned:
 
-| Verdict                                     | Meaning                                                                                                                            |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| <span class="verdict is-yes">NO</span>      | No hallucinations detected. Claims are supported by the source material. What you want to see most of the time.                    |
-| <span class="verdict is-maybe">MAYBE</span> | Uncertain. Some claims could be reasonable inferences but the audit couldn't verify confidently. Worth a skim of the flagged list. |
-| <span class="verdict is-no">YES</span>      | Claims the audit couldn't find support for. Read the flagged list before trusting the briefing's prose.                            |
+| Verdict                                     | Meaning                                                                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| <span class="verdict is-yes">NO</span>      | No unsupported claims were detected; factual statements trace back to the abstracts and Stage 4 full reports.                    |
+| <span class="verdict is-maybe">MAYBE</span> | Uncertain verification; some claims represent plausible inferences or strict paraphrases that warrant skimming the flagged list. |
+| <span class="verdict is-no">YES</span>      | Unsupported claims were found; inspect the flagged claims list before relying on the briefing prose.                             |
 
-If the audit call fails, Aparture tries it once more. If it still can't run, the briefing is saved unaudited: the header reads _claims check did not run_, and Generation details gives the reason. An unaudited briefing never shows as checked.
+If the audit API call fails, Aparture retries it once. If the second attempt also fails, the briefing is saved as unaudited: the header displays _claims check did not run_, and the Generation details panel records the error message. An unaudited briefing never displays a passing badge.
 
-If `briefingRetryOnYes` or `briefingRetryOnMaybe` is enabled in Settings (retry-on-YES defaults on, retry-on-MAYBE defaults off), Aparture automatically retries synthesis with a hint about the failed audit. When that happens, the verdict badge shows "(after retry)" — the briefing you're reading is the second attempt, and the audit ran again on it.
+When `briefingRetryOnYes` (enabled by default) or `briefingRetryOnMaybe` (disabled by default) is active in Settings, Aparture automatically re-runs synthesis once with a prompt hint listing the flagged claims, then audits the second draft. When a retry occurs, the verdict badge appends `(after retry)` to indicate that you are reading the re-synthesized second pass.
 
-The flagged-claims list shows each excerpt, the paper it's about (by arXiv ID), and what the auditor's concern was. Skimming a flag usually tells you whether it's a genuine hallucination or a paraphrase the auditor was unusually strict about.
+Expanding the flagged-claims list shows the exact quoted excerpt from the briefing, the cited `arxivId`, and the auditor's specific objection, allowing you to distinguish genuine fabrications from strict paraphrasing notices.
 
 ::: warning When to worry
-A <span class="verdict is-no">YES</span> verdict on a major claim in the executive summary is worth reading carefully — that's the part that shapes your reading decisions. A <span class="verdict is-maybe">MAYBE</span> on a specific paper detail is usually fine. The underlying papers remain the ground truth; the briefing is a reading aid, not a source.
+A <span class="verdict is-no">YES</span> verdict attached to a headline claim in the executive summary warrants checking the underlying paper report directly, because the executive summary guides which PDFs you open. A <span class="verdict is-maybe">MAYBE</span> verdict on a secondary methodological phrasing is typically benign.
 :::
 
 ### Generation provenance
 
-Below the audit is a small expandable link: <span class="ui-action">Generation details ▸</span>. Clicking it reveals everything that went into producing this particular briefing:
+Below the hallucination audit sits the expandable <span class="ui-action">Generation details ▸</span> disclosure, which records the exact configuration that produced the briefing:
 
-| Field                   | What it carries                                                                                                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Profile snapshot**    | The exact profile text in effect when the briefing was generated (truncated at 200 chars, expandable)                                                            |
-| **Models**              | Model IDs used for the filter, scoring, PDF analysis, and briefing stages                                                                                        |
-| **Categories**          | arXiv categories selected for the run, as small badges                                                                                                           |
-| **Filter verdicts**     | <span class="verdict is-yes">YES</span> / <span class="verdict is-maybe">MAYBE</span> / <span class="verdict is-no">NO</span> counts from the quick-filter stage |
-| **Settings flags**      | Whether the filter gate (`pauseAfterFilter`) and the two retry checks were on or off                                                                             |
-| **Hallucination audit** | Full verdict, flagged claims, and the auditor's justification prose                                                                                              |
-| **Generated at**        | ISO timestamp                                                                                                                                                    |
+| Field                   | What it carries                                                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Profile snapshot**    | The exact profile text active when the briefing was generated (truncated at 200 characters with an inline expand toggle)                                           |
+| **Models**              | Model IDs assigned to the filter, scoring, PDF analysis, and briefing stages                                                                                       |
+| **Categories**          | The arXiv subcategories queried for the run, rendered as badges                                                                                                    |
+| **Filter verdicts**     | <span class="verdict is-yes">YES</span>, <span class="verdict is-maybe">MAYBE</span>, and <span class="verdict is-no">NO</span> counts from the quick-filter stage |
+| **Settings flags**      | The active state of the filter review gate (`pauseAfterFilter`) and the two hallucination retry flags                                                              |
+| **Hallucination audit** | Full audit verdict, flagged claims list, and the auditor's justification prose                                                                                     |
+| **Generated at**        | ISO 8601 generation timestamp                                                                                                                                      |
 
-You rarely need this on a fresh briefing. It matters weeks later, when you come back to an archived briefing and want to reconstruct what setup produced it — which model was on the PDF slot that day, what your profile said at the time, whether the hallucination retry fired.
+Generation provenance is particularly useful when comparing archived runs weeks later to check which `pdfModel` was active, how your profile was worded at the time, or whether a synthesis retry occurred.
 
-Every briefing is saved permanently as a file in `reports/briefings/`, and nothing deletes it except you. The sidebar list lives in browser storage, so it is trimmed to a size budget: when it fills, the oldest test runs (dry runs and Minimal API Tests) drop off the list first, then the oldest real briefings. A briefing that drops off the list is still on disk.
+Every completed briefing is written permanently to disk under `reports/briefings/`. Because the sidebar list in the browser is backed by `localStorage`, Aparture trims the in-browser index when storage approaches its budget by dropping the oldest dry runs and Minimal API Tests first, followed by the oldest production briefings, while leaving every JSON file on disk untouched.
 
 ## A five-minute reading flow
 
-The layout is designed for a few-minute read, not a completionist pass. A pattern that works:
+A daily pass through a briefing works best as a structured triage:
 
-1. **Start with the executive summary.** If it surfaces a specific paper as "if you read one today, make it this", that's your primary target. If it says the day was thin, trust it and skip to theme 1's first card.
-2. **Scan theme 1.** That's where the highest-scored papers land, and any papers you pre-starred at Gate 3 have been woven into its framing. Read pitches; for anything that catches you, open the quick summary inline.
-3. **If the quick summary holds up, open the full report.** The deeper detail is usually enough to decide whether to open the PDF or move on.
-4. **Star anything interesting you won't read now.** Stars are tied to the paper by arXiv ID and persist across runs, but in practice they don't retroactively change the briefing you're reading (that's already been synthesised) and arXiv papers rarely reappear in later runs. Their real job is to accumulate as signal for the refinement flow, which is how feedback on this briefing eventually shapes future ones.
-5. **Dismiss deliberately.** A dismiss tells the system "stop bringing me these", so use it when a paper is genuinely not a fit — not when you're just out of time today.
-6. **Skip the rest.** Working through every paper isn't the intended use — triage is.
+1. **Read the executive summary first.** Note the paper singled out in the final paragraph's reading recommendation. If the summary reports a sparse submission day across your categories, jump directly to the first card in Theme 1.
+2. **Scan Theme 1.** Theme 1 groups your highest-scored and Gate 3 starred papers. Read the one-line pitches and expand the inline quick summary for any paper that looks relevant.
+3. **Open the full report for strong candidates.** If the 300-word quick summary confirms that the method or result is relevant, open the slide-over full report to inspect the technical details and limitations before downloading the PDF.
+4. **Star papers worth tracking.** Stars are keyed by `arxivId` and persist across runs. Starring a paper while reading a finished briefing records a positive relevance signal for the profile refinement flow so that future runs weight similar work higher.
+5. **Dismiss off-topic papers deliberately.** Dismissing a paper instructs the refinement flow that your profile leaked an unwanted topic through the filter and scoring stages, so reserve dismissals for genuine topic mismatches rather than papers you simply lack time to read today.
+6. **Leave the remaining cards unopened.** Once you have identified the one or two papers worth reading in full and marked any obvious stars or dismissals, your triage pass is complete.
 
 ::: info Feedback you give here is the same feedback you give at Gate 3
-Stars, dismisses, and comments are all keyed per paper, not per run. The same controls appear on the pre-briefing review gate (Gate 3) and on the paper cards in the briefing itself — the difference is just timing relative to synthesis. Feedback given at Gate 3 shapes the briefing that's about to be written; feedback given while reading mainly accumulates as signal for the refinement flow, which is the actual path by which today's feedback shapes tomorrow's briefings (via a refined profile). [Giving feedback](/using/giving-feedback) covers the full mechanics.
+Stars, dismissals, and paper comments are stored per `arxivId` across the application. The identical controls appear at Gate 3 (before synthesis) and on rendered briefing cards. Marking feedback at Gate 3 shapes the briefing about to be synthesized, whereas marking feedback while reading a finished briefing accumulates in the feedback store to drive your next profile refinement pass. See [Giving feedback](/using/giving-feedback) for full details.
 :::
 
 ## Next
 
-[Giving feedback →](/using/giving-feedback) — the mechanics of stars, dismisses, comments, and filter overrides, and what each one actually does to the next run.
+Continue to [Giving feedback →](/using/giving-feedback) for the mechanics of stars, dismissals, comments, scoped notes, and filter overrides.
 
-Also worth reading:
+Related guides:
 
-- You want the system view — how the briefing is built from prompts and schema. → [Briefing anatomy](/concepts/briefing-anatomy)
-- You want to tune what the briefing prioritises — model choice, thresholds, batch sizes. → [Tuning the pipeline](/using/tuning-the-pipeline)
-- The briefing keeps missing things you care about, or including things you don't. → [Writing a good profile](/using/writing-a-profile) and [Refining over time](/using/refining-over-time)
+- [**Briefing anatomy**](/concepts/briefing-anatomy): How the synthesis prompt, schema validation, and deterministic salvage construct each section of the briefing.
+- [**Tuning the pipeline**](/using/tuning-the-pipeline): How to adjust model slots, batch sizes, concurrency, and stage cutoffs.
+- [**Writing a good profile**](/using/writing-a-profile) and [**Refining over time**](/using/refining-over-time): How to sharpen your profile when briefings miss relevant papers or include unwanted subfields.

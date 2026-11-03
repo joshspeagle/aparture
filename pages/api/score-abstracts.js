@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     invalidPassword: 'Invalid password',
     missingCredentials: 'missing credentials',
   };
-  // Phase 1: validate the password BEFORE the empty-papers shortcut so a bad
+  // Validate the password BEFORE the empty-papers shortcut so a bad
   // password never authenticates, but resolve the provider key AFTER it (in
   // resolveRouteAuth below). App.jsx's login probe POSTs `{ papers: [],
   // password }` with no model, so `provider` defaults to Google; resolving
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ scores: [], rawResponse: '[]' });
   }
 
-  // Phase 2: full ladder (key resolution + callMode + fixture-aware
+  // Full ladder (key resolution + callMode + fixture-aware
   // missing-credentials check).
   const auth = resolveRouteAuth({
     apiKey: clientApiKey,
