@@ -1,7 +1,13 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { buildIndexEntry } from '../../../lib/briefing/buildIndexEntry.js';
-import { sweepStaleTmpOrphans } from '../../../lib/persistence/sweepStaleTmp.js';
+import {
+  atomicWriteColdJson,
+  getColdStoreDir,
+  listColdJsonFiles,
+  resolveColdFile,
+  validateColdId,
+} from '../../../lib/persistence/coldStore.js';
 import { checkAccessPassword } from '../../../lib/auth/checkAccessPassword.js';
 import { decodePasswordHeader } from '../../../lib/auth/passwordHeader.js';
 
@@ -17,33 +23,15 @@ export const config = {
   },
 };
 
-const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
-
-function getBriefingsDir() {
-  const base = process.env.APARTURE_REPORTS_DIR || path.join(process.cwd(), 'reports');
-  return path.join(base, 'briefings');
-}
-
-function validateId(id) {
-  return typeof id === 'string' && ID_PATTERN.test(id);
-}
-
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    // Auth via request header, NOT the query string — `?password=` leaks
-    // into dev-server logs and browser history. POST keeps the body field.
-    // Header values are percent-encoded by the client (fetch's ByteString
-    // constraint rejects non-Latin1 chars); decode before comparing.
-    // Malformed encoding decodes to null -> wrong password -> 401.
     const password = decodePasswordHeader(req.headers?.['x-aparture-password']);
     if (!checkAccessPassword(password)) {
       return res.status(401).json({ error: 'Invalid password' });
     }
-    const dir = getBriefingsDir();
+    const dir = getColdStoreDir('briefings');
     try {
-      const files = await fs.readdir(dir);
-      const jsonFiles = files.filter((f) => f.endsWith('.json') && !f.endsWith('.tmp'));
-      const ids = jsonFiles.map((f) => f.slice(0, -'.json'.length));
+      const { jsonFiles, ids } = await listColdJsonFiles(dir);
 
       // ?index=1 returns the rebuildable index slice: lets a client whose
       // localStorage was cleared (or a fresh machine on the same Dropbox-
@@ -82,28 +70,18 @@ export default async function handler(req, res) {
     if (!entry || typeof entry !== 'object') {
       return res.status(400).json({ error: 'Missing entry' });
     }
-    if (!validateId(entry.id)) {
+    if (!validateColdId(entry.id)) {
       return res.status(400).json({ error: 'Invalid id' });
     }
 
-    const dir = getBriefingsDir();
-    const filePath = path.join(dir, `${entry.id}.json`);
-    if (!filePath.startsWith(dir + path.sep)) {
+    const resolved = resolveColdFile('briefings', entry.id);
+    if (!resolved) {
       return res.status(400).json({ error: 'Invalid path' });
     }
 
     try {
-      await fs.mkdir(dir, { recursive: true });
-      await sweepStaleTmpOrphans(dir);
-      const serialized = JSON.stringify(entry, null, 2);
-      // Unique tmp suffix: concurrent writes for the same id (debounced save
-      // effects re-fire frequently) must not interleave on a shared tmp file.
-      const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`;
-      await fs.writeFile(tmpPath, serialized, 'utf8');
-      await fs.rename(tmpPath, filePath);
-      return res
-        .status(200)
-        .json({ id: entry.id, bytesWritten: Buffer.byteLength(serialized, 'utf8') });
+      const bytesWritten = await atomicWriteColdJson(resolved.dir, resolved.filePath, entry);
+      return res.status(200).json({ id: entry.id, bytesWritten });
     } catch (err) {
       console.error('[briefings POST] write failed:', err);
       return res.status(500).json({ error: err.message });

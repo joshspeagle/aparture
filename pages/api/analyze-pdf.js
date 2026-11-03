@@ -1,5 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
-import { extractJsonFromLlmOutput } from '../../utils/json.js';
+import { extractParsed } from '../../lib/llm/structured/extractParsed.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { resolveRouteAuth } from '../../lib/llm/resolveRouteAuth.js';
 import { ArxivDownloadThrottle } from '../../lib/analyzer/rateLimit.js';
@@ -215,20 +215,6 @@ function validatePDFAnalysisResponse(parsed) {
   });
 
   return { isValid: errors.length === 0, errors };
-}
-
-// Normalize a callModel result to a parsed payload. Prefer the provider's
-// native structured output; fall back to parsing the text field.
-function extractParsed(result) {
-  if (result?.structured !== undefined && result.structured !== null) {
-    return result.structured;
-  }
-  try {
-    const cleaned = extractJsonFromLlmOutput(result?.text ?? '');
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
-  }
 }
 
 // SSRF guard: pdfUrl is client-controlled and fetched server-side. Without

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildHarvestWindow, ANNOUNCE_LAG_BUFFER_DAYS } from '../../../lib/arxiv/window.js';
+import {
+  buildHarvestWindow,
+  ANNOUNCE_LAG_BUFFER_DAYS,
+  shiftIsoDate,
+} from '../../../lib/arxiv/window.js';
 
 const NOW = new Date('2026-10-17T06:00:00Z');
 
@@ -34,5 +38,13 @@ describe('buildHarvestWindow', () => {
       mode: 'auto',
       cacheTtlMinutes: 60,
     });
+  });
+});
+
+describe('shiftIsoDate', () => {
+  it('shifts ISO dates forward and backward across month boundaries in UTC', () => {
+    expect(shiftIsoDate('2026-10-02', -5)).toBe('2026-09-27');
+    expect(shiftIsoDate('2026-09-27', 5)).toBe('2026-10-02');
+    expect(shiftIsoDate('2026-10-16', 0)).toBe('2026-10-16');
   });
 });

@@ -1,5 +1,5 @@
 import { callModel } from '../../lib/llm/callModel.js';
-import { extractJsonFromLlmOutput } from '../../utils/json.js';
+import { extractParsed } from '../../lib/llm/structured/extractParsed.js';
 import { loadRubricPrompt, buildRetryPrompt } from '../../lib/llm/loadRubricPrompt.js';
 import { sendProviderErrorResponse } from '../../lib/llm/ProviderError.js';
 import { sendRefusalErrorResponse } from '../../lib/llm/RefusalError.js';
@@ -81,20 +81,6 @@ function validateFilterResponse(parsed, expectedCount) {
   });
 
   return { isValid: errors.length === 0, errors, verdicts };
-}
-
-// Normalize a callModel result to a parsed payload. Prefer the provider's
-// native structured output; fall back to parsing the text field.
-function extractParsed(result) {
-  if (result?.structured !== undefined && result.structured !== null) {
-    return result.structured;
-  }
-  try {
-    const cleaned = extractJsonFromLlmOutput(result?.text ?? '');
-    return JSON.parse(cleaned);
-  } catch {
-    return null;
-  }
 }
 
 function formatPapersForBatch(papers) {

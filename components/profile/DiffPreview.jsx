@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Button from '../ui/Button.jsx';
+import { applyProposalEdit } from '../../lib/briefing/v2/validate.js';
 import { NOTE_SCOPE_INFO } from '../../lib/profile/editorialNotes.js';
 
 /**
@@ -11,22 +12,8 @@ import { NOTE_SCOPE_INFO } from '../../lib/profile/editorialNotes.js';
  * @returns {string}
  */
 export function applyEdit(text, edit) {
-  const idx = text.indexOf(edit.anchor);
-  if (idx < 0) return text;
-  if (edit.type === 'replace') {
-    return text.slice(0, idx) + (edit.content ?? '') + text.slice(idx + edit.anchor.length);
-  }
-  if (edit.type === 'insert') {
-    return (
-      text.slice(0, idx + edit.anchor.length) +
-      (edit.content ?? '') +
-      text.slice(idx + edit.anchor.length)
-    );
-  }
-  if (edit.type === 'delete') {
-    return text.slice(0, idx) + text.slice(idx + edit.anchor.length);
-  }
-  return text;
+  if (!edit || typeof edit.anchor !== 'string' || edit.anchor === '') return text;
+  return applyProposalEdit(text, edit) ?? text;
 }
 
 /**
