@@ -18,9 +18,9 @@ hero:
 import { withBase } from 'vitepress';
 </script>
 
-Aparture is a local web application that reads the daily arXiv listings so you can stop skimming them manually. You describe your research in plain English and select the arXiv categories you follow. Each run scores the new preprints in those categories against your description, reads the highest-scoring manuscripts in full, and writes a cohesive briefing that groups the papers into themes and explains how each one connects to your work. Every citation in the briefing is verified against the input papers before the page renders.
+Aparture reads the daily arXiv listings so you can stop skimming them manually. You describe your research in plain English and select the arXiv categories you follow. Each run scores the new preprints in those categories against your description, reads the highest-scoring manuscripts in full, and writes a cohesive briefing that groups the papers into themes and explains how each one connects to your work. Every citation in the briefing is verified against the input papers before the page renders.
 
-Aparture is designed for continuous daily use over weeks and months. As you read each briefing, you star papers that were valuable, dismiss papers that missed the mark, and leave comments where you have specific reactions. When you request profile suggestions, Aparture turns those accumulated signals into concrete proposed edits to your research profile that you can accept or reject individually.
+Aparture is designed for continuous daily use over weeks and months, and you can run it either as a local web application (`npm run dev`, using your own provider API keys in `.env.local` with interactive review gates) or as a headless Agent Skill (`SKILL.md` paired with `node bin/aparture.mjs`, running inside Claude Code, Antigravity, or OpenAI Codex on your existing agent subscription). As you read each briefing, you star papers that were valuable, dismiss papers that missed the mark, and leave comments where you have specific reactions. When you request profile suggestions, Aparture turns those accumulated signals into concrete proposed edits to your research profile that you can accept or reject individually.
 
 <div class="landing-cards">
 
@@ -54,9 +54,9 @@ Star, dismiss, or comment on papers as you read. The Suggest Improvements workfl
 <div class="landing-card">
 <div class="landing-icon">🧩</div>
 
-### Bring your own models
+### Web app or agent skill
 
-Aparture supports Anthropic, OpenAI, and Google models, and each pipeline stage can use a different model (such as a fast model for filtering and a frontier model for full-PDF reading). Your API keys stay in `.env.local` on your machine.
+Run the interactive web application in your browser (mixing Anthropic, OpenAI, and Google models per stage with keys in `.env.local`), or invoke the built-in `SKILL.md` workflow inside Claude Code, Antigravity, or Codex without separate API keys.
 
 </div>
 
@@ -74,8 +74,8 @@ Aparture supports Anthropic, OpenAI, and Google models, and each pipeline stage 
 
 <a class="step-card" :href="withBase('/getting-started/api-keys.html')">
   <span class="step-number">STEP 02</span>
-  <h4>API keys</h4>
-  <p>Choose a provider, create an API key, and add it to <code>.env.local</code>.</p>
+  <h4>API keys (web app)</h4>
+  <p>Add a provider key to <code>.env.local</code> for the browser app, or skip directly to the Agent Skill.</p>
 </a>
 
 <a class="step-card" :href="withBase('/getting-started/verify-setup.html')">
@@ -86,13 +86,23 @@ Aparture supports Anthropic, OpenAI, and Google models, and each pipeline stage 
 
 </div>
 
+<div class="step-cards step-cards-cta">
+
 <a class="step-card step-card-cta" :href="withBase('/using/first-briefing.html')">
-  <span class="step-number">READY TO RUN</span>
-  <h4>Start using Aparture →</h4>
-  <p>Follow a narrated 10-minute walkthrough of your first live briefing from start to finish.</p>
+  <span class="step-number">WEB APPLICATION</span>
+  <h4>Start in the browser →</h4>
+  <p>Follow a narrated 10-minute walkthrough of your first live briefing in the local web interface.</p>
 </a>
 
-If you already have Aparture running, the [Guide](/using/first-briefing) covers daily workflows from running and reading briefings to recording feedback and refining your profile, [Under the Hood](/concepts/pipeline) explains the pipeline architecture and briefing checks, and [Reference](/reference/environment) documents environment variables, prompt templates, and troubleshooting steps.
+<a class="step-card step-card-cta" :href="withBase('/add-ons/agent-skill.html')">
+  <span class="step-number">AGENT SKILL (SKILL.MD)</span>
+  <h4>Run in your coding agent →</h4>
+  <p>Execute the pipeline headlessly via <code>SKILL.md</code> and <code>node bin/aparture.mjs</code> in Claude Code, Antigravity, or Codex.</p>
+</a>
+
+</div>
+
+If you already have Aparture running, the [Guide](/using/first-briefing) covers daily workflows from running and reading briefings to recording feedback and refining your profile, [Running as an agent skill](/add-ons/agent-skill) documents the `SKILL.md` workflow and headless CLI runner, [Under the Hood](/concepts/pipeline) explains the pipeline architecture and briefing checks, and [Reference](/reference/environment) documents environment variables, prompt templates, and troubleshooting steps.
 
 <div class="landing-footer">
 

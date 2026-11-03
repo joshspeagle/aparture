@@ -49,7 +49,7 @@ ACCESS_PASSWORD=correct-horse-battery-staple
 
 A random passphrase of 12 or more characters is well suited for a single-user local or LAN deployment. Because `npm run dev` and `npm start` bind to `127.0.0.1` by default, only the local machine can reach the server unless you pass `npm run dev -- -H 0.0.0.0` to listen on your local network. Do not expose the server directly to the public internet without an external authentication proxy.
 
-When the headless runner (`node bin/aparture.mjs`) invokes the arXiv proxy routes in-process and `ACCESS_PASSWORD` is unset, it generates a random in-memory password for its own process automatically.
+When the headless runner (`node bin/aparture.mjs`, documented in [Running as an agent skill](/add-ons/agent-skill)) invokes the arXiv proxy routes in-process and `ACCESS_PASSWORD` is unset, it generates a random in-memory password for its own process automatically.
 
 ## API keys (at least one required)
 
@@ -171,4 +171,5 @@ Follow these formatting rules when editing `.env.local` to avoid parsing errors:
 - [API keys hub](/getting-started/api-keys): Provider comparison and cost estimates.
 - [Install](/getting-started/install): Node.js installation and creating `.env.local`.
 - [Verify setup](/getting-started/verify-setup): Zero-cost and end-to-end setup checks.
+- [Running as an agent skill](/add-ons/agent-skill): Headless execution via `SKILL.md`, `node bin/aparture.mjs`, and `$APARTURE_STATE`.
 - [Troubleshooting](/reference/troubleshooting): Diagnosing `.env.local` and authentication errors.

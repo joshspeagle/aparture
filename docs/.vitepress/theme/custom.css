@@ -177,10 +177,12 @@ a.landing-card:hover {
   }
 }
 
-/* Standalone CTA card — full-width, slightly warmer accent than step-cards */
-.step-card.step-card-cta {
-  display: block;
+/* Two-up CTA cards inside .step-cards-cta */
+.step-cards.step-cards-cta {
   margin: 0 0 3rem;
+}
+
+.step-card.step-card-cta {
   padding: 1.5rem 1.75rem;
   border: 1px solid var(--arxiv-red);
   background: linear-gradient(to right, rgba(179, 27, 27, 0.03), rgba(179, 27, 27, 0.01));

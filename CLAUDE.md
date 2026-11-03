@@ -119,9 +119,9 @@ Hot state lives in browser `localStorage` and cold state lives on disk, with all
 - `harvest` and `harvestOai` accept injectable `spacingMsImpl` and `sleepImpl` functions so multi-request unit tests can pass a no-op sleep.
 - `analyze-pdf` verifies that fetched bytes start with `%PDF-` and falls back to Playwright (`temp/playwright-profile/`) when arXiv returns a reCAPTCHA page. When Playwright is unavailable, the route returns HTTP 422 `PLAYWRIGHT_UNAVAILABLE_RECAPTCHA` and the stage records the paper in `skippedDueToRecaptcha`.
 
-### Headless runner and agent skill (prototype)
+### Headless runner and agent skill
 
-`bin/aparture.mjs` executes the mechanical steps of a briefing run from Node without starting the web server: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest`, and `figure` (`node bin/aparture.mjs help`). It makes no LLM calls; the agent skill in `.claude/skills/aparture/` performs the reading and writing steps and invokes the runner between phases (`.agents/skills/aparture` is a symlink to `.claude/skills/aparture/`, so always edit the files under `.claude/`).
+`bin/aparture.mjs` executes the mechanical steps of a briefing run from Node without starting the web server: `fetch`, `enrich`, `validate`, `render`, `record`, `ingest`, `notes`, and `figure` (`node bin/aparture.mjs help`). It makes no LLM calls; the agent skill in `.claude/skills/aparture/` performs the reading and writing steps and invokes the runner between phases (`.agents/skills/aparture` is a symlink to `.claude/skills/aparture/`, so always edit the files under `.claude/`).
 
 - **JSON-only stdout:** The runner redirects `console.log` to `stderr` because imported route handlers log status lines; keep all non-JSON output off `stdout`.
 - **In-process routes:** The runner invokes the arXiv proxy handlers in-process (`lib/headless/inProcessRoute.js`), installs `jsdom`'s `DOMParser` (requiring a full `npm ci` including `devDependencies`), and generates a random `ACCESS_PASSWORD` when none is set in the environment.
@@ -219,7 +219,7 @@ The agent skill references prompt sections by exact heading (`"Style and voice"`
 | Settings panel, dedupe | `using/tuning-the-pipeline.md` |
 | `lib/notebooklm/*`, `components/notebooklm/*` | `add-ons/podcast.md` |
 | persistence hooks and routes, auth, `process.env.*`, `package.json` scripts | `reference/environment.md`, `reference/troubleshooting.md`, `getting-started/install.md` |
-| prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md` |
+| prompt sections the skill quotes, feedback and proposal rules, `lib/briefing/v2/*`, `bin/aparture.mjs` | the skill: `.claude/skills/aparture/SKILL.md` and `references/*.md`; `add-ons/agent-skill.md` |
 
 Screenshots live in `docs/public/screenshots/`, captured at `1440x900` in the light theme, and should be recaptured whenever the UI layout changes materially.
 
